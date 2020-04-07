@@ -1,3 +1,52 @@
+homeassistant:
+  customize:
+    plant.coffee_plant:
+      friendly_name: 'Coffee plant'
+    plant.bonsai:
+      friendly_name: 'Bonsai'
+    plant.calathea:
+      friendly_name: 'Calathea'
+    plant.herbs:
+      friendly_name: 'Herbs'
+
+plant:
+  coffee_plant:
+    sensors:
+      moisture: sensor.coffee_plant_moisture
+      battery: sensor.coffee_plant_battery
+      temperature: sensor.coffee_plant_temperature
+      conductivity: sensor.coffee_plant_conductivity
+      brightness: sensor.stats_coffeeplant_light_intensity
+    min_moisture: 10
+  bonsai:
+    sensors:
+      moisture: sensor.bonsai_moisture
+      battery: sensor.bonsai_battery
+      temperature: sensor.bonsai_temperature
+      conductivity: sensor.bonsai_conductivity
+      brightness: sensor.bonsai_light_intensity
+    min_moisture: 10
+    min_conductivity: 50
+  calathea:
+    sensors:
+      moisture: sensor.calathea_moisture
+      battery: sensor.calathea_battery
+      temperature: sensor.calathea_temperature
+      conductivity: sensor.calathea_conductivity
+      brightness: sensor.calathea_light_intensity
+    min_moisture: 10
+  herbs:
+    sensors:
+      moisture: sensor.herbs_moisture
+      battery: sensor.herbs_battery
+      temperature: sensor.herbs_temperature
+      conductivity: sensor.herbs_conductivity
+      brightness: sensor.herbs_light_intensity
+    min_moisture: 10
+
+#################
+#    SENSORS    #
+#################
 sensor:
   - platform: miflora
     mac: 'C4:7C:8D:6B:17:07'
@@ -43,3 +92,140 @@ sensor:
       - temperature
       - conductivity
       - battery
+
+  - platform: template
+    sensors:
+      water_needed: #check which plants need water
+        friendly_name: "Water needed"
+        entity_id:
+          - plant.bonsai
+          - plant.coffee_plant
+          - plant.calathea
+          - plant.herbs
+        value_template: >
+          {%- set threshold = 20 -%}
+          {%- for item in states.plant if ((item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) or ("moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
+          {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
+          {{ item.name }} ({{ item.attributes['moisture'] }}){%- if not loop.last %}, {% endif -%}{% endif -%}
+          {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
+          {{ item.attributes.friendly_name }} ({{ item.state }}){%- if not loop.last %}, {% endif -%} {% endif -%}
+          {%- endfor -%}
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: template
+    sensors:
+      water_status:   #check if plants need water
+        friendly_name: "Water Status"
+        entity_id:
+          - plant.bonsai
+          - plant.coffee_plant
+          - plant.calathea
+          - plant.herbs
+        value_template: >
+          {%- set threshold = 20 -%}
+          {% set ns = namespace(water_needed = false) %}
+          {%- for item in states.plant if ((item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) or ("moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
+          {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
+          {% set ns.water_needed = true %}{% endif -%}
+          {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
+          {% set ns.water_needed = true %} {% endif -%}
+          {%- endfor -%}
+          {{ns.water_needed}}
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+  water_status_update:
+    name: Water status update
+    icon: mdi:water-off
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: 'Turn on coffee plant according to schedule'
+    trigger:
+      - platform: time
+        at: "7:00"
+      - platform: state
+        entity_id: input_boolean.sleep_tracking_on
+        to: 'off'
+      - platform: state
+        entity_id: person.sander_blok
+        to: 'home'
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_tracking_on
+        state: 'off'
+      - condition: time
+        after: '7:00:00'
+        before: '22:00:00'
+    action:
+      - service: homeassistant.turn_on
+        entity_id: switch.blitzwolf_coffeeplant
+      - service: light.turn_on
+        data:
+          entity_id: light.plants
+          color_temp: 380
+          brightness: 255
+
+  - alias: 'Turn off coffee plant according to schedule'
+    trigger:
+      - platform: time
+        at: "21:30"
+      - platform: state
+        entity_id: input_boolean.sleep_tracking_on
+        to: 'on'
+    action:
+      - service: homeassistant.turn_off
+        entity_id: switch.blitzwolf_coffeeplant
+      - service: light.turn_off
+        entity_id: light.plants
+
+  # - alias: Water status update
+  #   trigger:
+  #   - platform: time_pattern
+  #     minutes: '/30'
+  #   action:
+  #   - alias: Water status update
+  #     service: input_boolean.toggle
+  #     data:
+  #       entity_id: input_boolean.water_status_update
+
+  - alias: 'Water Alert'
+    trigger:
+      - platform: time_pattern
+        minutes: '/60'
+    condition:
+      condition: template
+      value_template: "{% if states('binary_sensor.water_status') %}{{ on }}{% else %}{{ off }}{% endif %}"
+    action:
+      - service: persistent_notification.create
+        data_template:
+          title: Low water levels
+          message: "{{ states('sensor.water_needed') }}"
+          notification_id: low-water-alert
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
