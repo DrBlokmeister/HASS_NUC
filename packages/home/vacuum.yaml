@@ -1,0 +1,370 @@
+homeassistant:
+  customize:
+    automation.auto_clean_litterbox_when_not_home_check_every_10_min:
+      icon: mdi:robot-vacuum
+    automation.auto_clean_whole_house_when_not_home_check_every_10_min:
+      icon: mdi:robot-vacuum
+    automation.notification_when_consuela_is_done_cleaning:
+      icon: mdi:robot-vacuum
+    automation.turn_input_boolean_vacuumed_today_off:
+      icon: mdi:robot-vacuum
+    automation.drive_vacuum_to_trash_bin:
+      icon: mdi:robot-vacuum
+  customize_glob:
+    "script.vacuum_*":
+      icon: mdi:robot-vacuum
+
+vacuum:
+  - platform: xiaomi_miio
+    host: 192.168.1.237
+    token: !secret vacuum_token
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+  vacuumed_today:
+    name: Checks if Consuela vacuumed today
+    icon: mdi:robot-vacuum
+
+##################
+#    COUNTERS    #
+##################
+counter:
+  times_vacuumed_since_empty_bin:
+    #initial: 0
+    step: 1
+    restore: true
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+#Auto clean whole house when I'm not home on mon, wed, fri
+  - alias: 'Auto clean whole house when not home'
+    trigger:
+      - platform: state
+        entity_id: person.sander_blok
+        from: 'home'
+        to: 'not_home'
+        for: 00:10:00
+      - platform: time
+        at: '07:01:00'
+    condition:
+      - condition: time
+        weekday:
+          - mon
+          - wed
+          - fri        
+      - condition: time
+        after: '7:00:00'
+        before: '22:00:00'
+      - condition: state
+        entity_id: person.sander_blok
+        state: 'not_home'
+      - condition: state
+        entity_id: input_boolean.vacuumed_today
+        state: 'off'
+    action:
+      - service: system_log.write
+        data_template:
+          message: 'Started vacuum automation: auto clean whole house when not home'
+          level: info
+      - service: script.vacuum_message_scheduled_cleanup
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.vacuumed_today
+      - service: counter.increment
+        data:
+          entity_id: counter.times_vacuumed_since_empty_bin
+      - service: vacuum.start
+
+#If I'm not home and the conditions are met, starts cleaning around the litterbox on tue, thu, sat, sun.
+  - alias: 'Auto clean litterbox when not home (check every 10 min)'
+    trigger:
+      - platform: state
+        entity_id: person.sander_blok
+        from: 'home'
+        to: 'not_home'
+        for: 00:10:00
+      - platform: time
+        at: '07:01:00'
+    condition:
+      - condition: time
+        weekday:
+          - tue
+          - thu
+          - sat
+          - sun     
+      - condition: time
+        after: '7:00:00'
+        before: '22:00:00'
+      - condition: state
+        entity_id: person.sander_blok
+        state: 'not_home'
+      - condition: state
+        entity_id: input_boolean.vacuumed_today
+        state: 'off'    
+    action:
+      - service: system_log.write
+        data_template:
+          message: 'Started vacuum automation: auto clean litterbox when not home'
+          level: info
+      - service: script.vacuum_message_litterbox_clean
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.vacuumed_today
+      - service: counter.increment
+        data:
+          entity_id: counter.times_vacuumed_since_empty_bin
+      - service: script.vacuum_around_litterbox_twice
+
+  - alias: 'Drive vacuum to trash bin'
+    trigger:
+      - platform: numeric_state
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        value_template: '{{state.attributes.battery_level}}'
+        above: 99
+      # - platform: state
+      #   entity_id: vacuum.xiaomi_vacuum_cleaner
+      #   from:  'cleaning'
+      #   to: 'not_cleaning'
+      #   for: 00:30:00
+    condition:
+      - condition: numeric_state  
+        entity_id: counter.times_vacuumed_since_empty_bin
+        above: 2
+    action:
+      - service: system_log.write
+        data_template:
+          message: 'Started vacuum automation: drive vacuum to trash bin'
+          level: info
+      - service: counter.reset
+        data:
+          entity_id: counter.times_vacuumed_since_empty_bin
+      - service: script.vacuum_goto_kitchen
+
+#Turns off the vacuumed today boolean at the start of every day. Used by vacuum automations
+  - alias: 'Turn input boolean vacuumed today off'
+    trigger: 
+      platform: time
+      at: 01:00:00
+    action:
+      - service: system_log.write
+        data_template:
+          message: 'Turn off input boolean vacuumed today'
+          level: info
+      - service: input_boolean.turn_off
+        data:
+          entity_id: input_boolean.vacuumed_today
+
+#Buttons:
+  - alias: 'Button: drive vacuum to trash bin'
+    trigger: 
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_vacuumcleaner
+        click_type: double
+    condition:
+      - condition: state
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        state: docked
+    action:
+      - service: script.vacuum_goto_kitchen
+      - service: counter.reset
+        data:
+          entity_id: counter.times_vacuumed_since_empty_bin
+
+  - alias: 'Button: dock vacuum'
+    trigger: 
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_vacuumcleaner
+        click_type: double
+    condition:
+      condition: template
+      value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
+    action:
+      - service: vacuum.return_to_base
+
+  - alias: 'Button: start vacuum'
+    trigger: 
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_vacuumcleaner
+        click_type: single
+    condition:
+      condition: template
+      value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
+    action:
+      - service: vacuum.start
+
+  - alias: 'Button: pause vacuum'
+    trigger: 
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_vacuumcleaner
+        click_type: single
+    condition:
+      condition: state
+      entity_id: vacuum.xiaomi_vacuum_cleaner
+      state: cleaning
+    action:
+      - service: vacuum.pause
+
+########## NOTIFICATIONS ########## 
+#Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
+  - alias: 'Notification when Consuela is done cleaning'
+    trigger:
+      platform: state
+      entity_id: vacuum.xiaomi_vacuum_cleaner
+      to: 'charging'
+    action:
+      service: script.vacuum_message_done_cleaning
+
+  - alias: 'Write log when times cleaned since empty bin changes'
+    trigger:
+      platform: state
+      entity_id: counter.times_vacuumed_since_empty_bin
+    action:
+      - service: system_log.write
+        data_template:
+          message: 'Counter counter.times_vacuumed_since_empty_bin changed to {{ states.counter.times_vacuumed_since_empty_bin.state }}'
+          level: info
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  vacuum_around_litterbox_twice:
+      alias: "Clean around litterbox"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[16618,28223,18568,29623]]
+          
+  vacuum_kitchen_twice:
+      alias: "Clean kitchen"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[14898,24722,17198,26572]]
+          
+  vacuum_study_twice:
+      alias: "Clean study"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[16611,21710,18811,24760]]
+          
+  vacuum_bedroom_twice:
+      alias: "Clean bedroom"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[21786,20518,26336,24818]]
+          
+  vacuum_bathroom_twice:
+      alias: "Clean bathroom"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[19634,21767,21484,23717]]
+          
+  vacuum_dining_twice:
+      alias: "Clean dining area"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[18516,25061,22916,29661]]
+          
+  vacuum_tv_twice:
+      alias: "Clean TV area"
+      sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          repeats: 2
+          zone: [[22840,25127,26540,29727]]
+
+  vacuum_goto_kitchen:
+      alias: "Go to kitchen"
+      sequence:
+      - service: vacuum.send_command
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          command: "app_goto_target"
+          params: [16000,25200]
+
+  vacuum_message_litterbox_clean:
+      alias: "Message phone about litterbox cleaning"
+      sequence:
+        - service: notify.mobile_app_oneplus_6
+          data:
+            message: "Consuela has started cleaning around the litterbox."
+            title: "Home Assistant - Consuela"
+            data:
+              icon: "https://image.flaticon.com/icons/png/128/1829/1829862.png"
+              image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
+
+  vacuum_message_scheduled_cleanup:
+      alias: "Message phone about scheduled cleaning"
+      sequence:
+        - service: notify.mobile_app_oneplus_6
+          data:
+            message: "Consuela has started a scheduled cleanup."
+            title: "Home Assistant - Consuela"
+            data:
+              icon: "https://image.flaticon.com/icons/png/128/1829/1829862.png"
+              image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
+
+  vacuum_message_done_cleaning:
+      alias: "Message phone about scheduled cleaning"
+      sequence:
+        - service: notify.mobile_app_oneplus_6
+          data:
+            message: "Consuela is done cleaning."
+            title: "Home Assistant - Consuela"
+            data:
+              icon: "https://image.flaticon.com/icons/png/128/1829/1829862.png"
+              image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"

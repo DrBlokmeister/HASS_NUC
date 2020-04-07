@@ -1,0 +1,210 @@
+homeassistant:
+  customize:
+
+speedtestdotnet:
+  server_id: 10561
+  scan_interval:
+    minutes: 30
+  monitored_conditions:
+    - ping
+    - download
+    - upload
+
+asuswrt:
+  host: 192.168.1.1
+  username: !secret router_user
+  password: !secret router_pass
+  sensors:
+    - upload
+    - download
+    - upload_speed
+    - download_speed
+
+transmission:
+  host: 192.168.1.11
+  username: !secret transmission_user
+  password: !secret transmission_pass
+  # monitored_conditions:
+  #   - current_status
+  #   - download_speed
+  #   - upload_speed
+  #   - active_torrents
+  #   - paused_torrents
+  #   - total_torrents
+  #   - started_torrents
+  #   - completed_torrents
+
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: template
+    sensors:
+      ping_router_avg:
+        value_template: "{{ states.binary_sensor.router.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Router ping average"
+
+      ping_blokmeisternas_avg:
+        value_template: "{{ states.binary_sensor.blokmeisternas.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "BlokmeisterNAS ping average"
+
+      ping_phone_avg:
+        value_template: "{{ states.binary_sensor.phone.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Phone ping average"
+
+      ping_odroid_c2_avg:
+        value_template: "{{ states.binary_sensor.odroid_c2.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Odroid C2 ping average"
+
+      ping_ambilight_rpi_avg:
+        value_template: "{{ states.binary_sensor.ambilight_rpi.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Ambilight RPI ping average"
+
+      ping_transmission_avg:
+        value_template: "{{ states.binary_sensor.transmission.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Transmission jail ping average"
+
+      ping_plinq_avg:
+        value_template: "{{ states.binary_sensor.plinq.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Plinq ping average"
+
+      ping_google_dns_avg:
+        value_template: "{{ states.binary_sensor.google_dns.attributes.round_trip_time_avg|float }}"
+        unit_of_measurement: ms
+        friendly_name: "Google DNS jail ping average"
+
+  - platform: statistics
+    entity_id: sensor.asuswrt_download_speed
+    name: Average download
+    precision: 2
+    sampling_size: 60
+    max_age:
+      minutes: 60
+
+  - platform: statistics
+    entity_id: sensor.asuswrt_upload_speed
+    name: Average upload
+    precision: 2
+    sampling_size: 60
+    max_age:
+      minutes: 60
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: ping
+    name: BlokmeisterNAS
+    host: 192.168.1.250
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Router
+    host: 192.168.1.1
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Phone
+    host: 192.168.1.100
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Odroid_C2
+    host: 192.168.1.50
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Ambilight_RPI
+    host: 192.168.1.51
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Transmission
+    host: 192.168.1.11
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Plinq
+    host: 82.150.155.66
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Google_DNS
+    host: 8.8.8.8
+    count: 10
+    scan_interval: 60
+  - platform: ping
+    name: Blokmeisterdesktop
+    host: 192.168.1.187
+    count: 10
+    scan_interval: 60
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+#Send a notification to Ariela when the a torrent is completed
+  - alias: 'Completed Torrent'
+    trigger:
+      platform: event
+      event_type: transmission_downloaded_torrent
+    action:
+      service: script.transmission_message_download_completed
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  transmission_message_download_completed:
+      alias: "Message phone about completed torrent"
+      sequence:
+        - service: notify.mobile_app_oneplus_6
+          data:
+            message: "A torrent is done downloading"
+            title: "Home Assistant - Transmission"
+            data:
+              icon: "http://wfarm2.dataknet.com/static/resources/icons/set92/b8ef5c32.png"
+              image: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Transmission_icon.png"
+
+  message_transmission_not_reachable:
+      alias: "Contact to transmission lost"
+      sequence:
+        - service: notify.mobile_app_oneplus_6
+          data:
+            message: "The contact to Transmission has been lost"
+            title: "Home Assistant - Transmission"
+            data:
+              icon: "http://wfarm2.dataknet.com/static/resources/icons/set92/b8ef5c32.png"
+              image: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Transmission_icon.png"
+
+  message_odroid_not_reachable:
+      alias: "Contact to Odroid C2 lost"
+      sequence:
+        - service: notify.mobile_app_oneplus_6
+          data:
+            message: "The contact to the Odroid C2 has been lost"
+            title: "Home Assistant - Odroid C2"
+            data:
+              icon: mdi:library-movie
+              image: mdi_library-movie

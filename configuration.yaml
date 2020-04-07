@@ -1,0 +1,78 @@
+homeassistant:
+  # Name of the location where Home Assistant is running
+  name: Home
+  # Location required to calculate the time the sun rises and sets
+  latitude: !secret home_latitude
+  longitude: !secret home_longitude
+  unit_system: metric
+  time_zone: Europe/Amsterdam
+  packages: !include_dir_named packages
+
+
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+default_config:
+api:
+person:
+mobile_app:
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+lovelace:
+  mode: yaml
+
+notify:
+  - name: loginfo
+    platform: syslog
+
+input_datetime:
+  wakeup_time:
+    name: Wakeup time
+    has_time: true
+    has_date: true
+
+zone:
+  - name: Home
+    latitude: !secret home_latitude
+    longitude: !secret home_longitude
+    radius: 100
+    icon: mdi:home-variant-outline
+  - name: Parents
+    latitude: !secret parents_latitude
+    longitude: !secret parents_longitude
+    radius: 250
+    icon: mdi:human-male-female
+  - name: Work
+    latitude: !secret work_latitude
+    longitude: !secret work_longitude
+    radius: 500
+    icon: mdi:mdi-office-building
+
+tado:
+  username: !secret tado_user
+  password: !secret tado_pass
+
+#google calendar:
+google:
+  client_id: !secret googleapi_user
+  client_secret: !secret googleapi_pass
+
+cloud:
+
+history:
+
+logger:
+  default: warning
+
+hue:
+  bridges:
+    - host: 192.168.0.120
+      allow_unreachable: true
+      allow_hue_groups: true
+
+xiaomi_aqara:
+  discovery_retry: 5
+  gateways:
+    - key: !secret xiaomi_key

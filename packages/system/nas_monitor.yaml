@@ -1,0 +1,523 @@
+homeassistant:
+  customize:
+    sensor.nas_last_boot:
+      device_class: timestamp
+      unit_of_measurement: ''
+      friendly_name: Last boot
+      icon: mdi:clock
+    #
+    sensor.nas_cpu_use_percent:
+      friendly_name: 'CPU use'
+    sensor.nas_cpu_load_1m:
+      unit_of_measurement: ' '
+      friendly_name: 'Load (1m)'
+    sensor.nas_cpu_load_5m:
+      unit_of_measurement: ' '
+      friendly_name: 'Load (5m)'
+    sensor.nas_cpu_load_15m:
+      unit_of_measurement: ' '
+      friendly_name: 'Load (15m)'
+    sensor.nas_cpu_temperature:
+      device_class: 'temperature'
+      unit_of_measurement: '°C'
+      friendly_name: 'CPU temperature'
+      templates:
+        hs_color: >-
+          if (state > 80) return [0, 85];
+          else if (state > 60) return [40, 70];
+          else return [0, 0];
+    #
+    sensor.nas_memory_use_percent:
+      friendly_name: 'Memory use'
+    sensor.nas_memory_free:
+      unit_of_measurement: 'MiB'
+      friendly_name: 'Memory free'
+    #
+    sensor.nas_swap_use:
+      unit_of_measurement: 'MiB'
+      friendly_name: 'Swap use'
+      icon: mdi:harddisk
+    #
+    sensor.nas_pool_pool1_health:
+      friendly_name: 'Pool health'
+    #
+    sensor.nas_alerts:
+      friendly_name: 'Alert Message'
+      icon: mdi:message-alert
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: yr
+  - platform: rest
+    name: FN_NewStorage_report
+    json_attributes:
+      - name
+      - status
+      - used
+      - used_pct
+      - is_decrypted
+    resource: http://192.168.1.250:250/api/v1.0/storage/volume/NewStorage/?format=json
+    value_template: '{{ value_json.status }}'
+    username: !secret nas_user
+    password: !secret nas_pass
+    authentication: basic
+    scan_interval: '00:05'
+    force_update: true
+    headers:
+      Content-Type: application/json
+
+  - platform: template
+    sensors:
+      fn_newstorage_pct_used:
+        value_template: "{{ state_attr('sensor.FN_NewStorage_report', 'used_pct')|replace('%','') }}"
+        entity_id: 
+          - sensor.fn_NewStorage_report
+          - sensor.time
+        unit_of_measurement: '%'
+
+  - platform: template
+    sensors:
+      fn_newstorage_used:
+        value_template: "{{ (state_attr('sensor.FN_NewStorage_report', 'used') / (1024**4)) | round(2) }}"
+        entity_id: 
+          - sensor.fn_NewStorage_report
+          - sensor.time
+        unit_of_measurement: 'TB'
+
+  - platform: rest
+    name: FN_Storage2_report
+    json_attributes:
+      - name
+      - status
+      - used
+      - used_pct
+      - is_decrypted
+    resource: http://192.168.1.250:250/api/v1.0/storage/volume/Storage2/?format=json
+    value_template: '{{ value_json.status }}'
+    username: !secret nas_user
+    password: !secret nas_pass
+    authentication: basic
+    scan_interval: '00:05'
+    force_update: true
+    headers:
+      Content-Type: application/json
+
+  - platform: template
+    sensors:
+      fn_storage2_pct_used:
+        value_template: "{{ state_attr('sensor.FN_Storage2_report', 'used_pct')|replace('%','') }}"
+        entity_id: 
+          - sensor.fn_NewStorage_report
+          - sensor.time
+        unit_of_measurement: '%'
+
+  - platform: template
+    sensors:
+      fn_storage2_used:
+        value_template: "{{ (state_attr('sensor.FN_Storage2_report', 'used') / (1024**4)) | round(2) }}"
+        entity_id: 
+          - sensor.fn_NewStorage_report
+          - sensor.time
+        unit_of_measurement: 'TB'
+
+  - platform: rest
+    name: FN_alert_level
+    resource: http://192.168.1.250:250/api/v1.0/system/alert/?format=json
+    value_template: '{{ value_json.objects[0].level }}'
+    username: !secret nas_user
+    password: !secret nas_pass
+    authentication: basic
+    scan_interval: 60
+    headers:
+      Content-Type: application/json
+
+  - platform: rest
+    name: FN_alert_message
+    resource: http://192.168.1.250:250/api/v1.0/system/alert/?format=json
+    value_template: '{{ value_json.objects[0].message }}'
+    username: !secret nas_user
+    password: !secret nas_pass
+    authentication: basic
+    scan_interval: 60
+    headers:
+      Content-Type: application/json
+
+  - platform: rest
+    name: FN_version
+    json_attributes:
+      - fullversion
+      - name
+      - version
+    resource: http://192.168.1.250:250/api/v1.0/system/version/?format=json
+    value_template: '{{ value_json.fullversion }}'
+    username: !secret nas_user
+    password: !secret nas_pass
+    authentication: basic
+    headers:
+      Content-Type: application/json
+
+  - platform: rest
+    name: 'Ubuntu_VM'
+    json_attributes:
+      - state
+    resource: http://192.168.1.250:250/api/v1.0/vm/vm/1/?format=json
+    value_template: '{{ value_json.state }}'
+    username: !secret nas_user
+    password: !secret nas_pass
+    authentication: basic
+    headers:
+      Content-Type: application/json
+
+  - platform: template
+    sensors:
+      nas_cpu_alert_level:
+        value_template: >-
+          {{ (states("sensor.nas_cpu_use_percent")|int > 100)|int
+           + (states("sensor.nas_cpu_use_percent")|int > 300)|int }}
+      nas_memory_alert_level:
+        value_template: >-
+          {{ (states("sensor.nas_memory_use_percent")|int > 70)|int }}
+      nas_disks_alert_level:
+        value_template: >-
+          {{ [
+            (states("sensor.nas_disk_ada0_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada0_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada0_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada1_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada1_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada1_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada2_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada2_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada2_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada3_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada3_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada3_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada4_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada4_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada4_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada5_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada5_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada5_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada6_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada6_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada6_temperature")|int > 55)|int,
+            (states("sensor.nas_disk_ada7_temperature")|int < 25)|int
+              + (states("sensor.nas_disk_ada7_temperature")|int > 45)|int
+              + (states("sensor.nas_disk_ada7_temperature")|int > 55)|int,
+          ]|max }}
+      nas_pools_alert_level:
+        value_template: >-
+          {{ [
+            (states("sensor.nas_pool_NewStorage_use_percent")|int >= 80)|int
+              + (states("sensor.nas_pool_NewStorage_use_percent")|int >= 90)|int,
+            2 - 2 * (states("sensor.nas_pool_NewStorage_health") == 'ONLINE')|int
+              - (states("sensor.nas_pool_NewStorage_health") == 'DEGRADED')|int,
+          ]|max }}
+      nas_alert_level:
+        value_template: >-
+          {{ [
+            states("sensor.nas_cpu_alert_level"),
+            states("sensor.nas_memory_alert_level"),
+            states("sensor.nas_disks_alert_level"),
+            states("sensor.nas_pools_alert_level"),
+          ]|max }}
+      nas_load_pct:
+        value_template: "{{ states('sensor.nas_load')|float * 25}}"
+        unit_of_measurement: '%'
+        friendly_name: "Nas Load"
+  - platform: mqtt
+    name: nas_last_boot
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.last_boot }}
+  - platform: mqtt
+    name: nas_cpu_use_percent
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ 100 - value_json.cpu_stat.idle | round(1) }}
+  - platform: mqtt
+    name: nas_cpu_load_1m
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.cpu_load_1m }}
+  - platform: mqtt
+    name: nas_cpu_load_5m
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.cpu_load_5m }}
+  - platform: mqtt
+    name: nas_cpu_load_15m
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.cpu_load_15m }}
+  - platform: mqtt
+    name: nas_cpu_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.cpu_temperature }}
+  - platform: mqtt
+    name: nas_memory_use_percent
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.memory_stat.percent }}
+  - platform: mqtt
+    name: nas_memory_free
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ ((value_json.memory_stat.free | int) / 1024 / 1024) | round(1) }}
+  - platform: mqtt
+    name: nas_swap_use
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ ((value_json.swap_stat.used | int) / 1024 / 1024) | round(1) }}
+  - platform: mqtt
+    name: nas_disk_ada0_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada0 }}
+  - platform: mqtt
+    name: nas_disk_ada1_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada1 }}
+  - platform: mqtt
+    name: nas_disk_ada2_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada2 }}
+  - platform: mqtt
+    name: nas_disk_ada3_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada3 }}
+  - platform: mqtt
+    name: nas_disk_ada4_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada4 }}
+  - platform: mqtt
+    name: nas_disk_ada5_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada4 }}
+  - platform: mqtt
+    name: nas_disk_ada6_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada4 }}
+  - platform: mqtt
+    name: nas_disk_ada7_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.ada4 }}
+
+  - platform: mqtt
+    name: nas_pool_NewStorage_use_percent
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.pools_stat.NewStorage.percent }}
+  - platform: mqtt
+    name: nas_pool_NewStorage_health
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.pools_stat.NewStorage.health }}
+  - platform: mqtt
+    name: nas_pool_Storage2_use_percent
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.pools_stat.Storage2.percent }}
+  - platform: mqtt
+    name: nas_pool_Storage2_health
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.pools_stat.Storage2.health }}
+
+  - platform: command_line
+    name: 'ADA 0 temp'
+    # friendly_name: 'NewStorage 1 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada0 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 1 temp'
+    # friendly_name: 'NewStorage 2 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada1 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 2 temp'
+    # friendly_name: 'NewStorage 3 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada2 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 3 temp'
+    # friendly_name: 'Storage2 1 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada3 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 4 temp'
+    # friendly_name: 'Storage2 2 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada4 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 5 temp'
+    # friendly_name: 'NewStorage 4 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada5 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 6 temp'
+    # friendly_name: 'NewStorage 5 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada6 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'ADA 7 temp'
+    # friendly_name: 'NewStorage 6 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/ada7 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'DA 0 temp'
+    # friendly_name: 'SSD 1 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/da0 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'DA 1 temp'
+    # friendly_name: 'SSD 2 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      smartctl -A /dev/da1 | grep -i temperature | awk '{print $10}'
+
+  - platform: command_line
+    name: 'NAS CPU0 temp'
+    # friendly_name: 'CPU Core 0 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.0 | grep temperature | tr '.' ' ' | awk '{print $5}'
+
+  - platform: command_line
+    name: 'NAS CPU1 temp'
+    # friendly_name: 'CPU Core 1 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.1 | grep temperature | tr '.' ' ' | awk '{print $5}'
+
+  - platform: command_line
+    name: 'NAS CPU2 temp'
+    # friendly_name: 'CPU Core 2 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.2 | grep temperature | tr '.' ' ' | awk '{print $5}'
+
+  - platform: command_line
+    name: 'NAS CPU3 temp'
+    # friendly_name: 'CPU Core 3 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.3 | grep temperature | tr '.' ' ' | awk '{print $5}'
+
+  - platform: command_line
+    name: 'NAS load'
+    # friendly_name: 'Load'
+    unit_of_measurement: '%'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      uptime | awk '{print $(NF-1)}' | sed 's/,//g'
+
+  - platform: command_line
+    name: 'Transmission status'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250 
+      iocage get state transmission
+
+    
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
