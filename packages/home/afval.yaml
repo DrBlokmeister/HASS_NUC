@@ -1,0 +1,114 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+- platform: afvalwijzer
+  wastecollector: Waalre
+  resources:
+    - restafval
+    - gft
+    - papier
+    - pbd
+  postcode: !secret postal_code
+  streetnumber: !secret street_number
+  upcomingsensor: 1
+  dateformat: '%d-%m-%Y'
+  dateonly: 1
+  nameprefix: 0 
+  builtinicons: 0
+- platform: template
+  sensors:
+    afval_morgen:
+      friendly_name: "Afval morgen"
+      icon_template: mdi:calendar
+      value_template: > 
+        {% if is_state('sensor.waalre_morgen', 'restafval') %}
+        Grijze container
+        {% elif is_state('sensor.waalre_morgen', 'gft') %}
+        Groene container   
+        {% elif is_state('sensor.waalre_morgen', 'papier') %}
+        Oud papier   
+        {% elif is_state('sensor.waalre_morgen', 'pbd') %}
+        Plastic
+        {% else %}
+        -
+        {% endif %}
+    afval_vandaag:
+      friendly_name: "Afval vandaag"
+      icon_template: mdi:calendar-today
+      value_template: > 
+        {% if is_state('sensor.waalre_vandaag', 'restafval') %}
+        Grijze container
+        {% elif is_state('sensor.waalre_vandaag', 'gft') %}
+        Groene container   
+        {% elif is_state('sensor.waalre_vandaag', 'papier') %}
+        Oud papier   
+        {% elif is_state('sensor.waalre_vandaag', 'pbd') %}
+        Plastic
+        {% else %}
+        -
+        {% endif %}
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+# automation:
+# - alias: Herinnering afval morgen
+#   trigger:
+#     platform: time
+#     at: '19:00:00'
+#   condition:
+#   - condition: template
+#     value_template: '{{states.sensor.waalre_morgen.state != ''None''}}'
+#   action:
+#   - service: notify.mobile_app_oneplus_6
+#     data_template:
+#       title: Afval morgen
+#       message: '{{states.sensor.afval_morgen.state}}'
+#       icon: mdi:trash-can-outline
+
+# - alias: Herinnering afval vandaag
+#   trigger:
+#     - platform: time
+#       at: 07:00:00
+#     - platform: state
+#       entity_id: input_boolean.sleep_tracking_on
+#       to: 'off'
+#       for: 00:10:00
+#   condition:
+#   - condition: template
+#     value_template: '{{states.sensor.waalre_vandaag.state != ''None''}}'
+#   action:
+#   - service: notify.mobile_app_oneplus_6
+#     data_template:
+#       title: Afval vandaag
+#       message: '{{states.sensor.afval_vandaag.state}}'
+#       icon: mdi:trash-can-outline
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
