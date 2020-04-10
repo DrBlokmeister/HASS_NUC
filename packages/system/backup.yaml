@@ -1,0 +1,123 @@
+homeassistant:
+  customize:
+
+auto_backup:
+  auto_purge: true
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+  backup_running:
+    name: Backup running
+    icon: mdi:backup-restore
+    initial: off
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: Daily Backup at 3 AM
+    trigger:
+      platform: time
+      at: '3:00:00'
+    condition:
+      condition: time
+      weekday:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+        - sat
+    action:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.backup_running
+      - service: auto_backup.snapshot_partial
+        data:
+          keep_days: 7
+
+  - alias: Weekly Backup at 3 AM
+    trigger:
+      platform: time
+      at: '3:00:00'
+    condition:
+      condition: time
+      weekday:
+        - sun
+    action:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.backup_running
+      - service: auto_backup.snapshot_full
+        data:
+          keep_days: 31
+
+  - alias: Report successful backup
+    trigger:
+      platform: event
+      event_type: auto_backup.snapshot_successful
+    condition:
+      condition: state
+      entity_id: input_boolean.backup_running
+      state: 'on'
+    action:
+      - service: notify.mobile_app_oneplus_6
+        data:
+          message: "Backup completed successfully"
+          title: "Home Assistant - Backup successful"
+      - service: system_log.write
+        data_template:
+          message: 'Scheduled backup successful.'
+          level: warning
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.backup_running
+
+  - alias: Report failed backup
+    trigger:
+      platform: event
+      event_type: auto_backup.snapshot_failed
+    condition:
+      condition: state
+      entity_id: input_boolean.backup_running
+      state: 'on'
+    action:
+      - service: notify.mobile_app_oneplus_6
+        data:
+          message: "Backup failed!"
+          title: "Home Assistant - Backup failed"
+      - service: system_log.write
+        data_template:
+          message: 'Scheduled backup failed!'
+          level: error
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.backup_running
+
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
