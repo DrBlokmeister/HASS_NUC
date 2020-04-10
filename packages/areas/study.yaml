@@ -1,0 +1,219 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+#sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: template
+    sensors:
+      scene_study_bright_cool:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.study.attributes.brightness == 254 and 
+            states.light.study.attributes.color_temp == 280 
+          }}
+      scene_study_bright_warm:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.study.attributes.brightness == 254 and 
+            states.light.study.attributes.color_temp == 454
+          }}
+      computer_on:
+        device_class: power
+        value_template: >-
+          {{
+            states.sensor.blitzwolf_computer_energy_power.state|float > 100
+          }}
+
+##################
+#    SWITCHES    #
+##################
+switch:
+  - platform: template
+    switches:
+      scene_study_bright_cool:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_study_bright_cool.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.study_bright_cool
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.study
+            transition: 2
+      scene_study_bright_warm:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_study_bright_warm.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.study_bright_warm
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.study
+            transition: 2  
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  #Turn on study lights when motion is detected cool
+  - alias: study_motion_bright_cool
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_study2
+        to: 'on'
+    condition:
+      - condition: time
+        after: '7:00:00'
+        before: '19:00:00'
+    action:
+      service: scene.turn_on
+      entity_id: scene.study_bright_cool
+
+  #Turn on study lights when motion is detected warm
+  - alias: study_motion_bright_warm
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_study2
+      to: 'on'
+    condition:
+      - condition: time
+        after: '19:00:00'
+        before: '6:00:00'
+    action:
+      service: scene.turn_on
+      entity_id: scene.study_bright_warm
+
+  #Turn off study lights if no motion has been detected for 10 minutes
+  - alias: study_nomotion_nopc_turn_off
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_study
+        to: 'off'
+        for: 00:05:00
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_study
+        to: 'off'
+        for: 00:10:00
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_study
+        to: 'off'
+        for: 00:15:00
+      - platform: state
+        entity_id: binary_sensor.blokmeisterdesktop
+        to: 'off'
+      - platform: state
+        entity_id: binary_sensor.computer_on
+        to: 'off'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: binary_sensor.motion_sensor_study
+          state: 'off'
+          #for: 00:01:00
+        - condition: or
+          conditions:
+            - condition: state
+              entity_id: binary_sensor.blokmeisterdesktop
+              state: 'off'
+            - condition: state
+              entity_id: binary_sensor.computer_on
+              state: 'off'
+    action:
+      service: light.turn_off
+      entity_id: light.study
+
+  #Turn off study lights if no motion has been detected for 1 hour
+  - alias: study_nomotion_pc_turn_off
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_study
+      from: 'on'
+      to: 'off'
+      for: 01:00:00
+    action:
+      service: light.turn_off
+      entity_id: light.study
+
+  - alias: 'Turn scene to warm at 19:00'
+    trigger:
+      platform: time
+      at: '19:00:00'
+    condition:
+      - condition: state
+        entity_id: binary_sensor.scene_study_bright_cool
+        state: 'on'
+    action:
+      service: scene.turn_on
+      entity_id: scene.study_bright_warm
+
+  - alias: 'Message when computer is still on when not home'
+    trigger:
+      - platform: state
+        entity_id: person.sander_blok
+        from: 'home'
+        to: 'not_home'
+        for: 00:20:00
+    condition:
+      - condition: state
+        entity_id: binary_sensor.computer_on
+        state: 'on'
+    action:
+      - service: notify.mobile_app_oneplus_6
+        data:
+          message: "Computer still draws power: {{ states.sensor.blitzwolf_computer_energy_power.state }}W"
+          title: "Home Assistant - Computer on"
+          data:
+            icon: mdi:desktop-tower-monitor
+
+################
+#    SCENES    #
+################
+scene:
+  - name: study_bright_cool
+    entities:
+      light.study:
+        state: on
+        brightness: 254 
+        color_temp: 280 
+        transition: 2
+  - name: study_bright_warm
+    entities:
+      light.study:
+        state: on
+        brightness: 254 
+        color_temp: 454 
+        transition: 2
+
+################
+#    GROUPS    #
+################
+group:
+  study_lighting_automations:
+    entities:
+      - automation.study_motion_bright_cool
+      - automation.study_motion_bright_warm
+      - automation.study_nomotion_nopc_turn_off
+      - automation.study_nomotion_pc_turn_off
+
+################
+#    LIGHTS    #
+################
+# light:
+#   - platform: group
+#     name: Study Lights
+#     entities:
+#       - light.study_1
+#       - light.study_2
+#       - light.study_3
