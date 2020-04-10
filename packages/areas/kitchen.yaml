@@ -1,0 +1,135 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: template
+    sensors:
+      scene_kitchen_bright_cool:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.study.attributes.brightness == 254 and 
+            states.light.study.attributes.color_temp == 320
+          }}
+      scene_kitchen_bright_warm:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.study.attributes.brightness == 254 and 
+            states.light.study.attributes.color_temp == 454 
+          }}
+
+##################
+#    SWITCHES    #
+##################
+switch:
+  - platform: template
+    switches:
+      scene_kitchen_bright_cool:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_kitchen_bright_cool.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.kitchen_bright_cool
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.kitchen
+            transition: 2
+      scene_kitchen_bright_warm:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_kitchen_bright_warm.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.kitchen_bright_warm
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.kitchen
+            transition: 2
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  #Turn on kitchen lights bright cool when motion is detected
+  - alias: kitchen_motion_bright_cool
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_kitchen
+      to: 'on'
+    condition:
+      - condition: time
+        after: '7:00:00'
+        before: '20:00:00'
+    action:
+      service: scene.turn_on
+      entity_id: scene.kitchen_bright_cool
+
+  #Turn on kitchen lights bright warm when motion is detected
+  - alias: kitchen_motion_bright_warm
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_kitchen
+      to: 'on'
+    condition:
+      - condition: time
+        after: '20:00:00'
+        before: '7:00:00'
+    action:
+      service: scene.turn_on
+      entity_id: scene.kitchen_bright_warm
+
+  #Turn off kitchen lights if no motion has been detected for 10 minutes
+  - alias: kitchen_nomotion_turn_off
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_kitchen
+      from: 'on'
+      to: 'off'
+      for: 00:10:00
+    action:
+      service: light.turn_off
+      entity_id: light.kitchen
+
+################
+#    SCENES    #
+################
+scene:
+  - name: kitchen_bright_cool
+    entities:
+      light.study:
+        state: on
+        brightness: 254 
+        color_temp: 320 
+        transition: 2
+  - name: kitchen_bright_warm
+    entities:
+      light.study:
+        state: on
+        brightness: 254 
+        color_temp: 454 
+        transition: 2
+
+################
+#    GROUPS    #
+################
+group:
+  kitchen_lighting_automations:
+    entities:
+      - automation.kitchen_motion_bright_cool
+      - automation.kitchen_motion_bright_warm
+      - automation.kitchen_nomotion_turn_off
+
+################
+#    LIGHTS    #
+################
+light:
