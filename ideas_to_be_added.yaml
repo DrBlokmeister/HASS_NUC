@@ -1,15 +1,17 @@
-alias: routines_modes_evening
-initial_state: true
-trigger:
-  platform: time
-  at: '20:30:00'
-condition:
-  condition: state
-  entity_id: input_select.mode
-  state: early_evening
-action:
-  - delay: '00:{{ (range(0, 30) | random) | int}}:00'
-  - service: input_select.select_option
+#turn on lights at sunset + random offset. By Kevin from MNOT Slack
+automations:
+  alias: routines_modes_evening
+  initial_state: true
+  trigger:
+    platform: time
+    at: '20:30:00'
+  condition:
+    condition: state
     entity_id: input_select.mode
-    data:
-      option: evening
+    state: early_evening
+  action:
+    - delay: '00:{{ (range(0, 30) | random) | int}}:00'
+    - service: input_select.select_option
+      entity_id: input_select.mode
+      data:
+        option: evening
