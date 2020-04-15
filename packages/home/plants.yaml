@@ -215,6 +215,57 @@ automation:
           message: "{{ states('sensor.water_needed') }}"
           notification_id: low-water-alert
 
+  - alias: 'Button turn plant lights on'
+    trigger:
+      - platform: event
+        event_type: xiaomi_aqara.click
+        event_data:
+          entity_id: binary_sensor.switch_plants
+          click_type: single
+      # condition:
+      #   - condition: state
+      #     entity_id: light.plants
+      #     state: 'on'
+    action:
+      - service: light.toggle
+        entity_id: light.plants
+
+  - alias: 'Button dim plant lights'
+    trigger:
+      - platform: event
+        event_type: xiaomi_aqara.click
+        event_data:
+          entity_id: binary_sensor.switch_plants
+          click_type: double
+    condition:
+      condition: numeric_state
+      entity_id: light.plants
+      value_template: '{% if states.light.plants.state == "on"  %}{{ states.light.plants.attributes.brightness }}{% else %}0{% endif %}'
+      above: 150
+    action:
+      - service: light.turn_on
+        entity_id: light.plants
+        data:
+          brightness: 130
+
+  - alias: 'Button brighten plant lights'
+    trigger:
+      - platform: event
+        event_type: xiaomi_aqara.click
+        event_data:
+          entity_id: binary_sensor.switch_plants
+          click_type: double
+    condition:
+      condition: numeric_state
+      entity_id: light.plants
+      value_template: '{% if states.light.plants.state == "on"  %}{{ states.light.plants.attributes.brightness }}{% else %}0{% endif %}'
+      below: 150
+    action:
+      - service: light.turn_on
+        entity_id: light.plants
+        data:
+          brightness: 250
+
 ################
 #    SCENES    #
 ################
