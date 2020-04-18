@@ -1,0 +1,461 @@
+homeassistant:
+  customize:
+    automation.bedroom_light_turn_on_lights_through_motion:
+      icon: mdi:lightbulb-outline
+    automation.bedroom_light_match_scene_sensor:
+      icon: mdi:lightbulb-outline
+    automation.bedroom_light_switch_toggle:
+      icon: mdi:light-switch
+    automation.bedroom_light_switch_scene_cycle:
+      icon: mdi:light-switch
+    sensor.wakeup_time:
+      icon: mdi:clock-outline
+    sensor.bed_time:
+      icon: mdi:clock-outline
+    automation.bedroom_light_lights_timeout_start:
+      icon: mdi:clock-outline
+    automation.bedroom_light_lights_timeout_stop:
+      icon: mdi:clock-outline
+    sensor.bedroom_scene:      
+      icon: mdi:lightbulb-outline
+    script.bed_preheating:
+      icon: mdi:bed-empty
+  customize_glob:
+    "scene.bedroom_*":
+      icon: mdi:lightbulb-outline
+
+timer:
+  bedroom_button_pressed:
+    duration: '00:30:00'   
+
+input_number:
+  bed_preheat_temp:
+    name: Bed preheating temperature
+    initial: 45
+    min: 0
+    max: 50
+    step: 1
+  bed_postheat_temp:
+    name: Bed postheating temperature
+    initial: 25
+    min: 0
+    max: 50
+    step: 1
+  bed_preheat_time:
+    name: Bed postheating time
+    initial: 60
+    min: 10
+    max: 120
+    step: 1
+
+#################
+#    SENSORS    #
+#################
+sensor:
+sensor:
+  - platform: template
+    sensors:
+      wakeup_time:
+        entity_id: sensor.time
+        value_template: >-
+          {% if states.input_boolean.override_alarm.state == 'on' %}
+          {{ as_timestamp(states.input_datetime.wakeup_time.datetime) }}
+          {% elif as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%y%m%d')|int>(now().strftime('%y%m%d')|int+1) %}
+          {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 08:00:00") }}
+          {% elif as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%H%M')|int >= 1100 %}
+          {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 10:00:00") }}
+          {% else %}
+          {{ (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)-3600) }}
+          {% endif %}
+      wakeup_time_human_readable:
+        entity_id: sensor.wakeup_time
+        value_template: >-
+          {{ states.sensor.wakeup_time.state|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
+      bed_time:
+        entity_id: sensor.wakeup_time
+        value_template: >-
+          {{ states.sensor.wakeup_time.state|int-8.5*3600 }}
+      bed_time_human_readable:
+        entity_id: sensor.bed_time
+        value_template: >-
+          {{ states.sensor.bed_time.state|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
+      wakeuplight_time:
+        entity_id: sensor.wakeup_time
+        value_template: >-
+          {{ states.sensor.wakeup_time.state|int-0.5*3600 }}
+      wakeuplight_time_human_readable:
+        entity_id: sensor.time
+        value_template: >-
+          {{ states.sensor.wakeuplight_time.state|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
+      time_until_wakeuplight_time:
+        entity_id: sensor.time
+        value_template: >-
+          {{ states.sensor.wakeuplight_time.state|int-as_timestamp(now()) }}
+      time_until_wakeuplight_time_human_readable:
+        entity_id: sensor.time
+        value_template: >-
+          {{ states.sensor.time_until_wakeuplight_time.state|int|timestamp_custom(('%H:%M:%S')) }}
+      bedroom_scene:
+        entity_id: sensor.time
+        value_template: >-
+          {% if states.input_boolean.sleep_tracking_on.state =='on' or
+            (states.input_boolean.tamara_sleeping.state == 'on' and states.person.tamara.state == 'home')
+          %}
+          bedroom_nightlight
+          {% elif states.sensor.bed_time.state|int <= (as_timestamp(now())+0.5*3600)%}
+          bedroom_goodnight
+          {% elif states.sensor.bed_time.state|int <= (as_timestamp(now())+2*3600)%}
+          bedroom_bright_warm
+          {% else %}
+          bedroom_bright_cool
+          {% endif %}
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: template
+    sensors:
+      scene_bedroom_bright_cool:
+        device_class: light
+        value_template: >-
+          {{
+            states.light.bedroom_lights.attributes.brightness == 254 and 
+            states.light.bedroom_lights.attributes.color_temp == 280
+          }}
+      scene_bedroom_bright_warm:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.bedroom_lights.attributes.brightness == 254 and 
+            states.light.bedroom_lights.attributes.color_temp == 454
+          }}
+      scene_bedroom_goodnight:
+        device_class: light
+        value_template: >-
+          {{
+            states.light.bedroom_1.attributes.brightness == 141 and 
+            states.light.bedroom_2.attributes.brightness == 141 and 
+            states.light.bedroom_3.state == 'off' and
+            states.light.bedside_right.attributes.brightness == 20 and
+            states.light.bedroom_1.attributes.color_temp == 454 and
+            states.light.bedroom_2.attributes.color_temp == 454 and
+            states.light.bedside_right.attributes.color_temp == 454
+          }}
+      scene_bedroom_nightlight:
+        device_class: light
+        value_template: >-
+          {{
+            states.light.bedroom_1.attributes.brightness == 1 and 
+            states.light.bedroom_2.attributes.brightness == 1 and 
+            states.light.bedroom_3.state == 'off' and
+            states.light.bedside_right.state == 'off' and
+            states.light.bedroom_1.attributes.color_temp == 454 and
+            states.light.bedroom_2.attributes.color_temp == 454 and
+            states.light.bedside_right.attributes.color_temp == 454
+          }}
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+switch:
+  - platform: template
+    switches:
+      scene_bedroom_bright_cool:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_bedroom_bright_cool.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.bedroom_bright_cool
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.bedroom
+            transition: 2
+      scene_bedroom_bright_warm:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_bedroom_bright_warm.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.bedroom_bright_warm
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.bedroom
+            transition: 2
+      scene_bedroom_goodnight:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_bedroom_goodnight.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.bedroom_goodnight
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.bedroom
+            transition: 2
+      scene_bedroom_nightlight:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_bedroom_nightlight.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.bedroom_nightlight
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.bedroom
+            transition: 2
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+
+################
+#    SCENES    #
+################
+scene:
+  - name: bedroom_bright_cool
+    entities:
+      light.bedroom_lights:
+        state: on
+        brightness: 254 
+        color_temp: 280 
+        transition: 2
+      light.bedside_left:
+        state: on
+        brightness: 254 
+        color_temp: 280 
+        transition: 2
+  - name: bedroom_bright_wakeup
+    entities:
+      light.bedroom_lights:
+        state: on
+        brightness: 254 
+        color_temp: 350 
+        transition: 25
+      light.bedside_left:
+        state: on
+        brightness: 254 
+        color_temp: 350 
+        transition: 25
+  - name: bedroom_bright_warm
+    entities:
+      light.bedroom_lights:
+        state: on
+        brightness: 254 
+        color_temp: 454 
+        transition: 2
+      light.bedside_left:
+        state: on
+        brightness: 254 
+        color_temp: 454 
+        transition: 2
+  - name: bedroom_goodnight
+    entities:
+      light.bedroom_1:
+        state: on
+        brightness: 141 
+        color_temp: 454 
+        transition: 2
+      light.bedroom_2:
+        state: on
+        brightness: 141 
+        color_temp: 454 
+        transition: 2
+      light.bedroom_3:
+        state: off
+        transition: 2
+      light.bedside_right:
+        state: on
+        brightness: 141 
+        color_temp: 454 
+        transition: 2
+      light.bedside_left:
+        state: on
+        brightness: 141 
+        color_temp: 454 
+        transition: 2
+  - name: bedroom_nightlight
+    entities:
+      light.bedroom_1:
+        state: on
+        brightness: 1 
+        color_temp: 454 
+        transition: 3
+      light.bedroom_2:
+        state: off
+        transition: 3
+      light.bedroom_3:
+        state: off
+        transition: 3
+      light.bedside_right:
+        state: off
+        transition: 3
+      light.bedside_left:
+        state: off
+        transition: 3
+  - name: bedroom_readinglight
+    entities:
+      light.bedside_right:
+        state: on
+        brightness: 50
+        transition: 3
+      light.bedside_left:
+        state: on
+        brightness: 50
+        transition: 3
+  - name: bedroom_midnight_walkaround
+    entities:
+      light.bedroom_1:
+        state: on
+        brightness: 1 
+        color_temp: 454 
+        transition: 3
+      light.bedroom_2:
+        state: off
+      light.bedroom_3:
+        state: off
+      light.bedside_right:
+        state: off
+      light.bedside_left:
+        state: off
+
+################
+#    GROUPS    #
+################
+group:
+  bedroom_lighting_automations:
+    entities:
+      - automation.bedroom_light_turn_off_lights
+      - automation.bedroom_light_match_scene_sensor
+      - automation.bedroom_light_turn_on_lights_through_motion
+  bedroom_scenes:
+    entities:
+      - scene.bedroom_bright_cool
+      - scene.bedroom_bright_wakeup
+      - scene.bedroom_bright_warm
+      - scene.bedroom_goodnight
+      - scene.bedroom_nightlight
+      - scene.bedroom_readinglight
+      - scene.bedroom_midnight_walkaround
+################
+#    LIGHTS    #
+################
+light:
+  - platform: group
+    name: Bedroom Lights
+    entities:
+      - light.bedroom_1
+      - light.bedroom_2
+      - light.bedroom_3
+      - light.bedside_right
+      - light.bedside_left
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+  sleep_tracking_on:
+    name: Sleep as android sleep tracking on
+    icon: mdi:sleep
+  wakeup_alarm_on:
+    name: Sleep as android alarm on
+    icon: mdi:alarm
+  tamara_sleeping:
+    name: Tamara is sleeping
+    icon: mdi:sleep
+  override_alarm:
+    name: Override alarm
+    icon: mdi:alarm
+  bedroom_button_pressed:
+    name: Bedroom button pressed
+    icon: mdi:light-switch
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  toggle_bedroom_lights:
+    sequence:
+    - service_template: script.toggle_bedroom_lights_{% if is_state('light.bedroom', 'off')%}on{% else %}off{% endif %}
+
+  toggle_bedroom_lights_on:
+    sequence:
+      service: scene.turn_on
+      data_template:
+        entity_id: scene.{{ states.sensor.bedroom_scene.state }}
+
+  # toggle_bedroom_lights_bright:
+  #   sequence:
+  #       - service: scene.turn_on
+  #         entity_id: scene.bedroom_bright_warm
+
+  toggle_bedroom_lights_off:
+    sequence:
+        - service: light.turn_off
+          entity_id: light.bedroom
+
+  wakeup_sunrise_sequence:
+    sequence:
+      - service: light.turn_on
+        data:
+          entity_id: light.bedroom_1
+          color_temp: 454 
+          brightness: 1
+      - delay:
+          minutes: 3
+      - service: light.turn_on
+        data:
+          entity_id: light.bedroom_2
+          color_temp: 454 
+          brightness: 1
+      - delay:
+          minutes: 2
+      - service: light.turn_on
+        data:
+          entity_id: light.bedroom_3
+          color_temp: 454 
+          brightness: 1
+      - delay:
+          minutes: 5
+      - service: light.turn_on
+        data:
+          entity_id: 
+            - light.bedroom1
+            - light.bedroom2
+            - light.bedroom3
+          color_temp: 380
+          brightness: 85
+          transition: 600
+      - delay:
+          minutes: 10
+      - service: light.turn_on
+        data:
+          entity_id: light.bedroom
+          color_temp: 350
+          brightness: 254
+          transition: 600
+
+  bed_preheating:
+    sequence:
+      - service: homeassistant.turn_on
+        data:
+          entity_id: climate.electric_blanket
+      - service: climate.set_temperature
+        data_template:
+          entity_id: climate.electric_blanket
+          temperature: >-
+            {{ states.input_number.bed_preheat_temp.state }}
+      - delay: '00:{{ states.input_number.bed_preheat_time.state|int }}:00' 
+      - service: climate.set_temperature
+        data_template:
+          entity_id: climate.electric_blanket
+          temperature: >-
+            {{ states.input_number.bed_postheat_temp.state }}
