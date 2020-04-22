@@ -1,0 +1,224 @@
+homeassistant:
+  customize_glob:
+    "scene.livingroom_*":
+      icon: mdi:lightbulb-outline
+    "automation.livingroom*":
+      icon: mdi:lightbulb-outline
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: template
+    sensors:
+      scene_livingroom_bright_cool:
+        device_class: light
+        value_template: >-
+          {{
+            states.light.tvarea_lights.attributes.brightness == 254 and 
+            states.light.rgb_led_strip_living_room.attributes.brightness == 254 and
+            states.light.white_led_strip_living_room.attributes.brightness == 254 and
+            states.light.tvarea_lights.attributes.color_temp == 281 and
+            states.light.rgb_led_strip_living_room.attributes.color_temp == 342 
+          }}
+      scene_livingroom_bright_warm:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.tvarea_lights.attributes.brightness == 254 and 
+            states.light.rgb_led_strip_living_room.attributes.brightness == 254 and
+            states.light.white_led_strip_living_room.attributes.brightness == 254 and
+            states.light.tvarea_lights.attributes.color_temp == 399 and
+            states.light.rgb_led_strip_living_room.attributes.color_temp == 389 
+          }}
+      scene_livingroom_warm_atmosphere:
+        device_class: light
+        value_template: >-
+          {{
+            states.light.tvarea_lights.attributes.brightness == 115 and 
+            states.light.rgb_led_strip_living_room.attributes.brightness > 39 and
+            states.light.rgb_led_strip_living_room.attributes.brightness < 45 and
+            states.light.white_led_strip_living_room.attributes.brightness == 28 and
+            states.light.tvarea_lights.attributes.color_temp == 500 and
+            states.light.rgb_led_strip_living_room.attributes.xy_color == (0.598, 0.386) 
+          }}
+      scene_movie_time:
+        device_class: light
+        value_template: >-
+          {{ 
+            states.light.tvarea_lights.state == 'off' and 
+            states.light.rgb_led_strip_living_room.attributes.brightness > 39 and
+            states.light.rgb_led_strip_living_room.attributes.brightness < 45 and
+            states.light.white_led_strip_living_room.attributes.brightness == 28 and
+            states.light.tvarea_lights.attributes.color_temp == 500 and
+            states.light.rgb_led_strip_living_room.attributes.xy_color == (0.598, 0.386) 
+          }}
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+  - platform: template
+    switches:
+      scene_livingroom_bright_cool:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_livingroom_bright_cool.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.livingroom_bright_cool
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.living_room
+            transition: 2
+      scene_livingroom_bright_warm:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_livingroom_bright_warm.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.livingroom_bright_warm
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.living_room
+            transition: 2
+      scene_livingroom_warm_atmosphere:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_livingroom_warm_atmosphere.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.livingroom_warm_atmosphere
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.living_room
+            transition: 2
+      scene_movie_time:
+        icon_template: mdi:lightbulb-outline
+        value_template: "{{ states.binary_sensor.scene_movie_time.state }}"
+        turn_on:
+          service: scene.turn_on
+          entity_id: scene.movie_time
+        turn_off:
+          service: light.turn_off
+          data:
+            entity_id: light.living_room
+            transition: 2
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: Turn on entry lights through switch press
+    trigger:
+      platform: state
+      entity_id: switch.shelly_mediacenter
+    action:
+      service: light.toggle
+      entity_id: light.tvarea_lights
+
+################
+#    SCENES    #
+################
+scene:
+  - name: livingroom_bright_cool
+    entities:
+      light.tvarea_lights:
+        state: on
+        brightness: 254 
+        color_temp: 281 
+        transition: 2
+      light.rgb_led_strip_living_room:
+        state: on
+        brightness: 254
+        color_temp: 342
+        transition: 2
+      light.white_led_strip_living_room:
+        state: on
+        brightness: 254
+        transition: 2
+  - name: livingroom_bright_warm
+    entities:
+      light.tvarea_lights:
+        state: on
+        brightness: 254 
+        color_temp: 399 
+        transition: 2
+      light.rgb_led_strip_living_room:
+        state: on
+        brightness: 254
+        color_temp: 389
+        transition: 2
+      light.white_led_strip_living_room:
+        state: on
+        brightness: 254
+        transition: 2
+  - name: livingroom_warm_atmosphere
+    entities:
+      light.tvarea_lights:
+        state: on
+        brightness: 115 
+        color_temp: 500 
+        transition: 2
+      light.rgb_led_strip_living_room:
+        state: on
+        brightness: 42
+        xy_color: [0.598,0.386]
+        transition: 2
+      light.white_led_strip_living_room:
+        state: on
+        brightness: 28
+        transition: 2
+  - name: movie_time
+    entities:
+      light.tvarea_lights:
+        state: off
+        transition: 2
+      light.rgb_led_strip_living_room:
+        state: on
+        brightness: 42
+        xy_color: [0.598,0.386]
+        transition: 2
+      light.white_led_strip_living_room:
+        state: on
+        brightness: 28
+        transition: 2
+
+################
+#    GROUPS    #
+################
+group:
+  livingroom_scenes:
+    entities:
+      - scene.livingroom_bright_cool
+      - scene.livingroom_bright_warm
+      - scene.livingroom_warm_atmosphere
+      - scene.movie_time
+
+################
+#    LIGHTS    #
+################
+light:
+  - platform: group
+    name: TVarea Lights
+    entities:
+      - light.hue_color_spot_1
+      - light.hue_color_spot_2
+      - light.hue_color_spot_3
+      - light.hue_color_spot_4
+      - light.hue_color_spot_5
+
+#################
+#    SCRIPTS    #
+#################
+script:
