@@ -229,7 +229,128 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: Toggle lights when switch is pressed
+  - alias: '[bedroom|light] Turn on lights through motion' #was: bedroom_motion_lights
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_bedroom
+      to: 'on'
+    action:
+      service: scene.turn_on
+      data_template:
+        entity_id: scene.{{ states.sensor.bedroom_scene.state }}
+  - alias: '[bedroom|light] Match scene sensor' #was: bedroom_time_lights
+    trigger:
+      platform: state
+      entity_id: sensor.bedroom_scene
+    condition:
+      condition: state
+      entity_id: light.bedroom
+      state: 'on'
+    action:
+      service: scene.turn_on
+      data_template:
+        entity_id: scene.{{ states.sensor.bedroom_scene.state }}
+  #Toggle bedroom lights when switch is pressed
+  - alias: '[bedroom|light] Switch toggle' #was: bedroom_switch_toggle
+    trigger:
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_bedroom
+        click_type: single
+    action:
+      - service: script.toggle_bedroom_lights
+      # - service: input_boolean.turn_on
+      #   data:
+      #     entity_id: input_boolean.bedroom_button_pressed
+      - service: timer.cancel
+        data:
+          entity_id: timer.button_pressed
+      - service: timer.start
+        data:
+          entity_id: timer.button_pressed
+          duration: '00:30:00'
+  #Cycle bedroom lights when switch is pressed twice      
+  - alias: '[bedroom|light] Switch scene cycle' #was: bedroom_switch_cycle
+    trigger:
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_bedroom
+        click_type: double
+    action:
+      - service: scene.turn_on
+        data_template:
+            entity_id: scene.{% if states.switch.scene_bedroom_bright_cool.state == 'on' %}bedroom_bright_warm{% elif states.switch.scene_bedroom_bright_warm.state == 'on' %}bedroom_goodnight{% elif states.switch.scene_bedroom_goodnight.state == 'on' %}bedroom_nightlight{% elif states.switch.scene_bedroom_nightlight.state == 'on' %}bedroom_readinglight{% else %}bedroom_bright_cool{% endif %}
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.bedroom_button_pressed
+      - service: timer.cancel
+        data:
+          entity_id: timer.button_pressed
+      - service: timer.start
+        data:
+          entity_id: timer.button_pressed
+          duration: '00:30:00'
+
+  - alias: '[bedroom|light] Lights timeout start' #was: timeout_bedroom_lights_button
+    trigger:
+      platform: event
+      event_type: timer.started
+      event_data:
+        entity_id: timer.button_pressed
+    action:
+      service: homeassistant.turn_off
+      entity_id:
+        - automation.bedroom_light_turn_on_lights_through_motion
+        - automation.bedroom_light_turn_off_lights
+        - automation.bedroom_light_match_scene_sensor
+    
+  - alias: '[bedroom|light] Lights timeout stop' #was: timeout_finished_bedroom_lights_button
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.button_pressed
+      # - platform: state
+      #   entity_id: timer.button_pressed
+      #   from: 'active' 
+      #   to: 'idle'
+    action:
+      - service: homeassistant.turn_on
+        entity_id:
+          - automation.bedroom_light_turn_on_lights_through_motion
+          - automation.bedroom_light_turn_off_lights
+          - automation.bedroom_light_match_scene_sensor
+      - service: automation.trigger
+        entity_id:
+          - automation.bedroom_light_turn_off_lights
+
+  #Turn off bedroom lights if no motion has been detected for 10 minutes
+  - alias: '[bedroom|light] Turn off lights' #was: bedroom_nomotion_turn_off
+    trigger:
+      platform: state
+      entity_id: binary_sensor.motion_sensor_bedroom
+      from: 'on'
+      to: 'off'
+      for: 00:10:00
+    action:
+      service: light.turn_off
+      entity_id: light.bedroom
+
+  #Wakeup light
+  - alias: '[bedroom|light] Wakeup light' #was: bedroom_wakeup_light
+    trigger:
+      platform: template
+      value_template: "{% if (states.sensor.wakeup_time.state|int - as_timestamp(states.sensor.time.last_changed)|int)/3600 >= -0.5 and (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%y%m%d')|int == now().strftime('%y%m%d')|int) and states.input_boolean.sleep_tracking_on.state == 'on' %}True{% else %}False{% endif %}"
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_tracking_on
+        state: 'on'
+    action:
+      - service: script.wakeup_sunrise_sequence
+  #shelly toggle
+  - alias: '[bedroom|light] Shelly toggle'
     trigger:
       platform: state
       entity_id: switch.shelly_bedroom
