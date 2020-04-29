@@ -349,6 +349,61 @@ automation:
         state: 'on'
     action:
       - service: script.wakeup_sunrise_sequence
+
+########## SLEEP TRACKING ##########
+  - alias: '[bedroom|light] Sleep tracking start' #was: "Turn off lights when sleep tracking starts"
+    trigger:
+      platform: state
+      entity_id: input_boolean.sleep_tracking_on
+      to: 'on'
+    action:
+      - service: tts.google_say
+        entity_id: media_player.living_room_speaker
+        data:
+          message: "Good night"
+      - service: light.turn_off
+        data:
+          entity_id: group.all_lights
+          transition: 10
+      - service: homeassistant.turn_off
+        entity_id: group.nobedroom_lighting_automations
+      - service: homeassistant.turn_off
+        entity_id: group.bedroom_lighting_automations
+      - service: climate.set_temperature
+        data:
+          entity_id: climate.heating
+          temperature: 5
+      - service: climate.turn_off
+        entity_id: climate.heating
+      - delay: '00:00:10'
+      - service: light.turn_off
+        data:
+          entity_id: group.all_lights
+
+  - alias: '[bedroom|light] Wakeup alarm' #was: "Turn on lights during wakeup"
+    trigger:
+      platform: state
+      entity_id: input_boolean.wakeup_alarm_on
+      to: 'on'
+    action:
+      service: scene.turn_on
+      entity_id: scene.bedroom_bright_wakeup
+
+  - alias: '[bedroom|light] Sleep tracking stop' #was: "Automation to run when ending sleep tracking"
+    trigger:
+      platform: state
+      entity_id: input_boolean.sleep_tracking_on
+      to: 'off'
+    action:
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.wakeup_alarm_on
+      - service: switch.turn_on
+        entity_id: switch.blitzwolf_watercooker
+      - service: homeassistant.turn_on
+        entity_id: group.nobedroom_lighting_automations
+      - service: homeassistant.turn_off
+        entity_id: climate.electric_blanket
+
   #shelly toggle
   - alias: '[bedroom|light] Shelly toggle'
     trigger:
