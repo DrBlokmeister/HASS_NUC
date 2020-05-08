@@ -1,0 +1,123 @@
+homeassistant:
+  customize:
+
+breaking_changes:
+  scan_interval: 3600
+
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: systemmonitor
+    resources:
+      - type: disk_use_percent
+        arg: /home
+      - type: memory_free
+      - type: load_1m
+      - type: load_5m
+      - type: load_15m
+      - type: processor_use
+      - type: last_boot
+  - platform: uptime
+    unit_of_measurement: minutes
+  - platform: version
+    source: hassio
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[System] Hass Started'
+    initial_state: on
+    trigger:
+      platform: homeassistant
+      event: start
+    action:
+      - service: notify.hass_info
+        data:
+          message: "Hass.io Online"
+      - service: notify.mobile_app_oneplus_6
+        data:
+          message: "Hass.io was started up!"
+          title: "Hass.io Online"
+          data:
+            icon: mdi:power
+
+
+  - alias: '[System] Hass Stopped'
+    initial_state: on
+    trigger:
+      platform: homeassistant
+      event: shutdown
+    action:
+      # - service: notify.hass_info
+      #   data:
+      #     message: "Hass.io Offline"
+      - service: notify.mobile_app_oneplus_6
+        data:
+          message: "Hass.io was shut down!"
+          title: "Hass.io Offline"
+          data:
+            icon: mdi:power
+
+  - alias: '[System] Hass Updater'
+    initial_state: on
+    trigger:
+      - platform: state
+        entity_id: sensor.latest_version
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.uptime
+        above: 1
+      - condition: template
+        value_template: "{{ states('sensor.latest_version') != states('sensor.current_version') }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          message: "Hass.io version {{ states('sensor.latest_version') }} is now available!"
+          title: Upgrade time!
+      - service: hassio.addon_start
+        data:
+          addon: core_check_config
+      # - service: notify.hass_info
+      #   data_template:
+      #     title: Upgrade time!
+      #     message: >-
+      #       Hass.io version {{ states('sensor.latest_version') }} is now available!
+
+  - alias: '[System] Breaking changes'
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.potential_breaking_changes
+        above: 0
+    action:
+      - service: persistent_notification.create
+        data:
+          message: "{{states.sensor.potential_breaking_changes.state}} potential breaking changes detected between version {{states.sensor.current_version.state}} and version {{states.sensor.latest_version.state}}"
+          title: "Potential breaking changes"
+
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
