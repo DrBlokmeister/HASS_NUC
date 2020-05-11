@@ -164,6 +164,10 @@ binary_sensor:
             states.light.bedroom_2.attributes.color_temp == 454 and
             states.light.bedside_right.attributes.color_temp == 454
           }}
+      curtains_likely_closed:
+        device_class: opening
+        value_template: >-
+          {{ states.sensor.illumination_bedroom.state|int >= 50 }}
 
 ########################
 #    INPUT BOOLEANS    #
@@ -374,12 +378,14 @@ automation:
           message: "Good night"
       - service: light.turn_off
         data:
-          entity_id: group.all_lights
+          entity_id: all
           transition: 10
       - service: homeassistant.turn_off
-        entity_id: group.nobedroom_lighting_automations
-      - service: homeassistant.turn_off
-        entity_id: group.bedroom_lighting_automations
+        entity_id:
+          - group.bedroom_lighting_automations
+          - group.kitchen_lighting_automations
+          - group.livingroom_lighting_automations
+          - group.study_lighting_automations
       - service: climate.set_temperature
         data:
           entity_id: climate.heating
@@ -388,8 +394,7 @@ automation:
         entity_id: climate.heating
       - delay: '00:00:10'
       - service: light.turn_off
-        data:
-          entity_id: group.all_lights
+        entity_id: all
 
   - alias: '[bedroom|light] Wakeup alarm' #was: "Turn on lights during wakeup"
     trigger:
@@ -415,7 +420,11 @@ automation:
       - service: switch.turn_on
         entity_id: switch.blitzwolf_watercooker
       - service: homeassistant.turn_on
-        entity_id: group.nobedroom_lighting_automations
+        entity_id: 
+          - group.bedroom_lighting_automations
+          - group.kitchen_lighting_automations
+          - group.livingroom_lighting_automations
+          - group.study_lighting_automations
       - service: homeassistant.turn_off
         entity_id: climate.electric_blanket
 
@@ -569,8 +578,6 @@ light:
       - light.bedroom_3
       - light.bedside_right
       - light.bedside_left
-
-
 
 #################
 #    SCRIPTS    #
