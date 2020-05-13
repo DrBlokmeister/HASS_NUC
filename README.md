@@ -1,29 +1,6 @@
 # HASS_NUC
 
-Foobar is a Python library for dealing with word pluralization.
-
-## Installation
-
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
-
-```bash
-pip install foobar
-```
-
-## Usage
-
-```python
-import foobar
-
-foobar.pluralize('word') # returns 'words'
-foobar.pluralize('goose') # returns 'geese'
-foobar.singularize('phenomena') # returns 'phenomenon'
-```
-
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
+Configuration for [Home Assistant](https://www.home-assistant.io/) running on an [Intel NUC](https://ark.intel.com/content/www/us/en/ark/products/126148/intel-nuc-kit-nuc8i5beh.html) for a three room apartment, offering convenience automations over lights and climate while providing multiple intuitive user controls.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
