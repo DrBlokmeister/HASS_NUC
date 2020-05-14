@@ -1,0 +1,1016 @@
+title: Home
+
+resources:
+  - url: "/local/community/lovelace-xiaomi-vacuum-map-card/xiaomi-vacuum-map-card.js?v=1.1.9"
+    type: js
+    #see https://github.com/PiotrMachowski/Home-Assistant-Lovelace-Xiaomi-Vacuum-Map-card
+  - url: "/local/community/mini-graph-card/mini-graph-card-bundle.js?v=0.9.3"
+    type: module
+    #see https://github.com/kalkih/mini-graph-card
+  # - url: "/local/custom_lovelace/floorplan_card/floorplan-card.js?v=1.1.14"
+  #   type: module
+  #   #see https://github.com/pkozul/lovelace-floorplan
+  - url: "/local/community/lovelace-xiaomi-vacuum-card/xiaomi-vacuum-card.js?v=3.0.1"
+    type: js
+    #see https://github.com/benct/lovelace-xiaomi-vacuum-card
+  - url: "/local/custom_lovelace/monster_card/monster-card.js"
+    type: module
+    #see https://github.com/custom-cards/monster-card/blob/master/README.md
+  - url: "/local/community/lovelace-card-mod/card-mod.js?v=13"
+    type: module
+    #see https://github.com/thomasloven/lovelace-card-mod
+  # - url: "/local/community/lovelace-postnl-card/postnl-card.js?v=0.12.2"
+  #   type: module
+  #   #see https://github.com/peternijssen/lovelace-postnl-card
+  - url: "/local/community/lovelace-slider-entity-row/slider-entity-row.js?v=11"
+    type: module
+    #see https://github.com/thomasloven/lovelace-slider-entity-row
+
+views:
+##########################################  HERE BEGINS THE HOME TAB  ##########################################
+  - title: Home
+    path: default_view
+    badges:
+      - person.sander_blok
+    cards:
+      - entities:
+          - entity: device_tracker.rockrobo
+          - entity: device_tracker.esp_2a3187
+          - entity: device_tracker.esp_d42e55
+          - entity: device_tracker.esp_d43030
+          - entity: device_tracker.esp_2a37f9
+          - entity: device_tracker.esp_2a3943
+          - entity: device_tracker.blitzwolf_nuc
+          - entity: device_tracker.xiaomi_gateway
+          - entity: device_tracker.google_home_mini
+          - entity: device_tracker.blokmeister_hue
+          - entity: device_tracker.blokmeisternas
+          - entity: device_tracker.blokmeister_bhyve
+          - entity: device_tracker.transmission_jail
+          - entity: device_tracker.odroidc2
+          - entity: device_tracker.raspberrypi
+          - entity: device_tracker.photon_zombie_jetpack
+          - entity: device_tracker.blokmeister_op6
+        title: Devices present
+        type: entities
+      - entity: media_player.living_room_speaker
+        type: media-control
+      - cards:
+          - type: custom:xiaomi-vacuum-card
+            entity: vacuum.xiaomi_vacuum_cleaner
+            image: /local/xiaomi-mi-robots-vacuum-2-021.jpg
+            name: Xiaomi Vacuum
+            buttons: true
+          - columns: 4
+            entities:
+              - entity: script.vacuum_bathroom_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_bedroom_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_dining_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_kitchen_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_study_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_tv_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_around_litterbox_twice
+                icon: 'mdi:robot-vacuum'
+              - entity: script.vacuum_goto_kitchen
+                icon: 'mdi:robot-vacuum'
+            show_icon: true
+            show_name: true
+            show_state: false
+            type: glance
+        type: vertical-stack
+
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            title: Vacuum
+            cards:
+              - entity: script.vacuum_bathroom_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+              - entity: script.vacuum_bedroom_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+              - entity: script.vacuum_dining_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+              - entity: script.vacuum_kitchen_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+          - type: horizontal-stack
+            title: Living Room
+            cards:
+              - entity: script.vacuum_study_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+              - entity: script.vacuum_tv_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+              - entity: script.vacuum_around_litterbox_twice
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+              - entity: script.vacuum_goto_kitchen
+                icon: 'mdi:robot-vacuum'
+                type: entity-button
+
+      - entity: media_player.desktop_m07fv8p
+        type: media-control
+      - entity: media_player.coreelec
+        type: media-control
+      - entities:
+          - entity: counter.times_vacuumed_since_empty_bin
+        type: entities
+      - cards:
+          - entities:
+              - entity: sensor.blitzwolf_coffee_plant_power
+              - entity: sensor.blitzwolf_computer_power
+              - entity: sensor.blitzwolf_mediacenter_power
+              - entity: sensor.blitzwolf_water_cooker_power
+            type: history-graph
+        type: vertical-stack
+##########################################  HERE BEGINS THE FLOORPLAN  ##########################################
+  - title: Floorplan
+    panel: true
+    icon: mdi:home
+    badges: []
+    cards:
+      - cards:
+          - type: picture-elements
+            title: Floorplan
+            image: /local/floorplan_dark.png
+            elements:
+              - type: image
+                entity: light.bedroom
+                tap_action: none
+                hold_action: none
+                state_image:
+                  "on": /local/floorplan_bedroom.png
+                  "off": /local/transparent_square.png
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+
+              - type: image
+                entity: light.study
+                tap_action: none
+                hold_action: none
+                state_image:
+                  "on": /local/floorplan_study.png
+                  "off": /local/transparent_square.png
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+
+              - type: image
+                entity: light.kitchen
+                tap_action: none
+                hold_action: none
+                state_image:
+                  "on": /local/floorplan_kitchen.png
+                  "off": /local/transparent_square.png
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+
+              - type: image
+                entity: light.living_room
+                tap_action: none
+                hold_action: none
+                state_image:
+                  "on": /local/floorplan_livingroom.png
+                  "off": /local/transparent_square.png
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+
+              - type: image
+                entity: light.shelly_closet
+                tap_action: none
+                hold_action: none
+                state_image:
+                  "on": /local/floorplan_closet.png
+                  "off": /local/transparent_square.png
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: light.bedroom
+                style:
+                  top: 70%
+                  left: 70%
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: light.study
+                style:
+                  top: 70%
+                  left: 30%
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: light.kitchen
+                style:
+                  top: 50%
+                  left: 15%
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: light.living_room
+                style:
+                  top: 40%
+                  left: 75%
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: light.shelly_closet
+                style:
+                  top: 35%
+                  left: 30%
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: light.plants
+                style:
+                  top: 20%
+                  left: 45%
+              - type: state-icon
+                tap_action:
+                  action: toggle
+                entity: climate.heating
+                style:
+                  top: 37%
+                  left: 37%
+
+              - type: state-label
+                entity: sensor.temperature_bedroom
+                style:
+                  top: 84%
+                  left: 84%
+                  --iron-icon-stroke-color: "#969696"
+                  border-radius: 50%
+                  text-align: center
+                  background-color: "rgba(255, 255, 255, 0.3)"
+              - type: state-label
+                entity: sensor.temperature_livingroom
+                style:
+                  top: 56%
+                  left: 46%
+                  --iron-icon-stroke-color: "#969696"
+                  border-radius: 50%
+                  text-align: center
+                  background-color: "rgba(255, 255, 255, 0.3)"
+              - type: state-label
+                entity: sensor.temperature_bathroom
+                style:
+                  top: 75%
+                  left: 50%
+                  --iron-icon-stroke-color: "#969696"
+                  border-radius: 50%
+                  text-align: center
+                  background-color: "rgba(255, 255, 255, 0.3)"
+              - type: state-label
+                entity: sensor.temperature_fridge
+                style:
+                  top: 42%
+                  left: 23%
+                  --iron-icon-stroke-color: "#969696"
+                  border-radius: 50%
+                  text-align: center
+                  background-color: "rgba(255, 255, 255, 0.3)"
+
+              - type: state-icon
+                entity: binary_sensor.motion_sensor_kitchen
+                style:
+                  top: 56%
+                  left: 15%
+                  --iron-icon-stroke-color: "#969696"
+              - type: state-icon
+                entity: binary_sensor.motion_sensor_study2
+                style:
+                  top: 84%
+                  left: 22%
+                  --iron-icon-stroke-color: "#969696"
+              - type: state-icon
+                entity: binary_sensor.motion_sensor_bedroom
+                style:
+                  top: 81%
+                  left: 81%
+                  --iron-icon-stroke-color: "#969696"
+              - type: state-icon
+                entity: binary_sensor.motion_sensor_livingroom2
+                style:
+                  top: 56%
+                  left: 96%
+                  --iron-icon-stroke-color: "#969696"
+              - type: state-icon
+                entity: binary_sensor.motion_sensor_livingroomnew
+                style:
+                  top: 16%
+                  left: 36%
+                  --iron-icon-stroke-color: "#969696"
+              - type: state-icon
+                entity: binary_sensor.motion_sensor_hallway
+                style:
+                  top: 2%
+                  left: 14%
+                  --iron-icon-stroke-color: "#969696"
+        type: vertical-stack
+##########################################  HERE BEGINS THE SECURITY TAB  ##########################################
+  - title: Security
+    icon: mdi:security
+    panel: false
+    badges: []
+    cards:
+      - cards:
+          - entities:
+              - entity: binary_sensor.motion_sensor_bedroom
+                name: Bedroom
+              - entity: binary_sensor.motion_sensor_hallway
+                name: Hallway
+              - entity: binary_sensor.motion_sensor_livingroom
+                name: Livingroom
+              - entity: binary_sensor.motion_sensor_livingroom2
+                name: Livingroom 2
+              - entity: binary_sensor.motion_sensor_livingroomnew
+                name: Livingroom new
+              - entity: binary_sensor.motion_sensor_bedroom
+                name: Bedroom
+              - entity: binary_sensor.motion_sensor_study
+                name: Study
+              - entity: binary_sensor.motion_sensor_study2
+                name: Study2 new
+              - entity: binary_sensor.motion_sensor_kitchen
+                name: Kitchen
+              - entity: binary_sensor.motion_sensor_balcony
+                name: Balcony
+              - entity: binary_sensor.door_window_sensor_kitchen
+                name: Kitchen door
+              - entity: binary_sensor.door_window_sensor_frontdoor
+                name: Front door
+              - entity: binary_sensor.door_window_sensor_cabinet
+                name: Cabinet door
+            hours_to_show: 24
+            title: Motion sensors
+            type: history-graph
+        type: vertical-stack
+
+##########################################  HERE BEGINS THE SERVER TAB  ##########################################
+  - title: Server monitor
+    icon: 'mdi:server-network'
+    panel: false
+    badges: []
+    cards:
+      - cards:
+          - entities:
+              - entity: sensor.nas_disk_ada0_temperature
+                name: ada0
+              - entity: sensor.nas_disk_ada1_temperature
+                name: ada1
+              - entity: sensor.nas_disk_ada2_temperature
+                name: ada2
+              - entity: sensor.nas_disk_ada3_temperature
+                name: ada3
+              - entity: sensor.nas_disk_ada4_temperature
+                name: ada4
+              - entity: sensor.nas_disk_ada5_temperature
+                name: ada5
+              - entity: sensor.nas_disk_ada6_temperature
+                name: ada6
+              - entity: sensor.nas_disk_ada7_temperature
+                name: ada7
+            icon: mdi:harddisk
+            name: Disk temperatures
+            hours_to_show: 48
+            points_per_hour: 30
+            hour24: true
+            font_size: 70
+            height: 250
+            line_width: 2.5
+            lower_bound: 20
+            upper_bound: 50
+            show:
+              labels: true
+              average: true
+            type: custom:mini-graph-card
+        type: vertical-stack
+      - cards:
+          - entities:
+              - entity: sensor.nas_cpu0_temp
+              - entity: sensor.nas_cpu1_temp
+              - entity: sensor.nas_cpu2_temp
+              - entity: sensor.nas_cpu3_temp
+              - entity: sensor.nas_load_pct
+                hours_to_show: 48
+            type: history-graph
+        type: vertical-stack
+      - cards:
+          - entities:
+              - entity: sensor.fn_version
+                icon: none
+                name: Version
+              - entity: sensor.fn_alert_message
+                icon: none
+                name: msg
+              - entity: sensor.nas_last_boot
+                name: Last boot
+                icon: none
+            type: entities
+          - entities:
+              - entity: sensor.fn_alert_level
+                name: Alert
+                icon: 'mdi:alert'
+              - entity: sensor.fn_version
+                name: Version
+              - entity: sensor.fn_newstorage_report
+                name: NewStorage
+              - entity: sensor.fn_newstorage_pct_used
+                name: Newstorage
+                icon: 'mdi:harddisk'
+              - entity: sensor.fn_storage2_pct_used
+                name: Storage2
+                icon: 'mdi:harddisk'
+            theme: Backend-selected
+            type: glance
+          - entities:
+              - entity: sensor.fn_newstorage_report
+                name: NewStorage
+                icon: 'mdi:harddisk'
+              - entity: sensor.fn_storage2_report
+                name: Storage2
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_swap_use
+                name: Swap Use
+                icon: 'mdi:harddisk'
+              - entity: sensor.fn_newstorage_pct_used
+                name: NewStorage
+                icon: 'mdi:harddisk'
+              - entity: sensor.fn_storage2_pct_used
+                name: Storage2
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_memory_use_percent
+                name: Memory use
+                icon: 'mdi:memory'
+            theme: Backend-selected
+            columns: 3
+            type: glance
+
+          - entities:
+              - entity: sensor.nas_disk_ada0_temperature
+                name: ada0
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada1_temperature
+                name: ada1
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada2_temperature
+                name: ada2
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada3_temperature
+                name: ada3
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada4_temperature
+                name: ada4
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada5_temperature
+                name: ada5
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada6_temperature
+                name: ada6
+                icon: 'mdi:harddisk'
+              - entity: sensor.nas_disk_ada7_temperature
+                name: ada7
+                icon: 'mdi:harddisk'
+            columns: 4
+            type: glance
+        type: vertical-stack
+      - cards:
+          - entities:
+              - entity: sensor.transmission_down_speed
+              - entity: sensor.transmission_up_speed
+              - entity: sensor.ping_router_avg
+              - entity: sensor.ping_blokmeisternas_avg
+              - entity: sensor.ping_phone_avg
+              - entity: sensor.ping_odroid_c2_avg
+              - entity: sensor.ping_ambilight_rpi_avg
+              - entity: sensor.ping_transmission_avg
+              - entity: sensor.ping_plinq_avg
+              - entity: sensor.ping_google_dns_avg
+                hours_to_show: 168
+            type: history-graph
+        type: vertical-stack
+      - cards:
+          - columns: 4
+            entities:
+              - entity: sensor.asuswrt_download
+                icon: 'mdi:progress-download'
+                name: Daily download
+              - entity: sensor.asuswrt_download_speed
+                icon: 'mdi:speedometer'
+                name: Current download
+              - entity: sensor.asuswrt_upload
+                icon: 'mdi:progress-upload'
+                name: Daily upload
+              - entity: sensor.asuswrt_upload_speed
+                icon: 'mdi:speedometer'
+                name: Current upload
+              - entity: sensor.speedtest_download
+              - entity: sensor.speedtest_upload
+              - entity: sensor.speedtest_ping
+            show_icon: true
+            show_name: true
+            show_state: true
+            title: Asus Router status
+            type: glance
+          - entities:
+              - entity: sensor.speedtest_download
+                name: Down
+              - entity: sensor.speedtest_upload
+                name: Up
+              - entity: sensor.speedtest_ping
+                name: Ping
+                y_axis: 'secondary'
+            icon: mdi:swap-vertical-bold
+            name: Speedtest
+            hours_to_show: 48
+            points_per_hour: 1
+            hour24: true
+            font_size: 70
+            height: 250
+            line_width: 2.5
+            lower_bound: 400
+            upper_bound: 600
+            lower_bound_secondary: 0
+            upper_bound_secondary: 20
+            show:
+              labels: true
+              average: true
+              labels_secondary: true
+            type: custom:mini-graph-card
+          - entities:
+              - entity: sensor.asuswrt_download_speed
+                name: Down
+              - entity: sensor.asuswrt_upload_speed
+                name: Up
+            icon: mdi:swap-vertical-bold
+            name: Router
+            hours_to_show: 48
+            points_per_hour: 5
+            hour24: true
+            font_size: 70
+            height: 250
+            line_width: 2.5
+            show:
+              labels: true
+            type: custom:mini-graph-card
+        type: vertical-stack
+##########################################  HERE BEGINS THE POWER TAB  ##########################################
+  - title: Power
+    icon: mdi:flash
+    badges: []
+    cards:
+      - cards:
+        - entity: sensor.blitzwolf_electricblanket_energy_power
+          type: sensor
+          name: Electric blanket
+          graph: line
+          detail: 2
+        - entity: sensor.blitzwolf_computer_energy_power
+          type: sensor
+          name: Computer
+          graph: line
+          detail: 2
+        - entity: sensor.blitzwolf_mediacenter_energy_power
+          type: sensor
+          name: Media center
+          graph: line
+          detail: 2
+        - entity: sensor.blitzwolf_watercooker_energy_power
+          type: sensor
+          name: Water cooker
+          graph: line
+          detail: 2
+        - entity: sensor.blitzwolf_coffeeplant_energy_power
+          type: sensor
+          name: Coffee plant
+          graph: line
+          detail: 2
+        type: vertical-stack
+      - cards:
+          - entities:
+              - entity: sensor.total_power
+                name: Total power
+              - entity: sensor.total_energy_today
+                name: Energy today
+              - entity: sensor.electricblanket_cost_today
+                name: Electric blanket
+              - entity: sensor.mediacenter_cost_today
+                name: Mediacenter
+              - entity: sensor.watercooker_cost_today
+                name: Watercooker
+              - entity: sensor.computer_cost_today
+                name: Computer
+              - entity: sensor.coffeeplant_cost_today
+                name: Coffeeplant
+              - entity: sensor.total_energy_cost_today
+                name: Total
+            columns: 3
+            type: glance
+        type: vertical-stack
+
+
+##########################################  HERE BEGINS THE LIGHTS TAB  ##########################################
+  - title: Lights
+    icon: mdi:lightbulb
+    badges: []
+    cards:
+      - entities:
+          - entity: light.living_room
+          - entity: light.plants
+          - entity: light.bedroom
+          - entity: light.kitchen
+          - entity: light.study
+          - entity: light.shelly_closet
+          - entity: light.hallway
+        title: Light
+        show_header_toggle: false
+        type: entities
+      - entities:
+          - entity: group.bedroom_lighting_automations
+            name: Bedroom
+            icon: mdi:bed-double
+          - entity: group.livingroom_lighting_automations
+            name: Livingroom
+            icon: mdi:table-chair
+          - entity: group.kitchen_lighting_automations
+            name: Kitchen
+            icon: mdi:fridge-outline
+          - entity: group.study_lighting_automations
+            name: Study
+            icon: mdi:desktop-tower-monitor
+          - entity: input_boolean.sleep_tracking_on
+        title: Automations
+        show_header_toggle: false
+        type: entities
+      # - entities:
+      #     - entity: scene.study_bright_cool
+      #       tap_action: call-service
+      #       service: scene.turn_on
+      #     - entity: scene.study_bright_warm
+      #       tap_action: call-service
+      #       service: scene.turn_on
+      #     - entity: scene.kitchen_bright_cool
+      #       tap_action: call-service
+      #       service: scene.turn_on
+      #     - entity: scene.kitchen_bright_warm
+      #       tap_action: call-service
+      #       service: scene.turn_on
+      #     - entity: scene.turn_off
+      #       tap_action: call-service
+      #       service: scene.turn_on
+      #       name: Turn all off
+      #   type: glance
+      #   show_state: false
+      #   column_width: 33%
+      #   title: Scenes
+        
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            title: Bedroom
+            cards:
+              - entity: switch.scene_bedroom_bright_warm
+                name: Bright warm
+                type: entity-button
+              - entity: switch.scene_bedroom_bright_cool
+                name: Bright cool
+                type: entity-button
+              - entity: switch.scene_bedroom_goodnight
+                name: Goodnight
+                type: entity-button
+              - entity: switch.scene_bedroom_nightlight
+                name: Nightlight
+                type: entity-button
+          - type: horizontal-stack
+            title: Living Room
+            cards:
+              - entity: switch.scene_livingroom_bright_warm
+                name: Bright warm
+                type: entity-button
+              - entity: switch.scene_livingroom_bright_cool
+                name: Bright cool
+                type: entity-button
+              - entity: switch.scene_livingroom_warm_atmosphere
+                name: Warm
+                type: entity-button
+              - entity: switch.scene_movie_time
+                name: Movie time
+                type: entity-button
+          - type: horizontal-stack
+            title: Kitchen and Study
+            cards:
+              - entity: switch.scene_kitchen_bright_warm
+                name: Kitchen warm
+                type: entity-button
+              - entity: switch.scene_kitchen_bright_cool
+                name: Kitchen cool
+                type: entity-button
+              - entity: switch.scene_study_bright_warm
+                name: Study warm
+                type: entity-button
+              - entity: switch.scene_study_bright_cool
+                name: Study cool
+                type: entity-button
+          - entities:
+              - entity: sensor.time_until_wakeuplight_time_human_readable
+                icon: mdi:weather-sunset-up
+                name: "Wakeup light starts in:"
+                #type: call-service
+                #action_name: 'Toggle wakup light'
+                tap_action:
+                  action: call-service
+                  service: homeassistant.toggle
+                  service_data:
+                    entity_id: automation.bedroom_light_wakeup_light
+              - entity: automation.bedroom_light_wakeup_light
+                name: Wakeup light status
+                icon: mdi:weather-sunset-up
+            type: entities
+
+##########################################  HERE BEGINS THE WEATHER TAB  ##########################################
+  - title: Weather
+    icon: 'mdi:weather-cloudy'
+    badges: []
+    cards:
+      - cards:
+          - entities:
+              - entity: sensor.illumination_34ce008c0f6f
+                name: Xiaomi hub
+              - entity: sensor.illumination_bedroom
+                name: Bedroom
+              - entity: sensor.illumination_livingroom
+                name: Living room
+              - entity: sensor.illumination_study
+                name: Study
+              - entity: sensor.illumination_kitchen
+                name: Kitchen
+              - entity: sensor.illumination_158d000320263c
+                name: 158d000320263c
+              - entity: sensor.illumination_balcony
+                name: Balcony
+              - entity: sun.sun
+                name: Night
+                color: gray
+                show_line: false
+                show_points: false
+                show_legend: false
+                y_axis: secondary
+            state_map:
+              - value: "below_horizon"
+                label: Night
+              - value: "above_horizon"
+                label: Day
+            icon: mdi:weather-sunny
+            name: Light
+            smoothing: false
+            hours_to_show: 48
+            points_per_hour: 2
+            hour24: true
+            font_size: 70
+            height: 250
+            line_width: 2.5
+            show:
+              labels_secondary: false
+            lower_bound: 0
+            type: custom:mini-graph-card
+          - entities:
+              - entity: sensor.illumination_34ce008c0f6f
+              - entity: sensor.illumination_bedroom
+              - entity: sensor.illumination_livingroom
+                hours_to_show: 48
+            type: history-graph
+        type: vertical-stack
+      - cards:
+          - entities:
+              - entity: sensor.temperature_outside
+              - entity: sensor.temperature_livingroom
+              - entity: sensor.temperature_bedroom
+                hours_to_show: 48
+            type: history-graph
+          - entities:
+              - entity: sensor.temperature_electricblanket
+              - entity: sensor.temperature_bathroom
+              - entity: sensor.plant1_temperature
+                hours_to_show: 48
+            type: history-graph
+        type: vertical-stack  
+      - cards:
+          - entity: climate.electric_blanket
+            type: thermostat
+        type: vertical-stack
+      - cards:
+          - entity: script.bed_preheating
+            type: entity-button
+            name: 'Enable bed preheating'
+            icon_height: 50
+            tap_action: 
+              action: call-service
+              service: script.turn_on
+              service_data:
+                entity_id: script.bed_preheating
+          - entity: script.bed_preheating
+            type: entity-button
+            name: 'Turn off blanket'
+            icon_height: 50
+            tap_action: 
+              action: call-service
+              service: homeassistant.turn_off
+              service_data:
+                entity_id: climate.electric_blanket
+        type: horizontal-stack
+      - cards:
+          - entity: input_number.bed_preheat_temp
+            type: custom:slider-entity-row
+          - entity: input_number.bed_postheat_temp
+            type: custom:slider-entity-row
+          - entity: input_number.bed_preheat_time
+            type: custom:slider-entity-row
+        type: vertical-stack
+
+##########################################  HERE BEGINS THE PLANTS TAB  ##########################################
+  - title: Plants
+    icon: 'mdi:flower'
+    badges: []
+    cards:
+      # - type: custom:mod-card
+      #   style: |
+      #     ha-card {
+      #       border: 1px solid green;
+      #       --top: {{ states("input_number.y_pos") }}%;
+      #       --left: {{ states("input_number.x_pos") }}%;
+      #     }
+      #   card:
+      #     type: vertical-stack
+      #     cards:
+      - type: plant-status
+        entity: plant.coffee_plant
+        name: 'Coffee Plant'
+        style: |
+          ha-card {
+            background: url(/local/coffeeplantbackground.png);
+          }
+      - type: plant-status
+        entity: plant.bonsai
+        name: 'Bonsai'
+        style: |
+          ha-card {
+            background: url(/local/bonsaibackground.png);
+          }
+      - type: plant-status
+        entity: plant.calathea
+        name: 'Calathea'
+        style: |
+          ha-card {
+            background: url(/local/calatheabackground.png);
+          }
+      - type: plant-status
+        entity: plant.herbs
+        name: 'Herbs'
+        style: |
+          ha-card {
+            background: url(/local/herbsbackground.png);
+          }
+      - type: plant-status
+        entity: plant.galileo
+        name: 'Galileo'
+        style: |
+          ha-card {
+            background: url(/local/galileobackground.png);
+          }
+      - type: plant-status
+        entity: plant.kepler
+        name: 'Kepler'
+        style: |
+          ha-card {
+            background: url(/local/keplerbackground.png);
+          }
+      - type: plant-status
+        entity: plant.bromelia
+        name: 'Bromelia'
+        style: |
+          ha-card {
+            background: url(/local/bromeliabackground.png);
+          }
+      - cards:
+          - entities:
+              - entity: sensor.kepler_light_intensity
+                name: Kepler
+              - entity: sensor.galileo_light_intensity
+                name: Galileo
+              - entity: sensor.coffee_plant_light_intensity
+                name: Coffee plant
+              - entity: sensor.calathea_light_intensity
+                name: Calathea
+              - entity: sensor.bonsai_light_intensity
+                name: Bonsai
+              - entity: sensor.bromelia_light_intensity
+                name: Bromelia
+              - entity: sensor.herbs_light_intensity
+                name: Herbs
+            icon: mdi:weather-sunny
+            name: Light
+            hours_to_show: 48
+            hour24: true
+            font_size: 70
+            points_per_hour: 1
+            lower_bound: 0
+            upper_bound: 4000
+            height: 200
+            show:
+              labels: true
+            type: custom:mini-graph-card
+          - entities:
+              - entity: sensor.kepler_temperature
+                name: Kepler
+              - entity: sensor.galileo_temperature
+                name: Galileo
+              - entity: sensor.coffee_plant_temperature
+                name: Coffee plant
+              - entity: sensor.calathea_temperature
+                name: Calathea
+              - entity: sensor.bonsai_temperature
+                name: Bonsai
+              - entity: sensor.bromelia_temperature
+                name: Bromelia
+              - entity: sensor.herbs_temperature
+                name: Herbs
+            icon: mdi:thermometer
+            name: Temperature
+            hours_to_show: 48
+            hour24: true
+            font_size: 70
+            type: custom:mini-graph-card
+          - entities:
+              - entity: sensor.kepler_moisture
+                name: Kepler
+              - entity: sensor.galileo_moisture
+                name: Galileo
+              - entity: sensor.coffee_plant_moisture
+                name: Coffee plant
+              - entity: sensor.calathea_moisture
+                name: Calathea
+              - entity: sensor.bonsai_moisture
+                name: Bonsai
+              - entity: sensor.bromelia_moisture
+                name: Bromelia
+              - entity: sensor.herbs_moisture
+                name: Herbs
+            icon: mdi:water
+            name: Moisture
+            hours_to_show: 48
+            hour24: true
+            font_size: 70
+            points_per_hour: 1
+            height: 200
+            show:
+              labels: true
+              average: false
+            type: custom:mini-graph-card
+          - entities:
+              - entity: sensor.kepler_conductivity
+                name: Kepler
+              - entity: sensor.galileo_conductivity
+                name: Galileo
+              - entity: sensor.coffee_plant_conductivity
+                name: Coffee plant
+              - entity: sensor.calathea_conductivity
+                name: Calathea
+              - entity: sensor.bonsai_conductivity
+                name: Bonsai
+              - entity: sensor.bromelia_conductivity
+                name: Bromelia
+              - entity: sensor.herbs_conductivity
+                name: Herbs
+            icon: mdi:emoticon-poop
+            name: Conductivity
+            hours_to_show: 48
+            hour24: true
+            font_size: 70
+            points_per_hour: 1
+            height: 200
+            show:
+              labels: true
+              average: false
+            type: custom:mini-graph-card
+        type: vertical-stack

@@ -1,0 +1,99 @@
+##########################################  HERE BEGINS THE WEATHER TAB  ##########################################
+title: Weather
+icon: 'mdi:weather-cloudy'
+badges: []
+cards:
+  - cards:
+      - entities:
+          - entity: sensor.illumination_34ce008c0f6f
+            name: Xiaomi hub
+          - entity: sensor.illumination_bedroom
+            name: Bedroom
+          - entity: sensor.illumination_livingroom
+            name: Living room
+          - entity: sensor.illumination_study
+            name: Study
+          - entity: sensor.illumination_kitchen
+            name: Kitchen
+          - entity: sensor.illumination_158d000320263c
+            name: 158d000320263c
+          - entity: sensor.illumination_balcony
+            name: Balcony
+          - entity: sun.sun
+            name: Night
+            color: gray
+            show_line: false
+            show_points: false
+            show_legend: false
+            y_axis: secondary
+        state_map:
+          - value: "below_horizon"
+            label: Night
+          - value: "above_horizon"
+            label: Day
+        icon: mdi:weather-sunny
+        name: Light
+        smoothing: false
+        hours_to_show: 48
+        points_per_hour: 2
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 2.5
+        show:
+          labels_secondary: false
+        lower_bound: 0
+        type: custom:mini-graph-card
+      - entities:
+          - entity: sensor.illumination_34ce008c0f6f
+          - entity: sensor.illumination_bedroom
+          - entity: sensor.illumination_livingroom
+            hours_to_show: 48
+        type: history-graph
+    type: vertical-stack
+  - cards:
+      - entities:
+          - entity: sensor.temperature_outside
+          - entity: sensor.temperature_livingroom
+          - entity: sensor.temperature_bedroom
+            hours_to_show: 48
+        type: history-graph
+      - entities:
+          - entity: sensor.temperature_electricblanket
+          - entity: sensor.temperature_bathroom
+          - entity: sensor.plant1_temperature
+            hours_to_show: 48
+        type: history-graph
+    type: vertical-stack  
+  - cards:
+      - entity: climate.electric_blanket
+        type: thermostat
+    type: vertical-stack
+  - cards:
+      - entity: script.bed_preheating
+        type: entity-button
+        name: 'Enable bed preheating'
+        icon_height: 50
+        tap_action: 
+          action: call-service
+          service: script.turn_on
+          service_data:
+            entity_id: script.bed_preheating
+      - entity: script.bed_preheating
+        type: entity-button
+        name: 'Turn off blanket'
+        icon_height: 50
+        tap_action: 
+          action: call-service
+          service: homeassistant.turn_off
+          service_data:
+            entity_id: climate.electric_blanket
+    type: horizontal-stack
+  - cards:
+      - entity: input_number.bed_preheat_temp
+        type: custom:slider-entity-row
+      - entity: input_number.bed_postheat_temp
+        type: custom:slider-entity-row
+      - entity: input_number.bed_preheat_time
+        type: custom:slider-entity-row
+    type: vertical-stack
