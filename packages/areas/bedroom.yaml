@@ -437,6 +437,33 @@ automation:
       service: light.toggle
       entity_id: light.bedroom
 
+  - alias: '[bedroom|light]Lights_when_cabinet_is_open'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.door_window_sensor_bedroom_closet
+      to: 'on'
+    action:
+      - service: scene.create
+        data:
+          scene_id: bedroom_1_before
+          snapshot_entities:
+            light.bedroom_1
+      - service: light.turn_on
+        data:
+          entity_id: light.bedroom_1
+          brightness: 255
+          color_temp: 280 
+          transition: 1
+
+  - alias: '[bedroom|light]Lights_when_cabinet_is_closed'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.door_window_sensor_bedroom_closet
+      to: 'off'
+    action:
+      service: scene.turn_on
+      entity_id: scene.bedroom_1_before
+
 ################
 #    SCENES    #
 ################
