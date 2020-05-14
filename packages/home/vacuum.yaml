@@ -56,7 +56,7 @@ counter:
 #####################
 automation:
 #Auto clean whole house when I'm not home on mon, wed, fri
-  - alias: 'Auto clean whole house when not home'
+  - alias: '[home|vacuum]clean_whole_house'
     trigger:
       - platform: state
         entity_id: person.sander_blok
@@ -95,7 +95,7 @@ automation:
       - service: vacuum.start
 
 #If I'm not home and the conditions are met, starts cleaning around the litterbox on tue, thu, sat, sun.
-  - alias: 'Auto clean litterbox when not home (check every 10 min)'
+  - alias: '[home|vacuum]clean_litterbin'
     trigger:
       - platform: state
         entity_id: person.sander_blok
@@ -134,7 +134,7 @@ automation:
           entity_id: counter.times_vacuumed_since_empty_bin
       - service: script.vacuum_around_litterbox_twice
 
-  - alias: 'Drive vacuum to trash bin'
+  - alias: '[home|vauum]counter_drive_to_trashbin'
     trigger:
       - platform: numeric_state
         entity_id: vacuum.xiaomi_vacuum_cleaner
@@ -160,7 +160,7 @@ automation:
       - service: script.vacuum_goto_kitchen
 
 #Turns off the vacuumed today boolean at the start of every day. Used by vacuum automations
-  - alias: 'Turn input boolean vacuumed today off'
+  - alias: '[home|vacuum]turn_off_vacuumed_today_each_night'
     trigger: 
       platform: time
       at: 01:00:00
@@ -174,7 +174,7 @@ automation:
           entity_id: input_boolean.vacuumed_today
 
 #Buttons:
-  - alias: 'Button: drive vacuum to trash bin'
+  - alias: '[home|vauum]button_drive_to_trashbin'
     trigger: 
       platform: event
       event_type: xiaomi_aqara.click
@@ -191,7 +191,7 @@ automation:
         data:
           entity_id: counter.times_vacuumed_since_empty_bin
 
-  - alias: 'Button: dock vacuum'
+  - alias: '[home|vacuum]button_dock_vacuum'
     trigger: 
       platform: event
       event_type: xiaomi_aqara.click
@@ -203,8 +203,9 @@ automation:
       value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
     action:
       - service: vacuum.return_to_base
+        entity_id: vacuum.xiaomi_vacuum_cleaner
 
-  - alias: 'Button: start vacuum'
+  - alias: '[home|vacuum]button_start_vacuum'
     trigger: 
       platform: event
       event_type: xiaomi_aqara.click
@@ -216,8 +217,9 @@ automation:
       value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
     action:
       - service: vacuum.start
+        entity_id: vacuum.xiaomi_vacuum_cleaner
 
-  - alias: 'Button: pause vacuum'
+  - alias: '[home|vacuum]button_pause_vacuum'
     trigger: 
       platform: event
       event_type: xiaomi_aqara.click
@@ -230,10 +232,11 @@ automation:
       state: cleaning
     action:
       - service: vacuum.pause
+        entity_id: vacuum.xiaomi_vacuum_cleaner
 
 ########## NOTIFICATIONS ########## 
 #Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
-  - alias: 'Notification when Consuela is done cleaning'
+  - alias: '[home|vacuum]notify_phone'
     trigger:
       platform: state
       entity_id: vacuum.xiaomi_vacuum_cleaner
@@ -241,7 +244,7 @@ automation:
     action:
       service: script.vacuum_message_done_cleaning
 
-  - alias: 'Write log when times cleaned since empty bin changes'
+  - alias: '[home|vacuum]write_log_when_counter_changes'
     trigger:
       platform: state
       entity_id: counter.times_vacuumed_since_empty_bin
