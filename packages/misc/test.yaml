@@ -1,0 +1,70 @@
+homeassistant:
+  customize:
+
+input_select:
+   living_room_scenes:
+     options:
+       - bright_cool
+       - bright_warm
+       - warm_atmosphere
+     initial: bright_warm
+     icon: mdi:lightbulb-on-outline
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: test scene swtich
+    trigger:
+      platform: event
+      event_type: xiaomi_aqara.click
+      event_data:
+        entity_id: binary_sensor.switch_test
+        click_type: double
+    action:
+    - service: input_select.select_next
+      data: 
+        entity_id: input_select.living_room_scenes
+
+  - alias: set scene
+    trigger:
+      platform: state
+      entity_id: input_select.living_room_scenes
+    action:
+      service: scene.turn_on
+      data_template:
+        entity_id: scene.{{trigger.to_state.state}}
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
