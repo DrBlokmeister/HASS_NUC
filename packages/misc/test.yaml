@@ -48,7 +48,6 @@ automation:
     - service: scene.turn_on
       data_template:
         entity_id: scene.livingroom_{{trigger.to_state.state}}
-
   # - alias: set scene
   #   trigger:
   #     platform: state
@@ -119,3 +118,33 @@ group:
 #    SCRIPTS    #
 #################
 script:
+  test_clean:
+    alias: "Vacuum whole house in steps"
+    sequence:
+    # Go to starting point
+      - service: vacuum.send_command
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          command: app_goto_target
+          params: [24950,25500]
+      #Wait untill done
+      - wait_template: "{{ states.vacuum.xiaomi_vacuum_cleaner.attributes.status == 'Idle'}}"
+      #clean room
+      - service: vacuum.send_command
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          command: app_zoned_clean
+          params: [[14898,24722,17198,26572]]
+      #Wait untill done
+      - wait_template: "{{ states.vacuum.xiaomi_vacuum_cleaner.attributes.status == 'Returning home'}}"
+      - service: vacuum.send_command
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          command: app_zoned_clean
+          params: [[16611,21710,18811,24760]]
+      - wait_template: "{{ states.vacuum.xiaomi_vacuum_cleaner.attributes.status == 'Returning home'}}"
+      - service: vacuum.send_command
+        data:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          command: app_zoned_clean
+          params: [[21786,20518,26336,24818]]
