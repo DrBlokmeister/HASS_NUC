@@ -59,6 +59,17 @@ input_number:
     max: 120
     step: 1
 
+input_select:
+   bedroom_scenes:
+     options:
+       - bright_cool
+       - bright_warm
+       - goodnight
+       - readinglight
+       - nightlight
+     initial: bright_warm
+     icon: mdi:lightbulb-on-outline
+
 #################
 #    SENSORS    #
 #################
@@ -204,7 +215,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.bedroom
+            entity_id: light.bedroom_lights
             transition: 2
       scene_bedroom_bright_warm:
         icon_template: mdi:lightbulb-outline
@@ -215,7 +226,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.bedroom
+            entity_id: light.bedroom_lights
             transition: 2
       scene_bedroom_goodnight:
         icon_template: mdi:lightbulb-outline
@@ -226,7 +237,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.bedroom
+            entity_id: light.bedroom_lights
             transition: 2
       scene_bedroom_nightlight:
         icon_template: mdi:lightbulb-outline
@@ -237,7 +248,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.bedroom
+            entity_id: light.bedroom_lights
             transition: 2
 
 #####################
@@ -289,8 +300,10 @@ automation:
         data:
           entity_id: timer.bedroom_button_pressed
           duration: '00:30:00'
-  #Cycle bedroom lights when switch is pressed twice      
-  - alias: '[bedroom|light] Switch scene cycle' #was: bedroom_switch_cycle
+
+
+  #Cycle bedroom lights when switch is pressed twice
+  - alias: '[bedroom|light] Cycle scenes with button'
     trigger:
       platform: event
       event_type: xiaomi_aqara.click
@@ -298,19 +311,54 @@ automation:
         entity_id: binary_sensor.switch_bedroom
         click_type: double
     action:
-      - service: scene.turn_on
-        data_template:
-            entity_id: scene.{% if states.switch.scene_bedroom_bright_cool.state == 'on' %}bedroom_bright_warm{% elif states.switch.scene_bedroom_bright_warm.state == 'on' %}bedroom_goodnight{% elif states.switch.scene_bedroom_goodnight.state == 'on' %}bedroom_nightlight{% elif states.switch.scene_bedroom_nightlight.state == 'on' %}bedroom_readinglight{% else %}bedroom_bright_cool{% endif %}
-      - service: input_boolean.turn_on
-        data:
-          entity_id: input_boolean.bedroom_button_pressed
-      - service: timer.cancel
-        data:
-          entity_id: timer.bedroom_button_pressed
-      - service: timer.start
-        data:
-          entity_id: timer.bedroom_button_pressed
-          duration: '00:30:00'
+    - service: input_select.select_next
+      data: 
+        entity_id: input_select.bedroom_scenes
+    - service: scene.turn_on
+      data_template:
+        entity_id: scene.bedroom_{{states.input_select.bedroom_scenes.state}}
+    - service: input_boolean.turn_on
+      data:
+        entity_id: input_boolean.bedroom_button_pressed
+    - service: timer.cancel
+      data:
+        entity_id: timer.bedroom_button_pressed
+    - service: timer.start
+      data:
+        entity_id: timer.bedroom_button_pressed
+        duration: '00:30:00'
+
+  # - alias: '[bedroom|light] set bedroom scene'
+  #   trigger:
+  #     platform: state
+  #     entity_id: input_select.bedroom_scenes
+  #   action:
+  #     service: scene.turn_on
+  #     data_template:
+  #       entity_id: scene.bedroom_{{states.input_select.bedroom_scenes.state}}
+
+
+  # - alias: '[bedroom|light] Switch scene cycle' #was: bedroom_switch_cycle
+  #   trigger:
+  #     platform: event
+  #     event_type: xiaomi_aqara.click
+  #     event_data:
+  #       entity_id: binary_sensor.switch_bedroom
+  #       click_type: double
+  #   action:
+  #     - service: scene.turn_on
+  #       data_template:
+  #           entity_id: scene.{% if states.switch.scene_bedroom_bright_cool.state == 'on' %}bedroom_bright_warm{% elif states.switch.scene_bedroom_bright_warm.state == 'on' %}bedroom_goodnight{% elif states.switch.scene_bedroom_goodnight.state == 'on' %}bedroom_nightlight{% elif states.switch.scene_bedroom_nightlight.state == 'on' %}bedroom_readinglight{% else %}bedroom_bright_cool{% endif %}
+  #     - service: input_boolean.turn_on
+  #       data:
+  #         entity_id: input_boolean.bedroom_button_pressed
+  #     - service: timer.cancel
+  #       data:
+  #         entity_id: timer.bedroom_button_pressed
+  #     - service: timer.start
+  #       data:
+  #         entity_id: timer.bedroom_button_pressed
+  #         duration: '00:30:00'
 
   - alias: '[bedroom|light] Lights timeout start' #was: timeout_bedroom_lights_button
     trigger:
@@ -356,8 +404,7 @@ automation:
     action:
       service: light.turn_off
       entity_id: 
-        - light.bedroom
-        - light.ledstrip_bed
+        - light.bedroom_lights
 
   #Wakeup light
   - alias: '[bedroom|light] Wakeup light' #was: bedroom_wakeup_light
@@ -442,8 +489,7 @@ automation:
     action:
       service: light.toggle
       entity_id: 
-        - light.bedroom
-        - light.ledstrip_bed
+        - light.bedroom_lights
 
   - alias: '[bedroom|light]Lights_when_cabinet_is_open'
     trigger:
@@ -618,7 +664,7 @@ light:
 script:
   toggle_bedroom_lights:
     sequence:
-    - service_template: script.toggle_bedroom_lights_{% if is_state('light.bedroom', 'off')%}on{% else %}off{% endif %}
+    - service_template: script.toggle_bedroom_lights_{% if is_state('light.bedroom_lights', 'off')%}on{% else %}off{% endif %}
 
   toggle_bedroom_lights_on:
     sequence:
@@ -634,7 +680,7 @@ script:
   toggle_bedroom_lights_off:
     sequence:
         - service: light.turn_off
-          entity_id: light.bedroom
+          entity_id: light.bedroom_lights
 
   wakeup_sunrise_sequence:
     sequence:
