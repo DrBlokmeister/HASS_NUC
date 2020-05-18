@@ -57,6 +57,7 @@ switch:
             transition: 2
   - platform: flux
     name: flux_kitchen
+    mode: mired
     disable_brightness_adjust: True
     lights:
       - light.kitchen
@@ -64,33 +65,52 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  #Turn on kitchen lights bright cool when motion is detected
-  - alias: kitchen_motion_bright_cool
+  - alias: '[study|lights] Turn on lights when motion is detected'
     trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_kitchen
-      to: 'on'
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_study2
+        to: 'on'
     condition:
-      - condition: time
-        after: '7:00:00'
-        before: '20:00:00'
+      - condition: sun
+        after: sunset
+        after_offset: "-01:00:00"
     action:
-      service: scene.turn_on
-      entity_id: scene.kitchen_bright_cool
+      - service: light.turn_on
+        entity_id: light.study_lights
+      - service: switch.flux_study_update
+  # #Turn on kitchen lights bright cool when motion is detected
+  # - alias: kitchen_motion_bright_cool
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.motion_sensor_kitchen
+  #     to: 'on'
+  #   condition:
+  #     - condition: time
+  #       after: '7:00:00'
+  #       before: '20:00:00'
+  #     - condition: sun
+  #       after: sunset
+  #       after_offset: "-01:00:00"
+  #   action:
+  #     service: scene.turn_on
+  #     entity_id: scene.kitchen_bright_cool
 
-  #Turn on kitchen lights bright warm when motion is detected
-  - alias: kitchen_motion_bright_warm
-    trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_kitchen
-      to: 'on'
-    condition:
-      - condition: time
-        after: '20:00:00'
-        before: '7:00:00'
-    action:
-      service: scene.turn_on
-      entity_id: scene.kitchen_bright_warm
+  # #Turn on kitchen lights bright warm when motion is detected
+  # - alias: kitchen_motion_bright_warm
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.motion_sensor_kitchen
+  #     to: 'on'
+  #   condition:
+  #     - condition: time
+  #       after: '20:00:00'
+  #       before: '7:00:00'
+  #     - condition: sun
+  #       after: sunset
+  #       after_offset: "-01:00:00"
+  #   action:
+  #     service: scene.turn_on
+  #     entity_id: scene.kitchen_bright_warm
 
   #Turn off kitchen lights if no motion has been detected for 10 minutes
   - alias: kitchen_nomotion_turn_off
@@ -104,13 +124,17 @@ automation:
       service: light.turn_off
       entity_id: light.kitchen
 
-  - alias: Toggle kitchen lights through switch press
+  - alias: '[kitchen|lights]Toggle kitchen lights through switch press'
     trigger:
       platform: state
       entity_id: switch.shelly_kitchen
     action:
-      service: light.toggle
-      entity_id: light.kitchen
+      - service: light.toggle
+        entity_id: light.kitchen
+      - condition: state
+        entity_id: light.kitchen
+        state: 'on'
+      - service: switch.flux_study_update
 
 ################
 #    SCENES    #

@@ -60,39 +60,69 @@ switch:
           service: light.turn_off
           data:
             entity_id: light.study
-            transition: 2  
+            transition: 2
+  - platform: flux
+    name: flux_study
+    mode: mired
+    disable_brightness_adjust: True
+    transition: 30
+    lights:
+      - light.study_1
+      - light.study_2
+      - light.study_3
+      - light.study_candle
 
 #####################
 #    AUTOMATIONS    #
 #####################
 automation:
-  #Turn on study lights when motion is detected cool
-  - alias: study_motion_bright_cool
+  - alias: '[study|lights] Turn on lights when motion is detected'
     trigger:
       - platform: state
         entity_id: binary_sensor.motion_sensor_study2
         to: 'on'
     condition:
-      - condition: time
-        after: '7:00:00'
-        before: '19:00:00'
+      - condition: sun
+        after: sunset
+        after_offset: "-02:00:00"
     action:
-      service: scene.turn_on
-      entity_id: scene.study_bright_cool
+      - service: light.turn_on
+        entity_id: light.study_lights
+      - service: switch.flux_study_update
+
+  #Turn on study lights when motion is detected cool
+  # - alias: study_motion_bright_cool
+  #   trigger:
+  #     - platform: state
+  #       entity_id: binary_sensor.motion_sensor_study2
+  #       to: 'on'
+  #   condition:
+  #     - condition: time
+  #       after: '7:00:00'
+  #       before: '19:00:00'
+  #     - condition: sun
+  #       after: sunset
+  #       after_offset: "-01:00:00"
+  #   action:
+  #     service: scene.turn_on
+  #     entity_id: scene.study_bright_cool
 
   #Turn on study lights when motion is detected warm
-  - alias: study_motion_bright_warm
-    trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_study2
-      to: 'on'
-    condition:
-      - condition: time
-        after: '19:00:00'
-        before: '6:00:00'
-    action:
-      service: scene.turn_on
-      entity_id: scene.study_bright_warm
+  # - alias: study_motion_bright_warm
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.motion_sensor_study2
+  #     to: 'on'
+  #   condition:
+  #     - condition: time
+  #       after: '19:00:00'
+  #       before: '6:00:00'
+  #     - condition: sun
+  #       after: sunset
+  #       after_offset: "-01:00:00"
+  #   action:
+  #     service: scene.turn_on
+  #     entity_id: scene.study_bright_warm
 
   #Turn off study lights if no motion has been detected for 10 minutes
   - alias: study_nomotion_nopc_turn_off
@@ -183,14 +213,14 @@ automation:
 scene:
   - name: study_bright_cool
     entities:
-      light.study:
+      light.study_lights:
         state: on
         brightness: 254 
         color_temp: 280 
         transition: 2
   - name: study_bright_warm
     entities:
-      light.study:
+      light.study_lights:
         state: on
         brightness: 254 
         color_temp: 454 
@@ -210,10 +240,11 @@ group:
 ################
 #    LIGHTS    #
 ################
-# light:
-#   - platform: group
-#     name: Study Lights
-#     entities:
-#       - light.study_1
-#       - light.study_2
-#       - light.study_3
+light:
+  - platform: group
+    name: Study Lights
+    entities:
+      - light.study_1
+      - light.study_2
+      - light.study_3
+      - light.study_candle
