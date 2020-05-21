@@ -2,13 +2,23 @@ homeassistant:
   customize:
 
 input_select:
-   living_room_scenes:
+  living_room_scenes:
      options:
        - bright_cool
        - bright_warm
        - warm_atmosphere
      initial: bright_warm
      icon: mdi:lightbulb-on-outline
+  vacuum_room_numbers:
+    options:
+      - 17   #livingroom
+      - 4   #entry
+      - 3   #kitchen
+      - 1   #bedroom
+      - 2   #study
+      - 16  #hallway+bathroom
+    initial: 17
+    icon: mdi:robot-vacuum
 
 #################
 #    SENSORS    #
@@ -117,7 +127,42 @@ group:
 #################
 #    SCRIPTS    #
 #################
+#    vacuum_area_names:
+#      options:
+#        - livingroom
+#        - kitchen
+#        - entry
+#        - study
+#        - hallway
+#        - bedroom
+#        - bathroom
+#      initial: livingroom
+#      icon: mdi:robot-vacuum
+
 script:
+  call_cleaning_loop:
+    alias: "Calls the cleaning loop"
+    sequence:
+      - condition: template
+        value_template: "{{ not is_state('input_select.vacuum_area_coordinates', '16') }}"
+      - service: script.turn_on
+        data:
+          entity_id: script.clean_next_area
+  clean_next_area:
+    alias: "cleans the next area"
+    sequence:
+      - service: vacuum.send_command
+        data_template:
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          command: app_segment_clean
+          params: "{{states.input_select.vacuum_room_numbers.state|int}}"
+      - wait_template: "{{ states.vacuum.xiaomi_vacuum_cleaner.attributes.status == 'Returning home'}}"
+      - service: input_select.select_next
+        data:
+          entity_id: input_select.vacuum_room_numbers
+      - service: script.turn_on
+        data:
+          entity_id: script.call_cleaning_loop
   test_clean:
     alias: "Vacuum whole house in steps"
     sequence:
@@ -135,7 +180,7 @@ script:
           entity_id: vacuum.xiaomi_vacuum_cleaner
           command: app_zoned_clean
           params: [[14898,24722,17198,26572]]
-      #Wait untill done
+      #Wait until done
       - wait_template: "{{ states.vacuum.xiaomi_vacuum_cleaner.attributes.status == 'Returning home'}}"
       - service: vacuum.send_command
         data:
