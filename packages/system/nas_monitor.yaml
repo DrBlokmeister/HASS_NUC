@@ -52,10 +52,8 @@ sensor:
     name: FN_NewStorage_report
     json_attributes:
       - name
-      - status
       - used
       - used_pct
-      - is_decrypted
     resource: http://192.168.1.250:250/api/v1.0/storage/volume/NewStorage/?format=json
     value_template: '{{ value_json.status }}'
     username: !secret nas_user
@@ -88,10 +86,8 @@ sensor:
     name: FN_Storage2_report
     json_attributes:
       - name
-      - status
       - used
       - used_pct
-      - is_decrypted
     resource: http://192.168.1.250:250/api/v1.0/storage/volume/Storage2/?format=json
     value_template: '{{ value_json.status }}'
     username: !secret nas_user
@@ -158,9 +154,11 @@ sensor:
 
   - platform: rest
     name: 'Ubuntu_VM'
+    json_attributes_path: "$.[0]"
     json_attributes:
       - state
-    resource: http://192.168.1.250:250/api/v1.0/vm/vm/1/?format=json
+      - info
+    resource: http://192.168.1.250:250/api/v1.0/vm/vm/?format=json
     value_template: '{{ value_json.state }}'
     username: !secret nas_user
     password: !secret nas_pass
