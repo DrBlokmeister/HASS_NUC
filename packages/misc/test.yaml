@@ -155,8 +155,9 @@ script:
         data_template:
           entity_id: vacuum.xiaomi_vacuum_cleaner
           command: app_segment_clean
-          params: "{{states.input_select.vacuum_room_numbers.state|int}}"
-      - wait_template: "{{ states.vacuum.xiaomi_vacuum_cleaner.attributes.status == 'Returning home'}}"
+          params: >-
+            {{states('input_select.vacuum_room_numbers')|int}}
+      - wait_template: "{{ is_state_attr('vacuum.xiaomi_vacuum_cleaner','status','Returning home') }}"
       - service: input_select.select_next
         data:
           entity_id: input_select.vacuum_room_numbers
