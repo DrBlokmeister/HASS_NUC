@@ -25,58 +25,89 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: Turn on entry lights through switch press
+  - alias: '[entry|light]Turn on entry lights through switch press'
     trigger:
       platform: state
       entity_id: switch.shelly_entry
       to: 'on'
     action:
       service: light.turn_on
-      entity_id: light.hallway
+      entity_id: light.entry_lights
 
-  - alias: Turn off entry lights through switch press
+  - alias: '[entry|light]Turn off entry lights through switch press'
     trigger:
       platform: state
       entity_id: switch.shelly_entry
       to: 'off'
     action:
       service: light.turn_off
-      entity_id: light.hallway
+      entity_id: light.entry_lights
 
-  - alias: '[hallway|light] Turn on light through motion'
+  - alias: '[entry|light] Turn on light through motion'
     trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_hallway
-      to: 'on'
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_entry
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_entry2
+        to: 'on'
     condition:
       condition: sun
       after: sunset
       after_offset: "-01:00:00"
     action:
       - service: light.turn_on
-        entity_id: light.hallway
-      - service: homeassistant.turn_on
-        entity_id: switch.shelly_entry
+        entity_id: light.entry_lights
 
-  - alias: '[hallway|light] Turn off light when no motion is detected'
+  - alias: '[entry|light] Turn off light when no motion is detected'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_hallway
+        entity_id: binary_sensor.motion_sensor_entry
+        to: 'off'
+        for: 00:02:00
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_entry2
         to: 'off'
         for: 00:02:00
       - platform: sun
         event: sunrise
         offset: '01:00:00'
+    condition:
+      - condition: state
+        entity_id: binary_sensor.motion_sensor_entry
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.motion_sensor_entry2
+        state: 'off'
     action:
       - service: light.turn_off
-        entity_id: light.hallway
-      - service: homeassistant.turn_off
-        entity_id: switch.shelly_entry
+        entity_id: light.entry_lights
 
 ################
 #    SCENES    #
 ################
 scene:
+
+################
+#    LIGHTS    #
+################
+light:
+  - platform: template
+    lights:
+      shelly_entry_light:
+        entity_id: switch.shelly_entry
+        value_template: "{{ states.switch.shelly_entry.state }}"
+        turn_on:
+          service: homeassistant.turn_on
+          entity_id: switch.shelly_entry
+        turn_off:
+          service: homeassistant.turn_off
+          entity_id: switch.shelly_entry
+  - platform: group
+    name: Entry Lights
+    entities:
+      - light.shelly_entry_light
+      - light.entry_spotlight
 
 ################
 #    GROUPS    #
