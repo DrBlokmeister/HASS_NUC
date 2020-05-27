@@ -77,13 +77,18 @@ automation:
         to: 'not_home'
         for: 00:10:00
       - platform: time
-        at: '07:01:00'
+        at: '07:00:00'
     condition:
-      - condition: time
-        weekday:
-          - mon
-          - wed
-          - fri        
+      - condition: or
+        conditions:
+          - condition: time
+            weekday:
+              - mon
+              - wed
+              - fri
+          - condition: numeric_state
+            entity_id: 'sensor.sander_home_yesterday'
+            above: 16
       - condition: time
         after: '7:00:00'
         before: '22:00:00'
@@ -126,7 +131,7 @@ automation:
           - sat
           - sun     
       - condition: time
-        after: '7:00:00'
+        after: '7:01:00'
         before: '22:00:00'
       - condition: state
         entity_id: person.sander_blok
