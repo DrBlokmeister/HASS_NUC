@@ -37,39 +37,23 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[System] Hass Started'
-    initial_state: on
-    trigger:
-      platform: homeassistant
-      event: start
-    action:
-      - service: notify.hass_info
-        data:
-          message: "Hass.io Online"
-      - service: notify.mobile_app_blokmeister_op6
-        data:
-          message: "Hass.io was started up!"
-          title: "Hass.io Online"
-          data:
-            icon: mdi:power
-
-
   - alias: '[System] Hass Stopped'
     initial_state: on
     trigger:
       platform: homeassistant
       event: shutdown
     action:
+      - service: tts.google_say
+        entity_id: media_player.living_room_speaker
+        data:
+          message: "Home Assistant shut down"
       - service: notify.mobile_app_blokmeister_op6
         data:
           message: "Hass.io was shut down!"
           title: "Hass.io Offline"
           data:
             channel: System
-      - service: tts.google_say
-        entity_id: media_player.living_room_speaker
-        data:
-          message: "Home Assistant shut down"
+
 
   - alias: '[System] Hass Started'
     initial_state: on
