@@ -114,11 +114,51 @@ switch:
           data:
             entity_id: light.living_room
             transition: 2
+  - platform: flux
+    name: flux_livingroom
+    mode: mired
+    disable_brightness_adjust: True
+    transition: 30
+    lights:
+      - light.tvarea_Lights
+      - light.rgb_led_strip_living_room
 
 #####################
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: '[livingroom|light] Flux light through motion'
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_livingroom
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_livingroom2
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_livingroomnew
+        to: 'on'
+    condition:
+      condition: or
+      conditions:
+        - condition: numeric_state
+          entity_id: sensor.illumination_livingroom
+          below: 100
+        - condition: sun
+          after: sunset
+          after_offset: "-02:00:00"
+        - condition: sun
+          before: sunrise
+          before_offset: "01:00:00"
+    action:
+      - service: light.turn_on
+        data:
+          entity_id: 
+            - light.tvarea_lights
+            - light.rgb_led_strip_living_room
+            - light.white_led_strip_living_room
+          brightness: 255
+      - service: switch.flux_livingroom_update
   #Turn on living room cool lights when motion is detected
   - alias: '[livingroom|light] Bright cool through motion'
     trigger:
@@ -384,6 +424,18 @@ light:
       - light.hue_color_spot_3
       - light.hue_color_spot_4
       - light.hue_color_spot_5
+  - platform: group
+    name: Livingroom lights noplants
+    entities:
+      - light.tvarea_Lights
+      - light.white_led_strip_living_room
+      - light.rgb_led_strip_living_room
+      - light.shelly_dinner_table
+  - platform: group
+    name: Livingroom lights
+    entities:
+      - light.livingroom_lights_noplants
+      - light.plants
 
 #################
 #    SCRIPTS    #
