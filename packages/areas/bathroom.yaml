@@ -25,7 +25,20 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-
+  - alias: '[bathroom|light] turn on light through motion'
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_bathroom
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: input_boolean.sleep_tracking_on
+        state: 'off'
+    action:
+      service: light.turn_on
+      entity_id:
+        - light.bathroom_light_bright
+        - light.bathroom_light_dim
 ################
 #    SCENES    #
 ################
