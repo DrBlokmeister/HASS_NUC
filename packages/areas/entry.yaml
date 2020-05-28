@@ -10,7 +10,15 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-
+  - platform: template
+    sensors:
+      entry_motion_combined:
+        device_class: motion
+        value_template: >-
+          {{
+            is_state('binary_sensor.motion_sensor_entry', 'on') or
+            is_state('binary_sensor.motion_sensor_entry2', 'on')
+          }}
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -46,10 +54,7 @@ automation:
   - alias: '[entry|light] Turn on light through motion'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_entry
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_entry2
+        entity_id: binary_sensor.entry_motion_combined
         to: 'on'
     condition:
       condition: sun
@@ -62,11 +67,7 @@ automation:
   - alias: '[entry|light] Turn off light when no motion is detected'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_entry
-        to: 'off'
-        for: 00:02:00
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_entry2
+        entity_id: binary_sensor.entry_motion_combined
         to: 'off'
         for: 00:02:00
       - platform: sun
@@ -74,10 +75,7 @@ automation:
         offset: '01:00:00'
     condition:
       - condition: state
-        entity_id: binary_sensor.motion_sensor_entry
-        state: 'off'
-      - condition: state
-        entity_id: binary_sensor.motion_sensor_entry2
+        entity_id: binary_sensor.entry_motion_combined
         state: 'off'
     action:
       - service: light.turn_off

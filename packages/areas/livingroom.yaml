@@ -58,6 +58,14 @@ binary_sensor:
             states.light.tvarea_lights.attributes.color_temp == 500 and
             states.light.rgb_led_strip_living_room.attributes.xy_color == (0.598, 0.386) 
           }}
+      livingroom_motion_combined:
+        device_class: motion
+        value_template: >-
+          {{
+            is_state('binary_sensor.motion_sensor_livingroom', 'on') or
+            is_state('binary_sensor.motion_sensor_livingroom2', 'on') or
+            is_state('binary_sensor.motion_sensor_livingroom3', 'on')
+          }}
 
 ########################
 #    INPUT BOOLEANS    #
@@ -130,13 +138,7 @@ automation:
   - alias: '[livingroom|light] Flux light through motion'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroomnew
+        entity_id: binary_sensor.livingroom_motion_combined
         to: 'on'
     condition:
       condition: or
@@ -163,13 +165,7 @@ automation:
   - alias: '[livingroom|light] Bright cool through motion'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroomnew
+        entity_id: binary_sensor.livingroom_motion_combined
         to: 'on'
     condition:
       - condition: state
@@ -189,13 +185,7 @@ automation:
   - alias: '[livingroom|light] Bright warm through motion'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroomnew
+        entity_id: binary_sensor.livingroom_motion_combined
         to: 'on'
     condition:
       - condition: state
@@ -215,13 +205,7 @@ automation:
   - alias: '[livingroom|light] Atmosphere through motion'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroomnew
+        entity_id: binary_sensor.livingroom_motion_combined
         to: 'on'
     condition:
       - condition: state
@@ -266,30 +250,10 @@ automation:
   - alias: '[livingroom|light] Off through nomotion'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom
+        entity_id: binary_sensor.livingroom_motion_combined
         from: 'on'
         to: 'off'
         for: '00:10:00'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        from: 'on'
-        to: 'off'
-        for: '00:10:00'
-      - platform: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        from: 'on'
-        to: 'off'
-        for: '00:10:00'
-    condition:
-      - condition: state
-        entity_id: binary_sensor.motion_sensor_livingroomnew
-        state: 'off'
-      - condition: state
-        entity_id: binary_sensor.motion_sensor_livingroom
-        state: 'off'
-      - condition: state
-        entity_id: binary_sensor.motion_sensor_livingroom2
-        state: 'off'
     action:
       - service: light.turn_off
         entity_id: light.livingroom_lights

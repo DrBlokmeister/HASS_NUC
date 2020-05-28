@@ -32,6 +32,13 @@ binary_sensor:
           {{
             states.sensor.blitzwolf_computer_energy_power.state|float > 100
           }}
+      study_motion_combined:
+        device_class: motion
+        value_template: >-
+          {{
+            is_state('binary_sensor.motion_sensor_study', 'on') or
+            is_state('binary_sensor.motion_sensor_study_2', 'on')
+          }}
 
 ##################
 #    SWITCHES    #
@@ -79,7 +86,7 @@ automation:
   - alias: '[study|lights] Turn on lights when motion is detected'
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_study2
+        entity_id: binary_sensor.study_motion_combined
         to: 'on'
     condition:
       condition: or
@@ -135,15 +142,15 @@ automation:
   - alias: study_nomotion_nopc_turn_off
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_study
+        entity_id: binary_sensor.study_motion_combined
         to: 'off'
         for: 00:05:00
       - platform: state
-        entity_id: binary_sensor.motion_sensor_study
+        entity_id: binary_sensor.study_motion_combined
         to: 'off'
         for: 00:10:00
       - platform: state
-        entity_id: binary_sensor.motion_sensor_study
+        entity_id: binary_sensor.study_motion_combined
         to: 'off'
         for: 00:15:00
       - platform: state
@@ -156,7 +163,7 @@ automation:
       condition: and
       conditions:
         - condition: state
-          entity_id: binary_sensor.motion_sensor_study
+          entity_id: binary_sensor.study_motion_combined
           state: 'off'
           #for: 00:01:00
         - condition: or
@@ -175,7 +182,7 @@ automation:
   - alias: study_nomotion_pc_turn_off
     trigger:
       platform: state
-      entity_id: binary_sensor.motion_sensor_study
+      entity_id: binary_sensor.study_motion_combined
       from: 'on'
       to: 'off'
       for: 01:00:00
