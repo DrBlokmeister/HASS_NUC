@@ -1,0 +1,218 @@
+homeassistant:
+  customize:
+    switch.blitzwolf_coffeeplant:
+      icon: mdi:power-socket-eu
+    sensor.blitzwolf_coffeeplant_energy_power:
+      icon: mdi:flash
+    sensor.blitzwolf_coffeeplant_energy_total:
+      icon: mdi:flash
+    sensor.blitzwolf_coffeeplant_energy_today:
+      icon: mdi:flash
+
+    switch.blitzwolf_computer_2:
+      icon: mdi:power-socket-eu
+    sensor.blitzwolf_computer_2_energy_power:
+      icon: mdi:flash
+    sensor.blitzwolf_computer_2_energy_total:
+      icon: mdi:flash
+    sensor.blitzwolf_computer_2_energy_today:
+      icon: mdi:flash
+
+    switch.blitzwolf_computer:
+      icon: mdi:power-socket-eu
+    sensor.blitzwolf_computer_energy_power:
+      icon: mdi:flash
+    sensor.blitzwolf_computer_energy_total:
+      icon: mdi:flash
+    sensor.blitzwolf_computer_energy_today:
+      icon: mdi:flash
+
+    switch.blitzwolf_watercooker:
+      icon: mdi:power-socket-eu
+    sensor.blitzwolf_watercooker_energy_power:
+      icon: mdi:flash
+    sensor.blitzwolf_watercooker_energy_total:
+      icon: mdi:flash
+    sensor.blitzwolf_watercooker_energy_today:
+      icon: mdi:flash
+
+    switch.blitzwolf_mediacenter:
+      icon: mdi:power-socket-eu
+    sensor.blitzwolf_mediacenter_energy_power:
+      icon: mdi:flash
+    sensor.blitzwolf_mediacenter_energy_total:
+      icon: mdi:flash
+    sensor.blitzwolf_mediacenter_energy_today:
+      icon: mdi:flash
+
+    switch.blitzwolf_electricblanket:
+      icon: mdi:power-socket-eu
+    sensor.blitzwolf_electricblanket_energy_power:
+      icon: mdi:flash
+    sensor.blitzwolf_electricblanket_energy_total:
+      icon: mdi:flash
+    sensor.blitzwolf_electricblanket_energy_today:
+      icon: mdi:flash
+
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: template
+    sensors:
+      total_power:
+        unit_of_measurement: 'Watts'
+        value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_power.state|float + states.sensor.blitzwolf_computer_energy_power.state|float + states.sensor.blitzwolf_mediacenter_energy_power.state|float + states.sensor.blitzwolf_watercooker_energy_power.state|float + states.sensor.blitzwolf_coffeeplant_energy_power.state|float) |round(2) }}"
+      total_energy_today:
+        unit_of_measurement: 'kWh'
+        value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_today.state|float + states.sensor.blitzwolf_computer_energy_today.state|float + states.sensor.blitzwolf_mediacenter_energy_today.state|float + states.sensor.blitzwolf_watercooker_energy_today.state|float + states.sensor.blitzwolf_coffeeplant_energy_today.state|float) |round(2) }}"
+      electricblanket_cost_today:
+        unit_of_measurement: '€'
+        value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_today.state|float * 0.22) |round(2) }}"
+      mediacenter_cost_today:
+        unit_of_measurement: '€'
+        value_template: "{{ (states.sensor.blitzwolf_mediacenter_energy_today.state|float * 0.22) |round(2) }}"
+      watercooker_cost_today:
+        unit_of_measurement: '€'
+        value_template: "{{ (states.sensor.blitzwolf_watercooker_energy_today.state|float * 0.22) |round(2) }}"
+      computer_cost_today:
+        unit_of_measurement: '€'
+        value_template: "{{ (states.sensor.blitzwolf_computer_energy_today.state|float * 0.22) |round(2) }}"
+      coffeeplant_cost_today:
+        unit_of_measurement: '€'
+        value_template: "{{ (states.sensor.blitzwolf_coffeeplant_energy_today.state|float * 0.22) |round(2) }}"
+      total_energy_cost_today:
+        unit_of_measurement: '€'
+        value_template: "{{ (states.sensor.total_energy_today.state|float * 0.22) |round(2) }}"
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: "Power state on HA start-up"
+    trigger:
+      platform: homeassistant
+      event: start
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "sonoffs/cmnd/state"
+          payload: ""
+
+# Example automations.yaml entry
+  - id: 'sonoff_firmware_installed'
+    alias: Sonoff Firmware Installed
+    trigger:
+    - event: start
+      platform: homeassistant
+    action:
+    - data:
+        payload: '2'
+        topic: sonoffs/cmnd/status
+      service: mqtt.publish
+    initial_state: 'true'
+
+# Example automations.yaml entry
+  - alias: "Enable MQTT discovery for all devices"
+    trigger:
+      platform: homeassistant
+      event: start
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/sonoffs/SetOption19"
+          payload: "1"
+          
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+  blitzwolf_coffeeplant:
+    entities:
+      - switch.blitzwolf_coffeeplant
+      - sensor.blitzwolf_coffeeplant_status
+      - sensor.blitzwolf_coffeeplant_energy_voltage      
+      - sensor.blitzwolf_coffeeplant_energy_current
+      - sensor.blitzwolf_coffeeplant_energy_power
+      - sensor.blitzwolf_coffeeplant_energy_apparentpower
+      - sensor.blitzwolf_coffeeplant_energy_reactivepower
+      - sensor.blitzwolf_coffeeplant_energy_today
+      - sensor.blitzwolf_coffeeplant_energy_yesterday
+      - sensor.blitzwolf_coffeeplant_energy_total
+      - sensor.blitzwolf_coffeeplant_energy_totalstarttime
+  blitzwolf_computer:
+    entities:
+      - switch.blitzwolf_computer_2
+      - sensor.blitzwolf_computer_status
+      - sensor.blitzwolf_computer_energy_voltage      
+      - sensor.blitzwolf_computer_energy_current
+      - sensor.blitzwolf_computer_energy_power
+      - sensor.blitzwolf_computer_energy_apparentpower
+      - sensor.blitzwolf_computer_energy_reactivepower
+      - sensor.blitzwolf_computer_energy_today
+      - sensor.blitzwolf_computer_energy_yesterday
+      - sensor.blitzwolf_computer_energy_total_2
+      - sensor.blitzwolf_computer_energy_totalstarttime
+  blitzwolf_electricblanket:
+    entities:
+      - switch.blitzwolf_electricblanket
+      - sensor.blitzwolf_electricblanket_status
+      - sensor.blitzwolf_electricblanket_energy_voltage      
+      - sensor.blitzwolf_electricblanket_energy_current
+      - sensor.blitzwolf_electricblanket_energy_power
+      - sensor.blitzwolf_electricblanket_energy_apparentpower
+      - sensor.blitzwolf_electricblanket_energy_reactivepower
+      - sensor.blitzwolf_electricblanket_energy_today
+      - sensor.blitzwolf_electricblanket_energy_yesterday
+      - sensor.blitzwolf_electricblanket_energy_total
+      - sensor.blitzwolf_electricblanket_energy_totalstarttime
+  blitzwolf_mediacenter:
+    entities:
+      - switch.blitzwolf_mediacenter
+      - sensor.blitzwolf_mediacenter_status
+      - sensor.blitzwolf_mediacenter_energy_voltage      
+      - sensor.blitzwolf_mediacenter_energy_current
+      - sensor.blitzwolf_mediacenter_energy_power
+      - sensor.blitzwolf_mediacenter_energy_apparentpower
+      - sensor.blitzwolf_mediacenter_energy_reactivepower
+      - sensor.blitzwolf_mediacenter_energy_today
+      - sensor.blitzwolf_mediacenter_energy_yesterday
+      - sensor.blitzwolf_mediacenter_energy_total
+      - sensor.blitzwolf_mediacenter_energy_totalstarttime
+  blitzwolf_watercooker:
+    entities:
+      - switch.blitzwolf_watercooker
+      - sensor.blitzwolf_watercooker_status
+      - sensor.blitzwolf_watercooker_energy_voltage      
+      - sensor.blitzwolf_watercooker_energy_current
+      - sensor.blitzwolf_watercooker_energy_power
+      - sensor.blitzwolf_watercooker_energy_apparentpower
+      - sensor.blitzwolf_watercooker_energy_reactivepower
+      - sensor.blitzwolf_watercooker_energy_today
+      - sensor.blitzwolf_watercooker_energy_yesterday
+      - sensor.blitzwolf_watercooker_energy_total
+      - sensor.blitzwolf_watercooker_energy_totalstarttime
+
+#################
+#    SCRIPTS    #
+#################
+script:
