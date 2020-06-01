@@ -12,6 +12,7 @@ sensor:
     - gft
     - papier
     - pbd
+    - pmd
   postcode: !secret postal_code
   streetnumber: !secret street_number
   upcomingsensor: 1
@@ -31,7 +32,7 @@ sensor:
         Groene container   
         {% elif is_state('sensor.waalre_morgen', 'papier') %}
         Oud papier   
-        {% elif is_state('sensor.waalre_morgen', 'pbd') %}
+        {% elif is_state('sensor.waalre_morgen', 'pbd') or is_state('sensor.waalre_morgen', 'pmd') %}
         Plastic
         {% else %}
         -
@@ -46,7 +47,7 @@ sensor:
         Groene container   
         {% elif is_state('sensor.waalre_vandaag', 'papier') %}
         Oud papier   
-        {% elif is_state('sensor.waalre_vandaag', 'pbd') %}
+        {% elif is_state('sensor.waalre_vandaag', 'pbd') or is_state('sensor.waalre_morgen', 'pmd') %}
         Plastic
         {% else %}
         -
@@ -78,7 +79,8 @@ automation:
     data_template:
       title: Afval morgen
       message: '{{states.sensor.afval_morgen.state}}'
-      icon: mdi:trash-can-outline
+      data:
+        icon: mdi:trash-can-outline
 
 - alias: Herinnering afval vandaag
   trigger:
@@ -96,7 +98,8 @@ automation:
     data_template:
       title: Afval vandaag
       message: '{{states.sensor.afval_vandaag.state}}'
-      icon: mdi:trash-can-outline
+      data:
+        icon: mdi:trash-can-outline
 
 ################
 #    SCENES    #
