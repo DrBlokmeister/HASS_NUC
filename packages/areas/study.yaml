@@ -4,8 +4,18 @@ homeassistant:
 #################
 #    SENSORS    #
 #################
-#sensor:
-
+sensor:
+  - platform: template
+    sensors:
+      average_illumination_study:
+        device_class: illuminance
+        unit_of_measurement: 'lx'
+        value_template: "{{ (states('sensor.illumination_study')|int+states('sensor.illumination_study2')|int) }}"
+  - platform: statistics
+    name: average_illumination_study_stats
+    entity_id: sensor.average_illumination_study
+    max_age:
+      minutes: 30
 ########################
 #    BINARY SENSORS    #
 ########################
