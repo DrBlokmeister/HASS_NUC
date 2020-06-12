@@ -1,7 +1,7 @@
 """
 Sensor component for waste pickup dates from dutch and belgium waste collectors
 Original Author: Pippijn Stortelder
-Current Version: 4.2.6 20200514 - Pippijn Stortelder
+Current Version: 4.3.2 20200604 - Pippijn Stortelder
 20200419 - Major code refactor (credits @basschipper)
 20200420 - Add sensor even though not in mapping
 20200420 - Added support for DeAfvalApp
@@ -20,7 +20,16 @@ Current Version: 4.2.6 20200514 - Pippijn Stortelder
 20200506 - Support for Limburg.NET and AfvalAlert
 20200512 - Fix fraction mapping for Circulus Berkel
 20200513 - Add attribute days_until
-20200514 - Fix raction mapping for MijnAfvalWijzer
+20200514 - Fix fraction mapping for MijnAfvalWijzer
+20200515 - Fix fraction mapping for Limburg.NET
+20200519 - Fix fraction mapping for Circulus-Berkel
+20200523 - Support for Area Reiniging
+20200525 - Fix for Area Reiniging
+20200526 - Fix mapping for Area Reiniging
+20200526 - Added option to always show the day names
+20200527 - Support for Omrin
+20200527 - Support for Almere
+20200604 - Fix mapping for Omrin
 
 Example config:
 Configuration.yaml:
@@ -53,6 +62,10 @@ import random
 import requests
 import re
 import voluptuous as vol
+import uuid
+from rsa import key, common, pkcs1
+from Crypto.PublicKey import RSA
+from base64 import b64decode, b64encode
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 import homeassistant.helpers.config_validation as cv
@@ -81,6 +94,7 @@ CONF_BUILT_IN_ICONS = 'builtinicons'
 CONF_DISABLE_ICONS = 'disableicons'
 CONF_TRANSLATE_DAYS = 'dutch'
 CONF_DAY_OF_WEEK = 'dayofweek'
+CONF_ALWAYS_SHOW_DAY = 'alwaysshowday'
 
 ATTR_WASTE_COLLECTOR = 'Wastecollector'
 ATTR_HIDDEN = 'Hidden'
@@ -114,6 +128,8 @@ OPZET_COLLECTOR_URLS = {
 
 XIMMIO_COLLECTOR_IDS = {
     'acv': 'f8e2844a-095e-48f9-9f98-71fceb51d2c3',
+    'almere': '53d8db94-7945-42fd-9742-9bbc71dbe4c1',
+    'areareiniging': 'adc418da-d19b-11e5-ab30-625662870761',
     'hellendoorn': '24434f5b-7244-412b-9306-3a2bd1e22bc1',
     'meerlanden': '800bf8d7-6dd1-4490-ba9d-b419d6dc8a45',
     'twentemilieu': '8d97bb56-5afd-4cbc-a651-b4f7314264b4',
@@ -126,12 +142,14 @@ WASTE_TYPE_GLASS = 'glas'
 WASTE_TYPE_GREEN = 'gft'
 WASTE_TYPE_GREENGREY = 'duobak'
 WASTE_TYPE_GREY = 'restafval'
+WASTE_TYPE_SORTI = 'sortibak'
 WASTE_TYPE_KCA = 'chemisch'
 WASTE_TYPE_MILIEUB = 'milieuboer'
 WASTE_TYPE_PAPER_PMD = 'papier-pmd'
 WASTE_TYPE_PACKAGES = 'pmd'
 WASTE_TYPE_PAPER = 'papier'
 WASTE_TYPE_PLASTIC = 'plastic'
+WASTE_TYPE_REMAINDER = 'restwagen'
 WASTE_TYPE_TEXTILE = 'textiel'
 WASTE_TYPE_TREE = 'kerstbomen'
 WASTE_TYPE_BULKYGARDENWASTE = 'tuinafval'
@@ -174,6 +192,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_DISABLE_ICONS, default=False): cv.boolean,
     vol.Optional(CONF_TRANSLATE_DAYS, default=False): cv.boolean,
     vol.Optional(CONF_DAY_OF_WEEK, default=True): cv.boolean,
+    vol.Optional(CONF_ALWAYS_SHOW_DAY, default=False): cv.boolean,
 })
 
 
@@ -195,6 +214,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     disable_icons = config.get(CONF_DISABLE_ICONS)
     dutch_days = config.get(CONF_TRANSLATE_DAYS)
     day_of_week = config.get(CONF_DAY_OF_WEEK)
+    always_show_day = config.get(CONF_ALWAYS_SHOW_DAY)
 
     if date_object == True:
         date_only = 1
@@ -206,14 +226,17 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         waste_collector = "mijnafvalwijzer"
     elif waste_collector == "ximmio":
         _LOGGER.error("Ximmio - due to more collectors using Ximmio, you need to change your config. Set the wast collector to the actual collector (i.e. Meerlanden, TwenteMilieu , etc.). Using Ximmio in your config, this sensor will asume you meant Meerlanden.")
-
+    elif waste_collector == "area":
+        _LOGGER.error("Area - Update your config to use AreaReiniging as a waste collector.")
+        waste_collector = "areareiniging"    
     data = WasteData(hass, waste_collector, city_name, postcode, street_name, street_number, suffix)
 
     entities = []
 
     for resource in config[CONF_RESOURCES]:
         waste_type = resource.lower()
-        entities.append(WasteTypeSensor(data, waste_type, waste_collector, date_format, date_only, date_object, name, name_prefix, built_in_icons, disable_icons, dutch_days, day_of_week))
+        entities.append(WasteTypeSensor(data, waste_type, waste_collector, date_format, date_only, date_object, 
+            name, name_prefix, built_in_icons, disable_icons, dutch_days, day_of_week, always_show_day))
 
     if sensor_today:
         entities.append(WasteDateSensor(data, config[CONF_RESOURCES], waste_collector, timedelta(), dutch_days, name, name_prefix))
@@ -295,6 +318,8 @@ class WasteData(object):
             self.collector = CirculusBerkelCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector == "limburg.net":
             self.collector = LimburgNetCollector(self.hass, self.waste_collector, self.city_name, self.postcode, self.street_name, self.street_number, self.suffix)
+        elif self.waste_collector == "omrin":
+            self.collector = OmrinCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector == "ophaalkalender":
             self.collector = OphaalkalenderCollector(self.hass, self.waste_collector, self.postcode, self.street_name, self.street_number, self.suffix)
         elif self.waste_collector == "rd4":
@@ -462,7 +487,7 @@ class CirculusBerkelCollector(WasteCollector):
         # 'BRANCHES': WASTE_TYPE_BRANCHES,
         # 'BULKLITTER': WASTE_TYPE_BULKLITTER,
         # 'BULKYGARDENWASTE': WASTE_TYPE_BULKYGARDENWASTE,
-        'DROCODEV': WASTE_TYPE_PAPER,
+        'DROCO': WASTE_TYPE_PAPER,
         # 'GLASS': WASTE_TYPE_GLASS,
         'GFT': WASTE_TYPE_GREEN,
         'REST': WASTE_TYPE_GREY,
@@ -606,7 +631,7 @@ class LimburgNetCollector(WasteCollector):
         'Grofvuil': WASTE_TYPE_BULKLITTER,
         # 'grof huisvuil afroep': WASTE_TYPE_BULKLITTER,
         # 'tak-snoeiafval': WASTE_TYPE_BULKYGARDENWASTE,
-        # 'fles-groen-glas': WASTE_TYPE_GLASS,
+        'glas': WASTE_TYPE_GLASS,
         'GFT': WASTE_TYPE_GREEN,
         # 'batterij': WASTE_TYPE_KCA,
         'Huisvuil': WASTE_TYPE_GREY,
@@ -686,6 +711,72 @@ class LimburgNetCollector(WasteCollector):
 
                 collection = WasteCollection.create(
                     date=datetime.strptime(item['date'], '%Y-%m-%dT%H:%M:%S%z').replace(tzinfo=None),
+                    waste_type=waste_type
+                )
+                self.collections.add(collection)
+
+        except requests.exceptions.RequestException as exc:
+            _LOGGER.error('Error occurred while fetching data: %r', exc)
+            return False
+
+
+class OmrinCollector(WasteCollector):
+    WASTE_TYPE_MAPPING = {
+        # 'BRANCHES': WASTE_TYPE_BRANCHES,
+        'Grofvuil': WASTE_TYPE_BULKLITTER,
+        # 'BULKYGARDENWASTE': WASTE_TYPE_BULKYGARDENWASTE,
+        # 'GLASS': WASTE_TYPE_GLASS,
+        'Biobak': WASTE_TYPE_GREEN,
+        'GFT': WASTE_TYPE_GREEN,
+        # 'GREY': WASTE_TYPE_GREY,
+        'KCA': WASTE_TYPE_KCA,
+        'Sortibak': WASTE_TYPE_SORTI,
+        'Papier': WASTE_TYPE_PAPER,
+        # 'REMAINDER': WASTE_TYPE_REMAINDER,
+        # 'TEXTILE': WASTE_TYPE_TEXTILE,
+        # 'TREE': WASTE_TYPE_TREE,
+    }
+
+    def __init__(self, hass, waste_collector, postcode, street_number, suffix):
+        super(OmrinCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        self.main_url = "https://api-omrin.freed.nl/Account"
+        self.appId = uuid.uuid1().__str__()
+        self.publicKey = None
+
+    def __fetch_publickey(self):
+        response = requests.post("{}/GetToken/".format(self.main_url), json={'AppId': self.appId, 'AppVersion': '', 'OsVersion': '', 'Platform': ''}).json()
+        self.publicKey = b64decode(response['PublicKey'])
+
+    def __get_data(self):
+        rsaPublicKey = RSA.importKey(self.publicKey)
+        requestBody = {'a': False, 'Email': None, 'Password': None, 'PostalCode': self.postcode, 'HouseNumber': self.street_number}
+
+        encryptedRequest = pkcs1.encrypt(json.dumps(requestBody).encode(), rsaPublicKey)
+        base64EncodedRequest = b64encode(encryptedRequest).decode("utf-8")
+
+        response = requests.post("{}/FetchAccount/".format(self.main_url) + self.appId, '"' + base64EncodedRequest + '"').json()
+        return response['CalendarHomeV2']
+
+    async def update(self):
+        _LOGGER.debug('Updating Waste collection dates using Rest API')
+
+        self.collections.remove_all()
+
+        try:
+            if not self.publicKey:
+                await self.hass.async_add_executor_job(self.__fetch_publickey)
+
+            response = await self.hass.async_add_executor_job(self.__get_data)
+            for item in response:
+                if not item['Datum']:
+                    continue
+
+                waste_type = self.map_waste_type(item['Omschrijving'])
+                if not waste_type:
+                    continue
+
+                collection = WasteCollection.create(
+                    date=datetime.strptime(item['Datum'], '%Y-%m-%dT%H:%M:%S'),
                     waste_type=waste_type
                 )
                 self.collections.add(collection)
@@ -984,8 +1075,10 @@ class XimmioCollector(WasteCollector):
         'GREEN': WASTE_TYPE_GREEN,
         'GREY': WASTE_TYPE_GREY,
         'KCA': WASTE_TYPE_KCA,
+        'PLASTIC': WASTE_TYPE_PACKAGES,
         'PACKAGES': WASTE_TYPE_PACKAGES,
         'PAPER': WASTE_TYPE_PAPER,
+        'REMAINDER': WASTE_TYPE_REMAINDER,
         'TEXTILE': WASTE_TYPE_TEXTILE,
         'TREE': WASTE_TYPE_TREE,
     }
@@ -1059,7 +1152,8 @@ class XimmioCollector(WasteCollector):
 
 class WasteTypeSensor(Entity):
 
-    def __init__(self, data, waste_type, waste_collector, date_format, date_only, date_object, name, name_prefix, built_in_icons, disable_icons, dutch_days, day_of_week):
+    def __init__(self, data, waste_type, waste_collector, date_format, date_only, date_object, 
+        name, name_prefix, built_in_icons, disable_icons, dutch_days, day_of_week, always_show_day):
         self.data = data
         self.waste_type = waste_type
         self.waste_collector = waste_collector
@@ -1071,6 +1165,7 @@ class WasteTypeSensor(Entity):
         self.disable_icons = disable_icons
         self.dutch_days = dutch_days
         self.day_of_week = day_of_week
+        self.always_show_day = always_show_day
         if self.dutch_days:
             self._today = "Vandaag, "
             self._tomorrow = "Morgen, "
@@ -1133,7 +1228,7 @@ class WasteTypeSensor(Entity):
             self._state = collection.date
         elif self.date_only:
             self._state = collection.date.strftime(self.date_format)
-        elif date_diff >= 8:
+        elif date_diff >= 8 and not self.always_show_day:
             self._state = collection.date.strftime(self.date_format)
         elif date_diff > 1:
             if self.day_of_week:
