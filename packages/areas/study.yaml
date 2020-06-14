@@ -11,11 +11,14 @@ sensor:
         device_class: illuminance
         unit_of_measurement: 'lx'
         value_template: "{{ (states('sensor.illumination_study')|int+states('sensor.illumination_study2')|int) }}"
+      vibration_sensor_attributes:
+        value_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation'), state_attr('binary_sensor.vibration_sensor', 'tiltangle') }}"
   - platform: statistics
     name: average_illumination_study_stats
     entity_id: sensor.average_illumination_study
     max_age:
       minutes: 30
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -98,6 +101,11 @@ automation:
       - platform: state
         entity_id: binary_sensor.study_motion_combined
         to: 'on'
+      - platform: state
+        entity_id: sensor.vibration_sensor_attributes
+      - platform: state
+        entity_id: binary_sensor.vibration_sensor
+        to: 'on'
     condition:
       condition: or
       conditions:
@@ -150,6 +158,29 @@ automation:
   #   action:
   #     service: scene.turn_on
   #     entity_id: scene.study_bright_warm
+
+  - alias: '[study|lights] Auto lights off'
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.study_motion_combined
+        to: 'off'
+        for: 00:05:00
+      - platform: template
+        value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 300  }}"
+      - platform: state
+        entity_id: binary_sensor.vibration_sensor
+        to: 'off'
+        for: 00:05:00
+    condition:
+      - condition: template
+        value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 300  }}"
+      - condition: state
+        entity_id: binary_sensor.vibration_sensor
+        state: 'off'
+        for: 00:05:00
+    action:
+      service: light.turn_off
+      entity_id: light.study_lights
 
   #Turn off study lights if no motion has been detected for 10 minutes
   - alias: study_nomotion_nopc_turn_off
