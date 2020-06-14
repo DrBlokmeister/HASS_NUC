@@ -1,37 +1,53 @@
 homeassistant:
   customize:
-    # sensor.speedtest_upload:
-    # icon: mdi:speedometer
-    #   templates:
-    #     hs_color: >-
-    #         [{{states.sensor.speedtest_upload.state|int/1000*240}}, 80, 80];
-    # sensor.speedtest_download:
-    #   templates:
-    #     icon_color: >-
-    #         {% if states.sensor.speedtest_download.state == 'unknown' or states.sensor.speedtest_download.state == 'unavailable' %}
-    #         rgb(50,50,50)
-    #         {% elif states.sensor.speedtest_download.state|int >= 500 %}
-    #         rgb(0, 255, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 400 %}
-    #         rgb(100, 255, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 300 %}
-    #         rgb(150, 255, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 200 %}
-    #         rgb(200, 255, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 150 %}
-    #         rgb(255, 255, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 100 %}
-    #         rgb(255, 200, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 50 %}
-    #         rgb(255, 150, 0)
-    #         {% elif states.sensor.speedtest_download.state|int >= 30 %}
-    #         rgb(255, 100, 0)
-    #         {% else %}
-    #         rgb(255, 0, 0)
-    #         {% endif %}
-    # sensor.speedtest_ping:
-    #   icon: mdi:speedometer-slow
-    #   icon_color: green
+    sensor.speedtest_upload:
+      icon: mdi:speedometer
+      templates:
+        hs_color: >
+          '[{{states.sensor.speedtest_upload.state|int/1000*240}}, 80]'
+    sensor.speedtest_download:
+      templates:
+        icon_color: >
+          if (state > 500) return 'rgb(0, 255, 0)';
+          if (state > 400) return 'rgb(100, 255, 0)';
+          if (state > 300) return 'rgb(150, 255, 0)';
+          if (state > 200) return 'rgb(200, 255, 0)';
+          if (state > 150) return 'rgb(255, 255, 0)';
+          if (state > 100) return 'rgb(255, 200, 0)';
+          if (state > 50) return 'rgb(255, 150, 0)';
+          if (state > 30) return 'rgb(255, 100, 0)';
+          if (state == 'unknown') return 'rgb(50, 50, 50)';
+          return 'rgb(255, 0, 0)'
+
+
+# {% if states.sensor.speedtest_download.state == 'unknown' or states.sensor.speedtest_download.state == 'unavailable' %}
+# 'rgb(50,50,50)'
+# {% elif states.sensor.speedtest_download.state|int >= 500 %}
+# 'rgb(0, 255, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 400 %}
+# 'rgb(100, 255, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 300 %}
+# 'rgb(150, 255, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 200 %}
+# 'rgb(200, 255, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 150 %}
+# 'rgb(255, 255, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 100 %}
+# 'rgb(255, 200, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 50 %}
+# 'rgb(255, 150, 0)'
+# {% elif states.sensor.speedtest_download.state|int >= 30 %}
+# 'rgb(255, 100, 0)'
+# {% else %}
+# 'rgb(255, 0, 0)'
+# {% endif %}
+    sensor.speedtest_ping:
+      icon: mdi:speedometer-slow
+      templates:
+        icon_color: >
+          {% if true %}
+          'green'
+          {% endif %}
 
 speedtestdotnet:
   server_id: 13883
