@@ -1,0 +1,58 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[toilet|notification] Notify when motion is detected'
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_toilet
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: person.sander_blok
+        state: 'home'
+    action:
+      - service: notify.mobile_app_blokmeister_op6
+        data:
+          message: "Motion detected on toilet"
+          title: "Toilet motion"
+          data:
+            icon: mdi:toilet
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
