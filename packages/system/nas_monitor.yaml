@@ -51,7 +51,7 @@ homeassistant:
       icon: mdi:message-alert
 
   customize_glob:
-    sensor.nas_disk_ada*_temperature:
+    sensor.nas_disk_*_temperature:
       templates:
         icon_color: >
           var maxval = 45;
@@ -62,6 +62,31 @@ homeassistant:
           if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
           var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
           return 'hsl(' + hue.toString() + ',80%,50%)';
+    sensor.fn_*_pct_used:
+      templates:
+        icon_color: >
+          var maxval = 90;
+          var minval = 50;
+          var maxhue = 0;
+          var minhue = 140;
+          if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
+          if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
+          var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
+          return 'hsl(' + hue.toString() + ',80%,50%)';
+    sensor.nas_cpu*_temp*:
+      device_class: 'temperature'
+      unit_of_measurement: '°C'
+      friendly_name: 'CPU temperature'
+      templates:
+        icon_color: >-
+          var maxval = 60;
+          var minval = 30;
+          var maxhue = 0;
+          var minhue = 140;
+          if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
+          if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
+          var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
+          return 'hsl(' + hue.toString() + ',80%,50%)';          
 #################
 #    SENSORS    #
 #################
@@ -315,17 +340,27 @@ sensor:
     name: nas_disk_ada5_temperature
     state_topic: "sensor/blokmeisternas_8_8_8_8_state"
     value_template: >-
-      {{ value_json.disks_temperature.ada4 }}
+      {{ value_json.disks_temperature.ada5 }}
   - platform: mqtt
     name: nas_disk_ada6_temperature
     state_topic: "sensor/blokmeisternas_8_8_8_8_state"
     value_template: >-
-      {{ value_json.disks_temperature.ada4 }}
+      {{ value_json.disks_temperature.ada6 }}
   - platform: mqtt
     name: nas_disk_ada7_temperature
     state_topic: "sensor/blokmeisternas_8_8_8_8_state"
     value_template: >-
-      {{ value_json.disks_temperature.ada4 }}
+      {{ value_json.disks_temperature.ada7 }}
+  - platform: mqtt
+    name: nas_disk_da0_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.da0 }}
+  - platform: mqtt
+    name: nas_disk_da1_temperature
+    state_topic: "sensor/blokmeisternas_8_8_8_8_state"
+    value_template: >-
+      {{ value_json.disks_temperature.da1 }}
 
   - platform: mqtt
     name: nas_pool_NewStorage_use_percent
@@ -348,145 +383,45 @@ sensor:
     value_template: >-
       {{ value_json.pools_stat.Storage2.health }}
 
-  # - platform: command_line
-  #   name: 'ADA 0 temp'
-  #   # friendly_name: 'NewStorage 1 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada0 | grep -i temperature | awk '{print $10}'
+  - platform: command_line
+    name: 'NAS CPU0 temp'
+    # friendly_name: 'CPU Core 0 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.0 | grep temperature | tr '.' ' ' | awk '{print $5}'
 
-  # - platform: command_line
-  #   name: 'ADA 1 temp'
-  #   # friendly_name: 'NewStorage 2 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada1 | grep -i temperature | awk '{print $10}'
+  - platform: command_line
+    name: 'NAS CPU1 temp'
+    # friendly_name: 'CPU Core 1 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.1 | grep temperature | tr '.' ' ' | awk '{print $5}'
 
-  # - platform: command_line
-  #   name: 'ADA 2 temp'
-  #   # friendly_name: 'NewStorage 3 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada2 | grep -i temperature | awk '{print $10}'
+  - platform: command_line
+    name: 'NAS CPU2 temp'
+    # friendly_name: 'CPU Core 2 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.2 | grep temperature | tr '.' ' ' | awk '{print $5}'
 
-  # - platform: command_line
-  #   name: 'ADA 3 temp'
-  #   # friendly_name: 'Storage2 1 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada3 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'ADA 4 temp'
-  #   # friendly_name: 'Storage2 2 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada4 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'ADA 5 temp'
-  #   # friendly_name: 'NewStorage 4 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada5 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'ADA 6 temp'
-  #   # friendly_name: 'NewStorage 5 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada6 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'ADA 7 temp'
-  #   # friendly_name: 'NewStorage 6 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/ada7 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'DA 0 temp'
-  #   # friendly_name: 'SSD 1 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/da0 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'DA 1 temp'
-  #   # friendly_name: 'SSD 2 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     smartctl -A /dev/da1 | grep -i temperature | awk '{print $10}'
-
-  # - platform: command_line
-  #   name: 'NAS CPU0 temp'
-  #   # friendly_name: 'CPU Core 0 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     sysctl dev.cpu.0 | grep temperature | tr '.' ' ' | awk '{print $5}'
-
-  # - platform: command_line
-  #   name: 'NAS CPU1 temp'
-  #   # friendly_name: 'CPU Core 1 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     sysctl dev.cpu.1 | grep temperature | tr '.' ' ' | awk '{print $5}'
-
-  # - platform: command_line
-  #   name: 'NAS CPU2 temp'
-  #   # friendly_name: 'CPU Core 2 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     sysctl dev.cpu.2 | grep temperature | tr '.' ' ' | awk '{print $5}'
-
-  # - platform: command_line
-  #   name: 'NAS CPU3 temp'
-  #   # friendly_name: 'CPU Core 3 temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250
-  #     sysctl dev.cpu.3 | grep temperature | tr '.' ' ' | awk '{print $5}'
+  - platform: command_line
+    name: 'NAS CPU3 temp'
+    # friendly_name: 'CPU Core 3 temp'
+    unit_of_measurement: '°C'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250
+      sysctl dev.cpu.3 | grep temperature | tr '.' ' ' | awk '{print $5}'
 
   # - platform: command_line
   #   name: 'NAS load'
@@ -498,13 +433,13 @@ sensor:
   #     root@192.168.1.250
   #     uptime | awk '{print $(NF-1)}' | sed 's/,//g'
 
-  # - platform: command_line
-  #   name: 'Transmission status'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
-  #     root@192.168.1.250 
-  #     iocage get state transmission
+  - platform: command_line
+    name: 'Transmission status'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
+      root@192.168.1.250 
+      iocage get state transmission
 
     
 ########################
