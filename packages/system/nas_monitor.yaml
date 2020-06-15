@@ -22,10 +22,15 @@ homeassistant:
       unit_of_measurement: '°C'
       friendly_name: 'CPU temperature'
       templates:
-        hs_color: >-
-          if (state > 80) return [0, 85];
-          else if (state > 60) return [40, 70];
-          else return [0, 0];
+        icon_color: >-
+          var maxval = 60;
+          var minval = 30;
+          var maxhue = 0;
+          var minhue = 140;
+          if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
+          if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
+          var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
+          return 'hsl(' + hue.toString() + ',80%,50%)';
     #
     sensor.nas_memory_use_percent:
       friendly_name: 'Memory use'
@@ -44,6 +49,19 @@ homeassistant:
     sensor.nas_alerts:
       friendly_name: 'Alert Message'
       icon: mdi:message-alert
+
+  customize_glob:
+    sensor.nas_disk_ada*_temperature:
+      templates:
+        icon_color: >
+          var maxval = 45;
+          var minval = 25;
+          var maxhue = 0;
+          var minhue = 140;
+          if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
+          if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
+          var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
+          return 'hsl(' + hue.toString() + ',80%,50%)';
 #################
 #    SENSORS    #
 #################

@@ -1,5 +1,18 @@
 homeassistant:
-  customize:
+  customize_glob:
+    sensor.*elec_*_temp:
+      device_class: 'temperature'
+      unit_of_measurement: '°C'
+      templates:
+        icon_color: >-
+          var maxval = 60;
+          var minval = 30;
+          var maxhue = 0;
+          var minhue = 140;
+          if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
+          if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
+          var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
+          return 'hsl(' + hue.toString() + ',80%,50%)';
 
 media_player:
   # - platform: kodi
