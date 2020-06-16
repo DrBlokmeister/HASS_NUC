@@ -22,6 +22,13 @@ sensor:
     unit_of_measurement: minutes
   - platform: version
     source: hassio
+  - platform: sql
+    db_url: mysql://homeassistant:QfasNi4Jn6byKhkjamAgN4QiQYJC@core-mariadb/homeassistant?charset=utf8
+    queries:
+      - name: DB size
+        query: 'SELECT table_schema "database", Round(Sum(data_length + index_length) / POWER(1024,2), 1) "value" FROM information_schema.tables WHERE table_schema="hass" GROUP BY table_schema;'
+        column: 'value'
+        unit_of_measurement: MB
 
 ########################
 #    BINARY SENSORS    #
