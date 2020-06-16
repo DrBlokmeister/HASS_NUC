@@ -23,12 +23,24 @@ sensor:
   - platform: version
     source: hassio
   - platform: sql
-    db_url: mysql://homeassistant:QfasNi4Jn6byKhkjamAgN4QiQYJC@core-mariadb/homeassistant?charset=utf8
+    db_url: !secret mariadb_URL
     queries:
-      - name: DB size
-        query: 'SELECT table_schema "database", Round(Sum(data_length + index_length) / POWER(1024,2), 1) "value" FROM information_schema.tables WHERE table_schema="hass" GROUP BY table_schema;'
+      - name: MariaDB size
+        query: 'SELECT table_schema "database", Round(Sum(data_length + index_length) / POWER(1024,2), 1) "value" FROM information_schema.tables WHERE table_schema="homeassistant" GROUP BY table_schema;'
         column: 'value'
         unit_of_measurement: MB
+  - platform: influxdb
+    username: !secret influxdb_user
+    password: !secret influxdb_pass
+    queries:
+      - name: InfluxDB Size
+        unit_of_measurement: MB
+        value_template: '{{ (value | float / 1024 /1024) | round(1) }}'
+        group_function: sum
+        measurement: '"monitor"."shard"'
+        database: _internal
+        where: 'time > now() - 10s'
+        field: diskBytes
 
 ########################
 #    BINARY SENSORS    #
