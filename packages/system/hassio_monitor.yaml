@@ -1,8 +1,49 @@
 homeassistant:
-  customize:
+  customize_glob:
+    sensor.*db_size:
+      icon: mdi:database
 
 breaking_changes:
   scan_interval: 3600
+
+monitor_docker:
+  - name: Docker
+    containers:
+      - addon_core_mariadb
+      - addon_core_deconz
+      - homeassistant
+      - hassio_supervisor
+      - addon_a0d7b954_vscode
+      - addon_a0d7b954_tautulli
+      - addon_a0d7b954_ssh
+      - addon_a0d7b954_influxdb
+      - addon_a0d7b954_portainer
+      - addon_core_mosquitto
+      - hassio_multicast
+      - hassio_dns
+      - hassio_cli
+      - hassio_audio
+    rename:
+      addon_core_mariadb: MariaDB database
+      addon_core_deconz: Deconz Zigbee
+      homeassistant: Home Assistant
+      hassio_supervisor: Supervisor
+      addon_a0d7b954_vscode: VScode
+      addon_a0d7b954_tautulli: Tautulli
+      addon_a0d7b954_ssh: SSH
+      addon_a0d7b954_influxdb: InfluxDB
+      addon_a0d7b954_portainer: Portainer
+      addon_core_mosquitto: Mosquitto
+    monitored_conditions:
+      - version
+      - containers_running
+      - containers_total
+      - containers_cpu_percentage
+      - cpu_percentage
+      - status
+      - memory
+      - network_speed_up
+      - network_speed_down
 
 #################
 #    SENSORS    #
