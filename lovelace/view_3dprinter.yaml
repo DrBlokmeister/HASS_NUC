@@ -1,0 +1,136 @@
+##########################################  HERE BEGINS THE 3D PRINTER TAB  ##########################################
+title: 3D printer
+badges: []
+icon: mdi:printer-3d
+cards:
+  - cards:
+      - entity: sensor.ender3_current_state
+        name: Printer
+        type: entity
+      # - entity: switch.tasmota_1
+      #   hold_action:
+      #     action: more-info
+      #   show_icon: true
+      #   show_name: false
+      #   tap_action:
+      #     action: toggle
+      #   type: button
+    mode: horizontal
+    type: vertical-stack
+  - cards:
+      - entities:
+          - entity: sensor.print_time_remaining_human_readable
+          - entity: sensor.print_elapsed_human_readable
+          - entity: sensor.ender3_print_file
+        show_header_toggle: false
+        type: entities
+      - cards:
+          - entity: script.printer_preheat
+            hold_action:
+              action: more-info
+            icon: 'mdi:thermometer'
+            name: Preheat
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: call-service
+              service: script.printer_preheat
+            type: button
+          - entity: script.printer_cooldown
+            hold_action:
+              action: more-info
+            icon: 'mdi:fan'
+            name: Cooldown
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: call-service
+              service: script.printer_cooldown
+            type: button
+          - entity: binary_sensor.printer_cancel
+            hold_action:
+              action: more-info
+            icon: 'mdi:cancel'
+            name: Cancel
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: call-service
+              service: script.print_job_cancel
+            type: button
+          - entity: binary_sensor.printer_pause
+            hold_action:
+              action: more-info
+            icon: 'mdi:pause'
+            name: Pause
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: call-service
+              service: script.print_job_toggle
+            type: button
+          - entity: script.print_job_start
+            hold_action:
+              action: more-info
+            icon: 'mdi:play-box-outline'
+            name: Start Print
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: call-service
+              service: script.print_job_start
+            type: button
+        type: horizontal-stack
+    mode: vertical
+    type: vertical-stack
+  - entity: sensor.ender3_job_percentage
+    type: gauge
+  - decimals: 1
+    entities:
+      - entity: sensor.ender3_actual_tool0_temp
+        name: Nozzle
+        show_state: true
+      - color: yellow
+        entity: sensor.ender3_target_tool0_temp
+        name: Nozzle Target
+        show_legend: false
+        show_line: false
+        show_points: false
+        smoothing: false
+      - entity: sensor.ender3_actual_bed_temp
+        name: Bed
+        show_state: true
+      - color: purple
+        entity: sensor.ender3_target_bed_temp
+        name: Bed Target
+        show_legend: false
+        show_line: false
+        show_points: false
+        smoothing: false
+    hours_to_show: 1
+    name: Temperature
+    points_per_hour: 120
+    type: 'custom:mini-graph-card'
+  - cards:
+      - card:
+          aspect_ratio: 0%
+          camera_image: camera.ender3
+          camera_view: live
+          entities:
+            - entity: light.printer_camera_flash_led
+          entity: camera.ender3
+          title: Printer Camera
+          type: picture-glance
+        conditions:
+          - entity: camera.ender3
+            state_not: unavailable
+        type: conditional
+      - card:
+          entity: camera.camera.ender3
+          type: entity
+        conditions:
+          - entity: camera.ender3
+            state: unavailable
+        type: conditional
+    mode: horizontal
+    type: vertical-stack
