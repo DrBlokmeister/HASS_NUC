@@ -1,0 +1,64 @@
+homeassistant:
+  customize:
+
+
+octoprint:
+  host: 192.168.1.206
+  api_key: !secret octoprint_api_key
+  name: Ender3
+  bed: true
+  number_of_tools: 2
+
+camera:
+  - platform: mjpeg
+    name: Ender3
+    still_image_url: !secret octoprint_camera_snapshot_url
+    mjpeg_url: !secret octoprint_camera_stream_url
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: template
+    sensors:
+      print_time_remaining_human_readable:
+        entity_id: sensor.ender3_time_remaining
+        value_template: >
+          {{ (states.sensor.ender3_time_remaining.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
+      print_elapsed_human_readable:
+        entity_id: sensor.ender3_time_elapsed
+        value_template: >
+          {{ (states.sensor.ender3_time_elapsed.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
