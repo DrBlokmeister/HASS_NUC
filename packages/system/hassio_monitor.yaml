@@ -2,6 +2,19 @@ homeassistant:
   customize_glob:
     sensor.*db_size:
       icon: mdi:database
+    sensor.mediacenter_cabinet_*:
+      device_class: 'temperature'
+      unit_of_measurement: '°C'
+      templates:
+        icon_color: >-
+          var maxval = 40;
+          var minval = 15;
+          var maxhue = 0;
+          var minhue = 140;
+          if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
+          if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
+          var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
+          return 'hsl(' + hue.toString() + ',80%,50%)';
 
 breaking_changes:
   scan_interval: 3600
@@ -82,6 +95,12 @@ sensor:
         database: _internal
         where: 'time > now() - 10s'
         field: diskBytes
+  - platform: template
+    sensors:
+      hassio_uptime_human_readable:
+        entity_id: sensor.uptime
+        value_template: >
+          {{ (states.sensor.uptime.state|float * 60 | int - 3600) | timestamp_custom(('%H:%M:%S')) }}
 
 ########################
 #    BINARY SENSORS    #
