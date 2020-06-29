@@ -22,10 +22,12 @@ sensor:
     sensors:
       print_time_remaining_human_readable:
         entity_id: sensor.ender3_time_remaining
+        friendly_name: "Print time remaining"
         value_template: >
           {{ (states.sensor.ender3_time_remaining.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
       print_elapsed_human_readable:
         entity_id: sensor.ender3_time_elapsed
+        friendly_name: "Print time elapsed"
         value_template: >
           {{ (states.sensor.ender3_time_elapsed.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
 ########################
@@ -47,7 +49,23 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-
+- alias: Notify 3D printer done
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.ender3_printing
+      from: 'on'
+      to: 'off'
+  condition:
+    - condition: state
+      entity_id: input_boolean.sleep_tracking_on
+      state: 'off'
+  action:
+      - service: notify.mobile_app_blokmeister_op6
+        data:
+          title: Printer done
+          message: 'Ender 3 print is done'
+          data:
+            image: !secret octoprint_camera_snapshot_url
 ################
 #    SCENES    #
 ################
