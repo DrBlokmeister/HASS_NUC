@@ -14,6 +14,19 @@ camera:
     name: Ender3
     still_image_url: !secret octoprint_camera_snapshot_url
     mjpeg_url: !secret octoprint_camera_stream_url
+  - platform: proxy
+    name: ender3_360p
+    entity_id: camera.ender3
+    max_stream_width: 360
+  - platform: proxy
+    name: ender3_480p
+    entity_id: camera.ender3
+    max_stream_width: 480
+  - platform: proxy
+    name: ender3_720p
+    entity_id: camera.ender3
+    max_stream_width: 720
+
 #################
 #    SENSORS    #
 #################
@@ -60,11 +73,33 @@ automation:
       entity_id: input_boolean.sleep_tracking_on
       state: 'off'
   action:
+      - delay: '00:01:00'
       - service: notify.mobile_app_blokmeister_op6
         data:
           title: Printer done
           message: 'Ender 3 print is done'
           data:
+            icon: https://b3n.org/wp-content/uploads/2019/11/noun_3D-Printer_2071174-2.png
+            image: !secret octoprint_camera_snapshot_url
+
+- alias: Update printer progress
+  trigger:
+    - platform: time_pattern
+      minutes: "0"
+  condition:
+    - condition: state
+      entity_id: input_boolean.sleep_tracking_on
+      state: 'off'
+    - condition: state
+      entity_id: binary_sensor.ender3_printing
+      state: 'on'
+  action:
+      - service: notify.mobile_app_blokmeister_op6
+        data_template:
+          title: Printer progress
+          message: 'Ender 3 print is at {{ states.sensor.ender3_job_percentage.state }}%. Estimated time remaining: {{ states.sensor.ender3_time_remaining.state }}'
+          data:
+            icon: https://b3n.org/wp-content/uploads/2019/11/noun_3D-Printer_2071174-2.png
             image: !secret octoprint_camera_snapshot_url
 ################
 #    SCENES    #
