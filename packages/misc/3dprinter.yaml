@@ -62,7 +62,7 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-- alias: Notify 3D printer done
+- alias: '[ender3|notify]Notify 3D printer done'
   trigger:
     - platform: state
       entity_id: binary_sensor.ender3_printing
@@ -82,7 +82,7 @@ automation:
             icon: https://b3n.org/wp-content/uploads/2019/11/noun_3D-Printer_2071174-2.png
             image: !secret octoprint_camera_snapshot_url
 
-- alias: Update printer progress
+- alias: '[ender3|notify] update printer progress'
   trigger:
     - platform: time_pattern
       minutes: "0"
@@ -93,11 +93,31 @@ automation:
     - condition: state
       entity_id: binary_sensor.ender3_printing
       state: 'on'
+    - condition: state
+      entity_id: person.sander_blok
+      state: 'not_home'
   action:
       - service: notify.mobile_app_blokmeister_op6
         data_template:
           title: Printer progress
           message: 'Ender 3 print is at {{ states.sensor.ender3_job_percentage.state }}%. Estimated time remaining: {{ states.sensor.ender3_time_remaining.state }}'
+          data:
+            icon: https://b3n.org/wp-content/uploads/2019/11/noun_3D-Printer_2071174-2.png
+            image: !secret octoprint_camera_snapshot_url
+
+- alias: '[ender3|notify] printer overtemp warning'
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.ender3_actual_tool0_temp
+      above: 240
+    - platform: numeric_state
+      entity_id: sensor.ender3_actual_bed_temp
+      above: 120
+  action:
+      - service: notify.mobile_app_blokmeister_op6
+        data_template:
+          title: Printer temperature warning
+          message: 'Ender 3 temperature is too high! Nozzle temperature: {{ states.sensor.ender3_actual_tool0_temp.state }}. Bed temperature: {{ states.sensor.ender3_actual_bed_temp.state }}'
           data:
             icon: https://b3n.org/wp-content/uploads/2019/11/noun_3D-Printer_2071174-2.png
             image: !secret octoprint_camera_snapshot_url
