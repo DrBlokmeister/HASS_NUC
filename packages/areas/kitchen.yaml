@@ -114,6 +114,16 @@ automation:
           brightness: 255
       - service: switch.flux_study_update
 
+  - alias: '[kitchen|notify] fridge overtemp warning'
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.temperature_fridge
+        above: 16
+    action:
+      - service: notify.mobile_app_blokmeister_op6
+        data_template:
+          title: Fridge temperature warning
+          message: 'Fridge temperature too high! Current temperature: {{ states.sensor.temperature_fridge.state }}.'
 ################
 #    SCENES    #
 ################
