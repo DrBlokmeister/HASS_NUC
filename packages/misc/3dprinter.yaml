@@ -1,6 +1,9 @@
 homeassistant:
   customize:
-
+    sensor.ender3_time_elapsed:
+      device_class: timestamp
+    sensor.ender3_time_remaining:
+      device_class: timestamp
 
 octoprint:
   host: 192.168.1.206
@@ -36,11 +39,13 @@ sensor:
       print_time_remaining_human_readable:
         entity_id: sensor.ender3_time_remaining
         friendly_name: "Print time remaining"
+        icon_template: mdi:clock-end
         value_template: >
           {{ (states.sensor.ender3_time_remaining.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
       print_elapsed_human_readable:
         entity_id: sensor.ender3_time_elapsed
         friendly_name: "Print time elapsed"
+        icon_template: mdi:clock-start
         value_template: >
           {{ (states.sensor.ender3_time_elapsed.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
 ########################
@@ -65,9 +70,9 @@ automation:
 - alias: '[ender3|notify]Notify 3D printer done'
   trigger:
     - platform: state
-      entity_id: binary_sensor.ender3_printing
-      from: 'on'
-      to: 'off'
+      entity_id: sensor.ender3_current_state
+      from: 'printing'
+      to: 'operational'
   condition:
     - condition: state
       entity_id: input_boolean.sleep_tracking_on
@@ -91,8 +96,8 @@ automation:
       entity_id: input_boolean.sleep_tracking_on
       state: 'off'
     - condition: state
-      entity_id: binary_sensor.ender3_printing
-      state: 'on'
+      entity_id: sensor.ender3_current_state
+      state: 'printing'
     - condition: state
       entity_id: person.sander_blok
       state: 'not_home'
