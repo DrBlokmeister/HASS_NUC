@@ -3,7 +3,7 @@ homeassistant:
     sensor.*db_size:
       icon: mdi:database
     sensor.mediacenter_cabinet_*:
-      device_class: 'temperature'
+      device_class: temperature
       unit_of_measurement: '°C'
       templates:
         icon_color: >-
@@ -102,6 +102,11 @@ sensor:
         friendly_name: "Home Assistant uptime"
         value_template: >
           {{ (states.sensor.uptime.state|float * 60 | int - 3600) | timestamp_custom(('%H:%M:%S')) }}
+      uptime_seconds:
+        entity_id: sensor.uptime
+        device_class: timestamp
+        value_template: >
+          {{ states.sensor.uptime.state|float * 60 | float }}
 
 ########################
 #    BINARY SENSORS    #
