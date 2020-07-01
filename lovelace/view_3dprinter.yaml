@@ -21,6 +21,8 @@ cards:
       - entities:
           - entity: sensor.print_time_remaining_human_readable
           - entity: sensor.print_elapsed_human_readable
+          - entity: sensor.ender3_time_remaining
+          - entity: sensor.ender3_time_elapsed
           - entity: sensor.ender3_print_file
         show_header_toggle: false
         type: entities
@@ -130,11 +132,28 @@ cards:
           title: Printer Camera
           type: picture-glance
         conditions:
-          - entity: camera.ender3
+          - entity: sensor.ender3_current_state
             state_not: unavailable
+          - entity: sensor.blokmeister_op6_blokmeister_op6_wifi_sensor
+            state: enabled
         type: conditional
       - card:
-          entity: camera.camera.ender3
+          aspect_ratio: 0%
+          camera_image: camera.ender3_360p
+          camera_view: live
+          entities:
+            - entity: light.printer_camera_flash_led
+          entity: camera.ender3
+          title: Printer Camera
+          type: picture-glance
+        conditions:
+          - entity: sensor.ender3_current_state
+            state_not: unavailable
+          - entity: sensor.blokmeister_op6_blokmeister_op6_wifi_sensor
+            state: disabled
+        type: conditional
+      - card:
+          entity: camera.ender3
           type: entity
         conditions:
           - entity: camera.ender3
