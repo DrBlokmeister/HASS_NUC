@@ -126,6 +126,35 @@ automation:
           data:
             icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle-alert.png
             image: !secret octoprint_camera_snapshot_url
+
+- alias: '[ender3|lights] turn on light when printer is on'
+  trigger:
+    - platform: state
+      entity_id: sensor.ender3_current_state
+      to: 'printing'
+    - platform: numeric_state
+      entity_id: sensor.average_illumination_study_stats
+      below: 80
+    - platform: state
+      entity_id: light.study_2
+      to: 'off'
+  condition:
+    - condition: numeric_state
+      entity_id: sensor.average_illumination_study_stats
+      below: 80
+    - condition: state
+      entity_id: sensor.ender3_current_state
+      state: 'printing'
+    - condition: state
+      entity_id: light.study_2
+      state: 'off'
+  action:
+    - service: light.turn_on
+      data:
+        entity_id: light.study_2
+        brightness: 255
+    - service: switch.flux_study_update
+
 ################
 #    SCENES    #
 ################
