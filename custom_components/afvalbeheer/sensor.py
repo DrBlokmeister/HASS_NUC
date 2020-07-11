@@ -1,7 +1,7 @@
 """
 Sensor component for waste pickup dates from dutch and belgium waste collectors
 Original Author: Pippijn Stortelder
-Current Version: 4.3.2 20200604 - Pippijn Stortelder
+Current Version: 4.4.0 20200707 - Pippijn Stortelder
 20200419 - Major code refactor (credits @basschipper)
 20200420 - Add sensor even though not in mapping
 20200420 - Added support for DeAfvalApp
@@ -30,6 +30,9 @@ Current Version: 4.3.2 20200604 - Pippijn Stortelder
 20200527 - Support for Omrin
 20200527 - Support for Almere
 20200604 - Fix mapping for Omrin
+20200629 - Added support for Schouwen-Duiveland
+20200701 - Fix mapping for MijnAfvalWijzer
+20200707 - Added option to print out all possible fractions on HA boot
 
 Example config:
 Configuration.yaml:
@@ -95,6 +98,7 @@ CONF_DISABLE_ICONS = 'disableicons'
 CONF_TRANSLATE_DAYS = 'dutch'
 CONF_DAY_OF_WEEK = 'dayofweek'
 CONF_ALWAYS_SHOW_DAY = 'alwaysshowday'
+CONF_PRINT_AVAILABLE_WASTE_TYPES = 'printwastetypes'
 
 ATTR_WASTE_COLLECTOR = 'Wastecollector'
 ATTR_HIDDEN = 'Hidden'
@@ -117,6 +121,7 @@ OPZET_COLLECTOR_URLS = {
     'peelenmaas': 'https://afvalkalender.peelenmaas.nl',
     'purmerend': 'https://afvalkalender.purmerend.nl',
     'rmn': 'https://inzamelschema.rmn.nl',
+    'schouwen-duiveland': 'https://afvalkalender.schouwen-duiveland.nl',
     'spaarnelanden': 'https://afvalwijzer.spaarnelanden.nl',
     'sudwestfryslan': 'https://afvalkalender.sudwestfryslan.nl',
     'suez': 'https://inzamelwijzer.suez.nl',
@@ -193,6 +198,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_TRANSLATE_DAYS, default=False): cv.boolean,
     vol.Optional(CONF_DAY_OF_WEEK, default=True): cv.boolean,
     vol.Optional(CONF_ALWAYS_SHOW_DAY, default=False): cv.boolean,
+    vol.Optional(CONF_PRINT_AVAILABLE_WASTE_TYPES, default=False): cv.boolean,
 })
 
 
@@ -215,6 +221,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     dutch_days = config.get(CONF_TRANSLATE_DAYS)
     day_of_week = config.get(CONF_DAY_OF_WEEK)
     always_show_day = config.get(CONF_ALWAYS_SHOW_DAY)
+    print_waste_type = config.get(CONF_PRINT_AVAILABLE_WASTE_TYPES)
 
     if date_object == True:
         date_only = 1
@@ -229,7 +236,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     elif waste_collector == "area":
         _LOGGER.error("Area - Update your config to use AreaReiniging as a waste collector.")
         waste_collector = "areareiniging"    
-    data = WasteData(hass, waste_collector, city_name, postcode, street_name, street_number, suffix)
+    data = WasteData(hass, waste_collector, city_name, postcode, street_name, street_number, suffix, print_waste_type)
 
     entities = []
 
@@ -243,7 +250,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         entities.append(WasteDateSensor(data, config[CONF_RESOURCES], waste_collector, timedelta(days=1), dutch_days, name, name_prefix))
 
     async_add_entities(entities)
-
     await data.schedule_update(timedelta())
 
 
@@ -274,7 +280,14 @@ class WasteCollectionRepository(object):
             return list(filter(lambda x: x.date.date() == date.date() and x.waste_type in waste_types, self.get_sorted()))
         else:
             return list(filter(lambda x: x.date.date() == date.date(), self.get_sorted()))
-
+    
+    def get_available_waste_types(self):
+        today = datetime.now()
+        possible_waste_types = []
+        for collection in self.collections:
+            if collection.waste_type not in possible_waste_types:
+                possible_waste_types.append(collection.waste_type)
+        return sorted(possible_waste_types, key=str.lower)
 
 class WasteCollection(object):
 
@@ -294,7 +307,7 @@ class WasteCollection(object):
 
 class WasteData(object):
 
-    def __init__(self, hass, waste_collector, city_name, postcode, street_name, street_number, suffix):
+    def __init__(self, hass, waste_collector, city_name, postcode, street_name, street_number, suffix, print_waste_type):
         self.hass = hass
         self.waste_collector = waste_collector
         self.city_name = city_name
@@ -302,6 +315,7 @@ class WasteData(object):
         self.street_name = street_name
         self.street_number = street_number
         self.suffix = suffix
+        self.print_waste_type = print_waste_type
         self.collector = None
         self.__select_collector()
 
@@ -338,6 +352,9 @@ class WasteData(object):
     async def async_update(self, *_):
         await self.collector.update()
         await self.schedule_update(SCHEDULE_UPDATE_INTERVAL)
+        if self.print_waste_type:
+            _LOGGER.error('Available waste types: ' + ', '.join(self.collector.collections.get_available_waste_types()))
+            self.print_waste_type = False
 
     @property
     def collections(self):
@@ -436,6 +453,7 @@ class AfvalwijzerCollector(WasteCollector):
         'kca': WASTE_TYPE_KCA,
         'restafval': WASTE_TYPE_GREY,
         'plastic': WASTE_TYPE_PACKAGES,
+        'gkbp': WASTE_TYPE_PACKAGES,
         'papier': WASTE_TYPE_PAPER,
         'textiel': WASTE_TYPE_TEXTILE,
         'kerstbomen': WASTE_TYPE_TREE,
