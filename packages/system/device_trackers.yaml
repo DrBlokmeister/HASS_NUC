@@ -37,6 +37,18 @@ sensor:
     type: time
     start: '{{ now().replace(hour=0, minute=0, second=0) }}'
     end: '{{ now() }}'
+  - platform: template
+    sensors:
+      blokmeisterop6_wifi_ssid:
+        friendly_name: BlokmeisterOP6 WIFI SSID
+        value_template: >
+          {% if is_state('sensor.blokmeister_op6_blokmeister_op6_wifi_sensor', 'disabled') %}
+            wifi_off
+          {% elif states.sensor.blokmeister_op6_blokmeister_op6_wifi_sensor.attributes.ssid == "<unknown_ssid>" %}
+            disconnected
+          {% else %}
+            {{ states.sensor.blokmeister_op6_blokmeister_op6_wifi_sensor.attributes.ssid }}
+          {% endif %}
 
 ########################
 #    BINARY SENSORS    #
