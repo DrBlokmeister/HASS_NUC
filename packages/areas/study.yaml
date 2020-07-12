@@ -116,7 +116,7 @@ automation:
           before: sunrise
           before_offset: "01:00:00"
         - condition: numeric_state
-          entity_id: sensor.average_illumination_study_stats
+          entity_id: sensor.average_illumination_study
           below: 80
     action:
       - service: light.turn_on
@@ -124,40 +124,6 @@ automation:
           entity_id: light.study_lights
           brightness: 255
       - service: switch.flux_study_update
-
-  #Turn on study lights when motion is detected cool
-  # - alias: study_motion_bright_cool
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.motion_sensor_study2
-  #       to: 'on'
-  #   condition:
-  #     - condition: time
-  #       after: '7:00:00'
-  #       before: '19:00:00'
-  #     - condition: sun
-  #       after: sunset
-  #       after_offset: "-01:00:00"
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.study_bright_cool
-
-  #Turn on study lights when motion is detected warm
-  # - alias: study_motion_bright_warm
-  #   trigger:
-  #     platform: state
-  #     entity_id: binary_sensor.motion_sensor_study2
-  #     to: 'on'
-  #   condition:
-  #     - condition: time
-  #       after: '19:00:00'
-  #       before: '6:00:00'
-  #     - condition: sun
-  #       after: sunset
-  #       after_offset: "-01:00:00"
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.study_bright_warm
 
   - alias: '[study|lights] Auto lights off'
     trigger:
@@ -177,11 +143,13 @@ automation:
       - condition: state
         entity_id: binary_sensor.vibration_sensor
         state: 'off'
-        for: 00:05:00
+        for: 00:09:00
       - condition: state
         entity_id: binary_sensor.study_motion_combined
         state: 'off'
-        for: 00:10:00
+        for: 00:09:00
+      - condition: template
+        value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 540  }}"
     action:
       service: light.turn_off
       entity_id: light.study_lights
@@ -309,6 +277,7 @@ scene:
 group:
   study_lighting_automations:
     entities:
+      - automation.study_lights_turn_on_lights_when_motion_is_detected
       - automation.study_motion_bright_cool
       - automation.study_motion_bright_warm
       - automation.study_nomotion_nopc_turn_off
