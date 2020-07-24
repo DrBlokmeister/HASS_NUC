@@ -93,6 +93,10 @@ sensor:
       total_energy_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states.sensor.total_energy_today.state|float * 0.22) |round(2) }}"
+  - platform: dsmr
+    host: 192.168.1.61
+    port: 2001
+    dsmr_version: 5
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -233,7 +237,14 @@ group:
       - sensor.blitzwolf_nuc_energy_yesterday
       - sensor.blitzwolf_nuc_energy_total
       - sensor.blitzwolf_nuc_energy_totalstarttime
-
+  meter_readings:
+    name: Meter readings
+    entities:
+      - sensor.energy_consumption_tarif_1
+      - sensor.energy_consumption_tarif_2
+      - sensor.energy_production_tarif_1
+      - sensor.energy_production_tarif_2
+      - sensor.gas_consumption
 #################
 #    SCRIPTS    #
 #################
