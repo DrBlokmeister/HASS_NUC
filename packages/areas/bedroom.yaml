@@ -476,6 +476,7 @@ automation:
         - light.bedroom_lights
 
   - alias: '[bedroom|light]Lights_when_cabinet_is_open'
+    mode: queued
     trigger:
       platform: state
       entity_id: binary_sensor.door_window_sensor_bedroom_closet
@@ -492,15 +493,20 @@ automation:
           brightness: 255
           color_temp: 280 
           transition: 1
+      - delay:
+          seconds: 3
 
   - alias: '[bedroom|light]Lights_when_cabinet_is_closed'
+    mode: queued
     trigger:
       platform: state
       entity_id: binary_sensor.door_window_sensor_bedroom_closet
       to: 'off'
     action:
-      service: scene.turn_on
-      entity_id: scene.bedroom_1_before
+      - service: scene.turn_on
+        entity_id: scene.bedroom_1_before
+      - delay:
+          seconds: 3
 
 ################
 #    SCENES    #
