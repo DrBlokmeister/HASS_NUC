@@ -35,15 +35,24 @@ automation:
         entity_id: input_boolean.sleep_tracking_on
         state: 'off'
     action:
-      - service: light.turn_on
-        entity_id:
-          - light.bathroom_light_dim
-      - condition: time
-        after: '07:00:00'
-        before: '21:00:00'
-      - service: light.turn_on
-        entity_id:
-          - light.bathroom_light_bright
+      - choose:
+        - conditions:
+            - condition: time
+              after: '07:00:00'
+              before: '21:00:00'
+          sequence:
+            - service: light.turn_on
+              entity_id:
+                - light.bathroom_light_bright
+                - light.bathroom_light_dim
+        - conditions:
+            - condition: time
+              after: '21:00:00'
+              before: '07:00:00'
+          sequence:
+            - service: light.turn_on
+              entity_id:
+                - light.bathroom_light_dim
 ################
 #    SCENES    #
 ################
