@@ -97,6 +97,7 @@ switch:
 #####################
 automation:
   - alias: '[study|lights] Turn on lights when motion is detected'
+    mode: restart
     trigger:
       - platform: state
         entity_id: binary_sensor.study_motion_combined
@@ -124,75 +125,79 @@ automation:
           entity_id: light.study_lights
           brightness: 255
       - service: switch.flux_study_update
+      - delay:
+          minutes: 10
+      - service: light.turn_off
+        entity_id: light.study_lights
 
-  - alias: '[study|lights] Auto lights off'
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.study_motion_combined
-        to: 'off'
-        for: 00:10:00
-      - platform: template
-        value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 600  }}"
-      - platform: state
-        entity_id: binary_sensor.vibration_sensor
-        to: 'off'
-        for: 00:10:00
-    condition:
-      - condition: template
-        value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 300  }}"
-      - condition: state
-        entity_id: binary_sensor.vibration_sensor
-        state: 'off'
-        for: 00:09:00
-      - condition: state
-        entity_id: binary_sensor.study_motion_combined
-        state: 'off'
-        for: 00:09:00
-      - condition: template
-        value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 540  }}"
-    action:
-      service: light.turn_off
-      entity_id: light.study_lights
+  # - alias: '[study|lights] Auto lights off'
+  #   trigger:
+  #     - platform: state
+  #       entity_id: binary_sensor.study_motion_combined
+  #       to: 'off'
+  #       for: 00:10:00
+  #     - platform: template
+  #       value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 600  }}"
+  #     - platform: state
+  #       entity_id: binary_sensor.vibration_sensor
+  #       to: 'off'
+  #       for: 00:10:00
+  #   condition:
+  #     - condition: template
+  #       value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 300  }}"
+  #     - condition: state
+  #       entity_id: binary_sensor.vibration_sensor
+  #       state: 'off'
+  #       for: 00:09:00
+  #     - condition: state
+  #       entity_id: binary_sensor.study_motion_combined
+  #       state: 'off'
+  #       for: 00:09:00
+  #     - condition: template
+  #       value_template: "{{ (as_timestamp(states.sensor.time.last_changed) - as_timestamp(states.sensor.vibration_sensor_attributes.last_changed)) > 540  }}"
+  #   action:
+  #     service: light.turn_off
+  #     entity_id: light.study_lights
 
-  #Turn off study lights if no motion has been detected for 10 minutes
-  - alias: study_nomotion_nopc_turn_off
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.study_motion_combined
-        to: 'off'
-        for: 00:05:00
-      - platform: state
-        entity_id: binary_sensor.study_motion_combined
-        to: 'off'
-        for: 00:10:00
-      - platform: state
-        entity_id: binary_sensor.study_motion_combined
-        to: 'off'
-        for: 00:15:00
-      - platform: state
-        entity_id: binary_sensor.blokmeisterdesktop
-        to: 'off'
-      - platform: state
-        entity_id: binary_sensor.computer_on
-        to: 'off'
-    condition:
-      condition: and
-      conditions:
-        - condition: state
-          entity_id: binary_sensor.study_motion_combined
-          state: 'off'
-          #for: 00:01:00
-        - condition: or
-          conditions:
-            - condition: state
-              entity_id: binary_sensor.blokmeisterdesktop
-              state: 'off'
-            - condition: state
-              entity_id: binary_sensor.computer_on
-              state: 'off'
-    action:
-      service: light.turn_off
-      entity_id: light.study
+  # #Turn off study lights if no motion has been detected for 10 minutes
+  # - alias: study_nomotion_nopc_turn_off
+  #   trigger:
+  #     - platform: state
+  #       entity_id: binary_sensor.study_motion_combined
+  #       to: 'off'
+  #       for: 00:05:00
+  #     - platform: state
+  #       entity_id: binary_sensor.study_motion_combined
+  #       to: 'off'
+  #       for: 00:10:00
+  #     - platform: state
+  #       entity_id: binary_sensor.study_motion_combined
+  #       to: 'off'
+  #       for: 00:15:00
+  #     - platform: state
+  #       entity_id: binary_sensor.blokmeisterdesktop
+  #       to: 'off'
+  #     - platform: state
+  #       entity_id: binary_sensor.computer_on
+  #       to: 'off'
+  #   condition:
+  #     condition: and
+  #     conditions:
+  #       - condition: state
+  #         entity_id: binary_sensor.study_motion_combined
+  #         state: 'off'
+  #         #for: 00:01:00
+  #       - condition: or
+  #         conditions:
+  #           - condition: state
+  #             entity_id: binary_sensor.blokmeisterdesktop
+  #             state: 'off'
+  #           - condition: state
+  #             entity_id: binary_sensor.computer_on
+  #             state: 'off'
+  #   action:
+  #     service: light.turn_off
+  #     entity_id: light.study
 
   #Turn off study lights if no motion has been detected for 1 hour
   - alias: study_nomotion_pc_turn_off
