@@ -16,15 +16,15 @@ binary_sensor:
         device_class: light
         value_template: >-
           {{ 
-            states.light.kitchen.attributes.brightness == 254 and 
-            states.light.kitchen.attributes.color_temp == 320
+            states.light.kitchen_lights.attributes.brightness == 254 and 
+            states.light.kitchen_lights.attributes.color_temp == 320
           }}
       scene_kitchen_bright_warm:
         device_class: light
         value_template: >-
           {{ 
-            states.light.kitchen.attributes.brightness == 254 and 
-            states.light.kitchen.attributes.color_temp == 454 
+            states.light.kitchen_lights.attributes.brightness == 254 and 
+            states.light.kitchen_lights.attributes.color_temp == 454 
           }}
 
 ##################
@@ -42,7 +42,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.kitchen
+            entity_id: light.kitchen_lights
             transition: 2
       scene_kitchen_bright_warm:
         icon_template: mdi:lightbulb-outline
@@ -53,19 +53,20 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.kitchen
+            entity_id: light.kitchen_lights
             transition: 2
   - platform: flux
     name: flux_kitchen
     mode: mired
     disable_brightness_adjust: True
     lights:
-      - light.kitchen
+      - light.kitchen_lights
 #####################
 #    AUTOMATIONS    #
 #####################
 automation:
   - alias: '[kitchen|lights] Turn on lights when motion is detected'
+    mode: restart
     trigger:
       - platform: state
         entity_id: binary_sensor.motion_sensor_kitchen
@@ -82,21 +83,25 @@ automation:
     action:
       - service: light.turn_on
         data:
-          entity_id: light.kitchen
+          entity_id: light.kitchen_lights
           brightness: 255
       - service: switch.flux_kitchen_update
+      - delay:
+          minutes: 10
+      - service: light.turn_off
+        entity_id: light.kitchen_lights
 
-  #Turn off kitchen lights if no motion has been detected for 10 minutes
-  - alias: '[kitchen|lights] Turn off when no motion'
-    trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_kitchen
-      from: 'on'
-      to: 'off'
-      for: 00:10:00
-    action:
-      service: light.turn_off
-      entity_id: light.kitchen
+  # #Turn off kitchen lights if no motion has been detected for 10 minutes
+  # - alias: '[kitchen|lights] Turn off when no motion'
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.motion_sensor_kitchen
+  #     from: 'on'
+  #     to: 'off'
+  #     for: 00:10:00
+  #   action:
+  #     service: light.turn_off
+  #     entity_id: light.kitchen
 
   - alias: '[kitchen|lights]Toggle kitchen lights through switch press'
     trigger:
@@ -118,7 +123,7 @@ automation:
     trigger:
       - platform: numeric_state
         entity_id: sensor.temperature_fridge
-        above: 16
+        above: 15
     action:
       - service: notify.mobile_app_blokmeister_op6
         data_template:
@@ -157,3 +162,9 @@ group:
 #    LIGHTS    #
 ################
 light:
+  - platform: group
+    name: Kitchen Lights
+    entities:
+      - light.kitchen_1
+      - light.kitchen_2
+      - light.kitchen_3
