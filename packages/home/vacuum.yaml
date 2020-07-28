@@ -69,7 +69,7 @@ counter:
 #####################
 automation:
 #Auto clean whole house when I'm not home on mon, wed, fri
-  - alias: '[home|vacuum]clean_whole_house'
+  - alias: '[home|vacuum]scheduled_cleanup'
     trigger:
       - platform: state
         entity_id: person.sander_blok
@@ -112,46 +112,12 @@ automation:
           entity_id: counter.times_vacuumed_since_empty_bin
       - service: vacuum.start
         entity_id: vacuum.xiaomi_vacuum_cleaner
-
-#If I'm not home and the conditions are met, starts cleaning around the litterbox on tue, thu, sat, sun.
-  - alias: '[home|vacuum]clean_litterbin'
-    trigger:
-      - platform: state
-        entity_id: person.sander_blok
-        from: 'home'
-        to: 'not_home'
-        # for: 00:10:00
-      - platform: time
-        at: '07:01:00'
-    condition:
-      - condition: time
-        weekday:
-          - tue
-          - thu
-          - sat
-          - sun     
-      - condition: time
-        after: '7:01:00'
-        before: '22:00:00'
-      - condition: state
-        entity_id: person.sander_blok
-        state: 'not_home'
-      - condition: state
-        entity_id: input_boolean.vacuumed_today
-        state: 'off'    
-    action:
-      - service: system_log.write
-        data_template:
-          message: 'Started vacuum automation: auto clean litterbox when not home'
-          level: info
-      # - service: script.vacuum_message_litterbox_clean
-      - service: input_boolean.turn_on
+      - service: notify.mobile_app_blokmeister_op6
         data:
-          entity_id: input_boolean.vacuumed_today
-      - service: counter.increment
-        data:
-          entity_id: counter.times_vacuumed_since_empty_bin
-      - service: script.vacuum_around_litterbox_twice
+          message: "Started scheduled cleanup"
+          title: "Home Assistant - Vacuum"
+          data:
+            icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
 
   - alias: '[home|vauum]counter_drive_to_trashbin'
     trigger:
