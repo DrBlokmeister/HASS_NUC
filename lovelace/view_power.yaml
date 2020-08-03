@@ -64,6 +64,64 @@ cards:
       detail: 2
     type: vertical-stack
   - cards:
+      - cards:
+          - type: gauge
+            name: Total Power usage
+            unit: 'W'
+            entity: sensor.total_power_watt
+            min: 0
+            max: 5000
+            severity:
+              green: 0
+              yellow: 2500
+              red: 3500
+        type: horizontal-stack
+      - cards:
+          - type: gauge
+            name: Computer Power
+            unit: 'W'
+            entity: sensor.blitzwolf_computer_energy_power
+            min: 0
+            max: 5000
+            severity:
+              green: 0
+              yellow: 400
+              red: 700
+          - type: gauge
+            name: Mediacenter Power
+            unit: 'W'
+            entity: sensor.blitzwolf_mediacenter_energy_power
+            min: 0
+            max: 5000
+            severity:
+              green: 0
+              yellow: 300
+              red: 500
+        type: horizontal-stack
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.verbruik_per_dag
+            aggregate_func: max
+            name: Max
+        name: Energy usage daily (last week)
+        hours_to_show: 168
+        group_by: date
+        lower_bound: 0
+        upper_bound: 20
+        show:
+          graph: bar
+        color_thresholds_transition: smooth
+        color_thresholds:
+          - value: 5
+            color: "#46ff33"
+          - value: 7.5
+            color: "#beff33"
+          - value: 10
+            color: "#ffd433"
+          - value: 12.5
+            color: "#ffaf33"
+          - value: 15
+            color: "#ff5733"
       - entities:
           - entity: sensor.total_power
             name: Total power
@@ -83,14 +141,4 @@ cards:
             name: Total
         columns: 3
         type: glance
-      - type: gauge
-        name: Total Power usage
-        unit: 'kW'
-        entity: sensor.total_power_watt
-        min: 0
-        max: 5
-        severity:
-          green: 0
-          yellow: 2
-          red: 4
     type: vertical-stack
