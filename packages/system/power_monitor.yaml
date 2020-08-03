@@ -93,10 +93,118 @@ sensor:
       total_energy_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states.sensor.total_energy_today.state|float * 0.22) |round(2) }}"
-  - platform: dsmr
-    host: 192.168.1.61
-    port: 2001
-    dsmr_version: 5
+
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=on
+    name: Huidig verbruik
+    value_template: '{{ value_json.0.CONSUMPTION_W }}'
+    unit_of_measurement: "W"
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
+    name: Meterstand hoog
+    value_template: '{{ value_json.0.CONSUMPTION_KWH_HIGH | round(2) }}'
+    unit_of_measurement: "kWh"
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
+    name: Meterstand laag
+    value_template: '{{ value_json.0.CONSUMPTION_KWH_LOW | round(2) }}'
+    unit_of_measurement: "kWh"
+    
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
+    name: Kosten Hoog Tarief
+    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
+    unit_of_measurement: "€"
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
+    name: Kosten Laag Tarief
+    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
+    unit_of_measurement: "€"
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
+    name: Maand Hoog Tarief
+    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
+    unit_of_measurement: "€"
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
+    name: Maand Laag Tarief
+    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
+    unit_of_measurement: "€"
+
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+    name: Verbruik Per Dag
+    value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
+    unit_of_measurement: "kWh"
+
+  - platform: mqtt
+    name: timestamp_local
+    state_topic: "p1monitor/smartmeter/timestamp_local"
+    device_class: timestamp
+  - platform: mqtt
+    name: timestamp_utc
+    state_topic: "p1monitor/smartmeter/timestamp_utc"
+    device_class: timestamp
+  - platform: mqtt
+    name: consumption_gas_m3
+    state_topic: "p1monitor/smartmeter/consumption_gas_m3"
+    unit_of_measurement: m3
+  - platform: mqtt
+    name: consumption_kwh_high
+    state_topic: "p1monitor/smartmeter/consumption_kwh_high"
+    unit_of_measurement: kWh
+  - platform: mqtt
+    name: consumption_kwh_low
+    state_topic: "p1monitor/smartmeter/consumption_kwh_low"
+    unit_of_measurement: kWh
+  - platform: mqtt
+    name: consumption_kw
+    state_topic: "p1monitor/smartmeter/consumption_kw"
+    device_class: power
+    unit_of_measurement: kW
+  - platform: mqtt
+    name: tarifcode
+    state_topic: "p1monitor/smartmeter/tarifcode"
+  - platform: mqtt
+    name: record_is_processed
+    state_topic: "p1monitor/smartmeter/record_is_processed"
+  - platform: mqtt
+    name: consumption_l1_w
+    state_topic: "p1monitor/phase/consumption_l1_w"
+    device_class: power
+    unit_of_measurement: W
+  - platform: mqtt
+    name: l1_v
+    state_topic: "p1monitor/phase/l1_v"
+    unit_of_measurement: V
+  - platform: mqtt
+    name: l1_a
+    state_topic: "p1monitor/phase/l1_a"
+    unit_of_measurement: A
+
+  - platform: template
+    sensors:
+      energie_kosten_dag:
+        value_template: "{{ states('sensor.kosten_hoog_tarief') | float + states('sensor.kosten_laag_tarief') | float | round(2) }}"
+        unit_of_measurement: "€"
+      energie_kosten_maand:
+        value_template: "{{ states('sensor.maand_hoog_tarief') | float + states('sensor.maand_laag_tarief') | float | round(2) }}"
+        unit_of_measurement: "€"
+      total_power_watt:
+        value_template: "{{ states('sensor.consumption_kw') | float * 1000 }}"
+        unit_of_measurement: "W"
+      current_costs_per_hour:
+        value_template: "{{ states('sensor.consumption_kw') | float * states('sensor.kosten_hoog_tarief')}}"
+        unit_of_measurement: "€"
+      
+
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -240,11 +348,17 @@ group:
   meter_readings:
     name: Meter readings
     entities:
-      - sensor.energy_consumption_tarif_1
-      - sensor.energy_consumption_tarif_2
-      - sensor.energy_production_tarif_1
-      - sensor.energy_production_tarif_2
-      - sensor.gas_consumption
+      - sensor.timestamp_local
+      - sensor.timestamp_utc
+      - sensor.consumption_gas_m3
+      - sensor.consumption_kwh_high
+      - sensor.consumption_kwh_low
+      - sensor.consumption_kw
+      - sensor.tarifcode
+      - sensor.record_is_processed
+      - sensor.consumption_l1_w
+      - sensor.l1_v
+      - sensor.l1_a
 #################
 #    SCRIPTS    #
 #################
