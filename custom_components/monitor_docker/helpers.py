@@ -4,6 +4,7 @@ import aiodocker
 import asyncio
 import concurrent
 import logging
+import os
 
 from datetime import datetime, timezone
 from dateutil import parser, relativedelta
@@ -27,28 +28,36 @@ from .const import (
     ATTR_VERSION_OS,
     ATTR_VERSION_OS_TYPE,
     COMPONENTS,
+    CONF_CERTPATH,
     CONTAINER,
     CONTAINER_STATS_CPU_PERCENTAGE,
+    CONTAINER_STATS_1CPU_PERCENTAGE,
     CONTAINER_INFO_IMAGE,
-    CONTAINER_INFO_NETWORKMODE,
+    CONTAINER_INFO_NETWORK_AVAILABLE,
     CONTAINER_STATS_MEMORY,
     CONTAINER_STATS_MEMORY_PERCENTAGE,
     CONTAINER_STATS_NETWORK_SPEED_UP,
     CONTAINER_STATS_NETWORK_SPEED_DOWN,
     CONTAINER_STATS_NETWORK_TOTAL_UP,
     CONTAINER_STATS_NETWORK_TOTAL_DOWN,
+    DOCKER_INFO_IMAGES,
     CONTAINER_INFO_STATE,
     CONTAINER_INFO_STATUS,
     CONTAINER_INFO_UPTIME,
     DOCKER_INFO_CONTAINER_RUNNING,
+    DOCKER_INFO_CONTAINER_PAUSED,
+    DOCKER_INFO_CONTAINER_STOPPED,
     DOCKER_INFO_CONTAINER_TOTAL,
     DOCKER_INFO_VERSION,
     DOCKER_STATS_CPU_PERCENTAGE,
+    DOCKER_STATS_1CPU_PERCENTAGE,
     DOCKER_STATS_MEMORY,
     DOCKER_STATS_MEMORY_PERCENTAGE,
     DOMAIN,
     PRECISION,
 )
+
+VERSION = "1.4"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,15 +84,62 @@ class DockerAPI:
         self._containers = {}
         self._tasks = {}
         self._info = {}
+        self._event_create = {}
+        self._event_destroy = {}
+
+        _LOGGER.debug("Helper version: %s", VERSION)
 
         self._interval = config[CONF_SCAN_INTERVAL].seconds
 
         self._loop = asyncio.get_event_loop()
 
         try:
-            self._api = aiodocker.Docker(url=self._config[CONF_URL])
+            # Try to fix unix:// to unix:/// (3 are required by aiodocker)
+            url = self._config[CONF_URL]
+            if (
+                url is not None
+                and url.find("unix://") == 0
+                and url.find("unix:///") == -1
+            ):
+                url = url.replace("unix://", "unix:///")
+
+            # Do some debugging logging for TCP/TLS
+            if url is not None:
+                _LOGGER.debug("Docker URL is '%s'", url)
+
+                # Check for TLS if it is not unix
+                if url.find("tcp:") == 0 or url.find("http:") == 0:
+                    tlsverify = os.environ.get("DOCKER_TLS_VERIFY", None)
+                    certpath = os.environ.get("DOCKER_CERT_PATH", None)
+                    if tlsverify is None:
+                        _LOGGER.debug(
+                            "Docker environment 'DOCKER_TLS_VERIFY' is NOT set"
+                        )
+                    else:
+                        _LOGGER.debug(
+                            "Docker environment set 'DOCKER_TLS_VERIFY=%s'", tlsverify
+                        )
+
+                    if certpath is None:
+                        _LOGGER.debug(
+                            "Docker environment 'DOCKER_CERT_PATH' is NOT set"
+                        )
+                    else:
+                        _LOGGER.debug(
+                            "Docker environment set 'DOCKER_CERT_PATH=%s'", certpath
+                        )
+
+                    if self._config[CONF_CERTPATH]:
+                        _LOGGER.debug(
+                            "Docker CertPath set '%s', setting environment variables DOCKER_TLS_VERIFY/DOCKER_CERT_PATH",
+                            self._config[CONF_CERTPATH],
+                        )
+                        os.environ["DOCKER_TLS_VERIFY"] = "1"
+                        os.environ["DOCKER_CERT_PATH"] = self._config[CONF_CERTPATH]
+
+            self._api = aiodocker.Docker(url=url)
         except Exception as err:
-            _LOGGER.error("Can not connect to Docker API (%s)", str(err))
+            _LOGGER.error("Can not connect to Docker API (%s)", str(err), exc_info=True)
             return
 
         version = self._loop.run_until_complete(self._api.version())
@@ -134,33 +190,120 @@ class DockerAPI:
         """Function to retrieve docker events. We can add or remove monitored containers."""
 
         try:
-            while True:
-                subscriber = self._api.events.subscribe()
+            subscriber = self._api.events.subscribe()
 
+            while True:
                 event = await subscriber.get()
                 if event is None:
+                    _LOGGER.error("run_docker_events loop ended")
                     break
 
                 # Only monitor container events
-                if event["Type"] == "container":
+                if event["Type"] == CONTAINER:
                     if event["Action"] == "create":
-                        cname = event["Actor"]["Attributes"]["name"]
-                        await self._container_add(cname)
+                        # Check if another task is running, ifso, we don't create a new one
+                        taskcreated = (
+                            True if self._event_create or self._event_destroy else False
+                        )
 
-                        for component in COMPONENTS:
-                            load_platform(
-                                self._hass,
-                                component,
-                                DOMAIN,
-                                {CONF_NAME: self._config[CONF_NAME], CONTAINER: cname},
-                                self._config,
+                        cname = event["Actor"]["Attributes"]["name"]
+
+                        # Add container name to containers to be monitored this has to
+                        # be a new task, otherwise it will block our event monitoring
+                        if cname not in self._event_create:
+                            _LOGGER.debug("%s: Event create container", cname)
+                            self._event_create[cname] = 0
+                        else:
+                            _LOGGER.error(
+                                "%s: Event create container, but already in working table?"
                             )
 
-                    if event["Action"] == "destroy":
+                        if self._event_create and not taskcreated:
+                            self._loop.create_task(self._container_create_destroy())
+
+                    elif event["Action"] == "destroy":
+                        # Check if another task is running, ifso, we don't create a new one
+                        taskcreated = (
+                            True if self._event_create or self._event_destroy else False
+                        )
+
                         cname = event["Actor"]["Attributes"]["name"]
-                        await self._container_remove(cname)
+
+                        # Remove container name to containers to be monitored this has to
+                        # be a new task, otherwise it will block our event monitoring
+                        if cname in self._event_create:
+                            _LOGGER.warning(
+                                "%s: Event destroy received, but create wasn't executed yet",
+                                cname,
+                            )
+                            del self._event_create[cname]
+                        elif cname not in self._event_destroy:
+                            _LOGGER.debug("%s: Event destroy container", cname)
+                            self._event_destroy[cname] = 0
+                        else:
+                            _LOGGER.error(
+                                "%s: Event destroy container, but already in working table?",
+                                cname,
+                            )
+
+                        if self._event_destroy and not taskcreated:
+                            self._loop.create_task(self._container_create_destroy())
+                    elif event["Action"] == "rename":
+                        # during a docker-compose up -d <container> the old container can be renamed
+                        # sensors/switch should be removed before the new container is monitored
+
+                        # New name
+                        cname = event["Actor"]["Attributes"]["name"]
+
+                        # Old name, and remove leading slash
+                        oname = event["Actor"]["Attributes"]["oldName"]
+                        oname = oname[1:]
+
+                        if oname in self._containers:
+                            _LOGGER.debug(
+                                "%s: Event rename container to '%s'", oname, cname
+                            )
+                            self._containers[cname] = self._containers[oname]
+                            del self._containers[oname]
+
+                            # We also need to rename the internal name
+                            self._containers[cname].set_name(cname)
+                        else:
+                            _LOGGER.error(
+                                "%s: Event rename container doesn't exist in list?",
+                                oname,
+                            )
+
         except Exception as err:
-            _LOGGER.error(" run_docker_events (%s)", str(err), exc_info=True)
+            _LOGGER.error("run_docker_events (%s)", str(err), exc_info=True)
+
+    #############################################################
+    async def _container_create_destroy(self):
+        """Handles create or destroy of container events."""
+
+        try:
+            while self._event_create or self._event_destroy:
+
+                # Go through create loop first
+                for cname in self._event_create:
+                    if self._event_create[cname] > 2:
+                        del self._event_create[cname]
+                        await self._container_add(cname)
+                        break
+                    else:
+                        self._event_create[cname] += 1
+                else:
+                    # If all create, we can handle the destroy loop
+                    for cname in self._event_destroy:
+                        await self._container_remove(cname)
+
+                    self._event_destroy = {}
+
+                # Sleep for 1 second, don't try to create it too fast
+                await asyncio.sleep(1)
+
+        except Exception as err:
+            _LOGGER.error("container_create_destroy (%s)", str(err), exc_info=True)
 
     #############################################################
     async def _container_add(self, cname):
@@ -175,6 +318,24 @@ class DockerAPI:
         self._containers[cname] = DockerContainerAPI(
             self._api, cname, self._interval, False
         )
+
+        # We should wait until container is attached
+        result = await self._containers[cname]._initGetContainer()
+
+        if result:
+            # Lets wait 1 second before we try to create sensors/switches
+            await asyncio.sleep(1)
+
+            for component in COMPONENTS:
+                load_platform(
+                    self._hass,
+                    component,
+                    DOMAIN,
+                    {CONF_NAME: self._config[CONF_NAME], CONTAINER: cname},
+                    self._config,
+                )
+        else:
+            _LOGGER.error("%s: Problem during start of monitoring", cname)
 
     #############################################################
     async def _container_remove(self, cname):
@@ -199,7 +360,12 @@ class DockerAPI:
                 self._info[DOCKER_INFO_CONTAINER_RUNNING] = info.get(
                     "ContainersRunning"
                 )
+                self._info[DOCKER_INFO_CONTAINER_PAUSED] = info.get("ContainersPaused")
+                self._info[DOCKER_INFO_CONTAINER_STOPPED] = info.get(
+                    "ContainersStopped"
+                )
                 self._info[DOCKER_INFO_CONTAINER_TOTAL] = info.get("Containers")
+                self._info[DOCKER_INFO_IMAGES] = info.get("Images")
 
                 self._info[ATTR_MEMORY_LIMIT] = info.get("MemTotal")
                 self._info[ATTR_ONLINE_CPUS] = info.get("NCPU")
@@ -209,6 +375,7 @@ class DockerAPI:
                 self._info[ATTR_VERSION_KERNEL] = info.get("KernelVersion")
 
                 self._info[DOCKER_STATS_CPU_PERCENTAGE] = 0.0
+                self._info[DOCKER_STATS_1CPU_PERCENTAGE] = 0.0
                 self._info[DOCKER_STATS_MEMORY] = 0
                 self._info[DOCKER_STATS_MEMORY_PERCENTAGE] = 0.0
 
@@ -244,11 +411,27 @@ class DockerAPI:
                     if self._info[DOCKER_STATS_CPU_PERCENTAGE] == 0.0
                     else round(self._info[DOCKER_STATS_CPU_PERCENTAGE], PRECISION)
                 )
+
+                # Calculate for 0-100%
+                if self._info[DOCKER_STATS_CPU_PERCENTAGE] == 0.0:
+                    self._info[DOCKER_STATS_1CPU_PERCENTAGE] = None
+                elif self._info[DOCKER_STATS_CPU_PERCENTAGE] is None:
+                    self._info[DOCKER_STATS_1CPU_PERCENTAGE] = None
+                else:
+                    self._info[DOCKER_STATS_1CPU_PERCENTAGE] = round(
+                        (
+                            self._info[DOCKER_STATS_CPU_PERCENTAGE]
+                            / self._info[ATTR_ONLINE_CPUS]
+                        ),
+                        PRECISION,
+                    )
+
                 self._info[DOCKER_STATS_MEMORY] = (
                     None
                     if self._info[DOCKER_STATS_MEMORY] == 0.0
                     else round(self._info[DOCKER_STATS_MEMORY], PRECISION)
                 )
+
                 self._info[DOCKER_STATS_MEMORY_PERCENTAGE] = (
                     None
                     if self._info[DOCKER_STATS_MEMORY_PERCENTAGE] == 0.0
@@ -256,11 +439,12 @@ class DockerAPI:
                 )
 
                 _LOGGER.debug(
-                    "Version: %s, Containers: %s, Running: %s, CPU: %s%%, Memory: %sMB, %s%%",
+                    "Version: %s, Containers: %s, Running: %s, CPU: %s%%, 1CPU: %s%%, Memory: %sMB, %s%%",
                     self._info[DOCKER_INFO_VERSION],
                     self._info[DOCKER_INFO_CONTAINER_TOTAL],
                     self._info[DOCKER_INFO_CONTAINER_RUNNING],
                     self._info[DOCKER_STATS_CPU_PERCENTAGE],
+                    self._info[DOCKER_STATS_1CPU_PERCENTAGE],
                     self._info[DOCKER_STATS_MEMORY],
                     self._info[DOCKER_STATS_MEMORY_PERCENTAGE],
                 )
@@ -305,6 +489,9 @@ class DockerContainerAPI:
         self._subscribers = []
         self._cpu_old = {}
         self._network_old = {}
+        self._network_error = 0
+        self._memory_error = 0
+        self._cpu_error = 0
 
         self._info = {}
         self._stats = {}
@@ -321,32 +508,40 @@ class DockerContainerAPI:
                 )
             except Exception as err:
                 _LOGGER.error(
-                    "%s: Container not available anymore (%s)",
+                    "%s: Container not available anymore (1) (%s)",
                     self._name,
                     str(err),
                     exc_info=True,
                 )
                 return
 
-        self._task = self._loop.create_task(self._run())
+            self._task = self._loop.create_task(self._run())
 
     #############################################################
-    async def _run(self):
+    async def _initGetContainer(self):
 
         # If we noticed a event=create, we need to attach here.
         # The run_until_complete doesn't work, because we are already
         # in a running loop.
-        if not self._atInit:
-            try:
-                self._container = await self._api.containers.get(self._name)
-            except Exception as err:
-                _LOGGER.error(
-                    "%s: Container not available anymore (%s)",
-                    self._name,
-                    str(err),
-                    exc_info=True,
-                )
-                return
+
+        try:
+            self._container = await self._api.containers.get(self._name)
+        except Exception as err:
+            _LOGGER.error(
+                "%s: Container not available anymore (2) (%s)",
+                self._name,
+                str(err),
+                exc_info=True,
+            )
+            return False
+
+        self._task = self._loop.create_task(self._run())
+
+        return True
+
+    #############################################################
+    async def _run(self):
+        """Loop to gather container info/stats."""
 
         try:
             while True:
@@ -368,7 +563,7 @@ class DockerContainerAPI:
             pass
         except Exception as err:
             _LOGGER.error(
-                "%s: Container not available anymore (%s)",
+                "%s: Container not available anymore (3) (%s)",
                 self._name,
                 str(err),
                 exc_info=True,
@@ -387,8 +582,8 @@ class DockerContainerAPI:
 
         self._info[CONTAINER_INFO_STATE] = raw["State"]["Status"]
         self._info[CONTAINER_INFO_IMAGE] = raw["Config"]["Image"]
-        self._info[CONTAINER_INFO_NETWORKMODE] = (
-            True if raw["HostConfig"]["NetworkMode"] == "host" else False
+        self._info[CONTAINER_INFO_NETWORK_AVAILABLE] = (
+            False if raw["HostConfig"]["NetworkMode"] in ["host", "none"] else True
         )
 
         # We only do a calculation of startedAt, because we use it twice
@@ -477,17 +672,28 @@ class DockerContainerAPI:
 
             self._cpu_old = cpu_new
 
+            if self._cpu_error > 0:
+                _LOGGER.debug(
+                    "%s: CPU error count %s reset to 0", self._name, self._cpu_error
+                )
+
+            self._cpu_error = 0
+
         except KeyError as err:
+
             # Something wrong with the raw data
-            _LOGGER.error(
-                "%s: Can not determine CPU usage for container (%s)",
-                self._name,
-                str(err),
-            )
-            if "cpu_stats" in raw:
-                _LOGGER.error("Raw 'cpu_stats' %s", raw["cpu_stats"])
-            else:
-                _LOGGER.error("No 'cpu_stats' found in raw packet")
+            if self._cpu_error == 0:
+                _LOGGER.error(
+                    "%s: Cannot determine CPU usage for container (%s)",
+                    self._name,
+                    str(err),
+                )
+                if "cpu_stats" in raw:
+                    _LOGGER.error("Raw 'cpu_stats' %s", raw["cpu_stats"])
+                else:
+                    _LOGGER.error("No 'cpu_stats' found in raw packet")
+
+            self._cpu_error += 1
 
         # Gather memory information
         memory_stats = {}
@@ -503,21 +709,36 @@ class DockerContainerAPI:
                 PRECISION,
             )
 
-        except (KeyError, TypeError) as err:
-            _LOGGER.error(
-                "%s: Can not determine memory usage for container (%s)",
-                self._name,
-                str(err),
-            )
-            if "memory_stats" in raw:
-                _LOGGER.error(
-                    "%s: Raw 'memory_stats' %s", raw["memory_stats"], self._name
+            if self._memory_error > 0:
+                _LOGGER.debug(
+                    "%s: Memory error count %s reset to 0",
+                    self._name,
+                    self._memory_error,
                 )
-            else:
-                _LOGGER.error("%s: No 'memory_stats' found in raw packet", self._name)
+
+            self._memory_error = 0
+
+        except (KeyError, TypeError) as err:
+
+            if self._memory_error == 0:
+                _LOGGER.error(
+                    "%s: Cannot determine memory usage for container (%s)",
+                    self._name,
+                    str(err),
+                )
+                if "memory_stats" in raw:
+                    _LOGGER.error(
+                        "%s: Raw 'memory_stats' %s", raw["memory_stats"], self._name
+                    )
+                else:
+                    _LOGGER.error(
+                        "%s: No 'memory_stats' found in raw packet", self._name
+                    )
+
+            self._memory_error += 1
 
         _LOGGER.debug(
-            "%s: CPU Usage=%s%%. Memory Usage=%sMB, %s%%",
+            "%s: CPU: %s%%, Memory: %sMB, %s%%",
             self._name,
             cpu_stats.get("total", None),
             memory_stats.get("usage", None),
@@ -526,7 +747,7 @@ class DockerContainerAPI:
 
         # Gather network information, doesn't work in network=host mode
         network_stats = {}
-        if not self._info[CONTAINER_INFO_NETWORKMODE]:
+        if self._info[CONTAINER_INFO_NETWORK_AVAILABLE]:
             try:
                 network_new = {}
                 network_stats["total_tx"] = 0
@@ -569,12 +790,25 @@ class DockerContainerAPI:
                 else:
                     _LOGGER.error("%s: No 'networks' found in raw packet", self._name)
 
+                # Check how many times we got a network error, after 5 times it won't happen
+                # anymore, thus we disable error reporting
+                self._network_error += 1
+                if self._network_error > 5:
+                    _LOGGER.error(
+                        "%s: Too many errors on 'networks' stats, disabling monitoring"
+                    )
+                    self._info[CONTAINER_INFO_NETWORK_AVAILABLE] = False
+
         # All information collected
         stats["cpu"] = cpu_stats
         stats["memory"] = memory_stats
         stats["network"] = network_stats
 
         stats[CONTAINER_STATS_CPU_PERCENTAGE] = cpu_stats.get("total")
+        if "online_cpus" in cpu_stats and cpu_stats.get("total") is not None:
+            stats[CONTAINER_STATS_1CPU_PERCENTAGE] = round(
+                cpu_stats.get("total") / cpu_stats["online_cpus"], PRECISION
+            )
         stats[CONTAINER_STATS_MEMORY] = memory_stats.get("usage")
         stats[CONTAINER_STATS_MEMORY_PERCENTAGE] = memory_stats.get("usage_percent")
         stats[CONTAINER_STATS_NETWORK_SPEED_UP] = network_stats.get("speed_tx")
@@ -646,6 +880,11 @@ class DockerContainerAPI:
     def get_name(self):
         """Return the container name."""
         return self._name
+
+    #############################################################
+    def set_name(self, name):
+        """Set the container name."""
+        self._name = name
 
     #############################################################
     def get_info(self):

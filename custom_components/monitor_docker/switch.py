@@ -13,6 +13,7 @@ from .const import (
     CONFIG,
     CONF_CONTAINERS,
     CONF_RENAME,
+    CONF_SWITCHENABLED,
     CONF_SWITCHNAME,
     CONTAINER,
     CONTAINER_INFO_STATE,
@@ -32,6 +33,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     config = hass.data[DOMAIN][name][CONFIG]
     prefix = config[CONF_NAME]
 
+    # Don't create any switch if disabled
+    if not config[CONF_SWITCHENABLED]:
+        _LOGGER.debug("Switch(es) are disabled")
+        return True
+
+    _LOGGER.debug("Setting up switch(es)")
+
     switches = []
 
     # We support add/re-add of a container
@@ -41,7 +49,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         clist = api.list_containers()
 
     for cname in clist:
-        if cname in config[CONF_CONTAINERS]:
+        if cname in config[CONF_CONTAINERS] or not config[CONF_CONTAINERS]:
             _LOGGER.debug("%s: Adding component Switch", cname)
 
             switches.append(
@@ -122,7 +130,7 @@ class DockerContainerSwitch(SwitchEntity):
         """Callback for update of container information."""
 
         if remove:
-            _LOGGER.error("%s: Removing switch entity", self._cname)
+            _LOGGER.info("%s: Removing switch entity", self._cname)
             self._loop.create_task(self.async_remove())
             return
 
