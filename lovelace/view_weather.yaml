@@ -4,6 +4,19 @@ icon: 'mdi:weather-cloudy'
 badges: []
 cards:
   - cards:
+      - type: weather-forecast
+        entity: weather.home
+      - type: picture-glance
+        title: Living room
+        entities:
+          - entity: weather.home
+            attribute: temperature
+            show_state: true
+          - entity: weather.home
+            attribute: humidity
+            show_state: true
+            suffix: '%'
+        camera_image: camera.buienradar_loop
       - entities:
           - entity: sensor.illumination_hub
             name: Xiaomi hub
@@ -44,20 +57,42 @@ cards:
           labels_secondary: false
         lower_bound: 0
         type: custom:mini-graph-card
-      - entities:
-          - entity: sensor.illumination_34ce008c0f6f
-          - entity: sensor.illumination_bedroom
-          - entity: sensor.illumination_livingroom
-            hours_to_show: 48
-        type: history-graph
     type: vertical-stack
   - cards:
-      - entities:
+      - type: glance
+        entities:
           - entity: sensor.temperature_outside
+            name: Outside
           - entity: sensor.temperature_livingroom
+            name: Living room
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.temperature_outside
+            name: Outside
+            color: '#33ff61'
+            show_fill: false
+          - entity: sensor.temperature_livingroom
+            name: Living room
+            color: '#ffc733'
+            show_fill: false
           - entity: sensor.temperature_bedroom
-            hours_to_show: 48
-        type: history-graph
+            name: Bedroom
+            color: '#ff7a33'
+            show_fill: false
+          - entity: sensor.temperature_bathroom
+            name: Bathroom
+            color: '#ff3c33'
+            show_fill: false
+        hours_to_show: 48
+        points_per_hour: 2
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 4
+        show:
+          labels_secondary: false
+        upper_bound: 30
+        lower_bound: 10
       - entities:
           - entity: sensor.temperature_electricblanket
           - entity: sensor.temperature_bathroom
