@@ -146,6 +146,7 @@ switch:
 #####################
 automation:
   - alias: '[livingroom|light] Flux light through motion'
+    mode: restart
     trigger:
       - platform: state
         entity_id: binary_sensor.livingroom_motion_combined
@@ -171,124 +172,13 @@ automation:
             - light.white_led_strip_living_room
           brightness: 255
       - service: switch.flux_livingroom_update
-  # #Turn on living room cool lights when motion is detected
-  # - alias: '[livingroom|light] Bright cool through motion'
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.livingroom_motion_combined
-  #       to: 'on'
-  #   condition:
-  #     - condition: state
-  #       entity_id: input_boolean.sleep_tracking_on
-  #       state: 'off'
-  #     - condition: time
-  #       after: '5:30:00'
-  #       before: '19:00:00'
-  #     - condition: numeric_state
-  #       entity_id: sensor.illumination_livingroom
-  #       below: 100
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.livingroom_bright_cool
-
-  # #Turn on living room warm lights when motion is detected
-  # - alias: '[livingroom|light] Bright warm through motion'
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.livingroom_motion_combined
-  #       to: 'on'
-  #   condition:
-  #     - condition: state
-  #       entity_id: input_boolean.sleep_tracking_on
-  #       state: 'off'
-  #     - condition: time
-  #       after: '19:00:00'
-  #       before: '20:30:00'
-  #     - condition: numeric_state
-  #       entity_id: sensor.illumination_livingroom
-  #       below: 100
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.livingroom_bright_warm
-
-  # #Turn on living room atmosphere lights when motion is detected
-  # - alias: '[livingroom|light] Atmosphere through motion'
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.livingroom_motion_combined
-  #       to: 'on'
-  #   condition:
-  #     - condition: state
-  #       entity_id: input_boolean.sleep_tracking_on
-  #       state: 'off'
-  #     - condition: time
-  #       after: '20:30:00'
-  #     - condition: numeric_state
-  #       entity_id: sensor.illumination_livingroom
-  #       below: 100
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.livingroom_warm_atmosphere
-
-  # #Turn living room lights from cool to warm
-  # - alias: '[livingroom|light] Bright warm through time'
-  #   trigger:
-  #     - platform: time
-  #       at: '19:00:00'
-  #   condition:
-  #     - condition: state
-  #       entity_id: switch.scene_livingroom_bright_cool
-  #       state: 'on'
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.livingroom_bright_warm
-
-  # #Turn living room lights from warm to atmosphere
-  # - alias: '[livingroom|light] Atmosphere through time'
-  #   trigger:
-  #     - platform: time
-  #       at: '20:30:00'
-  #   condition:
-  #     - condition: state
-  #       entity_id: switch.scene_livingroom_bright_warm
-  #       state: 'on'
-  #   action:
-  #     service: scene.turn_on
-  #     entity_id: scene.livingroom_warm_atmosphere
-
-  #Turn off living room lights if no motion has been detected for 10 minutes
-  - alias: '[livingroom|light] Off through nomotion'
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.livingroom_motion_combined
-        from: 'on'
-        to: 'off'
-        for: '00:10:00'
-    action:
+      - delay:
+          minutes: 15
       - service: light.turn_off
-        entity_id: light.livingroom_lights
-      - service: light.turn_off
-        entity_id: light.white_led_strip_living_room
-      - service: light.turn_off
-        entity_id: light.rgb_led_strip_living_room
-
-  #Turn off living room lights when ambient light is bright enough
-  - alias: '[livingroom|light] Off through ambient light'
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.average_illumination_livingroom
-        above: 120
-        for: 00:05:00
-    action:
-      - service: light.turn_off
-        data:
-          entity_id: light.living_room
-          transition: 10
-      - delay: '00:00:10'
-      - service: light.turn_off
-        entity_id: light.white_led_strip_living_room
-      - service: light.turn_off
-        entity_id: light.rgb_led_strip_living_room
+        entity_id:
+          - light.tvarea_lights
+          - light.rgb_led_strip_living_room
+          - light.white_led_strip_living_room
 
   - alias: '[livingroom|light] Shelly toggle lights'
     trigger:
@@ -373,13 +263,6 @@ group:
   livingroom_lighting_automations:
     entities:
       - automation.livingroom_light_flux_light_through_motion
-      - automation.livingroom_light_bright_cool_through_motion
-      - automation.livingroom_light_bright_warm_through_motion
-      - automation.livingroom_light_atmosphere_through_motion
-      - automation.livingroom_light_bright_warm_through_time
-      - automation.livingroom_light_atmosphere_through_time
-      - automation.livingroom_light_off_through_nomotion
-      - automation.livingroom_light_off_through_ambient_light
   livingroom_scenes:
     entities:
       - scene.livingroom_bright_cool
