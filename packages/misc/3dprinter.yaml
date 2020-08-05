@@ -88,9 +88,17 @@ automation:
             image: !secret octoprint_camera_snapshot_url
 
 - alias: '[ender3|notify] update printer progress'
+  mode: restart
   trigger:
-    - platform: time_pattern
-      minutes: "0"
+    - platform: state
+      entity_id: input_boolean.sleep_tracking_on
+      to: 'off'
+    - platform: state
+      entity_id: sensor.ender3_current_state
+      to: 'Printing'
+    - platform: state
+      entity_id: person.sander_blok
+      to: 'not_home'
   condition:
     - condition: state
       entity_id: input_boolean.sleep_tracking_on
@@ -102,13 +110,28 @@ automation:
       entity_id: person.sander_blok
       state: 'not_home'
   action:
-      - service: notify.mobile_app_blokmeister_op6
-        data_template:
-          title: Printer progress
-          message: 'Ender 3 print is at {{ states.sensor.ender3_job_percentage.state }}%. Estimated time remaining: {{ states.sensor.ender3_time_remaining.state }}'
-          data:
-            icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle.png
-            image: !secret octoprint_camera_snapshot_url
+    repeat:
+      sequence:
+        - service: notify.mobile_app_blokmeister_op6
+          data_template:
+            title: Printer progress
+            message: 'Ender 3 print is at {{ states.sensor.ender3_job_percentage.state }}%. Estimated time remaining: {{ states.sensor.ender3_time_remaining.state }}'
+            data:
+              icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle.png
+              image: !secret octoprint_camera_snapshot_url
+        - delay: 00:30:00
+      until:
+        condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.sleep_tracking_on
+            state: 'off'
+          - condition: state
+            entity_id: sensor.ender3_current_state
+            state: 'Printing'
+          - condition: state
+            entity_id: person.sander_blok
+            state: 'not_home'
 
 - alias: '[ender3|notify] printer overtemp warning'
   trigger:
