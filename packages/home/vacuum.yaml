@@ -70,6 +70,7 @@ counter:
 automation:
 #Auto clean whole house when I'm not home on mon, wed, fri
   - alias: '[home|vacuum]scheduled_cleanup'
+    mode: single
     trigger:
       - platform: state
         entity_id: person.sander_blok
@@ -103,13 +104,6 @@ automation:
         data_template:
           message: 'Started vacuum automation: auto clean whole house when not home'
           level: info
-      # - service: script.vacuum_message_scheduled_cleanup
-      - service: input_boolean.turn_on
-        data:
-          entity_id: input_boolean.vacuumed_today
-      - service: counter.increment
-        data:
-          entity_id: counter.times_vacuumed_since_empty_bin
       - service: vacuum.start
         entity_id: vacuum.xiaomi_vacuum_cleaner
       - service: notify.mobile_app_blokmeister_op6
@@ -118,6 +112,14 @@ automation:
           title: "Home Assistant - Vacuum"
           data:
             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
+      - wait_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
+        timeout: '00:30:00'
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.vacuumed_today
+      - service: counter.increment
+        data:
+          entity_id: counter.times_vacuumed_since_empty_bin
 
   - alias: '[home|vauum]counter_drive_to_trashbin'
     trigger:
@@ -125,11 +127,6 @@ automation:
         entity_id: vacuum.xiaomi_vacuum_cleaner
         value_template: '{{state.attributes.battery_level}}'
         above: 99
-      # - platform: state
-      #   entity_id: vacuum.xiaomi_vacuum_cleaner
-      #   from:  'cleaning'
-      #   to: 'not_cleaning'
-      #   for: 00:30:00
     condition:
       - condition: numeric_state  
         entity_id: counter.times_vacuumed_since_empty_bin
