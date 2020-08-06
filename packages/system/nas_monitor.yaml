@@ -86,7 +86,16 @@ homeassistant:
           if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
           if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
           var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
-          return 'hsl(' + hue.toString() + ',80%,50%)';          
+          return 'hsl(' + hue.toString() + ',80%,50%)';
+
+rest_command:
+  nas_shutdown:
+    url: 'http://192.168.1.250:250/api/v1.0/system/shutdown/'
+    method: post
+    username: !secret nas_user
+    password: !secret nas_pass
+    headers:
+      content_type: 'application/json'
 #################
 #    SENSORS    #
 #################
@@ -451,7 +460,12 @@ binary_sensor:
 #    SWITCHES    #
 ##################
 switch:
-
+  platform: wake_on_lan
+  name: BlokmeisterNAS
+  host: 192.168.1.250
+  mac: "BC:5F:F4:8B:7A:9E"
+  turn_off:
+    service: rest_command.nas_shutdown
 #####################
 #    AUTOMATIONS    #
 #####################
