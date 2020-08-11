@@ -5,12 +5,12 @@ homeassistant:
     sensor.ender3_time_remaining:
       device_class: timestamp
 
-octoprint:
-  host: 192.168.1.206
-  api_key: !secret octoprint_api_key
-  name: Ender3
-  bed: true
-  number_of_tools: 2
+# octoprint:
+#   host: 192.168.1.206
+#   api_key: !secret octoprint_api_key
+#   name: Ender3
+#   bed: true
+#   number_of_tools: 2
 
 camera:
   - platform: mjpeg
@@ -20,15 +20,15 @@ camera:
   - platform: proxy
     name: ender3_360p
     entity_id: camera.ender3
-    max_stream_width: 360
+    max_stream_height: 360
   - platform: proxy
     name: ender3_480p
     entity_id: camera.ender3
-    max_stream_width: 480
+    max_stream_height: 480
   - platform: proxy
     name: ender3_720p
     entity_id: camera.ender3
-    max_stream_width: 720
+    max_stream_height: 720
 
 #################
 #    SENSORS    #
@@ -37,17 +37,17 @@ sensor:
   - platform: template
     sensors:
       print_time_remaining_human_readable:
-        entity_id: sensor.ender3_time_remaining
+        entity_id: sensor.octoprint_print_time_left
         friendly_name: "Print time remaining"
         icon_template: mdi:clock-end
         value_template: >
-          {{ (states.sensor.ender3_time_remaining.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
+          {{ ( states( 'octoprint_print_time_left.state' )|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
       print_elapsed_human_readable:
-        entity_id: sensor.ender3_time_elapsed
+        entity_id: sensor.octoprint_print_estimated_time
         friendly_name: "Print time elapsed"
         icon_template: mdi:clock-start
         value_template: >
-          {{ (states.sensor.ender3_time_elapsed.state|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
+          {{ ( states( 'sensor.octoprint_print_estimated_time' )|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -70,9 +70,9 @@ automation:
 - alias: '[ender3|notify]Notify 3D printer done'
   trigger:
     - platform: state
-      entity_id: sensor.ender3_current_state
-      from: 'Printing'
-      to: 'Operational'
+      entity_id: binary_sensor.octoprint_printing
+      from: 'on'
+      to: 'off'
   condition:
     - condition: state
       entity_id: input_boolean.sleep_tracking_on
@@ -94,8 +94,8 @@ automation:
       entity_id: input_boolean.sleep_tracking_on
       to: 'off'
     - platform: state
-      entity_id: sensor.ender3_current_state
-      to: 'Printing'
+      entity_id: binary_sensor.octoprint_printing
+      to: 'on'
     - platform: state
       entity_id: person.sander_blok
       to: 'not_home'
@@ -104,8 +104,8 @@ automation:
       entity_id: input_boolean.sleep_tracking_on
       state: 'off'
     - condition: state
-      entity_id: sensor.ender3_current_state
-      state: 'Printing'
+      entity_id: binary_sensor.octoprint_printing
+      state: 'on'
     - condition: state
       entity_id: person.sander_blok
       state: 'not_home'
@@ -115,7 +115,7 @@ automation:
         - service: notify.mobile_app_blokmeister_op6
           data_template:
             title: Printer progress
-            message: 'Ender 3 print is at {{ states.sensor.ender3_job_percentage.state }}%. Estimated time remaining: {{ states.sensor.ender3_time_remaining.state }}'
+            message: "Ender 3 print is at {{ states( 'sensor.octoprint_print_progress' ) }}%. Estimated time remaining: {{ states( 'sensor.octoprint_print_time_left' ) }}"
             data:
               icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle.png
               image: !secret octoprint_camera_snapshot_url
@@ -125,27 +125,27 @@ automation:
         conditions:
           - condition: state
             entity_id: input_boolean.sleep_tracking_on
+            state: 'on'
+          - condition: state
+            entity_id: binary_sensor.octoprint_printing
             state: 'off'
           - condition: state
-            entity_id: sensor.ender3_current_state
-            state: 'Printing'
-          - condition: state
             entity_id: person.sander_blok
-            state: 'not_home'
+            state: 'home'
 
 - alias: '[ender3|notify] printer overtemp warning'
   trigger:
     - platform: numeric_state
-      entity_id: sensor.ender3_actual_tool0_temp
+      entity_id: sensor.octoprint_tool_0_temperature
       above: 240
     - platform: numeric_state
-      entity_id: sensor.ender3_actual_bed_temp
+      entity_id: sensor.octoprint_bed_temperature
       above: 120
   action:
       - service: notify.mobile_app_blokmeister_op6
         data_template:
           title: Printer temperature warning
-          message: 'Ender 3 temperature is too high! Nozzle temperature: {{ states.sensor.ender3_actual_tool0_temp.state }}. Bed temperature: {{ states.sensor.ender3_actual_bed_temp.state }}'
+          message: "Ender 3 temperature is too high! Nozzle temperature: {{ states( 'sensor.octoprint_tool_0_temperature') }}. Bed temperature: {{ states( 'sensor.octoprint_bed_temperature') }}"
           data:
             icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle-alert.png
             image: !secret octoprint_camera_snapshot_url
@@ -153,11 +153,11 @@ automation:
 - alias: '[ender3|lights] turn on light when printer is on'
   trigger:
     - platform: state
-      entity_id: sensor.ender3_current_state
-      to: 'Printing'
+      entity_id: binary_sensor.octoprint_printing
+      to: 'on'
     - platform: numeric_state
       entity_id: sensor.average_illumination_study
-      below: 80
+      below: 50
     - platform: state
       entity_id: light.study_2
       to: 'off'
@@ -166,13 +166,17 @@ automation:
       entity_id: sensor.average_illumination_study
       below: 80
     - condition: state
-      entity_id: sensor.ender3_current_state
-      state: 'Printing'
+      entity_id: binary_sensor.octoprint_printing
+      state: 'on'
   action:
     - service: light.turn_on
       data:
         entity_id: light.study_2
         brightness: 255
+    - wait_template: "{{ is_state('binary_sensor.octoprint_printing', 'off') }}"
+    - service: light.turn_off
+      data:
+        entity_id: light.study_2
 
 ################
 #    SCENES    #

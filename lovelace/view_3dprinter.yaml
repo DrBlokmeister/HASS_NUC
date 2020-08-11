@@ -4,7 +4,7 @@ badges: []
 icon: mdi:printer-3d
 cards:
   - cards:
-      - entity: sensor.ender3_current_state
+      - entity: sensor.octoprint_print_status
         name: Printer
         type: entity
       # - entity: switch.tasmota_1
@@ -21,9 +21,10 @@ cards:
       - entities:
           - entity: sensor.print_time_remaining_human_readable
           - entity: sensor.print_elapsed_human_readable
-          - entity: sensor.ender3_time_remaining
-          - entity: sensor.ender3_time_elapsed
-          - entity: sensor.ender3_print_file
+          - entity: sensor.octoprint_print_estimated_time
+          - entity: sensor.octoprint_print_time_left
+          - entity: sensor.octoprint_print_time
+          - entity: sensor.octoprint_print_file
         show_header_toggle: false
         type: entities
       - cards:
@@ -35,85 +36,58 @@ cards:
               service_data:
                 entity_id: light.study_2
             type: button
-          - entity: script.printer_preheat
+          - entity: switch.octoprint_emergency_stop
             hold_action:
               action: more-info
-            icon: 'mdi:thermometer'
-            name: Preheat
+            name: Stop
             show_icon: true
             show_name: true
-            tap_action:
-              action: call-service
-              service: script.printer_preheat
             type: button
-          - entity: script.printer_cooldown
+          - entity: switch.octoprint_cancel_print
             hold_action:
               action: more-info
-            icon: 'mdi:fan'
-            name: Cooldown
-            show_icon: true
-            show_name: true
-            tap_action:
-              action: call-service
-              service: script.printer_cooldown
-            type: button
-          - entity: binary_sensor.printer_cancel
-            hold_action:
-              action: more-info
-            icon: 'mdi:cancel'
             name: Cancel
             show_icon: true
             show_name: true
-            tap_action:
-              action: call-service
-              service: script.print_job_cancel
             type: button
-          - entity: binary_sensor.printer_pause
+          - entity: switch.octoprint_pause_print
             hold_action:
               action: more-info
-            icon: 'mdi:pause'
             name: Pause
             show_icon: true
             show_name: true
-            tap_action:
-              action: call-service
-              service: script.print_job_toggle
             type: button
-          - entity: script.print_job_start
+          - entity: switch.octoprint_shutdown_system
             hold_action:
               action: more-info
-            icon: 'mdi:play-box-outline'
-            name: Start Print
+            name: Shutdown
             show_icon: true
             show_name: true
-            tap_action:
-              action: call-service
-              service: script.print_job_start
             type: button
         type: horizontal-stack
     mode: vertical
     type: vertical-stack
-  - entity: sensor.ender3_job_percentage
+  - entity: sensor.octoprint_print_progress
     type: gauge
   - decimals: 1
     entities:
-      - entity: sensor.ender3_actual_tool0_temp
+      - entity: sensor.octoprint_tool_0_temperature
         name: Nozzle
         show_state: true
         show_fill: false
       - color: yellow
-        entity: sensor.ender3_target_tool0_temp
+        entity: sensor.octoprint_tool_0_target
         name: Nozzle Target
         show_legend: false
         show_line: false
         show_points: false
         smoothing: false
-      - entity: sensor.ender3_actual_bed_temp
+      - entity: sensor.octoprint_bed_temperature
         name: Bed
         show_state: true
         show_fill: false
       - color: purple
-        entity: sensor.ender3_target_bed_temp
+        entity: sensor.octoprint_bed_target
         name: Bed Target
         show_legend: false
         show_line: false
