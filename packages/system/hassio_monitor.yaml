@@ -108,11 +108,48 @@ sensor:
         value_template: >
           {{ states.sensor.uptime.state|float * 60 | float }}
 
+  - platform: command_line
+    name: 'Unrarred directories'
+    # friendly_name: 'CPU Core 1 temp'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+      root@192.168.1.252
+      ls /mnt/unrarred
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-
+  - platform: command_line
+    name: 'Unrarredmovies mounted'
+    # friendly_name: 'CPU Core 1 temp'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+      root@192.168.1.252
+      [ -d "/mnt/unrarred/unrarredmovies" ] && echo "True"
+    payload_on: "True"
+    payload_off: ""
+  - platform: command_line
+    name: 'Unrarredseries mounted'
+    # friendly_name: 'CPU Core 1 temp'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+      root@192.168.1.252
+      [ -d "/mnt/unrarred/unrarredseries" ] && echo "True"
+    payload_on: "True"
+    payload_off: ""
+  - platform: command_line
+    name: 'Newstorage mounted'
+    # friendly_name: 'CPU Core 1 temp'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+      root@192.168.1.252
+      [ -d "/mnt/NewStorage" ] && echo "True"
+    payload_on: "True"
+    payload_off: ""
 ##################
 #    SWITCHES    #
 ##################
