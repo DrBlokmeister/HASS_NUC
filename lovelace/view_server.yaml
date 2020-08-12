@@ -4,6 +4,19 @@ icon: 'mdi:server-network'
 panel: false
 badges: []
 cards:
+  - type: conditional
+    conditions:
+      - entity: switch.blokmeisternas
+        state: "off"
+    card:
+      type: vertical-stack
+      cards:
+        - type: markdown
+          content: >
+            ## <center>NAS is Offline</center>
+        - type: glance
+          entities:
+            - switch.blokmeisternas
   - cards:
       - entities:
           - entity: sensor.nas_disk_ada0_temperature
@@ -47,9 +60,37 @@ cards:
           - entity: sensor.nas_cpu1_temp
           - entity: sensor.nas_cpu2_temp
           - entity: sensor.nas_cpu3_temp
-          - entity: sensor.nas_load_pct
-            hours_to_show: 48
-        type: history-graph
+          - entity: sensor.nas_cpu_temperature
+        name: CPU temperature
+        hours_to_show: 48
+        points_per_hour: 30
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 2.5
+        lower_bound: 20
+        upper_bound: 50
+        show:
+          labels: true
+          average: true
+        type: custom:mini-graph-card
+      - entities:
+          - entity: sensor.nas_cpu_load_1m
+          - entity: sensor.nas_cpu_load_5m
+          - entity: sensor.nas_cpu_load_15m
+        name: NAS Load
+        hours_to_show: 48
+        points_per_hour: 30
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 2.5
+        lower_bound: 0
+        upper_bound: 1
+        show:
+          labels: true
+          average: true
+        type: custom:mini-graph-card
     type: vertical-stack
   - cards:
       - entities:
