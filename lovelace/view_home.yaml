@@ -32,8 +32,11 @@ cards:
       - entity: device_tracker.raspberrypi
       - entity: device_tracker.photon_zombie_jetpack
       - entity: device_tracker.blokmeister_op6
-    title: Devices present
-    type: entities
+    title: Devices missing
+    type: entity-filter
+    state_filter: 
+      - operator: "!="
+        value: home
   - entity: media_player.living_room_speaker
     type: media-control
   - type: map
@@ -70,51 +73,11 @@ cards:
         show_name: true
         show_state: false
         type: glance
+      - entities:
+          - entity: counter.times_vacuumed_since_empty_bin
+        type: entities
     type: vertical-stack
 
-  - type: vertical-stack
-    cards:
-      - type: horizontal-stack
-        title: Vacuum
-        cards:
-          - entity: script.vacuum_bathroom_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-          - entity: script.vacuum_bedroom_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-          - entity: script.vacuum_dining_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-          - entity: script.vacuum_kitchen_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-      - type: horizontal-stack
-        title: Living Room
-        cards:
-          - entity: script.vacuum_study_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-          - entity: script.vacuum_tv_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-          - entity: script.vacuum_around_litterbox_twice
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-          - entity: script.vacuum_goto_kitchen
-            icon: 'mdi:robot-vacuum'
-            type: entity-button
-  - entities:
-      - entity: counter.times_vacuumed_since_empty_bin
-    type: entities
-  - cards:
-      - entities:
-          - entity: sensor.blitzwolf_coffee_plant_power
-          - entity: sensor.blitzwolf_computer_power
-          - entity: sensor.blitzwolf_mediacenter_power
-          - entity: sensor.blitzwolf_water_cooker_power
-        type: history-graph
-    type: vertical-stack
   - type: conditional
     conditions:
       - entity: media_player.plex_plex_for_windows_laptop_eqsoubnb
