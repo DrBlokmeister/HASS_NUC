@@ -15,6 +15,12 @@ homeassistant:
           if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
           var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
           return 'hsl(' + hue.toString() + ',80%,50%)';
+    switch.*_mounted:
+      templates:
+        icon: >
+          if (state === 'on' ) return 'mdi:check-network-outline'; else return 'mdi:close-network-outline';
+
+
 
 breaking_changes:
   scan_interval: 3600
@@ -112,15 +118,6 @@ sensor:
         value_template: >
           {{ states.sensor.uptime.state|float * 60 | float }}
 
-  - platform: command_line
-    name: 'Newstorage mounted nonbinary'
-    # friendly_name: 'CPU Core 1 temp'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.252
-      [ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"
-
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -131,7 +128,7 @@ binary_sensor:
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      [ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"
+      '[ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"'
     payload_on: "True"
     payload_off: "False"
   - platform: command_line
@@ -140,7 +137,7 @@ binary_sensor:
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      [ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"
+      '[ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"'
     payload_on: "True"
     payload_off: "False"
   - platform: command_line
@@ -150,7 +147,7 @@ binary_sensor:
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      [ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"
+      '[ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"'
     payload_on: "True"
     payload_off: "False"
     
@@ -164,43 +161,43 @@ switch:
         command_on: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          mount -a
+          'mount -a'
         command_off: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          umount /mnt/NewStorage
+          'umount /mnt/NewStorage'
         command_state: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          [ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"
+          '[ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"'
         value_template: '{{ value == "True" }}'
       unrarredseries_mounted:
         command_on: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Series /mnt/unrarred/unrarredseries
+          'rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Series /mnt/unrarred/unrarredseries'
         command_off: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          fusermount -u /mnt/unrarred/unrarredseries
+          'fusermount -u /mnt/unrarred/unrarredseries'
         command_state: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          [ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"
+          '[ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"'
         value_template: '{{ value == "True" }}'
       unrarredmovies_mounted:
         command_on: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Movies /mnt/unrarred/unrarredmovies
+          'rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Movies /mnt/unrarred/unrarredmovies'
         command_off: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          fusermount -u /mnt/unrarred/unrarredmovies
+          'fusermount -u /mnt/unrarred/unrarredmovies'
         command_state: >-
           ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
           root@192.168.1.252
-          [ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"
+          '[ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"'
         value_template: '{{ value == "True" }}'
 #####################
 #    AUTOMATIONS    #
