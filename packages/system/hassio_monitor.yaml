@@ -72,10 +72,13 @@ sensor:
       - type: load_15m
       - type: processor_use
       - type: last_boot
+
   - platform: uptime
     unit_of_measurement: minutes
+
   - platform: version
     source: hassio
+
   - platform: sql
     db_url: !secret mariadb_URL
     queries:
@@ -83,6 +86,7 @@ sensor:
         query: 'SELECT table_schema "database", Round(Sum(data_length + index_length) / POWER(1024,2), 1) "value" FROM information_schema.tables WHERE table_schema="homeassistant" GROUP BY table_schema;'
         column: 'value'
         unit_of_measurement: MB
+
   - platform: influxdb
     username: !secret influxdb_user
     password: !secret influxdb_pass
@@ -109,37 +113,36 @@ sensor:
           {{ states.sensor.uptime.state|float * 60 | float }}
 
   - platform: command_line
-    name: 'Unrarred directories'
+    name: 'Newstorage mounted nonbinary'
     # friendly_name: 'CPU Core 1 temp'
     scan_interval: 60
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      ls /mnt/unrarred
+      [ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"
+
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
   - platform: command_line
     name: 'Unrarredmovies mounted'
-    # friendly_name: 'CPU Core 1 temp'
     scan_interval: 60
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      [ -d "/mnt/unrarred/unrarredmovies" ] && echo "True"
+      [ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"
     payload_on: "True"
-    payload_off: ""
+    payload_off: "False"
   - platform: command_line
     name: 'Unrarredseries mounted'
-    # friendly_name: 'CPU Core 1 temp'
     scan_interval: 60
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      [ -d "/mnt/unrarred/unrarredseries" ] && echo "True"
+      [ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"
     payload_on: "True"
-    payload_off: ""
+    payload_off: "False"
   - platform: command_line
     name: 'Newstorage mounted'
     # friendly_name: 'CPU Core 1 temp'
@@ -147,14 +150,58 @@ binary_sensor:
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
       root@192.168.1.252
-      [ -d "/mnt/NewStorage" ] && echo "True"
+      [ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"
     payload_on: "True"
-    payload_off: ""
+    payload_off: "False"
+    
 ##################
 #    SWITCHES    #
 ##################
 switch:
-
+  - platform: command_line
+    switches:
+      newstorage_mounted:
+        command_on: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          mount -a
+        command_off: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          umount /mnt/NewStorage
+        command_state: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          [ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"
+        value_template: '{{ value == "True" }}'
+      unrarredseries_mounted:
+        command_on: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Series /mnt/unrarred/unrarredseries
+        command_off: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          fusermount -u /mnt/unrarred/unrarredseries
+        command_state: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          [ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"
+        value_template: '{{ value == "True" }}'
+      unrarredmovies_mounted:
+        command_on: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Movies /mnt/unrarred/unrarredmovies
+        command_off: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          fusermount -u /mnt/unrarred/unrarredmovies
+        command_state: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+          root@192.168.1.252
+          [ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"
+        value_template: '{{ value == "True" }}'
 #####################
 #    AUTOMATIONS    #
 #####################
