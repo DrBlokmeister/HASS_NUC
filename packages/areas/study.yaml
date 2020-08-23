@@ -203,18 +203,6 @@ automation:
       service: light.turn_off
       entity_id: light.study
 
-  - alias: 'Turn scene to warm at 19:00'
-    trigger:
-      platform: time
-      at: '19:00:00'
-    condition:
-      - condition: state
-        entity_id: binary_sensor.scene_study_bright_cool
-        state: 'on'
-    action:
-      service: scene.turn_on
-      entity_id: scene.study_bright_warm
-
   - alias: 'Message when computer is still on when not home'
     trigger:
       - platform: state
@@ -236,8 +224,16 @@ automation:
 
   - alias: '[study|lights]Toggle lights through switch press'
     trigger:
-      platform: state
-      entity_id: switch.shelly_study
+      - platform: state
+        entity_id: switch.shelly_study
+    condition:
+      - condition: state
+        entity_id: switch.shelly_study
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
     action:
       - service: light.toggle
         entity_id: light.study

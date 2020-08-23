@@ -468,8 +468,16 @@ automation:
   #shelly toggle
   - alias: '[bedroom|light] Shelly toggle'
     trigger:
-      platform: state
-      entity_id: switch.shelly_bedroom
+      - platform: state
+        entity_id: switch.shelly_bedroom
+    condition:
+      - condition: state
+        entity_id: switch.shelly_bedroom
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
     action:
       service: light.toggle
       entity_id: 

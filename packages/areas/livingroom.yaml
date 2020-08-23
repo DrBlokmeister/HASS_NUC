@@ -174,8 +174,16 @@ automation:
 
   - alias: '[livingroom|light] Shelly toggle lights'
     trigger:
-      platform: state
-      entity_id: switch.shelly_mediacenter
+      - platform: state
+        entity_id: switch.shelly_mediacenter
+    condition:
+      - condition: state
+        entity_id: switch.shelly_mediacenter
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
     action:
       service: light.toggle
       entity_id: light.tvarea_lights

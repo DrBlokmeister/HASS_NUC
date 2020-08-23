@@ -100,8 +100,16 @@ automation:
 
   - alias: '[kitchen|lights]Toggle kitchen lights through switch press'
     trigger:
-      platform: state
-      entity_id: switch.shelly_kitchen
+      - platform: state
+        entity_id: switch.shelly_kitchen
+    condition:
+      - condition: state
+        entity_id: switch.shelly_kitchen
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
     action:
       - service: light.toggle
         entity_id: light.kitchen
