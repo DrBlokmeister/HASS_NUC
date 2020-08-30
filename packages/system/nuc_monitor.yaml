@@ -276,6 +276,50 @@ automation:
           message: "{{states.sensor.potential_breaking_changes.state}} potential breaking changes detected between version {{states.sensor.current_version.state}} and version {{states.sensor.latest_version.state}}"
           title: "Potential breaking changes"
 
+  - alias: '[System] Mount NAS drives'
+    initial_state: on
+    trigger:
+      - platform: state
+        entity_id: switch.blokmeisternas
+        from: 'off'
+        to: 'on'
+        for:
+          minutes: 5
+    condition:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.newstorage_mounted
+            state: 'off'
+          - condition: state
+            entity_id: binary_sensor.unrarredmovies_mounted
+            state: 'off'
+          - condition: state
+            entity_id: binary_sensor.unrarredseries_mounted
+            state: 'off'
+    action:
+      - service: homeassistant.turn_on
+        entity_id: switch.newstorage_mounted
+      - delay:
+          seconds: 10
+      - wait_template: "{{ is_state('switch.newstorage_mounted', 'on')}}"
+        timeout:
+          minutes: 5
+        continue_on_timeout: false
+      - service: homeassistant.turn_on
+        entity_id: switch.unrarredmovies_mounted
+      - service: homeassistant.turn_on
+        entity_id: switch.unrarredseries_mounted
+      - delay:
+          seconds: 10
+      - wait_template: "{{ is_state('switch.unrarredmovies_mounted', 'on') and is_state('switch.unrarredseries_mounted', 'on') }}"
+        timeout:
+          minutes: 5
+        continue_on_timeout: false
+      - service: system_log.write
+        data_template:
+          message: 'BlokmeisterNAS directories mounted successfully'
+          level: info
 
 ################
 #    SCENES    #
