@@ -53,53 +53,24 @@ automation:
     description: "Create persistent notification if there are unavailable entities on startup."
     mode: restart
     trigger:
-      - platform: homeassistant
-        event: start
       - platform: state
         entity_id: sensor.unavailable_entities
-    condition:
-      - condition: numeric_state
-        entity_id: sensor.unavailable_entities
-        above: 0
     action:
       # delay to allow sensors to come online, prevent false notifications
       - wait_template: "{{ states('sensor.uptime')|int > 5 }}"
         timeout: '00:05:00'
-      - condition: numeric_state
-        entity_id: sensor.unavailable_entities
-        above: 0
-      - service: persistent_notification.create
-        data_template:
-          title: "Unavailable Entities"
-          message: "{{ state_attr('sensor.unavailable_entities','names').split(', ') | join('\n') }}"
-          notification_id: 'unavailable_entities'
-
-
-  # - id: unavailable_entity_notification
-  #   alias: "Unavailable Entity Notification"
-  #   description: "Create persistent notification when an entitiy becomes unavailable (after startup)."
-  #   mode: queued
-
-  #   trigger:
-  #     - platform: state
-  #       entity_id: sensor.unavailable_entities
-
-  #   action:
-  #     - service: persistent_notification.create
-  #       data_template:
-  #         title: "Unavailable Entities"
-  #         message: "{{ state_attr('sensor.unavailable_entities','names').split(', ') | join('\n') }}"
-  #         notification_id: 'unavailable_entities'
-
-
-  - id: dismiss_unavailable_entity_notification
-    alias: "Dismiss Unavailable Entity Notification"
-    description: "Dismiss persistent notification when there are no more unavailable entities."
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.unavailable_entities
-        below: 1
-    action:
-      - service: persistent_notification.dismiss
-        data:
-          notification_id: 'unavailable_entities'
+      - choose:
+          conditions:
+            - condition: numeric_state
+              entity_id: sensor.unavailable_entities
+              below: 1
+          sequence:
+            - service: persistent_notification.dismiss
+              data:
+                notification_id: 'unavailable_entities'
+        default:
+            - service: persistent_notification.create
+              data_template:
+                title: "Unavailable Entities"
+                message: "{{ state_attr('sensor.unavailable_entities','names').split(', ') | join('\n') }}"
+                notification_id: 'unavailable_entities'
