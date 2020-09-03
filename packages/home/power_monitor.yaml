@@ -71,7 +71,7 @@ sensor:
     sensors:
       total_power_blitzwolf:
         unit_of_measurement: 'W'
-        value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_power.state|float + states.sensor.blitzwolf_computer_energy_power.state|float + states.sensor.blitzwolf_mediacenter_energy_power.state|float + states.sensor.blitzwolf_watercooker_energy_power.state|float + states.sensor.blitzwolf_coffeeplant_energy_power.state|float) |round(2) }}"
+        value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_power.state|float + states.sensor.blitzwolf_computer_energy_power.state|float + states.sensor.blitzwolf_mediacenter_energy_power.state|float + states.sensor.blitzwolf_watercooker_energy_power.state|float + states.sensor.blitzwolf_coffeeplant_energy_power.state|float + states.sensor.blitzwolf_3dprinter_energy_power.state|float + states.sensor.blitzwolf_washingmachine_energy_power.state|float) |round(2) }}"
       total_energy_today:
         unit_of_measurement: 'kWh'
         value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_today.state|float + states.sensor.blitzwolf_computer_energy_today.state|float + states.sensor.blitzwolf_mediacenter_energy_today.state|float + states.sensor.blitzwolf_watercooker_energy_today.state|float + states.sensor.blitzwolf_coffeeplant_energy_today.state|float) |round(2) }}"
@@ -97,6 +97,12 @@ sensor:
         entity_id: sensor.total_power_watt
         unit_of_measurement: 'W'
         value_template: "{{ ( states( 'sensor.total_power_watt' )|float - states( 'sensor.total_power_blitzwolf' )|float )|round(2) }}"
+  - platform: filter
+    name: "filtered unknown power"
+    entity_id: sensor.unknown_power
+    filters:
+      - filter: lowpass
+        time_constant: 10
 
 #sensor.kosten_hoog_tarief
 
@@ -374,6 +380,32 @@ group:
       - sensor.blitzwolf_nuc_energy_yesterday
       - sensor.blitzwolf_nuc_energy_total
       - sensor.blitzwolf_nuc_energy_totalstarttime
+  blitzwolf_ender3:
+    entities:
+      - switch.blitzwolf_3dprinter
+      - sensor.blitzwolf_3dprinter_status
+      - sensor.blitzwolf_3dprinter_energy_voltage      
+      - sensor.blitzwolf_3dprinter_energy_current
+      - sensor.blitzwolf_3dprinter_energy_power
+      - sensor.blitzwolf_3dprinter_energy_apparentpower
+      - sensor.blitzwolf_3dprinter_energy_reactivepower
+      - sensor.blitzwolf_3dprinter_energy_today
+      - sensor.blitzwolf_3dprinter_energy_yesterday
+      - sensor.blitzwolf_3dprinter_energy_total
+      - sensor.blitzwolf_3dprinter_energy_totalstarttime
+  blitzwolf_washingmachine:
+    entities:
+      - switch.blitzwolf_washingmachine
+      - sensor.blitzwolf_washingmachine_status
+      - sensor.blitzwolf_washingmachine_energy_voltage      
+      - sensor.blitzwolf_washingmachine_energy_current
+      - sensor.blitzwolf_washingmachine_energy_power
+      - sensor.blitzwolf_washingmachine_energy_apparentpower
+      - sensor.blitzwolf_washingmachine_energy_reactivepower
+      - sensor.blitzwolf_washingmachine_energy_today
+      - sensor.blitzwolf_washingmachine_energy_yesterday
+      - sensor.blitzwolf_washingmachine_energy_total
+      - sensor.blitzwolf_washingmachine_energy_totalstarttime
   meter_readings:
     name: Meter readings
     entities:
