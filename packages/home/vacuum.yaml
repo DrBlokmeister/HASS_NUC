@@ -230,6 +230,28 @@ automation:
       - service: vacuum.pause
         entity_id: vacuum.xiaomi_vacuum_cleaner
 
+  - alias: '[home|vacuum]update_template_sensors'
+    trigger:
+      platform: state
+      entity_id: vacuum.xiaomi_vacuum_cleaner
+      to: 'cleaning'
+    action:
+      - repeat:
+          while:
+            - condition: state
+              entity_id: vacuum.xiaomi_vacuum_cleaner
+              state: 'cleaning'
+          sequence:
+            - service: homeassistant.update_entity
+              data:
+                entity_id:
+                  - sensor.area_last_clean
+                  - sensor.area_total_clean
+                  - sensor.area_cleaned_today
+            - delay: 00:00:05
+
+
+
 ########## NOTIFICATIONS ########## 
 #Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
   - alias: '[home|vacuum]notify_phone'
