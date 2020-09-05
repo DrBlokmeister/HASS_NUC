@@ -70,29 +70,47 @@ sensor:
   - platform: template
     sensors:
       total_power_blitzwolf:
+        entity_id: 
+          - sensor.blitzwolf_electricblanket_energy_power
+          - sensor.blitzwolf_computer_energy_power
+          - sensor.blitzwolf_mediacenter_energy_power
+          - sensor.blitzwolf_watercooker_energy_power
+          - sensor.blitzwolf_coffeeplant_energy_power
+          - sensor.blitzwolf_3dprinter_energy_power
+          - sensor.blitzwolf_washingmachine_energy_power
         unit_of_measurement: 'W'
         value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_power.state|float + states.sensor.blitzwolf_computer_energy_power.state|float + states.sensor.blitzwolf_mediacenter_energy_power.state|float + states.sensor.blitzwolf_watercooker_energy_power.state|float + states.sensor.blitzwolf_coffeeplant_energy_power.state|float + states.sensor.blitzwolf_3dprinter_energy_power.state|float + states.sensor.blitzwolf_washingmachine_energy_power.state|float) |round(2) }}"
       total_energy_today:
         unit_of_measurement: 'kWh'
         value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_today.state|float + states.sensor.blitzwolf_computer_energy_today.state|float + states.sensor.blitzwolf_mediacenter_energy_today.state|float + states.sensor.blitzwolf_watercooker_energy_today.state|float + states.sensor.blitzwolf_coffeeplant_energy_today.state|float) |round(2) }}"
       electricblanket_cost_today:
+        entity_id: sensor.blitzwolf_electricblanket_energy_today
         unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float * (states( 'sensor.kosten_hoog_tarief' )|float))|round(2) }}"
+        value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float * (0.2221|float))|round(2) }}"
       mediacenter_cost_today:
+        entity_id: sensor.blitzwolf_mediacenter_energy_today
         unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_mediacenter_energy_today' )|float * (states( 'sensor.kosten_hoog_tarief' )|float))|round(2) }}"
+        value_template: "{{ (states( 'sensor.blitzwolf_mediacenter_energy_today' )|float * (0.2221|float))|round(2) }}"
       watercooker_cost_today:
+        entity_id: sensor.blitzwolf_watercooker_energy_today
         unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_watercooker_energy_today' )|float * (states( 'sensor.kosten_hoog_tarief' )|float))|round(2) }}"
+        value_template: "{{ (states( 'sensor.blitzwolf_watercooker_energy_today' )|float * (0.2221|float))|round(2) }}"
       computer_cost_today:
+        entity_id: sensor.blitzwolf_computer_energy_today
         unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_computer_energy_today' )|float * (states( 'sensor.kosten_hoog_tarief' )|float))|round(2) }}"
+        value_template: "{{ (states( 'sensor.blitzwolf_computer_energy_today' )|float * (0.2221|float))|round(2) }}"
       coffeeplant_cost_today:
+        entity_id: sensor.blitzwolf_coffeeplant_energy_today
         unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (states( 'sensor.kosten_hoog_tarief' )|float))|round(2) }}"
-      total_energy_cost_today:
+        value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (0.2221|float))|round(2) }}"
+      ender3_cost_today:
+        entity_id: sensor.blitzwolf_coffeeplant_energy_today
         unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.total_energy_today' )|float * (states( 'sensor.kosten_hoog_tarief' )|float))|round(2) }}"
+        value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (0.2221|float))|round(2) }}"
+      total_blitzwolf_energy_cost_today:
+        entity_id: sensor.blitzwolf_3dprinter_energy_today
+        unit_of_measurement: '€'
+        value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
       unknown_power:
         entity_id: sensor.total_power_watt
         unit_of_measurement: 'W'
