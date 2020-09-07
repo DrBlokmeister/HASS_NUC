@@ -121,15 +121,18 @@ automation:
           seconds: 5
     action:
       - service: light.toggle
-        entity_id: light.kitchen
-      - condition: state
-        entity_id: light.kitchen
-        state: 'on'
-      - service: light.turn_on
         data:
           entity_id: light.kitchen
           brightness: 255
       - service: switch.flux_study_update
+      - service: automation.turn_off
+        entity_id:
+          - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+      - delay:
+          seconds: 30
+      - service: automation.turn_on
+        entity_id:
+          - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
 
   - alias: '[kitchen|notify] fridge overtemp warning'
     trigger:
