@@ -104,15 +104,13 @@ sensor:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (0.2221|float))|round(2) }}"
       ender3_cost_today:
-        entity_id: sensor.blitzwolf_coffeeplant_energy_today
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (0.2221|float))|round(2) }}"
-      total_blitzwolf_energy_cost_today:
         entity_id: sensor.blitzwolf_3dprinter_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
       unknown_power:
-        entity_id: sensor.total_power_watt
+        entity_id: 
+          - sensor.total_power_watt
+          - sensor.total_power_blitzwolf
         unit_of_measurement: 'W'
         value_template: "{{ ( states( 'sensor.total_power_watt' )|float - states( 'sensor.total_power_blitzwolf' )|float )|round(2) }}"
   - platform: filter
@@ -122,73 +120,73 @@ sensor:
       - filter: lowpass
         time_constant: 10
 
-#sensor.kosten_hoog_tarief
+# #sensor.kosten_hoog_tarief
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=on
-    name: Huidig verbruik
-    value_template: '{{ value_json.0.CONSUMPTION_W }}'
-    unit_of_measurement: "W"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=on
+#     name: Huidig verbruik
+#     value_template: '{{ value_json.0.CONSUMPTION_W }}'
+#     unit_of_measurement: "W"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/min?limit=1&json=object&round=off
-    name: Current gas usage per min
-    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 }}'
-    unit_of_measurement: "m3"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/powergas/min?limit=1&json=object&round=off
+#     name: Current gas usage per min
+#     value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 }}'
+#     unit_of_measurement: "m3"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/hour?limit=1&json=object&round=off
-    name: Current gas usage per hour
-    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 }}'
-    unit_of_measurement: "m3"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/powergas/hour?limit=1&json=object&round=off
+#     name: Current gas usage per hour
+#     value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 }}'
+#     unit_of_measurement: "m3"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
-    name: Meterstand hoog
-    value_template: '{{ value_json.0.CONSUMPTION_KWH_HIGH | round(2) }}'
-    unit_of_measurement: "kWh"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
+#     name: Meterstand hoog
+#     value_template: '{{ value_json.0.CONSUMPTION_KWH_HIGH | round(2) }}'
+#     unit_of_measurement: "kWh"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
-    name: Meterstand laag
-    value_template: '{{ value_json.0.CONSUMPTION_KWH_LOW | round(2) }}'
-    unit_of_measurement: "kWh"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
+#     name: Meterstand laag
+#     value_template: '{{ value_json.0.CONSUMPTION_KWH_LOW | round(2) }}'
+#     unit_of_measurement: "kWh"
     
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
-    name: Kosten Hoog Tarief
-    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
-    unit_of_measurement: "€"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
+#     name: Kosten Hoog Tarief
+#     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
+#     unit_of_measurement: "€"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
-    name: Kosten Laag Tarief
-    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
-    unit_of_measurement: "€"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
+#     name: Kosten Laag Tarief
+#     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
+#     unit_of_measurement: "€"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
-    name: Maand Hoog Tarief
-    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
-    unit_of_measurement: "€"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
+#     name: Maand Hoog Tarief
+#     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
+#     unit_of_measurement: "€"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
-    name: Maand Laag Tarief
-    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
-    unit_of_measurement: "€"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
+#     name: Maand Laag Tarief
+#     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
+#     unit_of_measurement: "€"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
-    name: Verbruik Per Dag
-    value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
-    unit_of_measurement: "kWh"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+#     name: Verbruik Per Dag
+#     value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
+#     unit_of_measurement: "kWh"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
-    name: Gasverbruik Per Dag
-    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
-    unit_of_measurement: "m3"
+#   - platform: rest
+#     resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+#     name: Gasverbruik Per Dag
+#     value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
+#     unit_of_measurement: "m3"
 
   - platform: mqtt
     name: timestamp_local
@@ -239,23 +237,69 @@ sensor:
   - platform: template
     sensors:
       energie_kosten_dag:
-        value_template: "{{ states('sensor.kosten_hoog_tarief') | float + states('sensor.kosten_laag_tarief') | float | round(2) }}"
+        value_template: "{{ states('sensor.consumption_kwh_high') | float + states('sensor.consumption_kwh_low') | float | round(2) }}"
         unit_of_measurement: "€"
-      energie_kosten_maand:
-        value_template: "{{ states('sensor.maand_hoog_tarief') | float + states('sensor.maand_laag_tarief') | float | round(2) }}"
-        unit_of_measurement: "€"
+      # energie_kosten_maand:
+      #   value_template: "{{ states('sensor.maand_hoog_tarief') | float + states('sensor.maand_laag_tarief') | float | round(2) }}"
+      #   unit_of_measurement: "€"
       total_power_watt:
         value_template: "{{ states('sensor.consumption_kw') | float * 1000 | float | round(2) }}"
         unit_of_measurement: "W"
       current_costs_per_hour:
-        value_template: "{{ ( states('sensor.consumption_kw') | float * (states('sensor.kosten_hoog_tarief') | float) | float ) | round(2) }}"
+        value_template: "{{ ( states('sensor.consumption_kw') | float * ( 0.2221 | float) | float ) | round(2) }}"
         unit_of_measurement: "€/h"
   
   - platform: derivative
     source: sensor.consumption_gas_m3
     name: Gas consumption per hour
     time_window: "00:10:00"
-      
+
+  - platform: template
+    sensors:
+      light_power_estimate: #I fitted power monitoring data to the power consumption using a trendline in Excel. Formula is 0.35*exp(brightness*0.0096)
+        entity_id:
+          - light.bedroom_1
+          - light.bedroom_2
+          - light.bedroom_3
+          - light.hue_color_spot_1
+          - light.hue_color_spot_2
+          - light.hue_color_spot_3
+          - light.hue_color_spot_4
+          - light.hue_color_spot_5
+          - light.kitchen_1
+          - light.kitchen_2
+          - light.kitchen_3
+          - light.study_1
+          - light.study_2
+          - light.study_3
+          - light.plants
+          - sensor.date_time
+        unit_of_measurement: 'W'
+        value_template: >-
+          {% set lights = [
+            states.light.bedroom_1,
+            states.light.bedroom_2,
+            states.light.bedroom_3,
+            states.light.hue_color_spot_1,
+            states.light.hue_color_spot_2,
+            states.light.hue_color_spot_3,
+            states.light.hue_color_spot_4,
+            states.light.hue_color_spot_5,
+            states.light.kitchen_1,
+            states.light.kitchen_2,
+            states.light.kitchen_3,
+            states.light.study_1,
+            states.light.study_2,
+            states.light.study_3,
+            states.light.plants,
+            states.light.plants
+          ] %}
+          {%- set ns = namespace(power = 0) -%}
+          {%- set threshold = 100 -%}
+          {%- for item in lights if (item.attributes.brightness is defined) -%}
+            {%- set ns.power = ns.power + (0.35*2.72**(item.attributes['brightness']|int * 0.0096))|round(2) -%}
+          {%- endfor -%}
+          {{ ns.power|int }}
 
 
 ########################
