@@ -160,8 +160,11 @@ sensor:
           - plant.coffee_plant
           - plant.calathea
           - plant.herbs
+          - plant.bromelia
+          - plant.galileo
+          - plant.kepler
         value_template: >
-          {%- set threshold = 20 -%}
+          {%- set threshold = 10 -%}
           {%- for item in states.plant if ((item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) or ("moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
           {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
           {{ item.name }} ({{ item.attributes['moisture'] }}){%- if not loop.last %}, {% endif -%}{% endif -%}
@@ -182,6 +185,9 @@ binary_sensor:
           - plant.coffee_plant
           - plant.calathea
           - plant.herbs
+          - plant.bromelia
+          - plant.galileo
+          - plant.kepler
         value_template: >
           {%- set threshold = 20 -%}
           {% set ns = namespace(water_needed = false) %}
@@ -210,7 +216,7 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: 'Turn on coffee plant according to schedule'
+  - alias: '[plants|light]Turn on coffee plant according to schedule'
     trigger:
       - platform: time
         at: "7:00"
@@ -236,7 +242,7 @@ automation:
           color_temp: 380
           brightness: 155
 
-  - alias: 'Turn off coffee plant according to schedule'
+  - alias: '[plants|light]Turn off coffee plant according to schedule'
     trigger:
       - platform: time
         at: "21:30"
@@ -259,21 +265,30 @@ automation:
   #     data:
   #       entity_id: input_boolean.water_status_update
 
-  - alias: 'Water Alert'
+  - alias: '[plants|sensor]Water Alert'
+    mode: restart
     trigger:
       - platform: time_pattern
         minutes: '/60'
+      - platform: state
+        entity_id: sensor.water_needed
     condition:
-      condition: template
-      value_template: "{% if states('binary_sensor.water_status') %}{{ on }}{% else %}{{ off }}{% endif %}"
+      condition: state
+      entity_id: binary_sensor.water_status
+      state: 'on'
     action:
       - service: persistent_notification.create
         data_template:
           title: Low water levels
           message: "{{ states('sensor.water_needed') }}"
           notification_id: low-water-alert
+      - wait_template: "{{ is_state('binary_sensor.water_status','off') }}"
+        timeout: '00:30:00'
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: low-water-alert
 
-  - alias: 'Button turn plant lights on'
+  - alias: '[plants|light]Button turn plant lights on'
     trigger:
       - platform: event
         event_type: xiaomi_aqara.click
@@ -288,7 +303,7 @@ automation:
       - service: light.toggle
         entity_id: light.plants
 
-  - alias: 'Button dim plant lights'
+  - alias: '[plants|light]Button dim plant lights'
     trigger:
       - platform: event
         event_type: xiaomi_aqara.click
@@ -306,7 +321,7 @@ automation:
         data:
           brightness: 130
 
-  - alias: 'Button brighten plant lights'
+  - alias: '[plants|light]Button brighten plant lights'
     trigger:
       - platform: event
         event_type: xiaomi_aqara.click
