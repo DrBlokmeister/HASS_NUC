@@ -288,7 +288,7 @@ automation:
       entity_id: sensor.bedroom_scene
     condition:
       condition: state
-      entity_id: light.bedroom
+      entity_id: light.bedroom_lights
       state: 'on'
     action:
       service: scene.turn_on
@@ -296,6 +296,7 @@ automation:
         entity_id: scene.{{ states.sensor.bedroom_scene.state }}
   #Toggle bedroom lights when switch is pressed
   - alias: '[bedroom|light] Switch toggle' #was: bedroom_switch_toggle
+    mode: restart
     trigger:
       platform: event
       event_type: xiaomi_aqara.click
@@ -318,6 +319,7 @@ automation:
 
   #Cycle bedroom lights when switch is pressed twice
   - alias: '[bedroom|light] Cycle scenes with button'
+    mode: restart
     trigger:
       platform: event
       event_type: xiaomi_aqara.click
@@ -475,6 +477,7 @@ automation:
 
   #shelly toggle
   - alias: '[bedroom|light] Shelly toggle'
+    mode: restart
     trigger:
       - platform: state
         entity_id: switch.shelly_bedroom
@@ -819,7 +822,7 @@ script:
           minutes: 10
       - service: light.turn_on
         data:
-          entity_id: light.bedroom
+          entity_id: light.bedroom_lights
           color_temp: 350
           brightness: 254
           transition: 600

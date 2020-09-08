@@ -29,15 +29,15 @@ binary_sensor:
         device_class: light
         value_template: >-
           {{ 
-            states.light.study.attributes.brightness == 254 and 
-            states.light.study.attributes.color_temp == 280 
+            states.light.study_lights.attributes.brightness == 254 and 
+            states.light.study_lights.attributes.color_temp == 280 
           }}
       scene_study_bright_warm:
         device_class: light
         value_template: >-
           {{ 
-            states.light.study.attributes.brightness == 254 and 
-            states.light.study.attributes.color_temp == 454
+            states.light.study_lights.attributes.brightness == 254 and 
+            states.light.study_lights.attributes.color_temp == 454
           }}
       computer_on:
         device_class: power
@@ -68,7 +68,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.study
+            entity_id: light.study_lights
             transition: 2
       scene_study_bright_warm:
         icon_template: mdi:lightbulb-outline
@@ -79,7 +79,7 @@ switch:
         turn_off:
           service: light.turn_off
           data:
-            entity_id: light.study
+            entity_id: light.study_lights
             transition: 2
   - platform: flux
     name: flux_study
@@ -210,7 +210,7 @@ automation:
       for: 01:00:00
     action:
       service: light.turn_off
-      entity_id: light.study
+      entity_id: light.study_lights
 
   - alias: 'Message when computer is still on when not home'
     trigger:
@@ -232,6 +232,7 @@ automation:
             icon: http://192.168.1.252:8123/local/icons/desktop-tower-monitor.png
 
   - alias: '[study|lights]Toggle lights through switch press'
+    mode: restart
     trigger:
       - platform: state
         entity_id: switch.shelly_study
@@ -246,7 +247,7 @@ automation:
     action:
       - service: light.toggle
         data:
-          entity_id: light.study
+          entity_id: light.study_lights
           brightness: 255
       - service: switch.flux_study_update
       - service: automation.turn_off
