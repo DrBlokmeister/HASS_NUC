@@ -258,6 +258,52 @@ automation:
       - service: automation.turn_on
         entity_id:
           - automation.study_lights_turn_on_lights_when_motion_is_detected
+
+  - alias: '[study|power]Turn off pc plug'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.study_motion_combined
+        to: 'off'
+      - platform: state
+        entity_id: binary_sensor.vibration_sensor
+        to: 'off'
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.blitzwolf_computer_energy_power
+        below: 20
+      - condition: state
+        entity_id: device_tracker.blokmeisterh2o
+        state: 'not_home'
+      - condition: state
+        entity_id: binary_sensor.vibration_sensor
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.study_motion_combined
+        state: 'off'
+      - condition: state
+        entity_id: switch.blitzwolf_computer
+        state: 'on'
+    action:
+      - service: home_assistant.turn_off
+        entity_id: switch.blitzwolf_computer
+
+  - alias: '[study|power]Turn on pc plug'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.study_motion_combined
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.vibration_sensor
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: switch.blitzwolf_computer
+        state: 'off'
+    action:
+      - service: home_assistant.turn_on
+        entity_id: switch.blitzwolf_computer
 ################
 #    SCENES    #
 ################
