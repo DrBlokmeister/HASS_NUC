@@ -25,9 +25,18 @@ cards:
           - entity: sensor.octoprint_print_time_left
           - entity: sensor.octoprint_print_time
           - entity: sensor.octoprint_print_file
-          - entity: sensor.blitzwolf_3dprinter_energy_power
         show_header_toggle: false
         type: entities
+      - entities:
+          - entity: sensor.blitzwolf_3dprinter_energy_power
+            name: Power
+          - entity: sensor.octopi_cpu_temp
+            name: CPU temp
+          - entity: sensor.octopi_cpu_frequency
+            name: CPU frequency
+            icon: mdi:memory
+        columns: 3
+        type: glance
       - cards:
           - entity: light.study_2
             name: Toggle light
@@ -110,13 +119,13 @@ cards:
           camera_image: camera.ender3
           camera_view: live
           entities:
-            - entity: light.printer_camera_flash_led
+            - entity: light.study_2
           entity: camera.ender3
           title: Printer Camera
           type: picture-glance
         conditions:
-          - entity: sensor.ender3_current_state
-            state_not: unavailable
+          - entity: binary_sensor.octoprint_connected
+            state_not: 'off'
           - entity: sensor.blokmeisterop6_wifi_ssid
             state_not: "<unknown_ssid>"
           - entity: sensor.blokmeister_op6_blokmeister_op6_wifi_sensor
@@ -127,13 +136,13 @@ cards:
           camera_image: camera.ender3_360p
           camera_view: live
           entities:
-            - entity: light.printer_camera_flash_led
+            - entity: light.study_2
           entity: camera.ender3
           title: Printer Camera
           type: picture-glance
         conditions:
-          - entity: sensor.ender3_current_state
-            state_not: unavailable
+          - entity: binary_sensor.octoprint_connected
+            state_not: 'off'
           - entity: sensor.blokmeisterop6_wifi_ssid
             state: "<unknown_ssid>"
         type: conditional
