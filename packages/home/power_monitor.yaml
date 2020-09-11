@@ -107,6 +107,10 @@ sensor:
         entity_id: sensor.blitzwolf_3dprinter_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
+      washingmachine_cost_today:
+        entity_id: sensor.blitzwolf_washingmachine_energy_today
+        unit_of_measurement: '€'
+        value_template: "{{ (states( 'sensor.blitzwolf_washingmachine_energy_today' )|float * (0.2221|float))|round(2) }}"
       unknown_power:
         entity_id: 
           - sensor.total_power_watt
@@ -238,6 +242,9 @@ sensor:
   - platform: template
     sensors:
       energie_kosten_dag:
+        entity_id:
+          - sensor.kosten_hoog_tarief
+          - sensor.kosten_laag_tarief
         value_template: "{{ states('sensor.hosten_hoog_arief') | float + states('sensor.kosten_laag_tarief') | float | round(2) }}"
         unit_of_measurement: "€"
       # energie_kosten_maand:
@@ -456,6 +463,7 @@ group:
       - sensor.blitzwolf_3dprinter_energy_yesterday
       - sensor.blitzwolf_3dprinter_energy_total
       - sensor.blitzwolf_3dprinter_energy_totalstarttime
+      - sensor.blitzwolf_3dprinter_energy_bl0940_temperature
   blitzwolf_washingmachine:
     entities:
       - switch.blitzwolf_washingmachine
@@ -469,6 +477,35 @@ group:
       - sensor.blitzwolf_washingmachine_energy_yesterday
       - sensor.blitzwolf_washingmachine_energy_total
       - sensor.blitzwolf_washingmachine_energy_totalstarttime
+      - sensor.blitzwolf_washingmachine_energy_bl0940_temperature
+  blitzwolf_plug1:
+    entities:
+      - switch.blitzwolf_plug1
+      - sensor.blitzwolf_plug1_status
+      - sensor.blitzwolf_plug1_energy_voltage      
+      - sensor.blitzwolf_plug1_energy_current
+      - sensor.blitzwolf_plug1_energy_power
+      - sensor.blitzwolf_plug1_energy_apparentpower
+      - sensor.blitzwolf_plug1_energy_reactivepower
+      - sensor.blitzwolf_plug1_energy_today
+      - sensor.blitzwolf_plug1_energy_yesterday
+      - sensor.blitzwolf_plug1_energy_total
+      - sensor.blitzwolf_plug1_energy_totalstarttime
+      - sensor.blitzwolf_plug1_energy_bl0940_temperature
+  blitzwolf_plug2:
+    entities:
+      - switch.blitzwolf_plug2
+      - sensor.blitzwolf_plug2_status
+      - sensor.blitzwolf_plug2_energy_voltage      
+      - sensor.blitzwolf_plug2_energy_current
+      - sensor.blitzwolf_plug2_energy_power
+      - sensor.blitzwolf_plug2_energy_apparentpower
+      - sensor.blitzwolf_plug2_energy_reactivepower
+      - sensor.blitzwolf_plug2_energy_today
+      - sensor.blitzwolf_plug2_energy_yesterday
+      - sensor.blitzwolf_plug2_energy_total
+      - sensor.blitzwolf_plug2_energy_totalstarttime
+      - sensor.blitzwolf_plug2_energy_bl0940_temperature
   meter_readings:
     name: Meter readings
     entities:
