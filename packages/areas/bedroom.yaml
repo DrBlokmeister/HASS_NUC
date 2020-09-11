@@ -269,31 +269,31 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[bedroom|light] Turn on lights through motion' #was: bedroom_motion_lights
-    trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_bedroom
-      to: 'on'
-    condition:
-      condition: numeric_state
-      entity_id: sensor.illumination_bedroom
-      below: 10
-    action:
-      service: scene.turn_on
-      data_template:
-        entity_id: scene.{{ states.sensor.bedroom_scene.state }}
-  - alias: '[bedroom|light] Match scene sensor' #was: bedroom_time_lights
-    trigger:
-      platform: state
-      entity_id: sensor.bedroom_scene
-    condition:
-      condition: state
-      entity_id: light.bedroom_lights
-      state: 'on'
-    action:
-      service: scene.turn_on
-      data_template:
-        entity_id: scene.{{ states.sensor.bedroom_scene.state }}
+  # - alias: '[bedroom|light] Turn on lights through motion' #was: bedroom_motion_lights
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.motion_sensor_bedroom
+  #     to: 'on'
+  #   condition:
+  #     condition: numeric_state
+  #     entity_id: sensor.illumination_bedroom
+  #     below: 10
+  #   action:
+  #     service: scene.turn_on
+  #     data_template:
+  #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
+  # - alias: '[bedroom|light] Match scene sensor' #was: bedroom_time_lights
+  #   trigger:
+  #     platform: state
+  #     entity_id: sensor.bedroom_scene
+  #   condition:
+  #     condition: state
+  #     entity_id: light.bedroom_lights
+  #     state: 'on'
+  #   action:
+  #     service: scene.turn_on
+  #     data_template:
+  #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
   #Toggle bedroom lights when switch is pressed
   - alias: '[bedroom|light] Switch toggle' #was: bedroom_switch_toggle
     mode: restart
@@ -382,17 +382,17 @@ automation:
           - automation.bedroom_light_turn_off_lights
 
   #Turn off bedroom lights if no motion has been detected for 10 minutes
-  - alias: '[bedroom|light] Turn off lights' #was: bedroom_nomotion_turn_off
-    trigger:
-      platform: state
-      entity_id: binary_sensor.motion_sensor_bedroom
-      from: 'on'
-      to: 'off'
-      for: 00:10:00
-    action:
-      service: light.turn_off
-      entity_id: 
-        - light.bedroom_lights
+  # - alias: '[bedroom|light] Turn off lights' #was: bedroom_nomotion_turn_off
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.motion_sensor_bedroom
+  #     from: 'on'
+  #     to: 'off'
+  #     for: 00:10:00
+  #   action:
+  #     service: light.turn_off
+  #     entity_id: 
+  #       - light.bedroom_lights
 
   #Wakeup light
   - alias: '[bedroom|light] Wakeup light' #was: bedroom_wakeup_light
@@ -421,18 +421,14 @@ automation:
         data:
           entity_id: all
           transition: 10
-      - service: homeassistant.turn_off
+      - service: automation.turn_off
         entity_id:
           - group.bedroom_lighting_automations
           - group.kitchen_lighting_automations
           - group.livingroom_lighting_automations
           - group.study_lighting_automations
-      - service: automation.turn_off
-        entity_id:
-          - automation.livingroom_light_flux_light_through_motion
-          - automation.study_lights_turn_on_lights_when_motion_is_detected
-          - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
           - automation.bathroom_light_turn_on_light_through_motion
+          - automation.entry_light_turn_on_light_through_motion
       - service: climate.set_temperature
         data:
           entity_id: climate.heating
@@ -466,12 +462,14 @@ automation:
         entity_id: input_boolean.wakeup_alarm_on
       - service: switch.turn_on
         entity_id: switch.blitzwolf_watercooker
-      - service: homeassistant.turn_on
+      - service: automation.turn_on
         entity_id: 
           - group.bedroom_lighting_automations
           - group.kitchen_lighting_automations
           - group.livingroom_lighting_automations
           - group.study_lighting_automations
+          - automation.bathroom_light_turn_on_light_through_motion
+          - automation.entry_light_turn_on_light_through_motion
       - service: homeassistant.turn_off
         entity_id: climate.electric_blanket
 
@@ -499,18 +497,12 @@ automation:
       - service: switch.flux_bedroom_update
       - service: automation.turn_off
         entity_id:
-          - automation.bedroom_light_turn_off_lights
-          - automation.bedroom_light_match_scene_sensor
-          - automation.bedroom_light_turn_on_lights_through_motion
-          - automation.bedroom_light_gradual_light_automation
+          - group.bedroom_lighting_automations
       - delay:
           seconds: 30
       - service: automation.turn_on
         entity_id:
-          - automation.bedroom_light_turn_off_lights
-          - automation.bedroom_light_match_scene_sensor
-          - automation.bedroom_light_turn_on_lights_through_motion
-          - automation.bedroom_light_gradual_light_automation
+          - group.bedroom_lighting_automations
 
 
   - alias: '[bedroom|light]Lights_when_cabinet_is_open'
@@ -613,6 +605,14 @@ automation:
       - service: switch.flux_bedroom_update
       - delay:
           minutes: 10
+      - wait_template: "{{ is_state('binary_sensor.motion_sensor_bedroom','off') }}"
+        timeout: '00:30:00'
+      - service: light.turn_on
+        data:
+          entity_id: light.bedroom_lights
+          brightness_step: -50
+      - delay:
+          seconds: 30
       - wait_template: "{{ is_state('binary_sensor.motion_sensor_bedroom','off') }}"
         timeout: '00:30:00'
       - service: light.turn_off
@@ -734,9 +734,9 @@ scene:
 group:
   bedroom_lighting_automations:
     entities:
-      - automation.bedroom_light_turn_off_lights
-      - automation.bedroom_light_match_scene_sensor
-      - automation.bedroom_light_turn_on_lights_through_motion
+      # - automation.bedroom_light_turn_off_lights
+      # - automation.bedroom_light_match_scene_sensor
+      # - automation.bedroom_light_turn_on_lights_through_motion
       - automation.bedroom_light_gradual_light_automation
   bedroom_scenes:
     entities:
