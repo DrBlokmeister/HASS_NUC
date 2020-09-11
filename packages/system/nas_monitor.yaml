@@ -205,19 +205,19 @@ sensor:
     headers:
       Content-Type: application/json
 
-  - platform: rest
-    name: 'Ubuntu_VM'
-    json_attributes_path: "$.[0]"
-    json_attributes:
-      - state
-      - info
-    resource: http://192.168.1.250:250/api/v1.0/vm/vm/?format=json
-    value_template: '{{ value_json.state }}'
-    username: !secret nas_user
-    password: !secret nas_pass
-    authentication: basic
-    headers:
-      Content-Type: application/json
+  # - platform: rest
+  #   name: 'Ubuntu_VM'
+  #   json_attributes_path: "$.[0]"
+  #   json_attributes:
+  #     - state
+  #     - info
+  #   resource: http://192.168.1.250:250/api/v1.0/vm/vm/?format=json
+  #   value_template: '{{ value_json.state }}'
+  #   username: !secret nas_user
+  #   password: !secret nas_pass
+  #   authentication: basic
+  #   headers:
+  #     Content-Type: application/json
 
   - platform: template
     sensors:
@@ -492,7 +492,48 @@ scene:
 #    GROUPS    #
 ################
 group:
-
+  nas_rest_sensors:
+    entities:
+      - sensor.fn_alert_level
+      - sensor.fn_alert_message
+      - sensor.fn_newstorage_pct_used
+      - sensor.fn_newstorage_report
+      - sensor.fn_newstorage_used
+      - sensor.fn_storage2_pct_used
+      - sensor.fn_storage2_report
+      - sensor.fn_storage2_used
+      - sensor.fn_version
+  nas_cmd_sensors:
+    entities:
+      - sensor.nas_cpu0_temp
+      - sensor.nas_cpu1_temp
+      - sensor.nas_cpu2_temp
+      - sensor.nas_cpu3_temp
+      - sensor.transmission_status
+  nas_mqtt_sensors:
+    entities:
+      - sensor.nas_cpu_load_15m
+      - sensor.nas_cpu_load_1m
+      - sensor.nas_cpu_load_5m
+      - sensor.nas_cpu_temperature
+      - sensor.nas_cpu_use_percent
+      - sensor.nas_memory_free
+      - sensor.nas_memory_use_percent
+      - sensor.nas_swap_use
+      - sensor.nas_disk_ada0_temperature
+      - sensor.nas_disk_ada1_temperature
+      - sensor.nas_disk_ada2_temperature
+      - sensor.nas_disk_ada3_temperature
+      - sensor.nas_disk_ada4_temperature
+      - sensor.nas_disk_ada5_temperature
+      - sensor.nas_disk_ada6_temperature
+      - sensor.nas_disk_ada7_temperature
+      - sensor.nas_disk_da0_temperature
+      - sensor.nas_disk_da1_temperature
+      - sensor.nas_pool_newstorage_health
+      - sensor.nas_pool_newstorage_use_percent
+      - sensor.nas_pool_storage2_health
+      - sensor.nas_pool_storage2_use_percent
 #################
 #    SCRIPTS    #
 #################
