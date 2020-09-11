@@ -192,10 +192,12 @@ binary_sensor:
           {%- set threshold = 20 -%}
           {% set ns = namespace(water_needed = false) %}
           {%- for item in states.plant if ((item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) or ("moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
-          {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
-          {% set ns.water_needed = true %}{% endif -%}
-          {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
-          {% set ns.water_needed = true %} {% endif -%}
+            {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
+              {% set ns.water_needed = true %}
+            {% endif -%}
+            {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
+              {% set ns.water_needed = true %} 
+            {% endif -%}
           {%- endfor -%}
           {{ns.water_needed}}
 
