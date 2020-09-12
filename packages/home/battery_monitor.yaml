@@ -73,19 +73,27 @@ automation:
 #         entity_id: input_boolean.battery_status_update
 
   - alias: 'Battery Alert'
+    mode: restart
     trigger:
-      - platform: time
-        at: '10:00:00'
-      - platform: time
-        at: '18:00:00'
+      - platform: numeric_state
+        entity_id: sensor.uptime
+        above: 5
+      - platform: state
+        entity_id: sensor.low_battery
     condition:
       condition: template
       value_template: "{% if states('binary_sensor.battery_status') %}{{ true }}{% else %}{{ false }}{% endif %}"
     action:
+      - wait_template: "{{ states('sensor.uptime')|int > 5 }}"
+        timeout: '00:05:00'
       - service: persistent_notification.create
         data_template:
           title: Low Battery levels
           message: "{{ states('sensor.low_battery') }}"
+          notification_id: low-battery-alert
+      - wait_template: "{% if states('binary_sensor.battery_status') %}{{ true }}{% else %}{{ false }}{% endif %}"
+      - service: persistent_notification.dismiss
+        data:
           notification_id: low-battery-alert
       # - service: notify.slack_notify
       #   data_template:
