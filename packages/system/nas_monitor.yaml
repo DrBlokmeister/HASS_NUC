@@ -505,12 +505,20 @@ automation:
           homeassistant.components.rest.sensor: fatal  #don't log rest sensors
           homeassistant.components.command_line: fatal #don't log command_line sensors
           homeassistant.helpers.entity: fatal #this component is also triggered when above don't update
+      - service: system_log.write
+        data:
+          message: 'Default logging level for homeassistant.components.rest.sensor, homeassistant.components.command_line and homeassistant.helpers.entity changed to FATAL to prevent error log pollution (NAS offline)'
+          level: warning
       - wait_template: "{{ is_state('switch.blokmeisternas','on') }}"
       - service: logger.set_level
         data:
           homeassistant.components.rest.sensor: info
           homeassistant.components.command_line: info
           homeassistant.helpers.entity: info
+      - service: system_log.write
+        data:
+          message: 'Default logging level for homeassistant.components.rest.sensor, homeassistant.components.command_line and homeassistant.helpers.entity changed back to INFO (NAS online)'
+          level: warning
 ################
 #    SCENES    #
 ################
