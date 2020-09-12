@@ -482,7 +482,35 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-
+  - alias: '[nas|logging]disable logging when NAS is offline'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: switch.blokmeisternas
+        to: 'off'
+        for:
+          minutes: 5
+      - platform: numeric_state #if the state was already off at startup, we also need to trigger
+        entity_id: sensor.uptime
+        above: 5
+    condition:
+      condition: state
+      entity_id: switch.blokmeisternas
+      state: 'off'
+    action:
+      - wait_template: "{{ states('sensor.uptime')|int > 5 }}"
+        timeout: '00:05:00'
+      - service: logger.set_level
+        data:
+          homeassistant.components.rest.sensor: fatal  #don't log rest sensors
+          homeassistant.components.command_line: fatal #don't log command_line sensors
+          homeassistant.helpers.entity: fatal #this component is also triggered when above don't update
+      - wait_template: "{{ is_state('switch.blokmeisternas','on') }}"
+      - service: logger.set_level
+        data:
+          homeassistant.components.rest.sensor: info
+          homeassistant.components.command_line: info
+          homeassistant.helpers.entity: info
 ################
 #    SCENES    #
 ################
