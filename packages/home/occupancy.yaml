@@ -24,17 +24,67 @@ binary_sensor:
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
+  enable_tamara_mode:
+    name: "Enable Tamara mode"
+    icon: mdi:person
+  tamara_mode:
+    name: "Tamara Mode"
+    icon: mdi:person
 
 ##################
 #    SWITCHES    #
 ##################
 switch:
+  - platform: template
+    switches:
+      tamara_mode:
+        friendly_name: "Tamara mode"
+        entity_id: input_boolean.tamara_mode
+        value_template: "{{ is_state('input_boolean.tamara_mode', 'on') }}"
+        turn_on:
+          service: input_boolean.turn_on
+          entity_id: input_boolean.tamara_mode
+        turn_off:
+          service: input_boolean.turn_off
+          entity_id: input_boolean.tamara_mode
 
 #####################
 #    AUTOMATIONS    #
 #####################
 automation:
-
+  - alias: '[occupancy|lights]execute_tamara_mode'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.tamara_mode
+    condition:
+      condition: state
+      entity_id: input_boolean.enable_tamara_mode
+      state: 'on'
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.tamara_mode
+                state: "on"
+            sequence:
+              - service: automation.turn_off
+                entity_id: group.all_lighting_automations
+              - service: tts.google_say
+                entity_id: media_player.living_room_speaker
+                data:
+                  message: "Tamara mode enabled. All motion-activated light automations have been turned off."
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.tamara_mode
+                state: "off"
+            sequence:
+              - service: automation.turn_on
+                entity_id: group.all_lighting_automations
+              - service: tts.google_say
+                entity_id: media_player.living_room_speaker
+                data:
+                  message: "Tamara mode disabled. The house is now fully automated again!"
 ################
 #    SCENES    #
 ################
