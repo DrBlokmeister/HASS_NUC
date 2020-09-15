@@ -519,6 +519,56 @@ automation:
         data:
           message: 'Default logging level for homeassistant.components.rest.sensor, homeassistant.components.command_line and homeassistant.helpers.entity changed back to INFO (NAS online)'
           level: warning
+
+  - alias: '[nas|shutdown] Ask for shutdown when at work'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: person.sander_blok
+        to: 'work'
+        for:
+          minutes: 10
+    condition:
+      - condition: state
+        entity_id: switch.blokmeisternas
+        state: 'on'
+    action:
+      - service: automation.turn_on
+        entity_id: automation.nas_shutdown_trigger_shutdown_dependent_on_response
+      - service: notify.mobile_app_blokmeister_op6
+        data:
+          title: 'Shutdown NAS'
+          message: 'NAS is still on. Want to turn it off?'
+          data:
+            actions:
+              - action: poweron
+                title: Keep on
+              - action: poweroff
+                title: Shutdown
+      - delay:
+          minutes: 10
+      - service: automation.turn_off
+        entity_id: automation.nas_shutdown_trigger_shutdown_dependent_on_response
+          
+  - alias: '[nas|shutdown] Trigger shutdown dependent on response'
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: ariela_notification_clicked
+        event_data:
+          action: poweroff
+    condition: []
+    action:
+      - service: switch.turn_off
+        entity_id: switch.blokmeisternas
+      - wait_template: "{{ is_state('switch.blokmeisternas', 'off') }}"
+        timeout:
+          minutes: 5
+      - service: notify.mobile_app_blokmeister_op6
+        data:
+          title: 'NAS shutdown'
+          message: 'NAS was successfully shut down'
+
 ################
 #    SCENES    #
 ################
