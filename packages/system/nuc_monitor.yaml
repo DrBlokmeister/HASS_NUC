@@ -254,8 +254,9 @@ automation:
     action:
       - service: persistent_notification.create
         data:
-          message: "Hass.io version {{ states('sensor.latest_version') }} is now available!"
+          message: "Hass.io version **[{{ states('sensor.latest_version') }}](https://www.home-assistant.io/latest-release-notes/)** is now available!"
           title: Upgrade time!
+          notification_id: update_available
       - service: hassio.addon_start
         data:
           addon: core_check_config
@@ -273,8 +274,9 @@ automation:
     action:
       - service: persistent_notification.create
         data:
-          message: "{{states.sensor.potential_breaking_changes.state}} potential breaking changes detected between version {{states.sensor.current_version.state}} and version {{states.sensor.latest_version.state}}"
+          message: "**{{states.sensor.potential_breaking_changes.state}}** potential breaking changes detected between version **[{{states.sensor.current_version.state}}](https://www.home-assistant.io/latest-release-notes/)** and version **{{states.sensor.latest_version.state}}**"
           title: "Potential breaking changes"
+          notification_id: breaking_changes
 
   - alias: '[System] Mount NAS drives'
     initial_state: on
