@@ -7,9 +7,11 @@ from .const import DOMAIN_DATA, ICON
 SCAN_INTERVAL = timedelta(seconds=10)
 
 
-async def async_setup_platform(hass, _config, async_add_entities, discovery_info=None):
+async def async_setup_platform(
+    hass, config, async_add_entities, discovery_info=None
+):  # pylint: disable=unused-argument
     """Setup sensor platform."""
-    async_add_entities([BreakingChangesSensor(hass, discovery_info)])
+    async_add_entities([BreakingChangesSensor(hass, discovery_info)], True)
 
 
 class BreakingChangesSensor(Entity):
@@ -17,23 +19,24 @@ class BreakingChangesSensor(Entity):
 
     def __init__(self, hass, config):
         self.hass = hass
-        self._attr = {}
+        self.attr = {}
         self._state = None
         self._name = config["name"]
 
     async def async_update(self):
         """Update the sensor."""
         # Send update "signal" to the component
-        await update_data(self.hass)
+        await update_data(self.hass, self.hass.data[DOMAIN_DATA]["throttle"])
+
+        # Get new data (if any)
+        updated = self.hass.data[DOMAIN_DATA]
 
         # Check the data and update the value.
-        self._state = len(
-            self.hass.data[DOMAIN_DATA].get("potential", {}).get("changes", [])
-        )
+        self._state = len(updated.get("potential", [])) - 1
         self._state = 0 if self._state < 0 else self._state
 
         # Set/update attributes
-        self._attr = self.hass.data[DOMAIN_DATA].get("potential", {})
+        self.attr = updated.get("potential", [])
 
     @property
     def should_poll(self):
@@ -58,4 +61,4 @@ class BreakingChangesSensor(Entity):
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        return self._attr
+        return self.attr
