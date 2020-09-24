@@ -108,6 +108,7 @@ switch:
 #####################
 automation:
   - alias: '[mediacenter|light] Turn off lights when mediaplayer starts'
+    mode: restart
     trigger:
       - platform: state
         entity_id: media_player.coreelec
@@ -133,26 +134,23 @@ automation:
           transition: 5
       - service: homeassistant.turn_off
         entity_id: group.livingroom_lighting_automations
-
-  - alias: '[mediacenter|light] Restore lights when mediaplayer stops'
-    trigger:
-      - platform: state
-        entity_id: media_player.coreelec
-        from: 'playing'
-        to: 'idle'
-        for:
-          seconds: 10
-      - platform: state
-        entity_id: media_player.coreelec
-        to: 'idle'
-        for:
-          minutes: 5
-      - platform: state
-        entity_id: media_player.coreelec
-        to: 'unavailable'
-        for:
-          minutes: 5
-    action:
+      - wait_for_trigger:
+          - platform: state
+            entity_id: media_player.coreelec
+            from: 'playing'
+            to: 'idle'
+            for:
+              seconds: 10
+          - platform: state
+            entity_id: media_player.coreelec
+            to: 'idle'
+            for:
+              minutes: 5
+          - platform: state
+            entity_id: media_player.coreelec
+            to: 'unavailable'
+            for:
+              minutes: 5
       - service: scene.turn_on
         data:
           entity_id: scene.livingroom_before
@@ -160,37 +158,63 @@ automation:
       - service: homeassistant.turn_on
         entity_id: group.livingroom_lighting_automations
 
-  - alias: '[mediacenter|light] Restore lights when mediaplayer stops'
-    trigger:
-      - platform: state
-        entity_id: media_player.coreelec
-        from: 'playing'
-        to: 'paused'
-        for:
-          seconds: 5
-    action:
-      - service: light.turn_on
-        data:
-          entity_id: light.plants
-          brightness: 50
-          transition: 5
-      - service: light.turn_on
-        data:
-          entity_id: light.rgb_led_strip_living_room
-          brightness: 50
-          hs_color:
-            - 33
-            - 100
-      - service: light.turn_on
-        data:
-          entity_id: light.white_led_strip_living_room
-          brightness: 28
-      - wait_template: "{{ is_state('media_player.coreelec', 'playing')}}"
-      - service: light.turn_off
-        data:
-          entity_id:
-            - light.rgb_led_strip_living_room
-            - light.white_led_strip_living_room
+  # - alias: '[mediacenter|light] Restore lights when mediaplayer stops'
+  #   trigger:
+  #     - platform: state
+  #       entity_id: media_player.coreelec
+  #       from: 'playing'
+  #       to: 'idle'
+  #       for:
+  #         seconds: 10
+  #     - platform: state
+  #       entity_id: media_player.coreelec
+  #       to: 'idle'
+  #       for:
+  #         minutes: 5
+  #     - platform: state
+  #       entity_id: media_player.coreelec
+  #       to: 'unavailable'
+  #       for:
+  #         minutes: 5
+  #   action:
+  #     - service: scene.turn_on
+  #       data:
+  #         entity_id: scene.livingroom_before
+  #         transition: 10
+  #     - service: homeassistant.turn_on
+  #       entity_id: group.livingroom_lighting_automations
+
+  # - alias: '[mediacenter|light] Restore lights when mediaplayer stops'
+  #   trigger:
+  #     - platform: state
+  #       entity_id: media_player.coreelec
+  #       from: 'playing'
+  #       to: 'paused'
+  #       for:
+  #         seconds: 5
+  #   action:
+  #     - service: light.turn_on
+  #       data:
+  #         entity_id: light.plants
+  #         brightness: 50
+  #         transition: 5
+  #     - service: light.turn_on
+  #       data:
+  #         entity_id: light.rgb_led_strip_living_room
+  #         brightness: 50
+  #         hs_color:
+  #           - 33
+  #           - 100
+  #     - service: light.turn_on
+  #       data:
+  #         entity_id: light.white_led_strip_living_room
+  #         brightness: 28
+  #     - wait_template: "{{ is_state('media_player.coreelec', 'playing')}}"
+  #     - service: light.turn_off
+  #       data:
+  #         entity_id:
+  #           - light.rgb_led_strip_living_room
+  #           - light.white_led_strip_living_room
     
 
 ################

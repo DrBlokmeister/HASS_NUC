@@ -61,11 +61,11 @@ automation:
         entity_id: 
           - group.vacation_mode_lights
 
-  - alias: 'Turn on lights during vacation bedroom'
+  - alias: '[vacationmode|lights]Schedule bedroom lights'
+    mode: restart
     trigger:
-      - platform: sun
-        event: sunrise
-        offset: "-00:45:00"
+      - platform: time
+        at: 07:00:00
       - platform: sun
         event: sunset
         offset: "-00:45:00"
@@ -74,28 +74,43 @@ automation:
         entity_id: person.sander_blok
         state:  not_home
     action:
-      service: scene.turn_on
-      entity_id:
-        - scene.bedroom_bright_wakeup
+      - delay:
+          minutes: '{{ range(0, 15)|random|int }}' #have a randomized offset of max 15 minutes
+      - service: light.turn_on
+        entity_id:
+          - light.bedroom_lights
+      - wait_for_trigger: #turn lights back off afterwards
+          - platform: sun
+            event: sunrise
+            offset: "+00:30:00"
+          - platform: time
+            at: "22:00:00"
+      - delay:
+          minutes: '{{ range(0, 25)|random|int }}' #have a randomized offset of max 15 minutes
+      - service: light.turn_off
+        entity_id:
+          - light.bedroom
 
-  - alias: 'Turn off lights during vacation bedroom'
-    trigger:
-      - platform: sun
-        event: sunrise
-        offset: "+01:45:00"
-      - platform: sun
-        event: sunset
-        offset: "+00:45:00"
-    condition:
-      - condition: state
-        entity_id: person.sander_blok
-        state:  not_home
-    action:
-      service: light.turn_off
-      entity_id:
-        - light.bedroom
 
-  - alias: 'Turn on lights during vacation other'
+  # - alias: 'Turn off lights during vacation bedroom'
+  #   trigger:
+  #     - platform: sun
+  #       event: sunrise
+  #       offset: "+00:45:00"
+  #     - platform: sun
+  #       event: sunset
+  #       offset: "+00:45:00"
+  #   condition:
+  #     - condition: state
+  #       entity_id: person.sander_blok
+  #       state:  not_home
+  #   action:
+  #     service: light.turn_off
+  #     entity_id:
+  #       - light.bedroom
+
+  - alias: '[vacationmode|lights]Schedule livingroom and kitchen lights'
+    mode: restart
     trigger:
       - platform: sun
         event: sunrise
@@ -108,10 +123,25 @@ automation:
         entity_id: person.sander_blok
         state:  not_home
     action:
-      service: scene.turn_on
-      entity_id:
-        - scene.livingroom_bright_warm
-        - scene.kitchen_bright_warm
+      - delay:
+        minutes: '{{ range(0, 15)|random|int }}' #have a randomized offset of max 15 minutes
+      - service: light.turn_on
+        entity_id:
+          - light.livingroom_lights
+          - light.kitchen_lights
+      - wait_for_trigger: #turn lights back off afterwards
+          - platform: sun
+            event: sunrise
+            offset: "+00:30:00"
+          - platform: time
+            at: "21:30:00"
+      - delay:
+          minutes: '{{ range(0, 25)|random|int }}' #have a randomized offset of max 15 minutes
+      - service: light.turn_off
+        entity_id:
+          - light.livingroom_lights
+          - light.kitchen_lights
+
 
   - alias: 'Turn off lights during vacation other'
     trigger:
