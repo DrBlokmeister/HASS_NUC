@@ -31,11 +31,11 @@ automation:
 ###  
 ###  Updated by Fabian Bader
 ##############################################################################
-- alias: detect lights and adjust the brightness when turned on based on time
-  initial_state: false
-  trigger:
-    - platform: event
-      event_type: state_changed
+# - alias: detect lights and adjust the brightness when turned on based on time
+#   initial_state: false
+#   trigger:
+#     - platform: event
+#       event_type: state_changed
 ##############################################################################
 ###  Only trigger when entity_id is light
 ###  Do not trigger when entity is_hue_group is true
@@ -43,26 +43,26 @@ automation:
 ###  Only trigger when from_state is off
 ###  Only trigger when to_state is on
 ##############################################################################
-  condition:
-    condition: and
-    conditions:
-      - condition: state
-        entity_id: person.sander_blok
-        state: 'home'
-      - condition: template
-        value_template: "{{ trigger.event.data is not none }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.entity_id is not none }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.entity_id.split('.')[0] == 'light' }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.entity_id.split('_')[0] != 'light.livingroom' }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.old_state.attributes['is_hue_group'] != true }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.old_state.state == 'off' }}"
-      - condition: template
-        value_template: "{{ trigger.event.data.new_state.state == 'on' }}"
+  # condition:
+  #   condition: and
+  #   conditions:
+  #     - condition: state
+  #       entity_id: person.sander_blok
+  #       state: 'home'
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data is not none }}"
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data.entity_id is not none }}"
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data.entity_id.split('.')[0] == 'light' }}"
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data.entity_id.split('_')[0] != 'light.livingroom' }}"
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data.old_state.attributes['is_hue_group'] != true }}"
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data.old_state.state == 'off' }}"
+  #     - condition: template
+  #       value_template: "{{ trigger.event.data.new_state.state == 'on' }}"
 ##############################################################################
 ###  Monday - Friday from 05 - 06 light will be dimmed to 75
 ###  Monday - Friday from 06 - 08 light will be dimmed to 180
@@ -70,39 +70,39 @@ automation:
 ###  Friday - Saturday from 23 - 03 light will be dimmed to 150
 ###  All other times are 1
 ##############################################################################
-  action:
-    - service: light.turn_on
-      data_template:
-        entity_id: "{{ trigger.event.data.entity_id }}"
-        brightness: >
-          {% set hour=states("sensor.time").split(':')[0] | int %}
-          {% set dayOfWeek=now().weekday()  %}
-          {%- if hour >= 0 and hour < 3 and dayOfWeek in [5,6] -%}
-            150
-          {%- elif hour >= 5 and hour < 6 and dayOfWeek in [0,1,2,3,4] -%}
-            75
-          {%- elif hour >= 6 and hour < 8 and dayOfWeek in [0,1,2,3,4] -%}
-            180
-          {%- elif hour >= 6 and hour < 8 and dayOfWeek in [5,6] -%}
-            75
-          {%- elif hour >= 8 and hour < 23  -%}
-            255
-          {%- elif hour >= 23 and hour < 24 and dayOfWeek in [4,5]  -%}
-            255
-          {%- elif hour >= 23 and hour < 24 and dayOfWeek in [0,1,2,3,6]  -%}
-            150
-          {%- else -%}
-            1
-          {%- endif %}
-        color_temp: >
-          {% set hour=states("sensor.time").split(':')[0] | int %}
-          {%- if hour >= 5 and hour < 8  -%}
-            400
-          {%- elif hour >= 8 and hour < 23  -%}
-            366
-          {%- else -%}
-            500
-          {%- endif %}
+  # action:
+  #   - service: light.turn_on
+  #     data_template:
+  #       entity_id: "{{ trigger.event.data.entity_id }}"
+  #       brightness: >
+  #         {% set hour=states("sensor.time").split(':')[0] | int %}
+  #         {% set dayOfWeek=now().weekday()  %}
+  #         {%- if hour >= 0 and hour < 3 and dayOfWeek in [5,6] -%}
+  #           150
+  #         {%- elif hour >= 5 and hour < 6 and dayOfWeek in [0,1,2,3,4] -%}
+  #           75
+  #         {%- elif hour >= 6 and hour < 8 and dayOfWeek in [0,1,2,3,4] -%}
+  #           180
+  #         {%- elif hour >= 6 and hour < 8 and dayOfWeek in [5,6] -%}
+  #           75
+  #         {%- elif hour >= 8 and hour < 23  -%}
+  #           255
+  #         {%- elif hour >= 23 and hour < 24 and dayOfWeek in [4,5]  -%}
+  #           255
+  #         {%- elif hour >= 23 and hour < 24 and dayOfWeek in [0,1,2,3,6]  -%}
+  #           150
+  #         {%- else -%}
+  #           1
+  #         {%- endif %}
+  #       color_temp: >
+  #         {% set hour=states("sensor.time").split(':')[0] | int %}
+  #         {%- if hour >= 5 and hour < 8  -%}
+  #           400
+  #         {%- elif hour >= 8 and hour < 23  -%}
+  #           366
+  #         {%- else -%}
+  #           500
+  #         {%- endif %}
 
 
 
