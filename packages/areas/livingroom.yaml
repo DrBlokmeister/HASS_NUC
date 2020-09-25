@@ -140,8 +140,7 @@ switch:
     disable_brightness_adjust: True
     transition: 30
     lights:
-      - light.tvarea_Lights
-      - light.rgb_led_strip_living_room
+      - light.tvarea_and_ledstrips
 
 #####################
 #    AUTOMATIONS    #
@@ -161,30 +160,26 @@ automation:
       - service: light.turn_on
         data:
           entity_id: 
-            - light.tvarea_lights
-            - light.rgb_led_strip_living_room
-            - light.white_led_strip_living_room
+            - light.tvarea_and_ledstrips
           brightness: 255
       - service: switch.flux_livingroom_update
-      - delay:
-          minutes: 10
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.livingroom_motion_combined
+            to: 'off'
+            for:
+              minutes: 10
       - service: light.turn_on
         data:
           entity_id:
-            - light.tvarea_lights
-            - light.rgb_led_strip_living_room
-            - light.white_led_strip_living_room
+            - light.tvarea_and_ledstrips
           brightness: 140
           transition: 0.5
       - delay:
           seconds: 30
-      - wait_template: "{{ is_state('binary_sensor.livingroom_motion_combined','off') }}"
-        timeout: '00:30:00'
       - service: light.turn_off
         entity_id:
-          - light.tvarea_lights
-          - light.rgb_led_strip_living_room
-          - light.white_led_strip_living_room
+          - light.tvarea_and_ledstrips
 
   - alias: '[livingroom|light] Shelly toggle lights'
     mode: restart
@@ -305,7 +300,7 @@ group:
 ################
 light:
   - platform: group
-    name: TVarea Lights
+    name: TVarea_Lights
     entities:
       - light.hue_color_spot_1
       - light.hue_color_spot_2
@@ -316,8 +311,7 @@ light:
     name: TVarea_and_LEDstrips
     entities:
       - light.tvarea_lights
-      - light.white_led_strip_living_room
-      - light.rgb_led_strip_living_room
+      - light.livingroom_led_strip
   - platform: group
     name: Livingroom lights noplants
     entities:

@@ -117,8 +117,12 @@ automation:
           entity_id: light.study_lights
           brightness: 255
       - service: switch.flux_study_update
-      - delay:
-          minutes: 10
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.study_motion_combined
+            to: 'off'
+            for:
+              minutes: 10
       - service: light.turn_on
         data:
           entity_id: light.study_lights
@@ -126,8 +130,6 @@ automation:
           transition: 0.5
       - delay:
           seconds: 30
-      - wait_template: "{{ is_state('binary_sensor.study_motion_combined','off') }}"
-        timeout: '00:30:00'
       - service: light.turn_off
         entity_id: light.study_lights
 
