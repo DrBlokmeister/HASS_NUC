@@ -280,7 +280,7 @@ automation:
   #     below: 10
   #   action:
   #     service: scene.turn_on
-  #     data_template:
+  #     data:
   #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
   # - alias: '[bedroom|light] Match scene sensor' #was: bedroom_time_lights
   #   trigger:
@@ -292,7 +292,7 @@ automation:
   #     state: 'on'
   #   action:
   #     service: scene.turn_on
-  #     data_template:
+  #     data:
   #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
   #Toggle bedroom lights when switch is pressed
   - alias: '[bedroom|light] Switch toggle' #was: bedroom_switch_toggle
@@ -331,7 +331,7 @@ automation:
       data: 
         entity_id: input_select.bedroom_scenes
     - service: scene.turn_on
-      data_template:
+      data:
         entity_id: scene.bedroom_{{states.input_select.bedroom_scenes.state}}
     - service: input_boolean.turn_on
       data:
@@ -547,7 +547,7 @@ automation:
       below: 10
     action:
       - service: light.turn_on
-        data_template:
+        data:
           entity_id:
             - light.bedroom_1
             - light.bedroom_2
@@ -562,7 +562,7 @@ automation:
               50
             {% endif %}
       - service: light.turn_on
-        data_template:
+        data:
           entity_id:
             - light.bedroom_3
           brightness: >-
@@ -576,7 +576,7 @@ automation:
               0
             {% endif %}
       - service: light.turn_on
-        data_template:
+        data:
           entity_id:
             - light.bedside_left
             - light.bedside_right
@@ -591,7 +591,7 @@ automation:
               0
             {% endif %}
       - service: light.turn_on
-        data_template:
+        data:
           entity_id:
             - light.ledstrip_bed
           brightness: >-
@@ -775,7 +775,7 @@ script:
   toggle_bedroom_lights_on:
     sequence:
       service: scene.turn_on
-      data_template:
+      data:
         entity_id: scene.{{ states.sensor.bedroom_scene.state }}
 
   # toggle_bedroom_lights_bright:
@@ -835,13 +835,13 @@ script:
         data:
           entity_id: climate.electric_blanket
       - service: climate.set_temperature
-        data_template:
+        data:
           entity_id: climate.electric_blanket
           temperature: >-
             {{ states.input_number.bed_preheat_temp.state }}
       - delay: '00:{{ states.input_number.bed_preheat_time.state|int }}:00' 
       - service: climate.set_temperature
-        data_template:
+        data:
           entity_id: climate.electric_blanket
           temperature: >-
             {{ states.input_number.bed_postheat_temp.state }}
