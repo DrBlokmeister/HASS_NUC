@@ -23,8 +23,8 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  # - platform: template
-  #   sensors:
+  - platform: template
+    sensors:
   #     scene_study_bright_cool:
   #       device_class: light
   #       value_template: >-
@@ -39,19 +39,19 @@ binary_sensor:
   #           states.light.study_lights.attributes.brightness == 254 and 
   #           states.light.study_lights.attributes.color_temp == 454
   #         }}
-  #     computer_on:
-  #       device_class: power
-  #       value_template: >-
-  #         {{
-  #           states.sensor.blitzwolf_computer_energy_power.state|float > 100
-  #         }}
-  #     study_motion_combined:
-  #       device_class: motion
-  #       value_template: >-
-  #         {{
-  #           is_state('binary_sensor.motion_sensor_study', 'on') or
-  #           is_state('binary_sensor.motion_sensor_study2', 'on')
-  #         }}
+      computer_on:
+        device_class: power
+        value_template: >-
+          {{
+            states.sensor.blitzwolf_computer_energy_power.state|float > 100
+          }}
+      study_motion_combined:
+        device_class: motion
+        value_template: >-
+          {{
+            is_state('binary_sensor.motion_sensor_study', 'on') or
+            is_state('binary_sensor.motion_sensor_study2', 'on')
+          }}
 
 ##################
 #    SWITCHES    #
@@ -110,7 +110,7 @@ automation:
     condition:
       - condition: numeric_state
         entity_id: sensor.average_illumination_study
-        below: 40
+        below: 30
     action:
       - service: light.turn_on
         data:
@@ -198,9 +198,13 @@ automation:
       - platform: state
         entity_id: binary_sensor.study_motion_combined
         to: 'off'
+        for:
+          minutes: 10
       - platform: state
         entity_id: binary_sensor.vibration_sensor
         to: 'off'
+        for:
+          minutes: 10
     condition:
       - condition: numeric_state
         entity_id: sensor.blitzwolf_computer_energy_power
@@ -211,9 +215,13 @@ automation:
       - condition: state
         entity_id: binary_sensor.vibration_sensor
         state: 'off'
+        for:
+          minutes: 7
       - condition: state
         entity_id: binary_sensor.study_motion_combined
         state: 'off'
+        for:
+          minutes: 7
       - condition: state
         entity_id: switch.blitzwolf_computer
         state: 'on'
@@ -225,13 +233,6 @@ automation:
     action:
       - service: switch.turn_off
         entity_id: switch.blitzwolf_computer
-      - delay:
-          seconds: 5
-      - condition: state
-        entity_id: light.study_1
-        state: 'off'
-      - service: light.turn_off
-        entity_id: light.study_candle
 
   - alias: '[study|power]Turn on pc plug'
     mode: single
@@ -257,6 +258,14 @@ automation:
     action:
       - service: switch.turn_on
         entity_id: switch.blitzwolf_computer
+      - delay:
+          seconds: 5
+      - condition: state
+        entity_id: light.study_1
+        state: 'off'
+      - service: light.turn_off
+        entity_id: light.study_candle
+
 ################
 #    SCENES    #
 ################
