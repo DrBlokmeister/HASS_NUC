@@ -1,0 +1,40 @@
+esphome:
+  name: bed_scale
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: "BlokmeisterWIFI"
+  password: "ithurtswhenIP"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Bed Scale Fallback Hotspot"
+    password: "s6DLTb8v6NYc"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+sensor:
+  - platform: hx711
+    name: "HX711 Value"
+    dout_pin: D1
+    clk_pin: D2
+    update_interval: 0.2s
+    filters:
+      - sliding_window_moving_average:
+          window_size: 50
+          send_every: 50 # 10 second updates @ 1 second scan interval.
+          send_first_at: 50
+      - calibrate_linear:
+          - 265252 -> 0
+          - 210000 -> 1
+    unit_of_measurement: kg
