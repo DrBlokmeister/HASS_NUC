@@ -1,6 +1,10 @@
 homeassistant:
   customize:
 
+timer:
+  study_lights_timeout:
+    duration: 60 #in seconds
+
 #################
 #    SENSORS    #
 #################
@@ -266,6 +270,33 @@ automation:
       - service: light.turn_off
         entity_id: light.study_candle
 
+  - alias: '[study|lights] Start timer when presence is detected'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.study_motion_combined
+        to: 'on'
+      - platform: state
+        entity_id: sensor.vibration_sensor_attributes
+      - platform: state
+        entity_id: binary_sensor.vibration_sensor
+        to: 'on'
+    action:
+      - service: timer.start
+        entity_id: timer.study_lights_timeout
+        duration: 120
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.study_motion_combined
+            to: 'on'
+          - platform: state
+            entity_id: sensor.vibration_sensor_attributes
+          - platform: state
+            entity_id: binary_sensor.vibration_sensor
+            to: 'on'
+        timeout:
+          seconds: 120
+        
 ################
 #    SCENES    #
 ################
