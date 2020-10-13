@@ -126,7 +126,12 @@ automation:
             entity_id: binary_sensor.study_motion_combined
             to: 'off'
             for:
-              minutes: 10
+              minutes: >-
+                {% if is_state('device_tracker.blokmeisterh2o', 'home') or is_state('device_tracker.worklaptop', 'home')%}
+                  30
+                {% else %}
+                  5
+                {% endif %}
       - service: light.turn_on
         data:
           entity_id: light.study_lights
