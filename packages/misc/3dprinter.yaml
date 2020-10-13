@@ -99,6 +99,16 @@ automation:
           data:
             icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle.png
             image: !secret octoprint_camera_snapshot_url
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: Printer done
+          message: 'Ender 3 print is done'
+          data:
+            image: !secret octoprint_camera_snapshot_url
+            group: info
+            tag: 3dprinter
+            icon_url: local/icons/printer-3d-nozzle.png
+            timeout: 1800
 
 - alias: '[ender3|notify] update printer progress'
   mode: restart
@@ -132,6 +142,16 @@ automation:
             data:
               icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle.png
               image: !secret octoprint_camera_snapshot_url
+        - service: notify.mobile_app_blokmeister_op6_haapp
+          data:
+            title: Printer progress
+            message: "Ender 3 print is at {{ states( 'sensor.octoprint_print_progress' ) }}%. Estimated time remaining: {{ states( 'sensor.octoprint_print_time_left' ) }}"
+            data:
+              image: !secret octoprint_camera_snapshot_url
+              group: info
+              tag: 3dprinter
+              icon_url: local/icons/printer-3d-nozzle.png
+              timeout: 1800
         - delay: 00:30:00
       until:
         condition: or
@@ -162,6 +182,16 @@ automation:
           data:
             icon: http://192.168.1.252:8123/local/icons/printer-3d-nozzle-alert.png
             image: !secret octoprint_camera_snapshot_url
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: Printer temperature warning
+          message: "Ender 3 temperature is too high! Nozzle temperature: {{ states( 'sensor.octoprint_tool_0_temperature') }}. Bed temperature: {{ states( 'sensor.octoprint_bed_temperature') }}"
+          data:
+            image: !secret octoprint_camera_snapshot_url
+            group: warning
+            tag: 3dprinterovertemp
+            icon_url: local/icons/printer-3d-nozzle-alert.png
+
 
 - alias: '[ender3|lights] turn on light when printer is on'
   trigger:
