@@ -5,59 +5,59 @@ homeassistant:
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      list_of_motion_sensors:
-        entity_id: sensor.date
-        value_template: >-
-          [{%- for item in states.binary_sensor if item.attributes.device_class=='motion' and item.attributes.battery_level is defined -%}
-            {% if not loop.last -%}
-              states.{{-item.entity_id -}},
-            {%- else -%}
-              states.{{-item.entity_id -}}
-            {%- endif -%}
-          {%- endfor -%}]
-      last_triggered_motion_sensor_name:
-        value_template: >-
-          {% set sensors = [states.binary_sensor.motion_sensor_balcony,states.binary_sensor.motion_sensor_bathroom,states.binary_sensor.motion_sensor_bedroom,states.binary_sensor.motion_sensor_entry,states.binary_sensor.motion_sensor_entry2,states.binary_sensor.motion_sensor_kitchen,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.motion_sensor_livingroom3,states.binary_sensor.motion_sensor_study,states.binary_sensor.motion_sensor_study2] %}
-          {% for sensor in sensors %}
-            {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
-              {{ sensor.name }}
-            {% endif %}
-          {% endfor %}
-      last_triggered_indoor_motion_sensor_name:
-        value_template: >-
-          {% set sensors = [states.binary_sensor.motion_sensor_bathroom,states.binary_sensor.motion_sensor_bedroom,states.binary_sensor.motion_sensor_entry,states.binary_sensor.motion_sensor_entry2,states.binary_sensor.motion_sensor_kitchen,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.motion_sensor_livingroom3,states.binary_sensor.motion_sensor_study,states.binary_sensor.motion_sensor_study2] %}
-          {% for sensor in sensors %}
-            {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
-              {{ sensor.name }}
-            {% endif %}
-          {% endfor %}
-      last_triggered_indoor_motion_sensor_entityid:
-        value_template: >-
-          {% set sensors = [states.binary_sensor.motion_sensor_bathroom,states.binary_sensor.motion_sensor_bedroom,states.binary_sensor.motion_sensor_entry,states.binary_sensor.motion_sensor_entry2,states.binary_sensor.motion_sensor_kitchen,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.motion_sensor_livingroom3,states.binary_sensor.motion_sensor_study,states.binary_sensor.motion_sensor_study2] %}
-          {% for sensor in sensors %}
-            {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
-              {{ sensor.entity_id }}
-            {% endif %}
-          {% endfor %}
-      area_of_last_motion:
-        value_template: >-
-          {% if states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_bathroom' %}
-            'bathroom'
-          {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_bedroom' %}
-            'bedroom'
-          {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_entry' or  (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_entry2') %}
-            'entry'
-          {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_kitchen' %}
-            'kitchen'
-          {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_livingroom' or (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_livingroom2') or (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_livingroom3') %}
-            'livingroom'
-          {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_study' or (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_study2') %}
-            'study'
-          {% else %}
-            'unknown'
-          {% endif %}
+  # - platform: template
+  #   sensors:
+  #     list_of_motion_sensors:
+  #       entity_id: sensor.date
+  #       value_template: >-
+  #         [{%- for item in states.binary_sensor if item.attributes.device_class=='motion' and item.attributes.battery_level is defined -%}
+  #           {% if not loop.last -%}
+  #             states.{{-item.entity_id -}},
+  #           {%- else -%}
+  #             states.{{-item.entity_id -}}
+  #           {%- endif -%}
+  #         {%- endfor -%}]
+  #     last_triggered_motion_sensor_name:
+  #       value_template: >-
+  #         {% set sensors = [states.binary_sensor.motion_sensor_balcony,states.binary_sensor.motion_sensor_bathroom,states.binary_sensor.motion_sensor_bedroom,states.binary_sensor.motion_sensor_entry,states.binary_sensor.motion_sensor_entry2,states.binary_sensor.motion_sensor_kitchen,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.motion_sensor_livingroom3,states.binary_sensor.motion_sensor_study,states.binary_sensor.motion_sensor_study2] %}
+  #         {% for sensor in sensors %}
+  #           {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
+  #             {{ sensor.name }}
+  #           {% endif %}
+  #         {% endfor %}
+  #     last_triggered_indoor_motion_sensor_name:
+  #       value_template: >-
+  #         {% set sensors = [states.binary_sensor.motion_sensor_bathroom,states.binary_sensor.motion_sensor_bedroom,states.binary_sensor.motion_sensor_entry,states.binary_sensor.motion_sensor_entry2,states.binary_sensor.motion_sensor_kitchen,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.motion_sensor_livingroom3,states.binary_sensor.motion_sensor_study,states.binary_sensor.motion_sensor_study2] %}
+  #         {% for sensor in sensors %}
+  #           {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
+  #             {{ sensor.name }}
+  #           {% endif %}
+  #         {% endfor %}
+  #     last_triggered_indoor_motion_sensor_entityid:
+  #       value_template: >-
+  #         {% set sensors = [states.binary_sensor.motion_sensor_bathroom,states.binary_sensor.motion_sensor_bedroom,states.binary_sensor.motion_sensor_entry,states.binary_sensor.motion_sensor_entry2,states.binary_sensor.motion_sensor_kitchen,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.motion_sensor_livingroom3,states.binary_sensor.motion_sensor_study,states.binary_sensor.motion_sensor_study2] %}
+  #         {% for sensor in sensors %}
+  #           {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
+  #             {{ sensor.entity_id }}
+  #           {% endif %}
+  #         {% endfor %}
+  #     area_of_last_motion:
+  #       value_template: >-
+  #         {% if states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_bathroom' %}
+  #           'bathroom'
+  #         {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_bedroom' %}
+  #           'bedroom'
+  #         {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_entry' or  (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_entry2') %}
+  #           'entry'
+  #         {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_kitchen' %}
+  #           'kitchen'
+  #         {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_livingroom' or (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_livingroom2') or (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_livingroom3') %}
+  #           'livingroom'
+  #         {% elif states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_study' or (states.sensor.last_triggered_indoor_motion_sensor_entityid.state == 'binary_sensor.motion_sensor_study2') %}
+  #           'study'
+  #         {% else %}
+  #           'unknown'
+  #         {% endif %}
 ########################
 #    BINARY SENSORS    #
 ########################
