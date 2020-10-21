@@ -14,7 +14,7 @@ sensor:
       average_illumination_study:
         device_class: illuminance
         unit_of_measurement: 'lx'
-        value_template: "{{ (states('sensor.illumination_study')|int+states('sensor.illumination_study2')|int)/2 }}"
+        value_template: "{{ (states('sensor.illumination_study')|round(1)+states('sensor.illumination_study2')|round(1))/2 }}"
       vibration_sensor_attributes:
         value_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation'), state_attr('binary_sensor.vibration_sensor', 'tiltangle') }}"
   - platform: statistics
@@ -47,7 +47,7 @@ binary_sensor:
         device_class: power
         value_template: >-
           {{
-            states.sensor.blitzwolf_computer_energy_power.state|float > 100
+            states('sensor.blitzwolf_computer_energy_power')|float > 100
           }}
       study_motion_combined:
         device_class: motion

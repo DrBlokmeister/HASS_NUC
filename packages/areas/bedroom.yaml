@@ -120,13 +120,13 @@ sensor:
         entity_id: sensor.time
         value_template: >-
           {% if states.input_boolean.override_alarm.state == 'on' %}
-          {{ as_timestamp(states.input_datetime.wakeup_time.datetime) }}
+            {{ as_timestamp(states.input_datetime.wakeup_time.datetime) }}
           {% elif as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%y%m%d')|int>(now().strftime('%y%m%d')|int+1) %}
-          {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 08:00:00") }}
+            {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 08:00:00") }}
           {% elif as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%H%M')|int >= 1100 %}
-          {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 10:00:00") }}
+            {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 10:00:00") }}
           {% else %}
-          {{ (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)-3600) }}
+            {{ (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)-3600) }}
           {% endif %}
       wakeup_time_human_readable:
         entity_id: sensor.wakeup_time
@@ -181,7 +181,7 @@ sensor:
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template:  >-
-          {{ ((states('sensor.hx711_raw_value')|int - states('input_number.bedscalecalibration_lowvalue_raw')|int) * ((states('input_number.bedscalecalibration_lowvalue_kg')|int - states('input_number.bedscalecalibration_highvalue_kg')|int) / (states('input_number.bedscalecalibration_lowvalue_raw')|int - states('input_number.bedscalecalibration_highvalue_raw')|int)))|round(2) }}
+          {{ ((states('sensor.hx711_raw_value')|round(1) - states('input_number.bedscalecalibration_lowvalue_raw')|round(1)) * ((states('input_number.bedscalecalibration_lowvalue_kg')|round(1) - states('input_number.bedscalecalibration_highvalue_kg')|round(1)) / (states('input_number.bedscalecalibration_lowvalue_raw')|round(1) - states('input_number.bedscalecalibration_highvalue_raw')|round(1))))|round(2) }}
       people_in_bed:
         value_template: >-
           {% if states('sensor.bed_weight_calibrated')|float < 10 %}
@@ -466,16 +466,16 @@ automation:
   #       - light.bedroom_lights
 
   #Wakeup light
-  - alias: '[bedroom|light] Wakeup light' #was: bedroom_wakeup_light
-    trigger:
-      platform: template
-      value_template: "{% if (states.sensor.wakeup_time.state|int - as_timestamp(states.sensor.time.last_changed)|int)/3600 >= -0.5 and (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%y%m%d')|int == now().strftime('%y%m%d')|int) and states.input_boolean.sleep_tracking_on.state == 'on' %}True{% else %}False{% endif %}"
-    condition:
-      - condition: state
-        entity_id: input_boolean.sleep_tracking_on
-        state: 'on'
-    action:
-      - service: script.wakeup_sunrise_sequence
+  # - alias: '[bedroom|light] Wakeup light' #was: bedroom_wakeup_light
+    # trigger:
+    #   platform: template
+  #     value_template: "{% if (states.sensor.wakeup_time.state|int - as_timestamp(states.sensor.time.last_changed)|int)/3600 >= -0.5 and (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%y%m%d')|int == now().strftime('%y%m%d')|int) and states.input_boolean.sleep_tracking_on.state == 'on' %}True{% else %}False{% endif %}"
+  #   condition:
+  #     - condition: state
+  #       entity_id: input_boolean.sleep_tracking_on
+  #       state: 'on'
+  #   action:
+  #     - service: script.wakeup_sunrise_sequence
 
 ########## SLEEP TRACKING ##########
   - alias: '[bedroom|light] Sleep tracking start' #was: "Turn off lights when sleep tracking starts"
