@@ -1,6 +1,11 @@
 homeassistant:
   customize:
 
+input_boolean:
+  garbagereminder:
+    name: Garbage Reminder
+    icon: mdi:trash-can-outline
+    
 #################
 #    SENSORS    #
 #################
@@ -67,56 +72,101 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-- alias: Herinnering afval morgen
-  trigger:
-    platform: time
-    at: '19:00:00'
-  condition:
-  - condition: template
-    value_template: '{{states.sensor.waalre_morgen.state != ''None''}}'
-  action:
-  - service: notify.mobile_app_blokmeister_op6
-    data:
-      title: Afval morgen
-      message: '{{states.sensor.afval_morgen.state}}'
-      data:
-        icon: http://192.168.1.252:8123/local/icons/trash-can-outline.png
-  - service: notify.mobile_app_blokmeister_op6_haapp
-    data:
-      title: Afval morgen
-      message: '{{states.sensor.afval_morgen.state}}'
-      data:
-        group: reminder
-        tag: garbagenotify
-        icon_url: local/icons/trash-can-outline.png
-#I nee
+  - alias: '[afval|notify]Wait for notification dismiss'
+    trigger:
+      platform: state
+      entity_id: input_boolean.garbagereminder
+      to: 'on'
+    action:
+      - wait_for_trigger:
+          - platform: event
+            event_type: mobile_app_notification_action
+            event_data:
+              action: "dismiss"
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.garbagereminder
 
-- alias: Herinnering afval vandaag
-  trigger:
-    - platform: time
-      at: 07:00:00
-    - platform: state
-      entity_id: input_boolean.sleep_tracking_on
-      to: 'off'
-      for: 00:10:00
-  condition:
-  - condition: template
-    value_template: '{{states.sensor.waalre_vandaag.state != ''None''}}'
-  action:
-  - service: notify.mobile_app_blokmeister_op6
-    data:
-      title: Afval vandaag
-      message: '{{states.sensor.afval_vandaag.state}}'
-      data:
-        icon: http://192.168.1.252:8123/local/icons/trash-can-outline.png
-  - service: notify.mobile_app_blokmeister_op6_haapp
-    data:
-      title: Afval vandaag
-      message: '{{states.sensor.afval_vandaag.state}}'
-      data:
-        group: reminder
-        tag: garbagenotify
-        icon_url: local/icons/trash-can-outline.png
+  - alias: Herinnering afval morgen
+    trigger:
+      platform: time
+      at: '19:00:00'
+    condition:
+      - condition: template
+        value_template: '{{states.sensor.waalre_morgen.state != ''None''}}'
+    action:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.garbagereminder
+      - alias: Notify phone until notification is dismissed
+        repeat:
+          sequence:
+            - service: notify.mobile_app_blokmeister_op6
+              data:
+                title: Afval morgen
+                message: '{{states.sensor.afval_morgen.state}}'
+                data:
+                  icon: http://192.168.1.252:8123/local/icons/trash-can-outline.png
+            - service: notify.mobile_app_blokmeister_op6_haapp
+              data:
+                title: Afval morgen
+                message: '{{states.sensor.afval_morgen.state}}'
+                data:
+                  group: reminder
+                  tag: garbagenotify
+                  icon_url: local/icons/trash-can-outline.png
+                  actions:
+                    - action: "snooze"
+                      title: "Snooze"
+                    - action: "dismiss"
+                      title: "Dismiss"
+            - delay:
+                minutes: 30
+          until:
+            - condition: state
+              entity_id: input_boolean.garbagereminder
+              state: 'off'
+
+  - alias: Herinnering afval vandaag
+    trigger:
+      - platform: time
+        at: 07:00:00
+      - platform: state
+        entity_id: input_boolean.sleep_tracking_on
+        to: 'off'
+        for: 00:10:00
+    condition:
+      - condition: template
+        value_template: '{{states.sensor.waalre_vandaag.state != ''None''}}'
+    action:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.garbagereminder
+      - alias: Notify phone until notification is dismissed
+        repeat:
+          sequence:
+            - service: notify.mobile_app_blokmeister_op6
+              data:
+                title: Afval vandaag
+                message: '{{states.sensor.afval_vandaag.state}}'
+                data:
+                  icon: http://192.168.1.252:8123/local/icons/trash-can-outline.png
+            - service: notify.mobile_app_blokmeister_op6_haapp
+              data:
+                title: Afval vandaag
+                message: '{{states.sensor.afval_vandaag.state}}'
+                data:
+                  group: reminder
+                  tag: garbagenotify
+                  icon_url: local/icons/trash-can-outline.png
+                  actions:
+                    - action: "snooze"
+                      title: "Snooze"
+                    - action: "dismiss"
+                      title: "Dismiss"
+            - delay:
+                minutes: 10
+          until:
+            - condition: state
+              entity_id: input_boolean.garbagereminder
+              state: 'off'
 
 ################
 #    SCENES    #
