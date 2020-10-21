@@ -178,10 +178,10 @@ sensor:
         value_template: >
           {%- set threshold = 10 -%}
           {%- for item in states.plant if ((item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) or ("moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
-          {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
-          {{ item.name }} ({{ item.attributes['moisture'] }}){%- if not loop.last %}, {% endif -%}{% endif -%}
-          {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
-          {{ item.attributes.friendly_name }} ({{ item.state }}){%- if not loop.last %}, {% endif -%} {% endif -%}
+            {%- if (item.attributes.moisture is defined and item.attributes['moisture'] | int < threshold) -%}
+              {{ item.name }} ({{ item.attributes['moisture'] }}){%- if not loop.last %}, {% endif -%}{% endif -%}
+            {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
+              {{ item.attributes.friendly_name }} ({{ item.state }}){%- if not loop.last %}, {% endif -%} {% endif -%}
           {%- endfor -%}
 
 ########################
