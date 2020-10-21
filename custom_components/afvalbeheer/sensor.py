@@ -1,7 +1,7 @@
 """
 Sensor component for waste pickup dates from dutch and belgium waste collectors
 Original Author: Pippijn Stortelder
-Current Version: 4.6.5 2020920 - Pippijn Stortelder
+Current Version: 4.6.8 20201010 - Pippijn Stortelder
 20200419 - Major code refactor (credits @basschipper)
 20200420 - Add sensor even though not in mapping
 20200420 - Added support for DeAfvalApp
@@ -43,6 +43,10 @@ Current Version: 4.6.5 2020920 - Pippijn Stortelder
 20200814 - Fix bug with dateobject and fix mapping for MijnAfvalWijzer
 20200915 - Switch MijnAfvalwijzer to app API
 20200920 - Update mapping for RecycleApp
+20200923 - Update mapping for Cranendonck
+20200930 - Fix Ormin date
+20201010 - Proper fix to support timezone offset in omrin collection date
+20201010 - Add mapping of `md` to `pmd` for MijnAfvalwijzer
 
 Example config:
 Configuration.yaml:
@@ -167,6 +171,7 @@ WASTE_TYPE_GLASS = 'glas'
 WASTE_TYPE_GREEN = 'gft'
 WASTE_TYPE_GREENGREY = 'duobak'
 WASTE_TYPE_GREY = 'restafval'
+WASTE_TYPE_GREY_BAGS = 'restafvalzakken'
 WASTE_TYPE_SORTI = 'sortibak'
 WASTE_TYPE_KCA = 'chemisch'
 WASTE_TYPE_MILIEUB = 'milieuboer'
@@ -534,6 +539,7 @@ class AfvalwijzerCollector(WasteCollector):
         'textiel': WASTE_TYPE_TEXTILE,
         'kerstbomen': WASTE_TYPE_TREE,
         'pd': WASTE_TYPE_PACKAGES,
+        'md': WASTE_TYPE_PACKAGES,
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
@@ -871,7 +877,7 @@ class OmrinCollector(WasteCollector):
                     continue
 
                 collection = WasteCollection.create(
-                    date=datetime.strptime(item['Datum'], '%Y-%m-%dT%H:%M:%S'),
+                    date=datetime.strptime(item['Datum'], '%Y-%m-%dT%H:%M:%S%z').replace(tzinfo=None),
                     waste_type=waste_type
                 )
                 self.collections.add(collection)
@@ -891,6 +897,7 @@ class OpzetCollector(WasteCollector):
         'gft': WASTE_TYPE_GREEN,
         'chemisch': WASTE_TYPE_KCA,
         'kca': WASTE_TYPE_KCA,
+        'restafvalzakken': WASTE_TYPE_GREY_BAGS,
         'rest': WASTE_TYPE_GREY,
         'plastic': WASTE_TYPE_PACKAGES,
         'papier': WASTE_TYPE_PAPER,
@@ -1465,3 +1472,4 @@ def _format_sensor(name, name_prefix, waste_collector, sensor_type):
         (name + ' ' if name else "") +
         sensor_type
     )
+    
