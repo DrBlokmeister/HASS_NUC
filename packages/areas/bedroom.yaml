@@ -655,6 +655,7 @@ automation:
           entity_id:
             - light.bedroom_1
             - light.bedroom_2
+          transition: "{% if is_state('light.bedroom_1', 'on') %}3{% else %}0.5{% endif %}"
           brightness: >-
             {% if now().hour < 4 %}
               50
@@ -669,6 +670,7 @@ automation:
         data:
           entity_id:
             - light.bedroom_3
+          transition: "{% if is_state('light.bedroom_3', 'on') %}3{% else %}0.5{% endif %}"
           brightness: >-
             {% if now().hour < 4 %}
               0
@@ -684,6 +686,7 @@ automation:
           entity_id:
             - light.bedside_left
             - light.bedside_right
+          transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
           brightness: >-
             {% if now().hour < 4 %}
               0
@@ -698,6 +701,7 @@ automation:
         data:
           entity_id:
             - light.ledstrip_bed
+          transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
           brightness: >-
             {% if now().hour < 7 %}
               50
@@ -723,7 +727,6 @@ automation:
           seconds: 30
       - service: light.turn_off
         entity_id: light.bedroom_lights
-    
 
   - alias: '[bedroom|light]Turn on LEDstrip when bed presence changes'
     mode: restart
@@ -761,8 +764,6 @@ automation:
           transition: 1
       - delay:
           seconds: 2
-
-
 
   - alias: '[bedroom|wakeup]GET OUT OF BED!'
     mode: single
