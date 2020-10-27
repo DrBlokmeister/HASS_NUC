@@ -97,6 +97,12 @@ input_number:
     min: -2000000
     max: 2000000
     mode: box
+  bedroom_illumination_limit:
+    name: Bedroom illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
   
 
 input_select:
@@ -664,6 +670,38 @@ automation:
         entity_id:
           - group.bedroom_lighting_automations
 
+  - alias: '[bedroom|light] Update illumination limit'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: switch.shelly_bedroom
+    condition:
+      - condition: state
+        entity_id: switch.shelly_bedroom
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
+    action:
+      - delay:
+          seconds: 1
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: light.bedroom_lights
+                state: 'on'
+            sequence:
+              - service: input_number.increment
+                entity_id: input_number.bedroom_illumination_limit
+          - conditions:
+              - condition: state
+                entity_id: light.bedroom_lights
+                state: 'off'
+            sequence:
+              - service: input_number.decrement
+                entity_id: input_number.bedroom_illumination_limit
+
 
   - alias: '[bedroom|light]Lights_when_cabinet_is_open'
     mode: queued
@@ -702,9 +740,11 @@ automation:
       entity_id: binary_sensor.motion_sensor_bedroom
       to: 'on'
     condition:
-      condition: numeric_state
-      entity_id: sensor.illumination_bedroom
-      below: 10
+      # - condition: numeric_state
+      #   entity_id: sensor.illumination_bedroom
+      #   below: 10
+      - condition: template
+        value_template: "{{ states('sensor.average_illumination_bedroom')|int < states('input_number.bedroom_illumination_limit')|int }}"
     action:
       - service: light.turn_on
         data:

@@ -5,6 +5,14 @@ timer:
   study_lights_timeout:
     duration: 60 #in seconds
 
+input_number:
+  study_illumination_limit:
+    name: Study illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
+
 #################
 #    SENSORS    #
 #################
@@ -120,6 +128,8 @@ automation:
       - condition: numeric_state
         entity_id: sensor.average_illumination_study
         below: 30
+      - condition: template
+        value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit')|int }}"
     action:
       - service: light.turn_on
         data:
@@ -320,6 +330,37 @@ automation:
         timeout:
           seconds: 120
         
+  - alias: '[study|light] Update illumination limit'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: switch.shelly_study
+    condition:
+      - condition: state
+        entity_id: switch.shelly_study
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
+    action:
+      - delay:
+          seconds: 1
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: light.study_lights
+                state: 'on'
+            sequence:
+              - service: input_number.increment
+                entity_id: input_number.study_illumination_limit
+          - conditions:
+              - condition: state
+                entity_id: light.tvarea_and_ledstrips
+                state: 'off'
+            sequence:
+              - service: input_number.decrement
+                entity_id: input_number.study_illumination_limit
 ################
 #    SCENES    #
 ################

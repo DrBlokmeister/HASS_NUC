@@ -7,6 +7,13 @@ homeassistant:
     light.*led_strip*:
       icon: mdi:led-strip-variant
 
+input_number:
+  livingroom_illumination_limit:
+    name: Livingroom illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
 #################
 #    SENSORS    #
 #################
@@ -153,9 +160,11 @@ automation:
         entity_id: binary_sensor.livingroom_motion_combined
         to: 'on'
     condition:
-      - condition: numeric_state
-        entity_id: sensor.average_illumination_livingroom
-        below: 30
+      # - condition: numeric_state
+      #   entity_id: sensor.average_illumination_livingroom
+      #   below: 30
+      - condition: template
+        value_template: "{{ states('sensor.average_illumination_livingroom')|int < states('input_number.livingroom_illumination_limit')|int }}"
     action:
       - service: light.turn_on
         data:
@@ -208,6 +217,38 @@ automation:
       - service: automation.turn_on
         entity_id:
           - automation.livingroom_light_flux_light_through_motion
+
+  - alias: '[livingroom|light] Update illumination limit'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: switch.shelly_mediacenter
+    condition:
+      - condition: state
+        entity_id: switch.shelly_mediacenter
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
+    action:
+      - delay:
+          seconds: 1
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: light.tvarea_and_ledstrips
+                state: 'on'
+            sequence:
+              - service: input_number.increment
+                entity_id: input_number.livingroom_illumination_limit
+          - conditions:
+              - condition: state
+                entity_id: light.tvarea_and_ledstrips
+                state: 'off'
+            sequence:
+              - service: input_number.decrement
+                entity_id: input_number.livingroom_illumination_limit
 
 ################
 #    SCENES    #

@@ -1,6 +1,14 @@
 homeassistant:
   customize:
 
+input_number:
+  kitchen_illumination_limit:
+    name: Kitchen illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
+
 #################
 #    SENSORS    #
 #################
@@ -72,9 +80,11 @@ automation:
         entity_id: binary_sensor.motion_sensor_kitchen
         to: 'on'
     condition:
-      - condition: numeric_state
-        entity_id: sensor.illumination_kitchen
-        below: 30
+      # - condition: numeric_state
+      #   entity_id: sensor.illumination_kitchen
+      #   below: 30
+      - condition: template
+        value_template: "{{ states('sensor.illumination_kitchen')|int < states('input_number.kitchen_illumination_limit')|int }}"
     action:
       - service: light.turn_on
         data:
@@ -157,6 +167,38 @@ automation:
             tag: fridgetempwarning
             clickAction: '/lovelace/8'
             icon_url: /local/icons/thermometer-alert.png
+
+  - alias: '[kitchen|light] Update illumination limit'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: switch.shelly_kitchen
+    condition:
+      - condition: state
+        entity_id: switch.shelly_kitchen
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
+    action:
+      - delay:
+          seconds: 1
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: light.kitchen_lights
+                state: 'on'
+            sequence:
+              - service: input_number.increment
+                entity_id: input_number.kitchen_illumination_limit
+          - conditions:
+              - condition: state
+                entity_id: light.kitchen_lights
+                state: 'off'
+            sequence:
+              - service: input_number.decrement
+                entity_id: input_number.kitchen_illumination_limit
 ################
 #    SCENES    #
 ################
