@@ -15,6 +15,11 @@ sensor:
         device_class: illuminance
         unit_of_measurement: 'lx'
         value_template: "{{ (states('sensor.illumination_study')|round(1)+states('sensor.illumination_study2')|round(1))/2 }}"
+      average_illumination_study_2:
+        device_class: illuminance
+        unit_of_measurement: 'lx'
+        value_template: >-
+          {{ (states('sensor.illumination_study')|round(1) / 2 + states('sensor.illumination_study2')|round(1) + states('sensor.lightlevel_11')|round(1))/2.5 }}
       vibration_sensor_attributes:
         value_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation'), state_attr('binary_sensor.vibration_sensor', 'tiltangle') }}"
   - platform: statistics
