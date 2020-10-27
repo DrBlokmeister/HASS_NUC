@@ -173,6 +173,7 @@ automation:
         value_template: "{{ states('sensor.average_illumination_livingroom')|int < states('input_number.livingroom_illumination_limit')|int }}"
     action:
       - service: light.turn_on
+        transition: "{% if is_state('light.tvarea_and_ledstrips', 'on') %}5{% else %}1{% endif %}"
         data:
           entity_id: 
             - light.tvarea_and_ledstrips
