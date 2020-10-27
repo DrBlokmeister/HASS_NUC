@@ -8,7 +8,12 @@ input_number:
     min: 0
     max: 200
     mode: box
-
+  kitchen_light_timeout: #in minutes
+    name: Kitchen light timeout
+    step: 1
+    min: 0
+    max: 30
+    mode: box
 #################
 #    SENSORS    #
 #################
@@ -96,14 +101,14 @@ automation:
             entity_id: binary_sensor.motion_sensor_kitchen
             to: 'off'
             for:
-              minutes: 5
+              minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
       - service: light.turn_on
         data:
           entity_id: light.kitchen_lights
-          brightness: 140
-          transition: 0.5
+          brightness_step: -120
+          transition: 0.5            
       - delay:
-          seconds: 30
+          seconds: 15
       - service: light.turn_off
         entity_id: light.kitchen_lights
 

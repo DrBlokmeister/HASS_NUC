@@ -1,6 +1,14 @@
 homeassistant:
   customize:
 
+input_number:
+  bathroom_light_timeout: #in minutes
+    name: Bathroom light timeout
+    step: 1
+    min: 0
+    max: 30
+    mode: box
+
 #################
 #    SENSORS    #
 #################
@@ -57,7 +65,10 @@ automation:
           - platform: template
             value_template: "{{ is_state('binary_sensor.motion_sensor_bathroom', 'off') and states('sensor.gas_consumption_per_hour')|float == 0 }}"
             for:
-              minutes: 5
+              minutes: "{{ states('input_number.bathroom_light_timeout')|int }}"
+      - condition: state
+        entity_id: light.bathroom_light_dim
+        state: 'off'
       - service: light.turn_off
         entity_id: light.bathroom_light_dim
       - delay:
@@ -73,7 +84,7 @@ automation:
       - service: light.turn_on
         entity_id: light.bathroom_light_dim
       - delay:
-          seconds: 30
+          seconds: 15
       - service: light.turn_off
         entity_id:
           - light.bathroom_light_bright

@@ -12,6 +12,12 @@ input_number:
     min: 0
     max: 200
     mode: box
+  study_light_timeout: #in minutes
+    name: Study light timeout
+    step: 1
+    min: 0
+    max: 30
+    mode: box
 
 #################
 #    SENSORS    #
@@ -145,15 +151,15 @@ automation:
                 {% if is_state('device_tracker.blokmeisterh2o', 'home') or is_state('device_tracker.worklaptop', 'home')%}
                   30
                 {% else %}
-                  5
+                  {{ states('input_number.study_light_timeout')|int }}
                 {% endif %}
       - service: light.turn_on
         data:
           entity_id: light.study_lights
-          brightness: 140
+          brightness_step: -110
           transition: 0.5
       - delay:
-          seconds: 30
+          seconds: 15
       - service: light.turn_off
         entity_id: light.study_lights
 
@@ -217,7 +223,7 @@ automation:
       - service: light.toggle
         data:
           entity_id: light.study_lights
-          brightness: 255
+          brightness_step: 255
       - service: switch.flux_study_update
       - service: automation.turn_off
         entity_id:
