@@ -36,6 +36,9 @@ utility_meter:
   area_cleaned_today:
     source: sensor.area_total_clean
     cycle: daily
+  area_cleaned_since_empty_bin:
+    source: sensor.area_total_clean
+    cycle: yearly
 #################
 #    SENSORS    #
 #################
@@ -44,11 +47,11 @@ sensor:
     sensors:
       area_last_clean:
         entity_id: vacuum.xiaomi_vacuum_cleaner
-        unit_of_measurement: 'm3'
+        unit_of_measurement: 'm2'
         value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'cleaned_area')|int }}"
       area_total_clean:
         entity_id: vacuum.xiaomi_vacuum_cleaner
-        unit_of_measurement: 'm3'
+        unit_of_measurement: 'm2'
         value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int }}"
 
 ########################
@@ -65,18 +68,18 @@ switch:
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
-  vacuumed_today:
-    name: Checks if Consuela vacuumed today
-    icon: mdi:robot-vacuum
+  # vacuumed_today:
+  #   name: Checks if Consuela vacuumed today
+  #   icon: mdi:robot-vacuum
 
 ##################
 #    COUNTERS    #
 ##################
 counter:
-  times_vacuumed_since_empty_bin:
-    #initial: 0
-    step: 1
-    restore: true
+  # times_vacuumed_since_empty_bin:
+  #   #initial: 0
+  #   step: 1
+  #   restore: true
 
 #####################
 #    AUTOMATIONS    #
@@ -110,9 +113,9 @@ automation:
       - condition: state
         entity_id: person.sander_blok
         state: 'not_home'
-      - condition: state
-        entity_id: input_boolean.vacuumed_today
-        state: 'off'
+      - condition: numeric_state
+        entity_id: sensor.area_cleaned_today
+        below: 50
     action:
       - service: system_log.write
         data:
@@ -137,46 +140,73 @@ automation:
             tag: vacuum
             icon_url: local/icons/robot-vacuum.png
             timeout: 1800
-      - service: input_boolean.turn_on
-        data:
-          entity_id: input_boolean.vacuumed_today
-      - service: counter.increment
-        data:
-          entity_id: counter.times_vacuumed_since_empty_bin
+      # - service: input_boolean.turn_on
+      #   data:
+      #     entity_id: input_boolean.vacuumed_today
+      # - service: counter.increment
+      #   data:
+      #     entity_id: counter.times_vacuumed_since_empty_bin
 
   - alias: '[home|vauum]counter_drive_to_trashbin'
+    mode: restart
     trigger:
       - platform: numeric_state
         entity_id: vacuum.xiaomi_vacuum_cleaner
-        value_template: '{{state.attributes.battery_level}}'
+        attribute: battery_level
         above: 99
+      - platform: state
+        entity_id: person.sander_blok
+        to: 'home'
     condition:
+      # - condition: numeric_state  
+      #   entity_id: counter.times_vacuumed_since_empty_bin
+      #   above: 2
       - condition: numeric_state  
-        entity_id: counter.times_vacuumed_since_empty_bin
-        above: 2
+        entity_id: sensor.area_cleaned_since_empty_bin
+        above: 150
+      - condition: state
+        entity_id: person.sander_blok
+        state: 'home'
+      - condition: numeric_state
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        attribute: battery_level
+        above: 99
     action:
-      - service: system_log.write
-        data:
-          message: 'Started vacuum automation: drive vacuum to trash bin'
-          level: info
-      - service: counter.reset
-        data:
-          entity_id: counter.times_vacuumed_since_empty_bin
       - service: script.vacuum_goto_kitchen
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          message: "Please empty vacuum bin"
+          title: "Home Assistant - Vacuum"
+          data:
+            group: info
+            tag: vacuum
+            icon_url: local/icons/robot-vacuum.png
+            timeout: 10800
+      - wait_for_trigger:
+          - platform: event
+            event_type: xiaomi_aqara.click
+            event_data:
+              entity_id: binary_sensor.switch_vacuumcleaner
+              click_type: double
+        timeout:
+          hours: 3
+      - service: utility_meter.reset
+        entity_id: sensor.area_cleaned_since_empty_bin
+
 
 #Turns off the vacuumed today boolean at the start of every day. Used by vacuum automations
-  - alias: '[home|vacuum]turn_off_vacuumed_today_each_night'
-    trigger: 
-      platform: time
-      at: 01:00:00
-    action:
-      - service: system_log.write
-        data:
-          message: 'Turn off input boolean vacuumed today'
-          level: info
-      - service: input_boolean.turn_off
-        data:
-          entity_id: input_boolean.vacuumed_today
+  # - alias: '[home|vacuum]turn_off_vacuumed_today_each_night'
+  #   trigger: 
+  #     platform: time
+  #     at: 01:00:00
+  #   action:
+  #     - service: system_log.write
+  #       data:
+  #         message: 'Turn off input boolean vacuumed today'
+  #         level: info
+  #     - service: input_boolean.turn_off
+  #       data:
+  #         entity_id: input_boolean.vacuumed_today
 
 #Buttons:
   - alias: '[home|vauum]button_drive_to_trashbin'
@@ -271,15 +301,15 @@ automation:
     action:
       service: script.vacuum_message_done_cleaning
 
-  - alias: '[home|vacuum]write_log_when_counter_changes'
-    trigger:
-      platform: state
-      entity_id: counter.times_vacuumed_since_empty_bin
-    action:
-      - service: system_log.write
-        data:
-          message: 'Counter counter.times_vacuumed_since_empty_bin changed to {{ states.counter.times_vacuumed_since_empty_bin.state }}'
-          level: info
+  # - alias: '[home|vacuum]write_log_when_counter_changes'
+  #   trigger:
+  #     platform: state
+  #     entity_id: counter.times_vacuumed_since_empty_bin
+  #   action:
+  #     - service: system_log.write
+  #       data:
+  #         message: 'Counter counter.times_vacuumed_since_empty_bin changed to {{ states.counter.times_vacuumed_since_empty_bin.state }}'
+  #         level: info
 ################
 #    SCENES    #
 ################
