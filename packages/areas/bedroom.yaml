@@ -203,6 +203,11 @@ sensor:
           {% else %}
             mdi:account-group
           {% endif %}
+      average_illumination_bedroom:
+        device_class: illuminance
+        unit_of_measurement: 'lx'
+        value_template: >-
+          {{ (states('sensor.illumination_bedroom')|round(1) + states('sensor.lightlevel_12')|round(1))/2 }}
 
 ########################
 #    BINARY SENSORS    #
@@ -365,6 +370,53 @@ automation:
   #     service: scene.turn_on
   #     data:
   #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
+  - alias: '[bedroom|light] Toggle independent bedroom lights'
+    mode: single
+    trigger:
+      platform: event
+      event_type: deconz_event
+      #event_data:
+        #id: rw1021_13
+        #event: 1000
+    action:
+      - service: system_log.write
+        data:
+          message: >-
+            "Deconz switch pressed with event data: {{ trigger.event.data.event == 1000 }}, {{ trigger.event.data.event == '1000' }}"
+          level: info
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1000 }}"
+            sequence:
+              - service: light.toggle
+                entity_id:
+                  - light.bedroom_1
+                  - light.bedroom_2
+                  - light.bedroom_3
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2000 }}"
+            sequence:
+              - service: light.toggle
+                entity_id:
+                  - light.bedside_left
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3000 }}"
+            sequence:
+              - service: light.toggle
+                entity_id:
+                  - light.bedside_right
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4000 }}"
+            sequence:
+              - service: light.toggle
+                entity_id:
+                  - light.ledstrip_bed
+
+
   #Toggle bedroom lights when switch is pressed
   - alias: '[bedroom|light] Switch toggle' #was: bedroom_switch_toggle
     mode: restart
@@ -422,11 +474,18 @@ automation:
       event_data:
         entity_id: timer.bedroom_button_pressed
     action:
-      service: homeassistant.turn_off
-      entity_id:
-        - automation.bedroom_light_turn_on_lights_through_motion
-        - automation.bedroom_light_turn_off_lights
-        - automation.bedroom_light_match_scene_sensor
+      - service: scene.create
+        data:
+          scene_id: bedroom_lighting_automation_before
+          snapshot_entities:
+            - automation.bedroom_light_turn_on_lights_through_motion
+            - automation.bedroom_light_turn_off_lights
+            - automation.bedroom_light_match_scene_sensor
+      - service: homeassistant.turn_off
+        entity_id:
+          - automation.bedroom_light_turn_on_lights_through_motion
+          - automation.bedroom_light_turn_off_lights
+          - automation.bedroom_light_match_scene_sensor
     
   - alias: '[bedroom|light] Lights timeout stop' #was: timeout_finished_bedroom_lights_button
     trigger:
@@ -443,11 +502,8 @@ automation:
         entity_id: input_boolean.sleep_tracking_on
         state: 'off'
     action:
-      - service: homeassistant.turn_on
-        entity_id:
-          - automation.bedroom_light_turn_on_lights_through_motion
-          - automation.bedroom_light_turn_off_lights
-          - automation.bedroom_light_match_scene_sensor
+      - service: scene.turn_on
+        entity_id: scene.bedroom_lighting_automation_before
       - service: automation.trigger
         entity_id:
           - automation.bedroom_light_turn_off_lights
@@ -554,7 +610,7 @@ automation:
               - wait_for_trigger:
                   - platform: numeric_state
                     entity_id: sensor.people_in_bed
-                    to: 0
+                    below: 1
               - service: automation.turn_on
                 entity_id: group.bedroom_lighting_automations
         default:
@@ -779,6 +835,9 @@ automation:
       - condition: state
         entity_id: person.tamara
         state: 'not_home'
+      - condition: numeric_state
+        entity_id: sensor.people_in_bed
+        below: 2
     action:
       - service: media_player.volume_set
         data:
