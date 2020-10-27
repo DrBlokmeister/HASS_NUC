@@ -343,9 +343,14 @@ switch:
   - platform: flux
     name: flux_bedroom
     mode: mired
-    disable_brightness_adjust: True
+    disable_brightness_adjust: true
     lights:
-      - light.bedroom_lights
+      - light.bedroom_1
+      - light.bedroom_2
+      - light.bedroom_3
+      - light.bedside_left
+      - light.bedside_right
+      - light.ledstrip_bed
 
 #####################
 #    AUTOMATIONS    #
@@ -797,7 +802,7 @@ automation:
         data:
           entity_id:
             - light.ledstrip_bed
-          transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
+          transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
           brightness: >-
             {% if now().hour < 7 %}
               50
@@ -824,42 +829,42 @@ automation:
       - service: light.turn_off
         entity_id: light.bedroom_lights
 
-  - alias: '[bedroom|light]Turn on LEDstrip when bed presence changes'
-    mode: restart
-    trigger:
-      platform: state
-      entity_id: binary_sensor.bed_occupied
-    action:
-      - service: scene.create
-        data:
-          scene_id: bedroom_ledstrip_before
-          snapshot_entities:
-            light.ledstrip_bed
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: input_boolean.sleep_tracking_on
-                state: 'on'
-            sequence:
-              - service: light.turn_on
-                data:
-                  entity_id: light.ledstrip_bed
-                  brightness: 20
-                  color_temp: 300
-        default:
-          - service: light.turn_on
-            data:
-              entity_id: light.ledstrip_bed
-              brightness: 255
-              color_temp: 300
-      - delay:
-          seconds: 30
-      - service: scene.turn_on
-        data:
-          entity_id: scene.bedroom_ledstrip_before
-          transition: 1
-      - delay:
-          seconds: 2
+  # - alias: '[bedroom|light]Turn on LEDstrip when bed presence changes'
+  #   mode: restart
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.bed_occupied
+  #   action:
+  #     - service: scene.create
+  #       data:
+  #         scene_id: bedroom_ledstrip_before
+  #         snapshot_entities:
+  #           light.ledstrip_bed
+  #     - choose:
+  #         - conditions:
+  #             - condition: state
+  #               entity_id: input_boolean.sleep_tracking_on
+  #               state: 'on'
+  #           sequence:
+  #             - service: light.turn_on
+  #               data:
+  #                 entity_id: light.ledstrip_bed
+  #                 brightness: 20
+  #                 color_temp: 300
+  #       default:
+  #         - service: light.turn_on
+  #           data:
+  #             entity_id: light.ledstrip_bed
+  #             brightness: 255
+  #             color_temp: 300
+  #     - delay:
+  #         seconds: 30
+  #     - service: scene.turn_on
+  #       data:
+  #         entity_id: scene.bedroom_ledstrip_before
+  #         transition: 1
+  #     - delay:
+  #         seconds: 2
 
   - alias: '[bedroom|wakeup]GET OUT OF BED!'
     mode: single
@@ -1222,3 +1227,21 @@ script:
           entity_id: input_number.bedscalecalibration_highvalue_raw
           value: >-
             {{ (states('input_number.bedscalecalibration_highvalue_raw')|int - states('input_number.bedscalecalibration_helper')|int)|int}}
+
+  test_ledstrip_autobrightness:
+    sequence:
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.ledstrip_bed
+          transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
+          brightness: >-
+            {% if now().hour < 7 %}
+              50
+            {% elif now().hour < 20 %}
+              0
+            {% elif now().hour < 22.5 %}
+              {{ (255 - 255 * (now().hour - 19)/2.5)|int }}
+            {% else %}
+              50
+            {% endif %}
