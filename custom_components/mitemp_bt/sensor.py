@@ -12,20 +12,19 @@ from Cryptodome.Cipher import AES
 import voluptuous as vol
 
 from homeassistant.const import (
-    DEVICE_CLASS_TEMPERATURE,
-    DEVICE_CLASS_HUMIDITY,
     DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_ILLUMINANCE,
+    DEVICE_CLASS_TEMPERATURE,
+    CONDUCTIVITY,
+    PERCENTAGE,
     TEMP_CELSIUS,
     ATTR_BATTERY_LEVEL,
-    STATE_OFF, STATE_ON,
+    STATE_OFF, 
+    STATE_ON,
 )
 
-# Binary Sensor Class will be renamed in the future HA releases
-try:
-    from homeassistant.components.binary_sensor import BinarySensorEntity
-except ImportError:
-    from homeassistant.components.binary_sensor import BinarySensorDevice as BinarySensorEntity
-
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.sensor import PLATFORM_SCHEMA
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
@@ -54,6 +53,7 @@ from .const import (
     CONF_ENCRYPTORS,
     CONF_REPORT_UNKNOWN,
     CONF_WHITELIST,
+    CONF_SENSOR_NAMES,
     CONF_TMIN,
     CONF_TMAX,
     CONF_HMIN,
@@ -69,6 +69,12 @@ _LOGGER = logging.getLogger(__name__)
 # regex constants for configuration schema
 MAC_REGEX = "(?i)^(?:[0-9A-F]{2}[:]){5}(?:[0-9A-F]{2})$"
 AES128KEY_REGEX = "(?i)^[A-F0-9]{32}$"
+
+SENSOR_NAMES_LIST_SCHEMA = vol.Schema(
+    {
+        cv.matches_regex(MAC_REGEX): cv.string
+    }
+)
 
 ENCRYPTORS_LIST_SCHEMA = vol.Schema(
     {
@@ -93,6 +99,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(
             CONF_WHITELIST, default=DEFAULT_WHITELIST
         ): vol.Any(vol.All(cv.ensure_list, [cv.matches_regex(MAC_REGEX)]), cv.boolean),
+        vol.Optional(CONF_SENSOR_NAMES, default={}): SENSOR_NAMES_LIST_SCHEMA,
     }
 )
 
@@ -233,9 +240,14 @@ def parse_raw_message(data, aeskeyslist,  whitelist, report_unknown=False):
     if xiaomi_index == -1:
         return None
     # check for no BR/EDR + LE General discoverable mode flags
-    adv_index = data.find(b"\x02\x01\x06", 14, 17)
-    if adv_index == -1:
+    adv_index1 = data.find(b"\x02\x01\x06", 14, 17)
+    adv_index2 = data.find(b"\x15\x16\x95", 14, 17)
+    if adv_index1 == -1 and adv_index2 == -1:
         return None
+    elif adv_index1 != -1:
+        adv_index = adv_index1
+    elif adv_index2 != -1:
+        adv_index = adv_index2
     # check for BTLE msg size
     msg_length = data[2] + 3
     if msg_length != len(data):
@@ -358,6 +370,16 @@ def parse_raw_message(data, aeskeyslist,  whitelist, report_unknown=False):
     return result
 
 
+def sensor_name(config, mac):
+    """Set sensor name."""
+    fmac = ':'.join(mac[i:i+2] for i in range(0, len(mac), 2))
+    if fmac in config[CONF_SENSOR_NAMES]:
+        custom_name = config[CONF_SENSOR_NAMES].get(fmac)
+        _LOGGER.debug("Name of sensor with mac adress %s is set to: %s", fmac, custom_name)
+        return custom_name
+    return mac
+
+
 class BLEScanner:
     """BLE scanner."""
 
@@ -385,9 +407,9 @@ class BLEScanner:
         """Stop HCIdump thread(s)."""
         result = True
         for dumpthread in self.dumpthreads:
-            if dumpthread.isAlive():
+            if dumpthread.is_alive():
                 dumpthread.join()
-                if dumpthread.isAlive():
+                if dumpthread.is_alive():
                     result = False
                     _LOGGER.error(
                         "Waiting for the HCIdump thread to finish took too long! (>10s)"
@@ -445,10 +467,14 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if config[CONF_WHITELIST] is True:
             for mac in config[CONF_ENCRYPTORS]:
                 whitelist.append(mac)
+            for mac in config[CONF_SENSOR_NAMES]:
+                whitelist.append(mac)
     if isinstance(config[CONF_WHITELIST], list):
         for mac in config[CONF_WHITELIST]:
             whitelist.append(mac)
         for mac in config[CONF_ENCRYPTORS]:
+            whitelist.append(mac)
+        for mac in config[CONF_SENSOR_NAMES]:
             whitelist.append(mac)
     for i, mac in enumerate(whitelist):
         whitelist[i] = bytes.fromhex(reverse_mac(mac.replace(":", "")).lower())
@@ -620,31 +646,31 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             else:
                 sensors = []
                 if t_i != 9:
-                    sensors.insert(t_i, TemperatureSensor(mac))
+                    sensors.insert(t_i, TemperatureSensor(config, mac))
                 if h_i != 9:
-                    sensors.insert(h_i, HumiditySensor(mac))
+                    sensors.insert(h_i, HumiditySensor(config, mac))
                 if m_i != 9:
-                    sensors.insert(m_i, MoistureSensor(mac))
+                    sensors.insert(m_i, MoistureSensor(config, mac))
                 if c_i != 9:
-                    sensors.insert(c_i, ConductivitySensor(mac))
+                    sensors.insert(c_i, ConductivitySensor(config, mac))
                 if i_i != 9:
-                    sensors.insert(i_i, IlluminanceSensor(mac))
+                    sensors.insert(i_i, IlluminanceSensor(config, mac))
                 if f_i != 9:
-                    sensors.insert(f_i, FormaldehydeSensor(mac))
+                    sensors.insert(f_i, FormaldehydeSensor(config, mac))
                 if cn_i != 9:
-                    sensors.insert(cn_i, ConsumableSensor(mac))
+                    sensors.insert(cn_i, ConsumableSensor(config, mac))
                     try:
                         setattr(sensors[cn_i], "_cn_name", CN_NAME_DICT[stype[mac]])
                     except KeyError:
                         pass
                 if sw_i != 9:
-                    sensors.insert(sw_i, SwitchBinarySensor(mac))
+                    sensors.insert(sw_i, SwitchBinarySensor(config, mac))
                     try:
                         setattr(sensors[sw_i], "_swclass", SW_CLASS_DICT[stype[mac]])
                     except KeyError:
                         pass
                 if config[CONF_BATT_ENTITIES] and (b_i != 9):
-                    sensors.insert(b_i, BatterySensor(mac))
+                    sensors.insert(b_i, BatterySensor(config, mac))
                 sensors_by_mac[mac] = sensors
                 add_entities(sensors)
             # append joint attributes
@@ -656,6 +682,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                     sts.mean(rssi[mac])
                 )
                 getattr(sensor, "_device_state_attributes")["sensor type"] = stype[mac]
+                getattr(sensor, "_device_state_attributes")["mac address"] = (
+                    ':'.join(mac[i:i+2] for i in range(0, len(mac), 2))
+                    )
                 if not isinstance(sensor, BatterySensor) and mac in batt:
                     getattr(sensor, "_device_state_attributes")[
                         ATTR_BATTERY_LEVEL
@@ -784,420 +813,188 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     return True
 
 
-class TemperatureSensor(Entity):
+class MeasuringSensor(Entity):
+    """Base class for measuring sensor entity"""
+
+    def __init__(self, config, mac):
+        """Initialize the sensor."""
+        self._name = ""
+        self._state = None
+        self._unit_of_measurement = ""
+        self._device_class = None
+        self._device_state_attributes = {}
+        self._unique_id = ""
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        return self._unit_of_measurement
+
+    @property
+    def device_class(self):
+        """Return the device class."""
+        return self._device_class
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        return self._device_state_attributes
+
+    @property
+    def should_poll(self):
+        """No polling needed."""
+        return False
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return self._unique_id
+
+    @property
+    def force_update(self):
+        """Force update."""
+        return True
+
+class TemperatureSensor(MeasuringSensor):
     """Representation of a sensor."""
 
-    def __init__(self, mac):
-        """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._unique_id = "t_" + mac
-        self._device_state_attributes = {}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
-
-    @property
-    def device_class(self):
-        """Return the device class."""
-        return DEVICE_CLASS_TEMPERATURE
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
+    def __init__(self, config, mac):
+        "Initialize the sensor."""
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi temperature {}".format(self._sensor_name)
+        self._unique_id = "t_" + self._sensor_name
+        self._unit_of_measurement = TEMP_CELSIUS
+        self._device_class = DEVICE_CLASS_TEMPERATURE
 
 
-class HumiditySensor(Entity):
+class HumiditySensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._unique_id = "h_" + mac
-        self._device_state_attributes = {}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "%"
-
-    @property
-    def device_class(self):
-        """Return the device class."""
-        return DEVICE_CLASS_HUMIDITY
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi humidity {}".format(self._sensor_name)
+        self._unique_id = "h_" + self._sensor_name
+        self._unit_of_measurement = PERCENTAGE 
+        self._device_class = DEVICE_CLASS_HUMIDITY
 
 
-class MoistureSensor(Entity):
+class MoistureSensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._unique_id = "m_" + mac
-        self._device_state_attributes = {}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "%"
-
-    @property
-    def device_class(self):
-        """Return the device class."""
-        return DEVICE_CLASS_HUMIDITY
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi moisture {}".format(self._sensor_name)
+        self._unique_id = "m_" + self._sensor_name
+        self._unit_of_measurement = PERCENTAGE 
+        self._device_class = DEVICE_CLASS_HUMIDITY
 
 
-class ConductivitySensor(Entity):
+class ConductivitySensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._unique_id = "c_" + mac
-        self._device_state_attributes = {}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "µS/cm"
-
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi conductivity {}".format(self._sensor_name)
+        self._unique_id = "c_" + self._sensor_name
+        self._unit_of_measurement = CONDUCTIVITY
+        self._device_class = None
+        
     @property
     def icon(self):
         """Return the icon of the sensor."""
         return "mdi:flash-circle"
 
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
 
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
-
-
-class IlluminanceSensor(Entity):
+class IlluminanceSensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._unique_id = "l_" + mac
-        self._device_state_attributes = {}
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi llluminance {}".format(self._sensor_name)
+        self._unique_id = "l_" + self._sensor_name
+        self._unit_of_measurement = "lx"
+        self._device_class = DEVICE_CLASS_ILLUMINANCE
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
 
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "lx"
-
-    @property
-    def icon(self):
-        """Return the icon of the sensor."""
-        return "mdi:white-balance-sunny"
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
-
-class FormaldehydeSensor(Entity):
+class FormaldehydeSensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._unique_id = "f_" + mac
-        self._device_state_attributes = {}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "mg/m³"
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi formaldehyde {}".format(self._sensor_name)
+        self._unique_id = "f_" + self._sensor_name
+        self._unit_of_measurement = "mg/m³"
+        self._device_class = None
 
     @property
     def icon(self):
         """Return the icon of the sensor."""
         return "mdi:chemical-weapon"
 
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
 
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
-
-class BatterySensor(Entity):
+class BatterySensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._unique_id = "batt_" + mac
-        self._device_state_attributes = {}
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi battery {}".format(self._sensor_name)
+        self._unique_id = "batt__" + self._sensor_name
+        self._unit_of_measurement = PERCENTAGE
+        self._device_class = DEVICE_CLASS_BATTERY
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
 
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "%"
-
-    @property
-    def device_class(self):
-        """Return the device class."""
-        return DEVICE_CLASS_BATTERY
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
-
-class ConsumableSensor(Entity):
+class ConsumableSensor(MeasuringSensor):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
-        self._state = None
-        self._battery = None
-        self._cn_name = "cn_"
-        self._nmac = mac
-        self._device_state_attributes = {}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "mi {}".format(self._cn_name + self._nmac)
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "%"
+        super().__init__(config, mac)
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi consumable {}".format(self._sensor_name)
+        self._unique_id = "cn__" + self._sensor_name
+        self._unit_of_measurement = PERCENTAGE
+        self._device_class = None
 
     @property
     def icon(self):
         """Return the icon of the sensor."""
         return "mdi:mdi-recycle-variant"
 
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        return self._device_state_attributes
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._cn_name + self._nmac
-
-    @property
-    def force_update(self):
-        """Force update."""
-        return True
 
 class SwitchBinarySensor(BinarySensorEntity):
     """Representation of a Sensor."""
 
-    def __init__(self, mac):
+    def __init__(self, config, mac):
         """Initialize the sensor."""
+        self._sensor_name = sensor_name(config, mac)
+        self._name = "mi switch {}".format(self._sensor_name)
         self._state = None
-        self._swclass = None
-        self._battery = None
-        self._unique_id = "sw_" + mac
+        self._unique_id = "sw_" + sensor_name(config, mac)
         self._device_state_attributes = {}
+        self._device_class = None
 
     @property
     def is_on(self):
@@ -1207,7 +1004,7 @@ class SwitchBinarySensor(BinarySensorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return "mi {}".format(self._unique_id)
+        return self._name
 
     @property
     def state(self):
@@ -1231,8 +1028,8 @@ class SwitchBinarySensor(BinarySensorEntity):
 
     @property
     def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return self._swclass
+        """Return the device class."""
+        return self._device_class
 
     @property
     def force_update(self):
