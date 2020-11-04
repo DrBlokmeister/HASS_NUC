@@ -67,9 +67,11 @@ automation:
         entity_id: binary_sensor.entry_motion_combined
         to: 'on'
     condition:
-      condition: sun
-      after: sunset
-      after_offset: "-01:00:00"
+      - condition: template
+        value_template: "{{ states('sensor.illumination_entry')|int < states('input_number.entry_illumination_limit')|int }}"
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
     action:
       - service: light.turn_on
         data:
