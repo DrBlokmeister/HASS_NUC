@@ -32,16 +32,33 @@ input_select:
      initial: livingroom
      icon: mdi:robot-vacuum
 
-utility_meter:
-  area_cleaned_today:
-    source: sensor.area_total_clean
-    cycle: daily
-  area_cleaned_since_empty_bin:
-    source: sensor.area_total_clean
-    cycle: yearly
-    tariffs:
-      - default
-      - backup
+# utility_meter:
+#   area_cleaned_today:
+#     source: sensor.area_total_clean
+#     cycle: daily
+#   area_cleaned_since_empty_bin:
+#     source: sensor.area_total_clean
+#     cycle: yearly
+#     tariffs:
+#       - default
+#       - backup
+
+input_number:
+  area_cleaned_at_start_of_day: #in minutes
+    name: Area cleaned at the start of the day
+    step: 1
+    min: 0
+    max: 100000
+    mode: box
+    unit_of_measurement: m2
+  area_cleaned_at_last_empty_bin: #in minutes
+    name: Area cleaned after last time empty bin
+    step: 1
+    min: 0
+    max: 100000
+    mode: box
+    unit_of_measurement: m2
+
 #################
 #    SENSORS    #
 #################
@@ -56,7 +73,12 @@ sensor:
         entity_id: vacuum.xiaomi_vacuum_cleaner
         unit_of_measurement: 'm2'
         value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int }}"
-
+      area_cleaned_today:
+        unit_of_measurement: 'm2'
+        value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int - states('input_number.area_cleaned_at_start_of_day')|int }}"
+      area_cleaned_since_last_empty_bin:
+        unit_of_measurement: 'm2'
+        value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int - states('input_number.area_cleaned_at_last_empty_bin')|int }}"
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -149,7 +171,7 @@ automation:
       #     entity_id: counter.times_vacuumed_since_empty_bin
 
   - alias: '[home|vacuum]counter_drive_to_trashbin'
-    mode: restart
+    mode: single
     trigger:
       - platform: numeric_state
         entity_id: vacuum.xiaomi_vacuum_cleaner
@@ -163,7 +185,7 @@ automation:
       #   entity_id: counter.times_vacuumed_since_empty_bin
       #   above: 2
       - condition: numeric_state  
-        entity_id: sensor.area_cleaned_since_empty_bin
+        entity_id: sensor.area_cleaned_since_last_empty_bin
         above: 150
       - condition: state
         entity_id: person.sander_blok
@@ -191,8 +213,14 @@ automation:
               click_type: double
         timeout:
           hours: 3
-      - service: utility_meter.reset
-        entity_id: utility_meter.area_cleaned_since_empty_bin
+      # - service: utility_meter.reset
+      #   entity_id: utility_meter.area_cleaned_since_empty_bin
+      - delay:
+          minutes: 20
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.area_cleaned_at_last_empty_bin
+          value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
 
 
 #Turns off the vacuumed today boolean at the start of every day. Used by vacuum automations
@@ -294,7 +322,15 @@ automation:
                   - sensor.area_cleaned_today
             - delay: 00:00:05
 
-
+  - alias: '[home|vacuum]reset_area_cleaned_input_number'
+    trigger:
+      platform: time
+      at: '00:00:00'
+    action:
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.area_cleaned_at_start_of_day
+          value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
 
 ########## NOTIFICATIONS ########## 
 #Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
