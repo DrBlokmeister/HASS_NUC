@@ -132,8 +132,6 @@ automation:
           title: "Home Assistant - Vacuum"
           data:
             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-      # - wait_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
-      #   timeout: '00:30:00'
       - service: notify.mobile_app_blokmeister_op6_haapp
         data:
           message: "Started scheduled cleanup"
@@ -150,7 +148,7 @@ automation:
       #   data:
       #     entity_id: counter.times_vacuumed_since_empty_bin
 
-  - alias: '[home|vauum]counter_drive_to_trashbin'
+  - alias: '[home|vacuum]counter_drive_to_trashbin'
     mode: restart
     trigger:
       - platform: numeric_state
@@ -224,10 +222,14 @@ automation:
         entity_id: vacuum.xiaomi_vacuum_cleaner
         state: docked
     action:
-      - service: script.vacuum_goto_kitchen
-      - service: counter.reset
+      - service: automation.trigger
         data:
-          entity_id: counter.times_vacuumed_since_empty_bin
+          entity_id: automation.home_vacuum_counter_drive_to_trashbin
+          skip_condition: true
+      # - service: script.vacuum_goto_kitchen
+      # - service: counter.reset
+      #   data:
+      #     entity_id: counter.times_vacuumed_since_empty_bin
 
   - alias: '[home|vacuum]button_dock_vacuum'
     trigger: 
@@ -399,35 +401,35 @@ script:
           command: "app_goto_target"
           params: [16000,25200]
 
-  vacuum_message_litterbox_clean:
-      alias: "Message phone about litterbox cleaning"
-      sequence:
-        - service: notify.mobile_app_blokmeister_op6
-          data:
-            message: "Consuela has started cleaning around the litterbox."
-            title: "Home Assistant - Consuela"
-            data:
-              icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-              image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
+  # vacuum_message_litterbox_clean:
+  #     alias: "Message phone about litterbox cleaning"
+  #     sequence:
+  #       - service: notify.mobile_app_blokmeister_op6
+  #         data:
+  #           message: "Consuela has started cleaning around the litterbox."
+  #           title: "Home Assistant - Consuela"
+  #           data:
+  #             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
+  #             image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
 
-  vacuum_message_scheduled_cleanup:
-      alias: "Message phone about scheduled cleaning"
-      sequence:
-        - service: notify.mobile_app_blokmeister_op6
-          data:
-            message: "Consuela has started a scheduled cleanup."
-            title: "Home Assistant - Consuela"
-            data:
-              icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-              image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
+  # vacuum_message_scheduled_cleanup:
+  #     alias: "Message phone about scheduled cleaning"
+  #     sequence:
+  #       - service: notify.mobile_app_blokmeister_op6
+  #         data:
+  #           message: "Consuela has started a scheduled cleanup."
+  #           title: "Home Assistant - Consuela"
+  #           data:
+  #             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
+  #             image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
 
-  vacuum_message_done_cleaning:
-      alias: "Message phone about scheduled cleaning"
-      sequence:
-        - service: notify.mobile_app_blokmeister_op6
-          data:
-            message: "Consuela is done cleaning."
-            title: "Home Assistant - Consuela"
-            data:
-              icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-              image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
+  # vacuum_message_done_cleaning:
+  #     alias: "Message phone about scheduled cleaning"
+  #     sequence:
+  #       - service: notify.mobile_app_blokmeister_op6
+  #         data:
+  #           message: "Consuela is done cleaning."
+  #           title: "Home Assistant - Consuela"
+  #           data:
+  #             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
+  #             image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"

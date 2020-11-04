@@ -545,6 +545,19 @@ automation:
                 title: Keep on
               - action: poweroff
                 title: Shutdown
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: 'Shutdown NAS'
+          message: 'NAS is still on. Want to turn it off?'
+          data:
+            group: reminder
+            tag: nasshutdown
+            icon_url: local/icons/nas.png
+            actions:
+              - action: "poweron"
+                title: "Keep on"
+              - action: "poweroff"
+                title: "Shutdown"
       - delay:
           minutes: 10
       - service: automation.turn_off
@@ -557,6 +570,11 @@ automation:
         event_type: ariela_notification_clicked
         event_data:
           action: poweroff
+      - wait_for_trigger:
+        - platform: event
+          event_type: mobile_app_notification_action
+          event_data:
+            action: "poweroff"
     condition: []
     action:
       - service: switch.turn_off
@@ -568,6 +586,14 @@ automation:
         data:
           title: 'NAS shutdown'
           message: 'NAS was successfully shut down'
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: 'Shutdown NAS'
+          message: 'NAS was successfully shut down'
+          data:
+            group: reminder
+            tag: nasshutdown
+            icon_url: local/icons/nas.png
 
 ################
 #    SCENES    #

@@ -68,8 +68,8 @@ automation:
 
   - alias: Report successful backup
     trigger:
-      platform: event
-      event_type: auto_backup.snapshot_successful
+      - platform: event
+        event_type: auto_backup.snapshot_successful
     condition:
       condition: state
       entity_id: input_boolean.backup_running
@@ -81,6 +81,15 @@ automation:
           title: "Home Assistant - Backup successful"
           data:
             icon: http://192.168.1.252:8123/local/icons/file-check-outline.png
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          message: "Backup completed successfully"
+          title: "Home Assistant - Backup successful"
+          data:
+            group: info
+            tag: backup
+            icon_url: local/icons/file-check-outline.png
+            timeout: 10800
       - service: system_log.write
         data:
           message: 'Scheduled backup successful.'
@@ -90,8 +99,8 @@ automation:
 
   - alias: Report failed backup
     trigger:
-      platform: event
-      event_type: auto_backup.snapshot_failed
+      - platform: event
+        event_type: auto_backup.snapshot_failed
     condition:
       condition: state
       entity_id: input_boolean.backup_running
@@ -103,6 +112,15 @@ automation:
           title: "Home Assistant - Backup failed"
           data:
             icon: http://192.168.1.252:8123/local/icons/file-alert-outline.png
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          message: "Backup failed!"
+          title: "Home Assistant - Backup failed"
+          data:
+            group: info
+            tag: backup
+            icon_url: local/icons/file-alert-outline.png
+            timeout: 10800            
       - service: system_log.write
         data:
           message: 'Scheduled backup failed!'
