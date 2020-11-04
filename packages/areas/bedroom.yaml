@@ -396,15 +396,15 @@ automation:
         #id: rw1021_13
         #event: 1000
     action:
-      - service: system_log.write
-        data:
-          message: >-
-            "Deconz switch pressed with event data: {{ trigger.event.data.event == 1000 }}, {{ trigger.event.data.event == '1000' }}"
-          level: info
+      # - service: system_log.write
+      #   data:
+      #     message: >-
+      #       "Deconz switch pressed with event data: {{ trigger.event.data.event == 1000 }}, {{ trigger.event.data.event == '1000' }}"
+      #     level: info
       - choose:
-          - conditions:
+          - conditions:   ################## CONDITIONS BELOW ARE FOR QUICK PRESS-RELEASE ##################
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1000 }}"
+                value_template: "{{ trigger.event.data.event == 1002 }}" # X000 means quick-press X002 means quick-press release
             sequence:
               - service: light.toggle
                 entity_id:
@@ -413,25 +413,63 @@ automation:
                   - light.bedroom_3
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 2000 }}"
+                value_template: "{{ trigger.event.data.event == 2002 }}"
             sequence:
               - service: light.toggle
                 entity_id:
                   - light.bedside_left
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 3000 }}"
+                value_template: "{{ trigger.event.data.event == 3002 }}"
             sequence:
               - service: light.toggle
                 entity_id:
                   - light.bedside_right
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 4000 }}"
+                value_template: "{{ trigger.event.data.event == 4002 }}"
             sequence:
               - service: light.toggle
                 entity_id:
                   - light.ledstrip_bed
+          - conditions: ################## CONDITIONS BELOW ARE FOR LONG PRESS ##################
+            - condition: template
+              value_template: "{{ trigger.event.data.event == 1001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  entity_id:
+                    - light.bedroom_1
+                    - light.bedroom_2
+                    - light.bedroom_3
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  entity_id:
+                    - light.bedside_left
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  entity_id:
+                    - light.bedside_right
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  entity_id:
+                    - light.ledstrip_bed
 
 
   #Toggle bedroom lights when switch is pressed
