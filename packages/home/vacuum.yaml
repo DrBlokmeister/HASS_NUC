@@ -254,6 +254,14 @@ automation:
         data:
           entity_id: automation.home_vacuum_counter_drive_to_trashbin
           skip_condition: true
+      - wait_for_trigger:
+          platform: state
+          entity_id: vacuum.xiaomi_vacuum_cleaner
+          to: 'Docked'
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.area_cleaned_at_last_empty_bin
+          value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
       # - service: script.vacuum_goto_kitchen
       # - service: counter.reset
       #   data:
