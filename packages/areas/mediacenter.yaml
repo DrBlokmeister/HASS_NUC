@@ -163,6 +163,49 @@ automation:
       - service: homeassistant.turn_off
         entity_id: switch.blitzwolf_coffeeplant
 
+  - alias: '[mediacenter|ambilight] Turn on ambilight when TV turns on'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: device_tracker.samsung_tv
+    action:
+      - choose:
+        - conditions:
+            - condition: state
+              entity_id: device_tracker.samsung_tv
+              state: 'home'
+            - condition: state
+              entity_id: binary_sensor.house_occupied
+              state: 'on'
+          sequence:
+            - service: switch.turn_on
+              entity_id: switch.blitzwolf_plug2
+        - conditions:
+            - condition: state
+              entity_id: device_tracker.samsung_tv
+              state: 'not_home'
+          sequence:
+            - service: kodi.call_method
+              data:
+                entity_id: media_player.libreelec
+                method: System.Shutdown
+            - wait_for_trigger:
+                - platform: state
+                  entity_id: media_player.libreelec
+                  to: 'off'
+                  for:
+                    seconds: 10
+                - platform: state
+                  entity_id: media_player.libreelec
+                  to: 'unknown'
+                  for:
+                    seconds: 10
+              timeout:
+                minutes: 1
+              continue_on_timeout: true
+            - service: switch.turn_off
+              entity_id: switch.blitzwolf_plug2
+
   # - alias: '[mediacenter|light] Restore lights when mediaplayer stops'
   #   trigger:
   #     - platform: state
