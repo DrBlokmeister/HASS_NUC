@@ -1,116 +1,92 @@
-# homeassistant:
-#   customize:
+homeassistant:
+  customize:
 
-# #################
-# #    SENSORS    #
-# #################
-# sensor:
-#   - platform: template
-#     sensors:
-#       low_battery:
-#         friendly_name: "Low Battery"
-#         entity_id: sensor.time
-#         value_template: >
-#           {%- set threshold = 30 -%}
-#           {%- set domains = ['light', 'switch', 'sensor', 'zwave', 'lock'] -%}
-#           {%- for domain in domains -%}
-#             {%- for item in states[domain] if ((item.attributes.battery_level is defined and item.attributes['battery_level'] | int < threshold) or ("battery" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
-#               {%- if (item.attributes.battery_level is defined and item.attributes['battery_level'] | int < threshold) -%}
-#                 {{ item.name }} ({{ item.attributes['battery_level'] }}){%- if not loop.last %}, {% endif -%}{% endif -%}
-#               {%- if "battery" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
-#                 {{ item.name }} ({{ item.state }}){%- if not loop.last %}, {% endif -%} {% endif -%}
-#             {%- endfor -%}
-#           {%- endfor -%}
+input_number:
+  low_battery_threshold:
+    name: Low Battery Threshold
+    icon: mdi:battery-low
+    min: 1
+    max: 100
+    step: 1
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: template
+    sensors:
+      low_battery:
+        friendly_name: "Low Battery"
+        unit_of_measurement: entities
+        icon_template: "{{ 'mdi:battery' if is_state('sensor.low_battery','0') else 'mdi:battery-alert' }}"
+        value_template: >-
+          {{ states|selectattr('attributes.battery_level', 'defined')| selectattr('attributes.battery_level','<', states('input_number.low_battery_threshold')|int ) | list | count }}
+        attribute_templates:
+          entities: >-
+            {{ states|selectattr('attributes.battery_level', 'defined')| selectattr('attributes.battery_level','<', states('input_number.low_battery_threshold')|int ) | map(attribute='entity_id') | list | join(', ') }}
+          names: >-
+            {{ states|selectattr('attributes.battery_level', 'defined')| selectattr('attributes.battery_level','<', states('input_number.low_battery_threshold')|int ) | map(attribute='name') | list | join(', ') }}
 
-# ########################
-# #    BINARY SENSORS    #
-# ########################
-# binary_sensor:
-#   - platform: template
-#     sensors:
-#       battery_status:
-#         friendly_name: "Battery Status"
-#         entity_id: sensor.time
-#         value_template: >
-#           {%- set threshold = 30 -%}
-#           {% set ns = namespace(battery_empty = false) %}
-#           {%- set domains = ['light', 'switch', 'sensor', 'zwave', 'lock'] -%}
-#           {%- for domain in domains -%}
-#             {%- for item in states[domain] if ((item.attributes.battery_level is defined and item.attributes['battery_level'] | int < threshold) or ("battery" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown"))) -%}
-#               {%- if (item.attributes.battery_level is defined and item.attributes['battery_level'] | int < threshold) -%}
-#                 {% set ns.battery_empty = true %}{% endif -%}
-#               {%- if "battery" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
-#                 {% set ns.battery_empty = true %} {% endif -%}
-#             {%- endfor -%}
-#           {%- endfor -%}
-#           {{ns.battery_empty}}
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
 
-# ########################
-# #    INPUT BOOLEANS    #
-# ########################
-# input_boolean:
-#   # battery_status_update:
-#   #   name: Battery status update
-#   #   icon: mdi:battery
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
 
-# ##################
-# #    SWITCHES    #
-# ##################
-# switch:
+##################
+#    SWITCHES    #
+##################
+switch:
 
-# #####################
-# #    AUTOMATIONS    #
-# #####################
-# automation:
-# #   - alias: Battery Status Update
-# #     trigger:
-# #     - platform: time_pattern
-# #       minutes: '/5'
-# #     action:
-# #     - alias: Battery Status Update
-# #       service: input_boolean.toggle
-# #       data:
-# #         entity_id: input_boolean.battery_status_update
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[battery|notify] Create notification for low battery entities'
+    mode: restart
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.uptime
+        above: 5
+      - platform: state
+        entity_id: sensor.low_battery
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.low_battery
+        above: 0
+      - condition: numeric_state
+        entity_id: sensor.uptime
+        above: 5
+    action:
+      - service: persistent_notification.create
+        data:
+          title: Low Battery levels
+          message: >-
+            {% set entities = state_attr('sensor.low_battery','entities').split(', ') %}
+            {% set names = state_attr('sensor.low_battery','names').split(', ') %}
+            {% for entity in entities %}
+              {{- names[loop.index0] }}: **{{state_attr(entity, 'battery_level') -}}**
+            {% endfor %}
+          notification_id: low-battery-alert
+      - wait_template: "{{ is_state('sensor.low_battery', 0)  }}"
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: low-battery-alert
 
-#   - alias: 'Battery Alert'
-#     mode: restart
-#     trigger:
-#       - platform: numeric_state
-#         entity_id: sensor.uptime
-#         above: 5
-#       - platform: state
-#         entity_id: sensor.low_battery
-#     condition:
-#       condition: template
-#       value_template: "{% if states('binary_sensor.battery_status') %}{{ true }}{% else %}{{ false }}{% endif %}"
-#     action:
-#       - wait_template: "{{ states('sensor.uptime')|int > 5 }}"
-#         timeout: '00:05:00'
-#       - service: persistent_notification.create
-#         data:
-#           title: Low Battery levels
-#           message: "{{ states('sensor.low_battery') }}"
-#           notification_id: low-battery-alert
-#       - wait_template: "{% if states('binary_sensor.battery_status') %}{{ true }}{% else %}{{ false }}{% endif %}"
-#       - service: persistent_notification.dismiss
-#         data:
-#           notification_id: low-battery-alert
-#       # - service: notify.slack_notify
-#       #   data:
-#       #     message: >-
-#       #       These devices have low battery levels: {{ states('sensor.battery_status') }}
+################
+#    SCENES    #
+################
+scene:
 
-# ################
-# #    SCENES    #
-# ################
-# scene:
+################
+#    GROUPS    #
+################
+group:
 
-# ################
-# #    GROUPS    #
-# ################
-# group:
-
-# #################
-# #    SCRIPTS    #
-# #################
-# script:
+#################
+#    SCRIPTS    #
+#################
+script:
