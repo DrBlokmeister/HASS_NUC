@@ -220,13 +220,18 @@ sensor:
         unit_of_measurement: 'lx'
         value_template: >-
           {{ (states('sensor.illumination_bedroom')|round(1) + states('sensor.lightlevel_12')|round(1))/2 }}
+      bed_weight_drift_compensated:
+        friendly_name: "Bed weight drift compensated"
+        unit_of_measurement: kg
+        icon_template: mdi:scale
+        value_template: >-
+          {{ (states('sensor.bed_weight_calibrated')|round(2) - 2*states('sensor.bed_weight_change_per_minute')|round(2))|round(2) }}
 
   - platform: derivative
     source: sensor.bed_weight_calibrated
     name: Bed weight change per minute
     unit_time: min
     time_window: "00:00:20"
-
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -380,45 +385,12 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  # - alias: '[bedroom|light] Turn on lights through motion' #was: bedroom_motion_lights
-  #   trigger:
-  #     platform: state
-  #     entity_id: binary_sensor.motion_sensor_bedroom
-  #     to: 'on'
-  #   condition:
-  #     condition: numeric_state
-  #     entity_id: sensor.illumination_bedroom
-  #     below: 10
-  #   action:
-  #     service: scene.turn_on
-  #     data:
-  #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
-  # - alias: '[bedroom|light] Match scene sensor' #was: bedroom_time_lights
-  #   trigger:
-  #     platform: state
-  #     entity_id: sensor.bedroom_scene
-  #   condition:
-  #     condition: state
-  #     entity_id: light.bedroom_lights
-  #     state: 'on'
-  #   action:
-  #     service: scene.turn_on
-  #     data:
-  #       entity_id: scene.{{ states.sensor.bedroom_scene.state }}
   - alias: '[bedroom|light] Toggle independent bedroom lights'
     mode: single
     trigger:
       platform: event
       event_type: deconz_event
-      #event_data:
-        #id: rw1021_13
-        #event: 1000
     action:
-      # - service: system_log.write
-      #   data:
-      #     message: >-
-      #       "Deconz switch pressed with event data: {{ trigger.event.data.event == 1000 }}, {{ trigger.event.data.event == '1000' }}"
-      #     level: info
       - choose:
           - conditions:   ################## CONDITIONS BELOW ARE FOR QUICK PRESS-RELEASE ##################
               - condition: template
@@ -605,10 +577,6 @@ automation:
         event_type: timer.finished
         event_data:
           entity_id: timer.bedroom_button_pressed
-      # - platform: state
-      #   entity_id: timer.button_pressed
-      #   from: 'active'
-      #   to: 'idle'
     condition:
       - condition: state
         entity_id: input_boolean.sleep_tracking_on
@@ -619,31 +587,6 @@ automation:
       - service: automation.trigger
         entity_id:
           - automation.bedroom_light_turn_off_lights
-
-  #Turn off bedroom lights if no motion has been detected for 10 minutes
-  # - alias: '[bedroom|light] Turn off lights' #was: bedroom_nomotion_turn_off
-  #   trigger:
-  #     platform: state
-  #     entity_id: binary_sensor.motion_sensor_bedroom
-  #     from: 'on'
-  #     to: 'off'
-  #     for: 00:10:00
-  #   action:
-  #     service: light.turn_off
-  #     entity_id:
-  #       - light.bedroom_lights
-
-  #Wakeup light
-  # - alias: '[bedroom|light] Wakeup light' #was: bedroom_wakeup_light
-    # trigger:
-    #   platform: template
-  #     value_template: "{% if (states.sensor.wakeup_time.state|int - as_timestamp(states.sensor.time.last_changed)|int)/3600 >= -0.5 and (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)|timestamp_custom('%y%m%d')|int == now().strftime('%y%m%d')|int) and states.input_boolean.sleep_tracking_on.state == 'on' %}True{% else %}False{% endif %}"
-  #   condition:
-  #     - condition: state
-  #       entity_id: input_boolean.sleep_tracking_on
-  #       state: 'on'
-  #   action:
-  #     - service: script.wakeup_sunrise_sequence
 
 ########## SLEEP TRACKING ##########
   - alias: '[bedroom|light] Sleep tracking start' #was: "Turn off lights when sleep tracking starts"
@@ -656,10 +599,6 @@ automation:
         entity_id: media_player.living_room_speaker
         data:
           message: "Good night"
-      - service: light.turn_off
-        data:
-          entity_id: all
-          transition: 10
       - service: automation.turn_off
         entity_id:
           - group.bedroom_lighting_automations
@@ -668,6 +607,10 @@ automation:
           - group.study_lighting_automations
           - automation.bathroom_light_turn_on_light_through_motion
           - automation.entry_light_turn_on_light_through_motion
+      - service: light.turn_off
+        data:
+          entity_id: all
+          transition: 10
       - service: climate.set_temperature
         data:
           entity_id: climate.heating
@@ -934,43 +877,6 @@ automation:
       - service: light.turn_off
         entity_id: light.bedroom_lights
 
-  # - alias: '[bedroom|light]Turn on LEDstrip when bed presence changes'
-  #   mode: restart
-  #   trigger:
-  #     platform: state
-  #     entity_id: binary_sensor.bed_occupied
-  #   action:
-  #     - service: scene.create
-  #       data:
-  #         scene_id: bedroom_ledstrip_before
-  #         snapshot_entities:
-  #           light.ledstrip_bed
-  #     - choose:
-  #         - conditions:
-  #             - condition: state
-  #               entity_id: input_boolean.sleep_tracking_on
-  #               state: 'on'
-  #           sequence:
-  #             - service: light.turn_on
-  #               data:
-  #                 entity_id: light.ledstrip_bed
-  #                 brightness: 20
-  #                 color_temp: 300
-  #       default:
-  #         - service: light.turn_on
-  #           data:
-  #             entity_id: light.ledstrip_bed
-  #             brightness: 255
-  #             color_temp: 300
-  #     - delay:
-  #         seconds: 30
-  #     - service: scene.turn_on
-  #       data:
-  #         entity_id: scene.bedroom_ledstrip_before
-  #         transition: 1
-  #     - delay:
-  #         seconds: 2
-
   - alias: '[bedroom|wakeup]GET OUT OF BED!'
     mode: single
     trigger:
@@ -1078,7 +984,28 @@ automation:
                         gender: female
 
 
-
+  - alias: '[bedroom|scale]Auto tare bed scale'
+    mode: single
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.bed_weight_change_per_minute
+      above: -0.2
+      below: 0.2
+      for:
+        minutes: 5
+    condition:
+      - condition: state
+        entity_id: sensor.people_in_bed
+        state: '0'
+        for:
+          minutes: 20
+      - condition: state
+        entity_id: input_boolean.sleep_tracking_on
+        state: 'off'
+    action:
+      - service: script.tare_bed_scale
+      - delay:
+          hours: 1
 ################
 #    SCENES    #
 ################
@@ -1212,11 +1139,13 @@ group:
       - input_number.bedscalecalibration_lowvalue_raw
       - input_number.bedscalecalibration_highvalue_raw
       - sensor.bed_weight_calibrated
+      - sensor.bed_weight_change_per_minute
+      - sensor.bed_weight_drift_compensated
       - sensor.hx711_raw_value
       - sensor.hx711_value
       - sensor.people_in_bed
       - binary_sensor.bed_occupied
-
+      - script.tare_bed_scale
 
 
 ################
