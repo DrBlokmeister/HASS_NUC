@@ -1,0 +1,113 @@
+esphome:
+  name: falconlighting
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: "BlokmeisterWIFI"
+  password: "ithurtswhenIP"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Falconlighting Fallback Hotspot"
+    password: "smtZkGgz4U2q"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+globals:
+  - id: brightness
+    type: int
+    restore_value: no
+    initial_value: '30'
+  - id: brightnessblue
+    type: int
+    restore_value: no
+    initial_value: '50'
+  - id: brightnessgoingup
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+light:
+  - platform: fastled_spi
+    id: falconlights
+    chipset: WS2801
+    data_pin: D1
+    clock_pin: D2
+    num_leds: 37
+    rgb_order: RGB
+    default_transition_length: 1s
+    name: "Falconlights"
+    gamma_correct: 1.5
+    effects:
+      - random:
+      - addressable_rainbow:
+      - addressable_rainbow:
+          name: Rainbow Effect With Custom Values
+          speed: 10
+          width: 50
+      - lambda:
+          name: My Custom Effect
+          update_interval: 1s
+          lambda: |-
+            static int state = 0;
+            auto call = id(falconlights).turn_on();
+            // Transtion of 1000ms = 1s
+            call.set_transition_length(1000);
+            if (state == 0) {
+              call.set_rgb(1.0, 1.0, 1.0);
+            } else if (state == 1) {
+              call.set_rgb(1.0, 0.0, 1.0);
+            } else if (state == 2) {
+              call.set_rgb(0.0, 0.0, 1.0);
+            } else {
+              call.set_rgb(1.0, 0.0, 0.0);
+            }
+            call.perform();
+            state += 1;
+            if (state == 4)
+              state = 0;
+      - automation:
+          name: Slow engine pulse
+          sequence:
+            - light.addressable_set:
+                id: falconlights
+                range_to: 23
+                red: 0%
+                green: 0%
+                blue: 0%
+            - light.addressable_set:
+                id: falconlights
+                range_from: 24
+                range_to: 37
+                red: !lambda |-
+                  if (id(brightness) > 80) {
+                    // global value greater than 80
+                    id(brightnessgoingup) = false;
+                  } else if (id(brightness) < 30 ) {
+                    id(brightnessgoingup) = true;
+                  }
+                  if (id(brightnessgoingup)) {
+                    id(brightness) += 1;
+                    id(brightnessblue) += 1;
+                  } else {
+                    id(brightness) -= 1;
+                    id(brightnessblue) -= 1;
+                  }
+                  return id(brightness);
+                green: !lambda |-
+                  return id(brightness);
+                blue: !lambda |-
+                  return id(brightnessblue);
+            - delay: 50ms
+            - logger.log:
+                format: "The set brightness is %i, brightnessblue is %i"
+                args: ['id(brightness)', 'id(brightnessblue)']
