@@ -31,18 +31,16 @@ input_select:
       - bathroom
     initial: livingroom
     icon: mdi:robot-vacuum
-
-# utility_meter:
-#   area_cleaned_today:
-#     source: sensor.area_total_clean
-#     cycle: daily
-#   area_cleaned_since_empty_bin:
-#     source: sensor.area_total_clean
-#     cycle: yearly
-#     tariffs:
-#       - default
-#       - backup
-
+  vacuum_room_numbers:
+    options:
+      - 17   #livingroom
+      - 4   #entry
+      - 3   #kitchen
+      - 1   #bedroom
+      - 2   #study
+      - 16  #hallway+bathroom
+    initial: 17
+    icon: mdi:robot-vacuum
 input_number:
   area_cleaned_at_start_of_day: #in minutes
     name: Area cleaned at the start of the day
@@ -93,18 +91,11 @@ switch:
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
-  # vacuumed_today:
-  #   name: Checks if Consuela vacuumed today
-  #   icon: mdi:robot-vacuum
 
 ##################
 #    COUNTERS    #
 ##################
 counter:
-  # times_vacuumed_since_empty_bin:
-  #   #initial: 0
-  #   step: 1
-  #   restore: true
 
 #####################
 #    AUTOMATIONS    #
@@ -137,11 +128,6 @@ automation:
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'off'
-      # - condition: not
-      #   conditions:
-      #     - condition: state
-      #       entity_id: person.sander_blok
-      #       state: 'home'
       - condition: numeric_state
         entity_id: sensor.area_cleaned_today
         below: 50
@@ -372,106 +358,101 @@ group:
 #################
 script:
   vacuum_around_litterbox_twice:
-      alias: "Clean around litterbox"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[16618,28223,18568,29623]]
+    alias: "Clean around litterbox"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[16618,28223,18568,29623]]
 
   vacuum_kitchen_twice:
-      alias: "Clean kitchen"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[14898,24722,17198,26572]]
+    alias: "Clean kitchen"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[14898,24722,17198,26572]]
 
   vacuum_study_twice:
-      alias: "Clean study"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[16611,21710,18811,24760]]
+    alias: "Clean study"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[16611,21710,18811,24760]]
 
   vacuum_bedroom_twice:
-      alias: "Clean bedroom"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[21786,20518,26336,24818]]
+    alias: "Clean bedroom"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[21786,20518,26336,24818]]
 
   vacuum_bathroom_twice:
-      alias: "Clean bathroom"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[19634,21767,21484,23717]]
+    alias: "Clean bathroom"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[19634,21767,21484,23717]]
 
   vacuum_dining_twice:
-      alias: "Clean dining area"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[18516,25061,22916,29661]]
+    alias: "Clean dining area"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[18516,25061,22916,29661]]
 
   vacuum_tv_twice:
-      alias: "Clean TV area"
-      sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          repeats: 2
-          zone: [[22840,25127,26540,29727]]
+    alias: "Clean TV area"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        repeats: 2
+        zone: [[22840,25127,26540,29727]]
 
   vacuum_goto_kitchen:
-      alias: "Go to kitchen"
-      sequence:
+    alias: "Go to kitchen"
+    sequence:
+    - service: vacuum.send_command
+      data:
+        entity_id: vacuum.xiaomi_vacuum_cleaner
+        command: "app_goto_target"
+        params: [16000,25200]
+
+  call_cleaning_loop:
+    alias: "Calls the cleaning loop"
+    mode: queued
+    sequence:
+      - condition: template
+        value_template: "{{ not is_state('input_select.vacuum_area_coordinates', '16') }}"
+      - service: script.turn_on
+        data:
+          entity_id: script.clean_next_area
+
+  clean_next_area:
+    alias: "cleans the next area"
+    mode: queued
+    sequence:
       - service: vacuum.send_command
         data:
           entity_id: vacuum.xiaomi_vacuum_cleaner
-          command: "app_goto_target"
-          params: [16000,25200]
-
-  # vacuum_message_litterbox_clean:
-  #     alias: "Message phone about litterbox cleaning"
-  #     sequence:
-  #       - service: notify.mobile_app_blokmeister_op6
-  #         data:
-  #           message: "Consuela has started cleaning around the litterbox."
-  #           title: "Home Assistant - Consuela"
-  #           data:
-  #             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-  #             image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
-
-  # vacuum_message_scheduled_cleanup:
-  #     alias: "Message phone about scheduled cleaning"
-  #     sequence:
-  #       - service: notify.mobile_app_blokmeister_op6
-  #         data:
-  #           message: "Consuela has started a scheduled cleanup."
-  #           title: "Home Assistant - Consuela"
-  #           data:
-  #             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-  #             image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
-
-  # vacuum_message_done_cleaning:
-  #     alias: "Message phone about scheduled cleaning"
-  #     sequence:
-  #       - service: notify.mobile_app_blokmeister_op6
-  #         data:
-  #           message: "Consuela is done cleaning."
-  #           title: "Home Assistant - Consuela"
-  #           data:
-  #             icon: http://192.168.1.252:8123/local/icons/robot-vacuum.png
-  #             image: "https://community-openhab-org.s3-eu-central-1.amazonaws.com/original/2X/6/678bffd33fa7882979bdcfd3fb3fc1b78badfdbf.png"
+          command: app_segment_clean
+          params: >-
+            {{states('input_select.vacuum_room_numbers')|int}}
+      - wait_template: "{{ is_state_attr('vacuum.xiaomi_vacuum_cleaner','status','Returning home') }}"
+      - service: input_select.select_next
+        data:
+          entity_id: input_select.vacuum_room_numbers
+      - service: script.turn_on
+        data:
+          entity_id: script.call_cleaning_loop
