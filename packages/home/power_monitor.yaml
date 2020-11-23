@@ -63,6 +63,10 @@ homeassistant:
     sensor.blitzwolf_nuc_energy_today:
       icon: mdi:lightning-bolt
 
+    sensor.waterverbruik_vandaag:
+      icon: mdi:water
+    sensor.water_consumption_per_hour:
+      icon: mdi:water
 #################
 #    SENSORS    #
 #################
@@ -169,6 +173,13 @@ sensor:
     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
     unit_of_measurement: "€"
 
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/watermeter/day?limit=1&json=object&round=off
+    name: Waterverbruik_vandaag
+    value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
+    unit_of_measurement: "l"
+    force_update: true
+
 #   - platform: rest
 #     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
 #     name: Maand Hoog Tarief
@@ -187,11 +198,11 @@ sensor:
 #     value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
 #     unit_of_measurement: "kWh"
 
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
-#     name: Gasverbruik Per Dag
-#     value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
-#     unit_of_measurement: "m3"
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+    name: Gasverbruik Per Dag
+    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
+    unit_of_measurement: "m3"
 
   - platform: mqtt
     name: timestamp_local
@@ -263,6 +274,12 @@ sensor:
     unit_time: h
     time_window: "00:02:00"
 
+  - platform: derivative
+    source: sensor.waterverbruik_vandaag
+    name: Water consumption per hour
+    unit_time: h
+    time_window: "00:02:00"
+
   - platform: template
     sensors:
       light_power_estimate: #I fitted power monitoring data to the power consumption using a trendline in Excel. Formula is 0.35*exp(brightness*0.0096)
@@ -315,7 +332,11 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-
+  platform: template
+  sensors:
+    hot_water_on:
+      value_template: >-
+        {{ states('sensor.water_consumption_per_hour')|float|round(2) > 0 and states('sensor.gas_usage_per_hour')|float|round(2) > 0}}
 ########################
 #    INPUT BOOLEANS    #
 ########################
