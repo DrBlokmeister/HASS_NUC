@@ -789,9 +789,6 @@ automation:
       entity_id: binary_sensor.motion_sensor_bedroom
       to: 'on'
     condition:
-      # - condition: numeric_state
-      #   entity_id: sensor.illumination_bedroom
-      #   below: 10
       - condition: template
         value_template: "{{ states('sensor.average_illumination_bedroom')|int < states('input_number.bedroom_illumination_limit')|int }}"
       - condition: state
@@ -841,9 +838,9 @@ automation:
             {% elif now().hour < 21 %}
               255
             {% elif now().hour < 22.5 %}
-              {{ (255 - 255 * (now().hour - 19)/1.5)|int }}
+              {{ (255 - 245 * (now().hour - 19)/1.5)|int }}
             {% else %}
-              0
+              10
             {% endif %}
       - service: light.turn_on
         data:
@@ -852,13 +849,13 @@ automation:
           transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
           brightness: >-
             {% if now().hour < 7 %}
-              50
+              100
             {% elif now().hour < 20 %}
               0
             {% elif now().hour < 22.5 %}
-              {{ (255 - 205 * (now().hour - 19)/2.5)|int }}
+              {{ (255 - 100 * (now().hour - 19)/2.5)|int }}
             {% else %}
-              50
+              155
             {% endif %}
       - delay:
           seconds: 1
