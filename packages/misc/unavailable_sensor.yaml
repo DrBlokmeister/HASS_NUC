@@ -47,6 +47,15 @@ group:
       - media_player.plex_plex_for_android_mobile_oneplus_6_2
       - sensor.octoprint_slicing_file
       - sensor.octoprint_slicing_progress
+      - sensor.fn_alert_level
+      - sensor.fn_alert_message
+      - sensor.fn_newstorage_pct_used
+      - sensor.fn_newstorage_report
+      - sensor.fn_newstorage_used
+      - sensor.fn_storage2_pct_used
+      - sensor.fn_storage2_report
+      - sensor.fn_storage2_used
+      - sensor.fn_version
   additional_ignored_entities:
     entities:
       - sensor.time
@@ -105,11 +114,11 @@ automation:
             {%- endif -%}
             {%- if is_state('binary_sensor.blokmeisternas','off') -%}
               {%- if entities.entities != '' %}{% set entities.entities = entities.entities + ',' %}{%- endif %}
-              {%- set entities.entities = entities.entities + 'sensor.ping_blokmeisternas_avg,sensor.fn_newstorage_used,sensor.fn_storage2_used' -%}
+              {%- set entities.entities = entities.entities + 'sensor.ping_blokmeisternas_avg,sensor.fn_newstorage_used,sensor.fn_storage2_used,sensor.fn_alert_level,sensor.fn_alert_message,sensor.fn_newstorage_report,sensor.fn_storage2_report' -%}
             {%- endif -%}
-            {%- if is_state('switch.blitzwolf_3dprinter','off') -%}
+            {%- if is_state('switch.blitzwolf_3dprinter','off') or is_state('binary_sensor.octoprint_connected', 'unavailable') -%}
               {%- if entities.entities != '' %}{% set entities.entities = entities.entities + ',' %}{%- endif %}
-              {%- set entities.entities = entities.entities + 'binary_sensor.octoprint_connected,binary_sensor.octoprint_printing,sensor.octoprint_bed_target,sensor.octoprint_bed_temperature,sensor.octoprint_current_z,sensor.octoprint_last_event,sensor.octoprint_print_estimated_time,sensor.octoprint_print_file,sensor.octoprint_print_progress,sensor.octoprint_print_status, sensor.octoprint_print_time,sensor.octoprint_print_time_left,sensor.octoprint_slicing_file,sensor.octoprint_slicing_progress,sensor.octoprint_soc_temperature,sensor.octoprint_tool_0_target,sensor.octoprint_tool_0_temperature,switch.octoprint_cancel_print,switch.octoprint_emergency_stop,switch.octoprint_pause_print,switch.octoprint_shutdown_system' -%}
+              {%- set entities.entities = entities.entities + (expand('group.3dprinter_entities') | map(attribute='entity_id') | list | join(',')) -%}
             {%- endif -%}
             {%- for group in states.group if ("blitzwolf" in group.name) and states(expand(group) | selectattr('domain', 'eq', 'switch') | map(attribute='entity_id') | list | join(','))=='unavailable' -%}
               {%- if entities.entities != '' %}{% set entities.entities = entities.entities + ',' %}{%- endif %}
