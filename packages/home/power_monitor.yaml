@@ -74,52 +74,33 @@ sensor:
   - platform: template
     sensors:
       total_power_blitzwolf:
-        entity_id: 
-          - sensor.blitzwolf_electricblanket_energy_power
-          - sensor.blitzwolf_computer_energy_power
-          - sensor.blitzwolf_mediacenter_energy_power
-          - sensor.blitzwolf_watercooker_energy_power
-          - sensor.blitzwolf_coffeeplant_energy_power
-          - sensor.blitzwolf_3dprinter_energy_power
-          - sensor.blitzwolf_washingmachine_energy_power
         unit_of_measurement: 'W'
         value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_power.state|float + states.sensor.blitzwolf_computer_energy_power.state|float + states.sensor.blitzwolf_mediacenter_energy_power.state|float + states.sensor.blitzwolf_watercooker_energy_power.state|float + states.sensor.blitzwolf_coffeeplant_energy_power.state|float + states.sensor.blitzwolf_3dprinter_energy_power.state|float + states.sensor.blitzwolf_washingmachine_energy_power.state|float) |round(2) }}"
       total_energy_today:
         unit_of_measurement: 'kWh'
         value_template: "{{ (states.sensor.blitzwolf_electricblanket_energy_today.state|float + states.sensor.blitzwolf_computer_energy_today.state|float + states.sensor.blitzwolf_mediacenter_energy_today.state|float + states.sensor.blitzwolf_watercooker_energy_today.state|float + states.sensor.blitzwolf_coffeeplant_energy_today.state|float) |round(2) }}"
       electricblanket_cost_today:
-        entity_id: sensor.blitzwolf_electricblanket_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float * (0.2221|float))|round(2) }}"
       mediacenter_cost_today:
-        entity_id: sensor.blitzwolf_mediacenter_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_mediacenter_energy_today' )|float * (0.2221|float))|round(2) }}"
       watercooker_cost_today:
-        entity_id: sensor.blitzwolf_watercooker_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_watercooker_energy_today' )|float * (0.2221|float))|round(2) }}"
       computer_cost_today:
-        entity_id: sensor.blitzwolf_computer_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_computer_energy_today' )|float * (0.2221|float))|round(2) }}"
       coffeeplant_cost_today:
-        entity_id: sensor.blitzwolf_coffeeplant_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (0.2221|float))|round(2) }}"
       ender3_cost_today:
-        entity_id: sensor.blitzwolf_3dprinter_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
       washingmachine_cost_today:
-        entity_id: sensor.blitzwolf_washingmachine_energy_today
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_washingmachine_energy_today' )|float * (0.2221|float))|round(2) }}"
       unknown_power:
-        entity_id: 
-          - sensor.total_power_watt
-          - sensor.total_power_blitzwolf
-          - sensor.light_power_estimate
         unit_of_measurement: 'W'
         value_template: "{{ ( states( 'sensor.total_power_watt' )|float - states( 'sensor.total_power_blitzwolf' )|float - states( 'sensor.light_power_estimate' )|float )|round(2) }}"
   - platform: filter
@@ -253,9 +234,6 @@ sensor:
   - platform: template
     sensors:
       energie_kosten_dag:
-        entity_id:
-          - sensor.kosten_hoog_tarief
-          - sensor.kosten_laag_tarief
         value_template: "{{ states('sensor.kosten_hoog_tarief') | float + states('sensor.kosten_laag_tarief') | float | round(2) }}"
         unit_of_measurement: "€"
       # energie_kosten_maand:
@@ -283,23 +261,6 @@ sensor:
   - platform: template
     sensors:
       light_power_estimate: #I fitted power monitoring data to the power consumption using a trendline in Excel. Formula is 0.35*exp(brightness*0.0096)
-        entity_id:
-          - light.bedroom_1
-          - light.bedroom_2
-          - light.bedroom_3
-          - light.hue_color_spot_1
-          - light.hue_color_spot_2
-          - light.hue_color_spot_3
-          - light.hue_color_spot_4
-          - light.hue_color_spot_5
-          - light.kitchen_1
-          - light.kitchen_2
-          - light.kitchen_3
-          - light.study_1
-          - light.study_2
-          - light.study_3
-          - light.plants
-          - sensor.date_time
         unit_of_measurement: 'W'
         value_template: >-
           {% set lights = [

@@ -129,7 +129,6 @@ sensor:
   - platform: template
     sensors:
       wakeup_time:
-        entity_id: sensor.time
         value_template: >-
           {% if states.input_boolean.override_alarm.state == 'on' %}
             {{ as_timestamp(states.input_datetime.wakeup_time.datetime) }}
@@ -141,41 +140,33 @@ sensor:
             {{ (as_timestamp(states.calendar.asml_werkschema.attributes.start_time)-3600) }}
           {% endif %}
       wakeup_time_human_readable:
-        entity_id: sensor.wakeup_time
         device_class: timestamp
         value_template: >-
           {{ states.sensor.wakeup_time.state|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
       bed_time:
-        entity_id: sensor.wakeup_time
         device_class: timestamp
         value_template: >-
           {{ states.sensor.wakeup_time.state|int-8.5*3600 }}
       bed_time_human_readable:
-        entity_id: sensor.bed_time
         device_class: timestamp
         value_template: >-
           {{ states.sensor.bed_time.state|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
       wakeuplight_time:
-        entity_id: sensor.wakeup_time
         device_class: timestamp
         value_template: >-
           {{ states.sensor.wakeup_time.state|int-0.5*3600 }}
       wakeuplight_time_human_readable:
-        entity_id: sensor.time
         device_class: timestamp
         value_template: >-
           {{ states.sensor.wakeuplight_time.state|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
       time_until_wakeuplight_time:
-        entity_id: sensor.time
         device_class: timestamp
         value_template: >-
           {{ states.sensor.wakeuplight_time.state|int-as_timestamp(now()) }}
       time_until_wakeuplight_time_human_readable:
-        entity_id: sensor.time
         value_template: >-
           {{ states.sensor.time_until_wakeuplight_time.state|int|timestamp_custom(('%H:%M:%S')) }}
       bedroom_scene:
-        entity_id: sensor.time
         value_template: >-
           {% if states.input_boolean.sleep_tracking_on.state =='on' or
             (states.input_boolean.tamara_sleeping.state == 'on' and states.person.tamara.state == 'home')
