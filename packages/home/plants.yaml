@@ -8,81 +8,308 @@ homeassistant:
       friendly_name: 'Calathea'
     plant.herbs:
       friendly_name: 'Herbs'
+  customize_glob:
+    "sensor.filtered_*_moisture":
+      icon: mdi:water
+    "sensor.filtered_*_illuminance":
+      icon: mdi:weather-sunny
+    "sensor.filtered_*_conductivity":
+      icon: mdi:emoticon-poop
+    "sensor.filtered_*_temperature":
+      icon: mdi:thermometer
+
+ble_monitor:
+  restore_state: True
+  devices:
+    - mac: 'C4:7C:8D:6B:17:07'
+      name: Coffee Plant
+      temperature_unit: C
+    - mac: 'C4:7C:8D:6B:12:B5'
+      name: Bonsai
+      temperature_unit: C
+    - mac: 'C4:7C:8D:6A:F3:7B'
+      name: Calathea
+      temperature_unit: C
+    - mac: 'C4:7C:8D:6B:16:8A'
+      name: Herbs
+      temperature_unit: C
+    - mac: '80:EA:CA:89:1E:DD'
+      name: Kepler
+      temperature_unit: C
+    - mac: '80:EA:CA:89:1E:B5'
+      name: Galileo
+      temperature_unit: C
+    - mac: '80:EA:CA:88:E8:85'
+      name: Bromelia
+      temperature_unit: C
 
 plant:
   coffee_plant:
     sensors:
-      moisture: sensor.coffee_plant_moisture
+      moisture: sensor.filtered_coffee_plant_moisture
       battery: sensor.coffee_plant_battery
-      temperature: sensor.coffee_plant_temperature
-      conductivity: sensor.coffee_plant_conductivity
-      brightness: sensor.coffee_plant_light_intensity
+      temperature: sensor.filtered_coffee_plant_moisture
+      conductivity: sensor.filtered_coffee_plant_conductivity
+      brightness: sensor.filtered_coffee_plant_illuminance
     min_moisture: 10
   bonsai:
     sensors:
-      moisture: sensor.bonsai_moisture
+      moisture: sensor.filtered_bonsai_illuminance
       battery: sensor.bonsai_battery
-      temperature: sensor.bonsai_temperature
-      conductivity: sensor.bonsai_conductivity
-      brightness: sensor.bonsai_light_intensity
+      temperature: sensor.filtered_bonsai_temperature
+      conductivity: sensor.filtered_bonsai_conductivity
+      brightness: sensor.filtered_bonsai_illuminance
     min_moisture: 10
     min_conductivity: 50
   calathea:
     sensors:
-      moisture: sensor.calathea_moisture
+      moisture: sensor.filtered_calathea_moisture
       battery: sensor.calathea_battery
-      temperature: sensor.calathea_temperature
-      conductivity: sensor.calathea_conductivity
+      temperature: sensor.filtered_calathea_temperature
+      conductivity: sensor.filtered_bromelia_temperature
       brightness: sensor.calathea_light_intensity
     min_moisture: 10
   herbs:
     sensors:
-      moisture: sensor.herbs_moisture
+      moisture: sensor.filtered_herbs_moisture
       battery: sensor.herbs_battery
-      temperature: sensor.herbs_temperature
-      conductivity: sensor.herbs_conductivity
-      brightness: sensor.herbs_light_intensity
+      temperature: sensor.filtered_herbs_temperature
+      conductivity: sensor.filtered_herbs_conductivity
+      brightness: sensor.filtered_herbs_illuminance
     min_moisture: 10
   kepler:
     sensors:
-      moisture: sensor.kepler_moisture
+      moisture: sensor.filtered_kepler_moisture
       battery: sensor.kepler_battery
-      temperature: sensor.kepler_temperature
-      conductivity: sensor.kepler_conductivity
-      brightness: sensor.kepler_light_intensity
+      temperature: sensor.filtered_kepler_temperature
+      conductivity: sensor.filtered_kepler_conductivity
+      brightness: sensor.filtered_kepler_illuminance
     min_moisture: 10
   galileo:
     sensors:
-      moisture: sensor.galileo_moisture
+      moisture: sensor.filtered_galileo_moisture
       battery: sensor.galileo_battery
-      temperature: sensor.galileo_temperature
-      conductivity: sensor.galileo_conductivity
-      brightness: sensor.galileo_light_intensity
+      temperature: sensor.filtered_galileo_temperature
+      conductivity: sensor.filtered_galileo_conductivity
+      brightness: sensor.filtered_galileo_illuminance
     min_moisture: 10
   bromelia:
     sensors:
-      moisture: sensor.bromelia_moisture
+      moisture: sensor.filtered_bromelia_moisture
       battery: sensor.bromelia_battery
-      temperature: sensor.bromelia_temperature
-      conductivity: sensor.bromelia_conductivity
-      brightness: sensor.bromelia_light_intensity
+      temperature: sensor.filtered_bromelia_temperature
+      conductivity: sensor.filtered_bromelia_conductivity
+      brightness: sensor.filtered_bromelia_illuminance
     min_moisture: 10
 
 #################
 #    SENSORS    #
 #################
 sensor:
-  # - platform: mitemp_bt
-  #   rounding: True
-  #   decimals: 1
-  #   period: 60
-  #   log_spikes: False
-  #   use_median: False
-  #   active_scan: False
-  #   hci_interface: 0
-  #   batt_entities: False
-  #   report_unknown: True
-  #   whitelist: False
+  ##### Coffee Plant #####
+  - platform: filter
+    name: "Filtered Coffee Plant moisture"
+    entity_id: sensor.ble_moisture_coffee_plant
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Coffee Plant conductivity"
+    entity_id: sensor.ble_conductivity_coffee_plant
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Coffee Plant illuminance"
+    entity_id: sensor.ble_illuminance_coffee_plant
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Coffee Plant temperature"
+    entity_id: sensor.ble_temperature_coffee_plant
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  ##### Bonsai #####
+  - platform: filter
+    name: "Filtered Bonsai moisture"
+    entity_id: sensor.ble_moisture_bonsai
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Bonsai conductivity"
+    entity_id: sensor.ble_conductivity_bonsai
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Bonsai illuminance"
+    entity_id: sensor.ble_illuminance_bonsai
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Bonsai temperature"
+    entity_id: sensor.ble_temperature_bonsai
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  ##### Calathea #####
+  - platform: filter
+    name: "Filtered Calathea moisture"
+    entity_id: sensor.ble_moisture_calathea
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Calathea conductivity"
+    entity_id: sensor.ble_conductivity_calathea
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Calathea illuminance"
+    entity_id: sensor.ble_illuminance_calathea
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Calathea temperature"
+    entity_id: sensor.ble_temperature_calathea
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  ##### Calathea #####
+  - platform: filter
+    name: "Filtered Herbs moisture"
+    entity_id: sensor.ble_moisture_herbs
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Herbs conductivity"
+    entity_id: sensor.ble_conductivity_herbs
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Herbs illuminance"
+    entity_id: sensor.ble_illuminance_herbs
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Herbs temperature"
+    entity_id: sensor.ble_temperature_herbs
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  ##### Kepler #####
+  - platform: filter
+    name: "Filtered Kepler moisture"
+    entity_id: sensor.ble_moisture_kepler
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Kepler conductivity"
+    entity_id: sensor.ble_conductivity_kepler
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Kepler illuminance"
+    entity_id: sensor.ble_illuminance_kepler
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Kepler temperature"
+    entity_id: sensor.ble_temperature_kepler
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  ##### Galileo #####
+  - platform: filter
+    name: "Filtered Galileo moisture"
+    entity_id: sensor.ble_moisture_galileo
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Galileo conductivity"
+    entity_id: sensor.ble_conductivity_galileo
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Galileo illuminance"
+    entity_id: sensor.ble_illuminance_galileo
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Galileo temperature"
+    entity_id: sensor.ble_temperature_galileo
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  ##### Bromelia #####
+  - platform: filter
+    name: "Filtered Bromelia moisture"
+    entity_id: sensor.ble_moisture_bromelia
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Bromelia conductivity"
+    entity_id: sensor.ble_conductivity_bromelia
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Bromelia illuminance"
+    entity_id: sensor.ble_illuminance_bromelia
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+  - platform: filter
+    name: "Filtered Bromelia temperature"
+    entity_id: sensor.ble_temperature_bromelia
+    filters:
+      - filter: lowpass
+        time_constant: 10
+        precision: 1
+
 
   - platform: miflora
     mac: 'C4:7C:8D:6B:17:07'
