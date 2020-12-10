@@ -87,6 +87,29 @@ automation:
       - service: light.turn_off
         entity_id: light.entry_lights
 
+  - alias: '[entry|alarm]Alarm when front door is open too long'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.door_window_sensor_frontdoor
+      to: 'on'
+      for:
+        minutes: 10
+    action:
+      repeat:
+        while:
+          - condition: state
+            entity_id: binary_sensor.door_window_sensor_frontdoor
+            state: 'on'
+          # Don't do it too many times
+          - condition: template
+            value_template: "{{ repeat.index <= 20 }}"
+        sequence:
+          - service: tts.google_say
+            entity_id: media_player.living_room_speaker
+            data:
+              message: "Front door is still open!"
+          - delay:
+              minutes: 2
 ################
 #    SCENES    #
 ################
