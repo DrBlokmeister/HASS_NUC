@@ -46,19 +46,19 @@ timer:
 input_number:
   bed_preheat_temp:
     name: Bed preheating temperature
-    initial: 45
+    #initial: 45
     min: 0
     max: 50
     step: 1
   bed_postheat_temp:
     name: Bed postheating temperature
-    initial: 25
+    #initial: 25
     min: 0
     max: 50
     step: 1
   bed_preheat_time:
     name: Bed postheating time
-    initial: 60
+    #initial: 60
     min: 10
     max: 120
     step: 1
@@ -109,7 +109,6 @@ input_number:
     min: 0
     max: 30
     mode: box
-  
 
 input_select:
   bedroom_scenes:
@@ -609,6 +608,21 @@ automation:
       - delay: '00:00:10'
       - service: light.turn_off
         entity_id: all
+      - repeat:
+          while:
+            - condition: not
+              conditions:
+                - condition: state
+                  entity_id:
+                    - light.livingroom_lights
+                    - light.study_lights
+                    - light.kitchen_lights
+                  state: 'off'
+          sequence:
+            - service: light.turn_off
+              entity_id: all
+            - delay:
+                seconds: 10
 
   - alias: '[bedroom|light] Wakeup alarm' #was: "Turn on lights during wakeup"
     trigger:
