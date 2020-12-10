@@ -159,7 +159,6 @@ sensor:
     name: Waterverbruik_vandaag
     value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
     unit_of_measurement: "l"
-    force_update: true
 
 #   - platform: rest
 #     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
@@ -245,10 +244,24 @@ sensor:
       current_costs_per_hour:
         value_template: "{{ ( states('sensor.consumption_kw') | float * ( 0.2221 | float) | float ) | round(2) }}"
         unit_of_measurement: "€/h"
+      corrected_waterusage_day:
+        value_template: >-
+          {% if states.sensor.waterverbruik_vandaag.last_updated.day < now().day %}
+            0
+          {% else %}
+            {{ states('sensor.waterverbruik_vandaag') }}
+          {% endif %}
+        unit_of_measurement: "l"
 
   - platform: derivative
     source: sensor.consumption_gas_m3
     name: Gas consumption per hour
+    unit_time: h
+    time_window: "00:02:00"
+
+  - platform: derivative
+    source: sensor.gasverbruik_per_dag
+    name: Gas consumption per hour REST-API
     unit_time: h
     time_window: "00:02:00"
 
@@ -345,6 +358,24 @@ automation:
         data:
           topic: "cmnd/sonoffs/SetOption19"
           payload: "1"
+
+  - alias: "[power|water]Update water use sensor"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.waterverbruik_vandaag
+    action:
+      - repeat:
+          while:
+            - condition: template
+              value_template: "{{ ( as_timestamp(now()) - states.sensor.waterverbruik_vandaag.last_updated|as_timestamp )|int > 3900 }}"
+          sequence:
+            - service: homeassistant.update_entity
+              entity_id: sensor.waterverbruik_vandaag
+            - service: homeassistant.update_entity
+              entity_id: sensor.gas_consumption_per_hour_rest_api
+            - delay:
+                seconds: 10
 
 ################
 #    SCENES    #
