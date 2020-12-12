@@ -159,6 +159,7 @@ sensor:
     name: Waterverbruik_vandaag
     value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
     unit_of_measurement: "l"
+    force_update: true
 
 #   - platform: rest
 #     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
@@ -183,6 +184,7 @@ sensor:
     name: Gasverbruik Per Dag
     value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
     unit_of_measurement: "m3"
+    force_update: true
 
   - platform: mqtt
     name: timestamp_local
@@ -257,13 +259,13 @@ sensor:
     source: sensor.consumption_gas_m3
     name: Gas consumption per hour
     unit_time: h
-    time_window: "00:02:00"
+    time_window: "00:10:00"
 
   - platform: derivative
     source: sensor.gasverbruik_per_dag
     name: Gas consumption per hour REST-API
     unit_time: h
-    time_window: "00:02:00"
+    time_window: "00:10:00"
 
   - platform: derivative
     source: sensor.waterverbruik_vandaag
@@ -376,6 +378,21 @@ automation:
               entity_id: sensor.gas_consumption_per_hour_rest_api
             - delay:
                 seconds: 10
+
+  - alias: '[powermonitor|sensors]Auto update sensors'
+    trigger:
+      - platform: time_pattern
+        seconds: "/10"
+    action:
+      - service: homeassistant.update_entity
+        entity_id:
+          - sensor.waterverbruik_vandaag
+          - sensor.consumption_gas_m3
+          - sensor.gasverbruik_per_dag
+          - sensor.gas_consumption_per_hour_rest_api
+          - sensor.water_consumption_per_hour
+          - sensor.corrected_waterusage_day
+          - binary_sensor.hot_water_on
 
 ################
 #    SCENES    #
