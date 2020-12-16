@@ -13,17 +13,35 @@ input_number:
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: statistics
+    entity_id: sensor.humidity_bathroom
+    name: Humidity Bathroom Statistics
+    sampling_size: 200
+    precision: 0
+    max_age:
+      hours: 24
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-
+  - platform: template
+    sensors:
+      bathroom_shower_occupied:
+        friendly_name: "Bathroom Shower Occupation"
+        value_template: "{{ states('sensor.humidity_bathroom')|int > state_attr('sensor.humidity_bathroom_statistics', 'median')|int + 15 }}"
+        device_class: occupancy
+        availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_statistics', 'unavailable') }}"
+      bathroom_shower_left:
+        friendly_name: "Bathroom Shower Left"
+        value_template: "{{ states('sensor.humidity_bathroom')|int < state_attr('sensor.humidity_bathroom_statistics', 'max_value')|int - 15 }}"
+        device_class: occupancy
+        availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_statistics', 'unavailable') }}"
 ########################
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
-
+  shower_occupied:
+    name: Shower Occupation
 ##################
 #    SWITCHES    #
 ##################
@@ -93,6 +111,30 @@ automation:
         entity_id:
           - light.bathroom_light_bright
           - light.bathroom_light_dim
+
+  - alias: '[bathroom|occupancy] Set shower occupancy input boolean'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bathroom_shower_occupied
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.bathroom_shower_left
+        to: 'on'
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_occupied' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                entity_id: input_boolean.shower_occupied
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                entity_id: input_boolean.shower_occupied
 
 ################
 #    SCENES    #
