@@ -1001,13 +1001,13 @@ automation:
   - alias: '[bedroom|scale]Auto tare bed scale'
     mode: single
     trigger:
-      platform: numeric_state
-      entity_id: sensor.bed_weight_change_per_minute
-      above: -0.2
-      below: 0.2
-      for:
-        minutes: 5
+      platform: time_pattern
+      minutes: "/30"
     condition:
+      - condition: numeric_state
+        entity_id: sensor.bed_weight_change_per_minute
+        above: -0.1
+        below: 0.1
       - condition: state
         entity_id: sensor.people_in_bed
         state: '0'
@@ -1016,10 +1016,12 @@ automation:
       - condition: state
         entity_id: input_boolean.sleep_tracking_on
         state: 'off'
+        for:
+          minutes: 20
     action:
       - service: script.tare_bed_scale
       - delay:
-          hours: 1
+          minutes: 20
 ################
 #    SCENES    #
 ################
