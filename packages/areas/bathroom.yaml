@@ -85,7 +85,7 @@ automation:
                 - light.bathroom_light_dim
       - wait_for_trigger:
           - platform: template
-            value_template: "{{ is_state('binary_sensor.motion_sensor_bathroom', 'off') and states('binary_sensor.hot_water_on')|float == 0 }}"
+            value_template: "{{ is_state('binary_sensor.motion_sensor_bathroom', 'off') and is_state('input_boolean.shower_occupied', 'off') }}"
             for:
               minutes: "{{ states('input_number.bathroom_light_timeout')|int }}"
       - condition: state
@@ -121,6 +121,11 @@ automation:
       - platform: state
         entity_id: binary_sensor.bathroom_shower_left
         to: 'on'
+      - platform: numeric_state
+        entity_id: sensor.water_consumption_per_hour
+        below: 50
+        for:
+          minutes: 2
     action:
       - choose:
           - conditions:
@@ -131,7 +136,7 @@ automation:
                 entity_id: input_boolean.shower_occupied
           - conditions:
               - condition: template
-                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' }}"
+                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' or trigger.entity_id == 'sensor.water_consumption_per_hour'}}"
             sequence:
               - service: input_boolean.turn_off
                 entity_id: input_boolean.shower_occupied
@@ -172,7 +177,11 @@ light:
         turn_off:
           service: switch.turn_off
           entity_id: switch.shelly_bathroom_2
-
+  - platform: group
+    name: Bathroom Lights
+    entities:
+      - light.bathroom_light_bright
+      - light.bathroom_light_dim
 
 #################
 #    SCRIPTS    #
