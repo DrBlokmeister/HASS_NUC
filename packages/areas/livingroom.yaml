@@ -257,6 +257,43 @@ automation:
               - service: input_number.decrement
                 entity_id: input_number.livingroom_illumination_limit
 
+  - alias: '[livingroom|light] Automate falconlights'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.livingroom_motion_combined
+        to: 'on'
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.average_illumination_livingroom')|int < states('input_number.livingroom_illumination_limit')|int }}"
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+    action:
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.falconlights
+          transition: "{% if is_state('light.tvarea_and_ledstrips', 'off') %}5{% else %}1{% endif %}"
+          brightness: 200
+          effect: rainbow
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.livingroom_motion_combined
+            to: 'off'
+            for:
+              minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.falconlights
+          brightness_step: -100
+          transition: 0.5
+      - delay:
+          seconds: 15
+      - service: light.turn_off
+        entity_id:
+          - light.tvarea_and_ledstrips
 ################
 #    SCENES    #
 ################
