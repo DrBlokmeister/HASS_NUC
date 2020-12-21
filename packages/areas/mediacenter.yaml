@@ -122,7 +122,6 @@ automation:
           scene_id: livingroom_before
           snapshot_entities:
             - light.livingroom_lights
-            - switch.blitzwolf_coffeeplant
       - service: light.turn_off
         data:
           entity_id: light.tvarea_lights
@@ -132,8 +131,16 @@ automation:
           entity_id: light.plants
           brightness: 30
           transition: 5
+      - service: light.turn_on
+        data:
+          entity_id: light.falconlights
+          brightness: 40
+          transition: 5
+          effect: none
       - service: homeassistant.turn_off
-        entity_id: group.livingroom_lighting_automations
+        entity_id:
+          - group.livingroom_lighting_automations
+          - automation.livingroom_light_automate_falconlights
       - wait_for_trigger:
           - platform: state
             entity_id: media_player.coreelec
@@ -156,11 +163,13 @@ automation:
           entity_id: scene.livingroom_before
           transition: 10
       - service: homeassistant.turn_on
-        entity_id: group.livingroom_lighting_automations
+        entity_id:
+          - group.livingroom_lighting_automations
+          - automation.livingroom_light_automate_falconlights
       - condition: time
-        after: '21:30:00'
-        before: '7:00:00'
-      - service: homeassistant.turn_off
+        before: '21:30:00'
+        after: '7:00:00'
+      - service: homeassistant.turn_on
         entity_id: switch.blitzwolf_coffeeplant
 
   - alias: '[mediacenter|ambilight] Turn on ambilight when TV turns on'
