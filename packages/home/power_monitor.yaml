@@ -159,7 +159,6 @@ sensor:
     name: Waterverbruik_vandaag
     value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
     unit_of_measurement: "l"
-    force_update: true
 
 #   - platform: rest
 #     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
@@ -179,12 +178,12 @@ sensor:
 #     value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
 #     unit_of_measurement: "kWh"
 
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
-    name: Gasverbruik Per Dag
-    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
-    unit_of_measurement: "m3"
-    force_update: true
+  # - platform: rest
+  #   resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+  #   name: Gasverbruik Per Dag
+  #   value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
+  #   unit_of_measurement: "m3"
+  #   force_update: true
 
   - platform: mqtt
     name: timestamp_local
@@ -248,7 +247,7 @@ sensor:
         unit_of_measurement: "€/h"
       corrected_waterusage_day:
         value_template: >-
-          {% if states.sensor.waterverbruik_vandaag.last_updated.day < now().day %}
+          {% if states.sensor.waterverbruik_vandaag.last_changed.day < now().day %}
             0
           {% else %}
             {{ states('sensor.waterverbruik_vandaag') }}
@@ -261,11 +260,11 @@ sensor:
     unit_time: h
     time_window: "00:10:00"
 
-  - platform: derivative
-    source: sensor.gasverbruik_per_dag
-    name: Gas consumption per hour REST-API
-    unit_time: h
-    time_window: "00:10:00"
+  # - platform: derivative
+  #   source: sensor.gasverbruik_per_dag
+  #   name: Gas consumption per hour REST-API
+  #   unit_time: h
+  #   time_window: "00:10:00"
 
   - platform: derivative
     source: sensor.waterverbruik_vandaag
@@ -361,38 +360,36 @@ automation:
           topic: "cmnd/sonoffs/SetOption19"
           payload: "1"
 
-  - alias: "[power|water]Update water use sensor"
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: sensor.waterverbruik_vandaag
-    action:
-      - repeat:
-          while:
-            - condition: template
-              value_template: "{{ ( as_timestamp(now()) - states.sensor.waterverbruik_vandaag.last_updated|as_timestamp )|int > 3900 }}"
-          sequence:
-            - service: homeassistant.update_entity
-              entity_id: sensor.waterverbruik_vandaag
-            - service: homeassistant.update_entity
-              entity_id: sensor.gas_consumption_per_hour_rest_api
-            - delay:
-                seconds: 10
+  # - alias: "[power|water]Update water use sensor"
+  #   mode: single
+  #   trigger:
+  #     - platform: state
+  #       entity_id: sensor.waterverbruik_vandaag
+  #   action:
+  #     - repeat:
+  #         while:
+  #           - condition: template
+  #             value_template: "{{ ( as_timestamp(now()) - states.sensor.waterverbruik_vandaag.last_updated|as_timestamp )|int > 3900 }}"
+  #         sequence:
+  #           - service: homeassistant.update_entity
+  #             entity_id: sensor.waterverbruik_vandaag
+  #           - service: homeassistant.update_entity
+  #             entity_id: sensor.gas_consumption_per_hour_rest_api
+  #           - delay:
+  #               seconds: 10
 
-  - alias: '[powermonitor|sensors]Auto update sensors'
-    trigger:
-      - platform: time_pattern
-        seconds: "/10"
-    action:
-      - service: homeassistant.update_entity
-        entity_id:
-          - sensor.waterverbruik_vandaag
-          - sensor.consumption_gas_m3
-          - sensor.gasverbruik_per_dag
-          - sensor.gas_consumption_per_hour_rest_api
-          - sensor.water_consumption_per_hour
-          - sensor.corrected_waterusage_day
-          - binary_sensor.hot_water_on
+  # - alias: '[powermonitor|sensors]Auto update sensors'
+  #   trigger:
+  #     - platform: time_pattern
+  #       minutes: "/1"
+  #   action:
+  #     - service: homeassistant.update_entity
+  #       entity_id:
+  #         - sensor.waterverbruik_vandaag
+  #         - sensor.consumption_gas_m3
+  #         - sensor.water_consumption_per_hour
+  #         - sensor.corrected_waterusage_day
+  #         - binary_sensor.hot_water_on
 
 ################
 #    SCENES    #
