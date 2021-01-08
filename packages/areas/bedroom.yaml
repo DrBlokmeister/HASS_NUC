@@ -57,7 +57,7 @@ input_number:
     max: 50
     step: 1
   bed_preheat_time:
-    name: Bed postheating time
+    name: Bed preheating time
     #initial: 60
     min: 10
     max: 120
@@ -1159,6 +1159,7 @@ script:
           transition: 600
 
   bed_preheating:
+    mode: restart
     sequence:
       - service: homeassistant.turn_on
         data:
@@ -1166,14 +1167,21 @@ script:
       - service: climate.set_temperature
         data:
           entity_id: climate.electric_blanket
-          temperature: >-
-            {{ states.input_number.bed_preheat_temp.state }}
-      - delay: '00:{{ states.input_number.bed_preheat_time.state|int }}:00'
+          temperature: "{{ states('input_number.bed_preheat_temp')|int }}"
+      - delay:
+          minutes: "{{ states('input_number.bed_preheat_time')|int }}"
       - service: climate.set_temperature
         data:
           entity_id: climate.electric_blanket
-          temperature: >-
-            {{ states.input_number.bed_postheat_temp.state }}
+          temperature: "{{ states('input_number.bed_postheat_temp')|int }}"
+  turn_off_bed_preheating:
+    mode: restart
+    sequence:
+      - service: script.turn_off
+        entity_id: script.bed_preheating
+      - service: climate.turn_off
+        entity_id: climate.electric_blanket
+  
   tare_bed_scale:
     sequence:
       - service: input_number.set_value
