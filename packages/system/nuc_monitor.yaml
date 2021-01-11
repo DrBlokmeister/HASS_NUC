@@ -127,11 +127,11 @@ sensor:
       hassio_uptime_human_readable:
         friendly_name: "Home Assistant uptime"
         value_template: >
-          {{ (states.sensor.uptime.state|float * 60 | round(0) - 3600) | timestamp_custom(('%H:%M:%S')) }}
+          {{ (states( 'sensor.uptime' )|float * 60 | round(0) - 3600) | timestamp_custom(('%H:%M:%S')) }}
       uptime_seconds:
         device_class: timestamp
         value_template: >
-          {{ states.sensor.uptime.state|float * 60 | float }}
+          {{ states( 'sensor.uptime' )|float * 60 | float }}
 
 ########################
 #    BINARY SENSORS    #
@@ -289,7 +289,7 @@ automation:
     action:
       - service: persistent_notification.create
         data:
-          message: "**{{states.sensor.potential_breaking_changes.state}}** potential breaking changes detected between version **[{{states.sensor.current_version.state}}](https://www.home-assistant.io/latest-release-notes/)** and version **{{states.sensor.latest_version.state}}**"
+          message: "**{{states( 'sensor.potential_breaking_changes' )}}** potential breaking changes detected between version **[{{states( 'sensor.current_version' )}}](https://www.home-assistant.io/latest-release-notes/)** and version **{{states( 'sensor.latest_version' )}}**"
           title: "Potential breaking changes"
           notification_id: breaking_changes
 
