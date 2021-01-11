@@ -73,6 +73,7 @@ switch:
 #####################
 automation:
   - alias: '[afval|notify]Wait for notification dismiss'
+    mode: restart
     trigger:
       platform: state
       entity_id: input_boolean.garbagereminder
@@ -86,13 +87,13 @@ automation:
       - service: input_boolean.turn_off
         entity_id: input_boolean.garbagereminder
 
-  - alias: Herinnering afval morgen
+  - alias: '[afval|notify]Herinnering afval morgen'
     trigger:
       platform: time
       at: '19:00:00'
     condition:
       - condition: template
-        value_template: '{{states.sensor.waalre_morgen.state != ''None''}}'
+        value_template: "{{ not is_state('sensor.waalre_morgen', 'None') }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -121,7 +122,7 @@ automation:
               entity_id: input_boolean.garbagereminder
               state: 'off'
 
-  - alias: Herinnering afval vandaag
+  - alias: '[afval|notify]Herinnering afval vandaag'
     trigger:
       - platform: time
         at: 07:00:00
@@ -131,7 +132,7 @@ automation:
         for: 00:10:00
     condition:
       - condition: template
-        value_template: '{{states.sensor.waalre_vandaag.state != ''None''}}'
+        value_template: "{{ not is_state('sensor.waalre_vandaag', 'None') }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
