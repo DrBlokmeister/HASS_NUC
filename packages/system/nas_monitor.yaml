@@ -121,19 +121,15 @@ sensor:
     sensors:
       fn_newstorage_pct_used:
         value_template: "{{ state_attr('sensor.FN_NewStorage_report', 'used_pct')|replace('%','') }}"
-        entity_id:
-          - sensor.fn_NewStorage_report
-          - sensor.time
         unit_of_measurement: '%'
+        availability_template : "{{ not is_state('sensor.FN_NewStorage_report', 'unknown') }}"
 
   - platform: template
     sensors:
       fn_newstorage_used:
         value_template: "{{ (state_attr('sensor.FN_NewStorage_report', 'used') / (1024**4)) | round(2) }}"
-        entity_id:
-          - sensor.fn_NewStorage_report
-          - sensor.time
         unit_of_measurement: 'TB'
+        availability_template : "{{ not is_state('sensor.FN_NewStorage_report', 'unknown') }}"
 
   - platform: rest
     name: FN_Storage2_report
@@ -155,19 +151,15 @@ sensor:
     sensors:
       fn_storage2_pct_used:
         value_template: "{{ state_attr('sensor.FN_Storage2_report', 'used_pct')|replace('%','') }}"
-        entity_id:
-          - sensor.fn_NewStorage_report
-          - sensor.time
         unit_of_measurement: '%'
+        availability_template : "{{ not is_state('sensor.FN_Storage2_report', 'unknown') }}"
 
   - platform: template
     sensors:
       fn_storage2_used:
         value_template: "{{ (state_attr('sensor.FN_Storage2_report', 'used') / (1024**4)) | round(2) }}"
-        entity_id:
-          - sensor.fn_NewStorage_report
-          - sensor.time
         unit_of_measurement: 'TB'
+        availability_template : "{{ not is_state('sensor.FN_Storage2_report', 'unknown') }}"
 
   - platform: rest
     name: FN_alert_level
