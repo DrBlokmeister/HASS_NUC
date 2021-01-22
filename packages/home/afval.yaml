@@ -100,6 +100,8 @@ automation:
       - alias: Notify phone until notification is dismissed
         repeat:
           sequence:
+            - service: automation.trigger
+              entity_id: automation.afval_notify_wait_for_notification_dismiss
             - service: notify.mobile_app_blokmeister_op6_haapp
               data:
                 title: Afval morgen
@@ -116,11 +118,16 @@ automation:
             - delay:
                 minutes: 30
           until:
-            - condition: template
-              value_template: "{{ repeat.index >= 5 }}"
-            - condition: state
-              entity_id: input_boolean.garbagereminder
-              state: 'off'
+            - condition: or
+              conditions:
+                - condition: template
+                  value_template: "{{ repeat.index >= 5 }}"
+                - condition: state
+                  entity_id: input_boolean.garbagereminder
+                  state: 'off'
+                - condition: template
+                  value_template: "{{ not is_state('sensor.waalre_vandaag', 'None') and not is_state('sensor.waalre_vandaag', '-') }}"
+
 
   - alias: '[afval|notify]Herinnering afval vandaag'
     trigger:
@@ -155,11 +162,15 @@ automation:
             - delay:
                 minutes: 10
           until:
-            - condition: template
-              value_template: "{{ repeat.index >= 5 }}"
-            - condition: state
-              entity_id: input_boolean.garbagereminder
-              state: 'off'
+            - condition: or
+              conditions:
+                - condition: template
+                  value_template: "{{ repeat.index >= 5 }}"
+                - condition: state
+                  entity_id: input_boolean.garbagereminder
+                  state: 'off'
+                - condition: template
+                  value_template: "{{ not is_state('sensor.waalre_vandaag', 'None') and not is_state('sensor.waalre_vandaag', '-') }}"
 
 ################
 #    SCENES    #
