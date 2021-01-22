@@ -204,6 +204,11 @@ automation:
             event_data:
               entity_id: binary_sensor.switch_vacuumcleaner
               click_type: double
+          - platform: event
+            event_type: deconz_event
+            event_data:
+              id: lumi_sensor_switch_50
+              event: 1004
         timeout:
           hours: 3
       # - service: utility_meter.reset
@@ -231,77 +236,152 @@ automation:
   #         entity_id: input_boolean.vacuumed_today
 
 #Buttons:
-  - alias: '[home|vacuum]button_drive_to_trashbin'
+  # - alias: '[home|vacuum]button_drive_to_trashbin'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_vacuumcleaner
+  #         click_type: double
+  #     - platform: event
+  #       event_type: deconz_event
+  #       event_data:
+  #         id: lumi_sensor_switch_50
+  #         event: 1004
+  #   condition:
+  #     - condition: state
+  #       entity_id: vacuum.xiaomi_vacuum_cleaner
+  #       state: docked
+  #   action:
+  #     - service: automation.trigger
+  #       data:
+  #         entity_id: automation.home_vacuum_counter_drive_to_trashbin
+  #         skip_condition: true
+  #     - wait_for_trigger:
+  #         platform: state
+  #         entity_id: vacuum.xiaomi_vacuum_cleaner
+  #         to: 'Docked'
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.area_cleaned_at_last_empty_bin
+  #         value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
+  #     # - service: script.vacuum_goto_kitchen
+  #     # - service: counter.reset
+  #     #   data:
+  #     #     entity_id: counter.times_vacuumed_since_empty_bin
+
+  # - alias: '[home|vacuum]button_dock_vacuum'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_vacuumcleaner
+  #         click_type: double
+  #     - platform: event
+  #       event_type: deconz_event
+  #       event_data:
+  #         id: lumi_sensor_switch_50
+  #         event: 1004
+  #   condition:
+  #     condition: template
+  #     value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
+  #   action:
+  #     - service: vacuum.return_to_base
+  #       entity_id: vacuum.xiaomi_vacuum_cleaner
+
+  # - alias: '[home|vacuum]button_start_vacuum'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_vacuumcleaner
+  #         click_type: single
+  #     - platform: event
+  #       event_type: deconz_event
+  #       event_data:
+  #         id: lumi_sensor_switch_50
+  #         event: 1002
+  #   condition:
+  #     condition: template
+  #     value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
+  #   action:
+  #     - service: vacuum.start
+  #       entity_id: vacuum.xiaomi_vacuum_cleaner
+
+  # - alias: '[home|vacuum]button_pause_vacuum'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_vacuumcleaner
+  #         click_type: single
+  #     - platform: event
+  #       event_type: deconz_event
+  #       event_data:
+  #         id: lumi_sensor_switch_50
+  #         event: 1002
+  #   condition:
+  #     condition: state
+  #     entity_id: vacuum.xiaomi_vacuum_cleaner
+  #     state: cleaning
+  #   action:
+  #     - service: vacuum.pause
+  #       entity_id: vacuum.xiaomi_vacuum_cleaner
+
+  - alias: '[home|vacuum] Button control vacuum'
+    mode: restart
     trigger:
       - platform: event
-        event_type: xiaomi_aqara.click
+        event_type: deconz_event
         event_data:
-          entity_id: binary_sensor.switch_vacuumcleaner
-          click_type: double
-    condition:
-      - condition: state
-        entity_id: vacuum.xiaomi_vacuum_cleaner
-        state: docked
+          id: vacuum_smart_switch
     action:
-      - service: automation.trigger
-        data:
-          entity_id: automation.home_vacuum_counter_drive_to_trashbin
-          skip_condition: true
-      - wait_for_trigger:
-          platform: state
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          to: 'Docked'
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.area_cleaned_at_last_empty_bin
-          value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
-      # - service: script.vacuum_goto_kitchen
-      # - service: counter.reset
-      #   data:
-      #     entity_id: counter.times_vacuumed_since_empty_bin
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" #single
+              - condition: template
+                value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
+            sequence:
+              - service: vacuum.start
+                entity_id: vacuum.xiaomi_vacuum_cleaner
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" #single
+              - condition: state
+                entity_id: vacuum.xiaomi_vacuum_cleaner
+                state: cleaning
+            sequence:
+              - service: vacuum.pause
+                entity_id: vacuum.xiaomi_vacuum_cleaner
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1004 }}" #double
+              - condition: state
+                entity_id: vacuum.xiaomi_vacuum_cleaner
+                state: docked
+            sequence:
+              - service: automation.trigger
+                data:
+                  entity_id: automation.home_vacuum_counter_drive_to_trashbin
+                  skip_condition: true
+              - wait_for_trigger:
+                  platform: state
+                  entity_id: vacuum.xiaomi_vacuum_cleaner
+                  to: 'Docked'
+              - service: input_number.set_value
+                data:
+                  entity_id: input_number.area_cleaned_at_last_empty_bin
+                  value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1004 }}" #double
+              - condition: template
+                value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
+            sequence:
+              - service: vacuum.return_to_base
+                entity_id: vacuum.xiaomi_vacuum_cleaner
 
-  - alias: '[home|vacuum]button_dock_vacuum'
-    trigger:
-      platform: event
-      event_type: xiaomi_aqara.click
-      event_data:
-        entity_id: binary_sensor.switch_vacuumcleaner
-        click_type: double
-    condition:
-      condition: template
-      value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
-    action:
-      - service: vacuum.return_to_base
-        entity_id: vacuum.xiaomi_vacuum_cleaner
-
-  - alias: '[home|vacuum]button_start_vacuum'
-    trigger:
-      platform: event
-      event_type: xiaomi_aqara.click
-      event_data:
-        entity_id: binary_sensor.switch_vacuumcleaner
-        click_type: single
-    condition:
-      condition: template
-      value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
-    action:
-      - service: vacuum.start
-        entity_id: vacuum.xiaomi_vacuum_cleaner
-
-  - alias: '[home|vacuum]button_pause_vacuum'
-    trigger:
-      platform: event
-      event_type: xiaomi_aqara.click
-      event_data:
-        entity_id: binary_sensor.switch_vacuumcleaner
-        click_type: single
-    condition:
-      condition: state
-      entity_id: vacuum.xiaomi_vacuum_cleaner
-      state: cleaning
-    action:
-      - service: vacuum.pause
-        entity_id: vacuum.xiaomi_vacuum_cleaner
 
   - alias: '[home|vacuum]update_template_sensors'
     trigger:

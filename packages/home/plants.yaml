@@ -512,57 +512,80 @@ automation:
         data:
           notification_id: low-water-alert
 
-  - alias: '[plants|light]Button turn plant lights on'
+  # - alias: '[plants|light]Button turn plant lights on'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_plants
+  #         click_type: single
+  #     # condition:
+  #     #   - condition: state
+  #     #     entity_id: light.plants
+  #     #     state: 'on'
+  #   action:
+  #     - service: light.toggle
+  #       entity_id: light.plants
+
+  # - alias: '[plants|light]Button dim plant lights'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_plants
+  #         click_type: double
+  #   condition:
+  #     condition: numeric_state
+  #     entity_id: light.plants
+  #     value_template: "{% if is_state('light.plants', 'on')  %}{{ state_attr('light.plants', 'brightness')}}{% else %}0{% endif %}"
+  #     above: 150
+  #   action:
+  #     - service: light.turn_on
+  #       entity_id: light.plants
+  #       data:
+  #         brightness: 130
+
+  # - alias: '[plants|light]Button brighten plant lights'
+  #   trigger:
+  #     - platform: event
+  #       event_type: xiaomi_aqara.click
+  #       event_data:
+  #         entity_id: binary_sensor.switch_plants
+  #         click_type: double
+  #   condition:
+  #     condition: numeric_state
+  #     entity_id: light.plants
+  #     value_template: "{% if is_state('light.plants', 'on')  %}{{ state_attr('light.plants', 'brightness')}}{% else %}0{% endif %}"
+  #     below: 150
+  #   action:
+  #     - service: light.turn_on
+  #       entity_id: light.plants
+  #       data:
+  #         brightness: 250
+
+  - alias: '[plants|light] Button control plant lights'
+    mode: queued
     trigger:
       - platform: event
-        event_type: xiaomi_aqara.click
+        event_type: deconz_event
         event_data:
-          entity_id: binary_sensor.switch_plants
-          click_type: single
-      # condition:
-      #   - condition: state
-      #     entity_id: light.plants
-      #     state: 'on'
+          id: switch_51
     action:
-      - service: light.toggle
-        entity_id: light.plants
-
-  - alias: '[plants|light]Button dim plant lights'
-    trigger:
-      - platform: event
-        event_type: xiaomi_aqara.click
-        event_data:
-          entity_id: binary_sensor.switch_plants
-          click_type: double
-    condition:
-      condition: numeric_state
-      entity_id: light.plants
-      value_template: "{% if is_state('light.plants', 'on')  %}{{ state_attr('light.plants', 'brightness')}}{% else %}0{% endif %}"
-      above: 150
-    action:
-      - service: light.turn_on
-        entity_id: light.plants
-        data:
-          brightness: 130
-
-  - alias: '[plants|light]Button brighten plant lights'
-    trigger:
-      - platform: event
-        event_type: xiaomi_aqara.click
-        event_data:
-          entity_id: binary_sensor.switch_plants
-          click_type: double
-    condition:
-      condition: numeric_state
-      entity_id: light.plants
-      value_template: "{% if is_state('light.plants', 'on')  %}{{ state_attr('light.plants', 'brightness')}}{% else %}0{% endif %}"
-      below: 150
-    action:
-      - service: light.turn_on
-        entity_id: light.plants
-        data:
-          brightness: 250
-
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" #single
+            sequence:
+              - service: light.toggle
+                entity_id: light.plants
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1004 }}" #double
+            sequence:
+              - service: light.turn_on
+                entity_id: light.plants
+                data:
+                  brightness: "{% if is_state('light.plants', 'off') or state_attr('light.plants', 'brightness')|int < 150 %}255{% else %}130{% endif %}"
 ################
 #    SCENES    #
 ################
