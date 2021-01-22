@@ -93,7 +93,7 @@ automation:
       at: '19:00:00'
     condition:
       - condition: template
-        value_template: "{{ not is_state('sensor.waalre_morgen', 'None') }}"
+        value_template: "{{ not is_state('sensor.waalre_morgen', 'None') and not is_state('sensor.waalre_morgen', '-') }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -103,7 +103,7 @@ automation:
             - service: notify.mobile_app_blokmeister_op6_haapp
               data:
                 title: Afval morgen
-                message: "{{states( 'sensor.afval_morgen' )}}"
+                message: "{{ states( 'sensor.afval_morgen' )}}"
                 data:
                   group: reminder
                   tag: garbagenotify
@@ -132,7 +132,7 @@ automation:
         for: 00:10:00
     condition:
       - condition: template
-        value_template: "{{ not is_state('sensor.waalre_vandaag', 'None') }}"
+        value_template: "{{ not is_state('sensor.waalre_vandaag', 'None') and not is_state('sensor.waalre_vandaag', '-') }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
