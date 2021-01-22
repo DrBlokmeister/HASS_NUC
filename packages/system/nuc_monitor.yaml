@@ -19,6 +19,11 @@ homeassistant:
       templates:
         icon: >
           if (state === 'on' ) return 'mdi:check-network-outline'; else return 'mdi:close-network-outline';
+  customize:
+    switch.plexmediaserver:
+      icon: mdi:plex
+    binary_sensor.plexmediaserver:
+      icon: mdi:plex
 
 
 breaking_changes:
@@ -133,6 +138,18 @@ sensor:
         value_template: >
           {{ states( 'sensor.uptime' )|float * 60 | float }}
 
+  - platform: command_line
+    name: Plexmediaserver Status
+    scan_interval: 30
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+      root@192.168.1.252
+      systemctl is-active plexmediaserver
+
+  - platform: command_line
+    name: Plexmediaserver Status Otherformat
+    scan_interval: 30
+    command: ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -157,7 +174,6 @@ binary_sensor:
     payload_off: "False"
   - platform: command_line
     name: 'Newstorage mounted'
-    # friendly_name: 'CPU Core 1 temp'
     scan_interval: 60
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
@@ -165,6 +181,13 @@ binary_sensor:
       '[ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"'
     payload_on: "True"
     payload_off: "False"
+  - platform: command_line
+    name: 'Plexmediaserver'
+    scan_interval: 60
+    command: >-
+      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
+    payload_on: "active"
+    payload_off: "inactive"
     
 ##################
 #    SWITCHES    #
@@ -214,6 +237,14 @@ switch:
           root@192.168.1.252
           '[ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"'
         value_template: '{{ value == "True" }}'
+      plexmediaserver:
+        command_on: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 service plexmediaserver start
+        command_off: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 service plexmediaserver stop
+        command_state: >-
+          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
+        value_template: '{{ value == "active" }}'
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -349,6 +380,26 @@ automation:
             group: reminder
             tag: drivemount
             icon_url: local/icons/server-network.png
+
+  - alias: '[system|mediacenter] Regulate plexmediaserver status through nas mounts'
+    mode: queued
+    trigger:
+      platform: state
+      entity_id: switch.unrarredmovies_mounted
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.plexmediaserver
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.plexmediaserver
 
   - alias: '[system|database] Update MariaDB database size sensor'
     mode: single
