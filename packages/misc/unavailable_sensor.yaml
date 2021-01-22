@@ -19,17 +19,20 @@ sensor:
           {{ states|selectattr('state','in',['unavailable','unknown','none'])
             |rejectattr('entity_id','in',state_attr('group.base_ignored_entities', 'entity_id'))
             |rejectattr('entity_id','in',state_attr('group.additional_ignored_entities', 'entity_id'))
+            |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
             |rejectattr('domain','eq','group')|list|count }}
         attribute_templates:
           entities: >
             {{ states|selectattr('state','in',['unavailable','unknown','none'])
               |rejectattr('entity_id', 'in', state_attr('group.base_ignored_entities', 'entity_id'))
               |rejectattr('entity_id', 'in', state_attr('group.additional_ignored_entities', 'entity_id'))
+              |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
               |rejectattr('domain','eq','group')|map(attribute='entity_id')|list|join(', ') }}
           names: >
             {{ states|selectattr('state','in',['unavailable','unknown','none'])
               |rejectattr('entity_id', 'in', state_attr('group.base_ignored_entities', 'entity_id'))
               |rejectattr('entity_id', 'in', state_attr('group.additional_ignored_entities', 'entity_id'))
+              |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
               |rejectattr('domain','eq','group')|map(attribute='name')|list|join(', ') }}
 
 ## REQUIRED add any entities you do not with to monitor in this group
