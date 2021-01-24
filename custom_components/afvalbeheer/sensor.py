@@ -1,7 +1,7 @@
 """
 Sensor component for waste pickup dates from dutch and belgium waste collectors
 Original Author: Pippijn Stortelder
-Current Version: 4.6.10 20201029 - Pippijn Stortelder
+Current Version: 4.7.10 20210120 - Pippijn Stortelder
 20200419 - Major code refactor (credits @basschipper)
 20200420 - Add sensor even though not in mapping
 20200420 - Added support for DeAfvalApp
@@ -49,6 +49,18 @@ Current Version: 4.6.10 20201029 - Pippijn Stortelder
 20201010 - Add mapping of `md` to `pmd` for MijnAfvalwijzer
 20201028 - Added platform to Omrin keyrequest
 20201029 - Omrin skip unusable dates
+20201102 - Support for waardlanden
+20201110 - Support for exceptions in RecycleApp
+20201126 - Added support for Reinis (credit @RobinvG)
+20201202 - Added support for suffix in Opzetcollector
+20201207 - Added support for Avri
+20201213 - Added support for Middelburg-Vlissingen
+20201218 - Added Community variable to Ximmio request for better data
+20201222 - Better support for address selection in OpzetCollector
+20210112 - Updated date format for RD4
+20210114 - Fixed error made in commit 9d720ec
+20210120 - Enabled textile for RecycleApp
+20210120 - Added support for wastcollectors BAR and Meppel
 
 Example config:
 Configuration.yaml:
@@ -137,6 +149,7 @@ OPZET_COLLECTOR_URLS = {
     'denhaag': 'https://huisvuilkalender.denhaag.nl',
     'gad': 'https://inzamelkalender.gad.nl',
     'hvc': 'https://inzamelkalender.hvcgroep.nl',
+    'middelburg-vlissingen': 'https://afvalwijzer.middelburgvlissingen.nl',
     'montfoort': 'https://afvalkalender.cyclusnv.nl',
     'peelenmaas': 'https://afvalkalender.peelenmaas.nl',
     'purmerend': 'https://afvalkalender.purmerend.nl',
@@ -155,10 +168,16 @@ XIMMIO_COLLECTOR_IDS = {
     'acv': 'f8e2844a-095e-48f9-9f98-71fceb51d2c3',
     'almere': '53d8db94-7945-42fd-9742-9bbc71dbe4c1',
     'areareiniging': 'adc418da-d19b-11e5-ab30-625662870761',
+    'avri': '78cd4156-394b-413d-8936-d407e334559a',
+    'bar': 'bb58e633-de14-4b2a-9941-5bc419f1c4b0',
     'hellendoorn': '24434f5b-7244-412b-9306-3a2bd1e22bc1',
     'meerlanden': '800bf8d7-6dd1-4490-ba9d-b419d6dc8a45',
+    'meppel': 'b7a594c7-2490-4413-88f9-94749a3ec62a',
+    # 'rad': '13a2cad9-36d0-4b01-b877-efcb421a864d', API is not responding normal for some reason
     'twentemilieu': '8d97bb56-5afd-4cbc-a651-b4f7314264b4',
+    'waardlanden': '942abcf6-3775-400d-ae5d-7380d728b23c',
     'ximmio': '800bf8d7-6dd1-4490-ba9d-b419d6dc8a45',
+    'reinis': '9dc25c8a-175a-4a41-b7a1-83f237a80b77',
 }
 
 DEPRECATED_AND_NEW_WASTECOLLECTORS = {
@@ -289,27 +308,25 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
                 hass,
                 "Update your config to use {}! You are still using {} as a wast collector, which is deprecated. Check your automations and lovelace config, as the sensor names may also be changed!".format(
                     DEPRECATED_AND_NEW_WASTECOLLECTORS[waste_collector], 
-                    waste_collector
-                    ),
-                "Afvalbeheer", "update_config")
+                    waste_collector),
+                "Afvalbeheer", 
+                "update_config")
         waste_collector = DEPRECATED_AND_NEW_WASTECOLLECTORS[waste_collector]
 
     if waste_collector in ['limburg.net'] and not city_name:
         persistent_notification.create(
                 hass,
-                "Config invalid! Cityname is required for {}".format(
-                waste_collector
-                ),
-                "Afvalbeheer", "invalid_config")
+                "Config invalid! Cityname is required for {}".format(waste_collector),
+                "Afvalbeheer", 
+                "invalid_config")
         return
 
     if waste_collector in ['limburg.net', 'recycleapp'] and not street_name:
         persistent_notification.create(
                 hass,
-                "Config invalid! Streetname is required for {}".format(
-                waste_collector
-                ),
-                "Afvalbeheer", "invalid_config")
+                "Config invalid! Streetname is required for {}".format(waste_collector),
+                "Afvalbeheer", 
+                "invalid_config")
         return
 
     data = WasteData(hass, waste_collector, city_name, postcode, street_name, street_number, suffix, address_id, print_waste_type)
@@ -318,12 +335,38 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     for resource in config[CONF_RESOURCES]:
         waste_type = resource.lower()
-        entities.append(WasteTypeSensor(data, waste_type, waste_collector, date_format, date_only, date_object, 
-            name, name_prefix, built_in_icons, disable_icons, dutch_days, day_of_week, always_show_day))
+        entities.append(WasteTypeSensor(
+            data, 
+            waste_type, 
+            waste_collector, 
+            date_format, 
+            date_only, 
+            date_object, 
+            name, 
+            name_prefix, 
+            built_in_icons, 
+            disable_icons, 
+            dutch_days, 
+            day_of_week, 
+            always_show_day))
 
     if sensor_today:
-        entities.append(WasteDateSensor(data, config[CONF_RESOURCES], waste_collector, timedelta(), dutch_days, name, name_prefix))
-        entities.append(WasteDateSensor(data, config[CONF_RESOURCES], waste_collector, timedelta(days=1), dutch_days, name, name_prefix))
+        entities.append(WasteDateSensor(
+            data, 
+            config[CONF_RESOURCES], 
+            waste_collector, 
+            timedelta(), 
+            dutch_days, 
+            name, 
+            name_prefix))
+        entities.append(WasteDateSensor(
+            data, 
+            config[CONF_RESOURCES], 
+            waste_collector, 
+            timedelta(days=1), 
+            dutch_days, 
+            name, 
+            name_prefix))
 
     async_add_entities(entities)
     await data.schedule_update(timedelta())
@@ -928,7 +971,13 @@ class OpzetCollector(WasteCollector):
             _LOGGER.error('Address not found!')
             return
 
-        self.bag_id = response[0]['bagId']
+        if len(response) > 1 and self.suffix:
+            for item in response:
+                if item['huisletter'] == self.suffix or item['huisnummerToevoeging'] == self.suffix:
+                    self.bag_id = item['bagId']
+                    break
+        else:
+            self.bag_id = response[0]['bagId']
 
     def __get_data(self):
         get_url = "{}/rest/adressen/{}/afvalstromen".format(
@@ -1023,7 +1072,7 @@ class RD4Collector(WasteCollector):
 
                 for item_date in response[item]:
                     collection = WasteCollection.create(
-                        date=datetime.strptime(item_date, "%d-%m-%Y"),
+                        date=datetime.strptime(item_date, "%Y-%m-%d"),
                         waste_type=waste_type
                     )
                     self.collections.add(collection)
@@ -1047,7 +1096,7 @@ class RecycleApp(WasteCollector):
         'rest': WASTE_TYPE_GREY,
         # 'plastic': WASTE_TYPE_PACKAGES,
         'papier': WASTE_TYPE_PAPER,
-        # 'textiel': WASTE_TYPE_TEXTILE,
+        'textiel': WASTE_TYPE_TEXTILE,
         # 'kerstb': WASTE_TYPE_TREE,
         'pmd': WASTE_TYPE_PACKAGES,
         'gemengde': WASTE_TYPE_PLASTIC,
@@ -1135,6 +1184,8 @@ class RecycleApp(WasteCollector):
                 if not item['timestamp']:
                     continue
                 if not item['fraction'] or not 'name' in item['fraction'] or not 'nl' in item['fraction']['name']:
+                    continue
+                if 'exception' in item and 'replacedBy' in item['exception']:
                     continue
 
                 waste_type = self.map_waste_type(item['fraction']['name']['nl'])
@@ -1243,6 +1294,7 @@ class XimmioCollector(WasteCollector):
         super(XimmioCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = "https://wasteapi.ximmio.com"
         self.company_code = XIMMIO_COLLECTOR_IDS[self.waste_collector]
+        self.community = ""
         if address_id:
             self.address_id = address_id
         else:
@@ -1262,6 +1314,9 @@ class XimmioCollector(WasteCollector):
             _LOGGER.error('Address not found!')
             return
 
+        if response['dataList'][0]['Community']:
+            self.community = response['dataList'][0]['Community']
+
         self.address_id = response['dataList'][0]['UniqueId']
 
     def __get_data(self):
@@ -1270,6 +1325,7 @@ class XimmioCollector(WasteCollector):
             "startDate": datetime.now().strftime('%Y-%m-%d'),
             "endDate": (datetime.now() + timedelta(days=365)).strftime('%Y-%m-%d'),
             "companyCode": self.company_code,
+            "community": self.community,
         }
         response = requests.post(
             "{}/api/GetCalendar".format(self.main_url),
@@ -1477,4 +1533,4 @@ def _format_sensor(name, name_prefix, waste_collector, sensor_type):
         (name + ' ' if name else "") +
         sensor_type
     )
-    
+
