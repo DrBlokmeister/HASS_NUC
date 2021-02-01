@@ -24,13 +24,16 @@ api:
 ota:
   password: "ithurtswhenIP"
 
+e131:
+  method: unicast
+
 light:
   - platform: fastled_spi
     id: ssdlights
     chipset: WS2801
     data_pin: D2
     clock_pin: D1
-    num_leds: 38
+    num_leds: 28
     rgb_order: RGB
     default_transition_length: 2s
     name: "SSDlights"
@@ -38,6 +41,77 @@ light:
     effects:
       - random:
       - addressable_rainbow:
+      - addressable_lambda:
+          name: Wheel of Color
+          update_interval: 100ms
+          lambda:
+            ESPColor colors[] = { ESPColor(255,0,0),
+                                  ESPColor(0,255,0),
+                                  ESPColor(255,255,0),
+                                  ESPColor(0,0,255),
+                                  ESPColor(255,82,0),
+                                  ESPColor(163,0,255),
+                                  };
+
+            static int state = 0;
+            static int step = 0;
+            const int color_size = 6;
+            static int width = it.size();
+
+            for (int i = it.size() - 1; i > 0; i--) {
+              it[i] = it[i - 1].get();
+            }
+
+            it[0] = colors[state];
+
+            step += 1;
+            if (step >= width){
+              step = 0;
+              state += 1;
+              if (state >= color_size)
+                  state = 0;
+            }
+      - addressable_lambda:
+          name: "My Custom Effect"
+          update_interval: 15ms
+          lambda: |-
+            static int progress = 0;
+            if (initial_run) {
+              progress = 0;
+            }
+            // it.size() - Number of LEDs
+            // it[num] - Access the LED at index num.
+            // Set the LED at num to the given r, g, b values
+            // it[num] = ESPColor(r, g, b);
+            // Get the color at index num (ESPColor instance)
+            // it[num].get();
+
+            // Example: Simple color wipe
+            // for (int i = it.size() - 1; i > 0; i--) {
+            //   it[i] = it[i - 1].get();
+            // }
+            for (int i = 0; i < it.size()-1; i++) {
+              it[i] = it[i + 1].get();
+            }
+
+            int random, red, green, blue;
+            random = rand() % 10;
+            red = rand() % 100 + 50;
+            green = rand() % 100 + 50;
+            blue = rand() % 100 + 155;
+
+            if (progress < 5) {
+              it[it.size()-1] = ESPColor(255, 235, 235);
+            } else if (random == 4) {
+              it[it.size()-1] = ESPColor(red, green, blue);
+              progress = 0;
+            }
+
+            progress++;
+      - e131:
+          universe: 1
+          channels: RGB
+
   - platform: fastled_spi
     id: ssdlights_inner
     chipset: WS2801
@@ -54,13 +128,13 @@ light:
       - lambda:
           name: Pulse RED
           #// SPEED
-          update_interval: .025s
+          update_interval: .0s
           lambda: |-
             static float in = 0;
             static float out = 0;
 
             // Scale sin output from -1/1 to 0/1
-            out = sin(in) * 0.25 + 0.75;
+            out = sin(in) * 0.3 + 0.7;
 
             auto call = id(ssdlights_inner).turn_on();
             call.set_transition_length(100);
@@ -76,3 +150,6 @@ light:
             in += 0.0314;
             if (in > 6.283)
               in = 0;
+      - e131:
+          universe: 2
+          channels: RGB
