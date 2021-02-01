@@ -112,7 +112,7 @@ sensor:
     username: !secret nas_user
     password: !secret nas_pass
     authentication: basic
-    scan_interval: '00:05'
+    scan_interval: 604800
     force_update: true
     headers:
       Content-Type: application/json
@@ -142,7 +142,7 @@ sensor:
     username: !secret nas_user
     password: !secret nas_pass
     authentication: basic
-    scan_interval: '00:05'
+    scan_interval: 604800
     force_update: true
     headers:
       Content-Type: application/json
@@ -168,7 +168,7 @@ sensor:
     username: !secret nas_user
     password: !secret nas_pass
     authentication: basic
-    scan_interval: 60
+    scan_interval: 604800
     headers:
       Content-Type: application/json
 
@@ -179,7 +179,7 @@ sensor:
     username: !secret nas_user
     password: !secret nas_pass
     authentication: basic
-    scan_interval: 60
+    scan_interval: 604800
     headers:
       Content-Type: application/json
 
@@ -194,6 +194,7 @@ sensor:
     username: !secret nas_user
     password: !secret nas_pass
     authentication: basic
+    scan_interval: 604800
     headers:
       Content-Type: application/json
 
@@ -400,7 +401,7 @@ sensor:
     name: 'NAS CPU0 temp'
     # friendly_name: 'CPU Core 0 temp'
     unit_of_measurement: '°C'
-    scan_interval: 60
+    scan_interval: 604800
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
       root@192.168.1.250
@@ -410,7 +411,7 @@ sensor:
     name: 'NAS CPU1 temp'
     # friendly_name: 'CPU Core 1 temp'
     unit_of_measurement: '°C'
-    scan_interval: 60
+    scan_interval: 604800
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
       root@192.168.1.250
@@ -420,7 +421,7 @@ sensor:
     name: 'NAS CPU2 temp'
     # friendly_name: 'CPU Core 2 temp'
     unit_of_measurement: '°C'
-    scan_interval: 60
+    scan_interval: 604800
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
       root@192.168.1.250
@@ -430,7 +431,7 @@ sensor:
     name: 'NAS CPU3 temp'
     # friendly_name: 'CPU Core 3 temp'
     unit_of_measurement: '°C'
-    scan_interval: 60
+    scan_interval: 604800
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
       root@192.168.1.250
@@ -448,7 +449,7 @@ sensor:
 
   - platform: command_line
     name: 'Transmission status'
-    scan_interval: 60
+    scan_interval: 604800
     command: >-
       ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q -p 300
       root@192.168.1.250
@@ -571,6 +572,28 @@ automation:
             tag: nasshutdown
             icon_url: local/icons/nas.png
 
+  - alias: '[nas|sensors] Update sensors when NAS is running'
+    mode: restart
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: state
+        entity_id: device_tracker.blokmeisternas
+        state: home
+    action:
+      - service: homeassistant.update_entity
+        entity_id:
+          - sensor.fn_newstorage_report
+          - sensor.fn_storage2_report
+          - sensor.fn_alert_level
+          - sensor.fn_alert_message
+          - sensor.fn_version
+          - sensor.nas_cpu0_temp
+          - sensor.nas_cpu1_temp
+          - sensor.nas_cpu2_temp
+          - sensor.nas_cpu3_temp
+          - sensor.transmission_status
 ################
 #    SCENES    #
 ################
