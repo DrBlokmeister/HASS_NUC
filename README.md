@@ -12,6 +12,11 @@ Configuration for [Home Assistant](https://www.home-assistant.io/) running on an
 | [Conbee II](https://phoscon.de/en/conbee2)| 1 | USB 2.0 | [deCONZ](https://www.home-assistant.io/integrations/deconz/) | Controls zigbee motion sensors and various other sensors |
 | [Xiaomi Aqara Gateway v2](https://xiaomi-mi.com/sockets-and-sensors/xiaomi-mi-gateway-2/)| 1 | Wi-Fi | [Xiaomi Aqara](https://www.home-assistant.io/integrations/xiaomi_aqara/) | Controls a few Xiaomi Aqara sensors not yet transferred to the Conbee II|
 
+
+Config uses [packages](https://www.home-assistant.io/docs/configuration/splitting_configuration/) to split up the configuration and improve user friendliness. The bulk of automations/configuration can be found [here](https://github.com/DrBlokmeister/HASS_NUC/tree/master/packages).
+
+Config uses [Home Assistant Community Store](https://hacs.xyz/) to implement currently unsupported integrations. The add-ons can be found [here](https://github.com/DrBlokmeister/HASS_NUC/tree/master/custom_components).
+
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
 ## References
