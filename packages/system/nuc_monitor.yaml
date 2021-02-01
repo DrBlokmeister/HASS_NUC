@@ -114,6 +114,9 @@ sensor:
         query: 'SELECT table_schema "database", Round(Sum(data_length + index_length) / POWER(1024,2), 1) "value" FROM information_schema.tables WHERE table_schema="homeassistant" GROUP BY table_schema;'
         column: 'value'
         unit_of_measurement: MB
+      - name: MariaDB most recorded entities
+        query: 'SELECT entity_id, COUNT(*) as count FROM states GROUP BY entity_id ORDER BY count DESC LIMIT 10;'
+        column: 'entity_id'
 
   - platform: influxdb
     username: !secret influxdb_user
