@@ -4,13 +4,13 @@ esphome:
   board: nodemcuv2
 
 wifi:
-  ssid: "BlokmeisterWIFI"
-  password: "ithurtswhenIP"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Falconlighting Fallback Hotspot"
-    password: "smtZkGgz4U2q"
+    password: !secret esphome_fallback_pass
 
 captive_portal:
 
@@ -22,9 +22,12 @@ api:
 
 ota:
 
+e131:
+  method: unicast
+
 web_server:
- port: 80 # Or your preferred port
- 
+  port: 80 # Or your preferred port
+
 wled:
 
 globals:
@@ -45,14 +48,17 @@ light:
   - platform: fastled_spi
     id: falconlights
     chipset: APA102
-    data_pin: D2
-    clock_pin: D1
+    data_pin: D4
+    clock_pin: D3
     num_leds: 25
     rgb_order: BGR
     default_transition_length: 2s
     name: "Falconlights"
     gamma_correct: 1.5
     effects:
+      - e131:
+          universe: 1
+          channels: RGB
       - wled:
           port: 65506
       - random:
