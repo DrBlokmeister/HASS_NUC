@@ -527,8 +527,8 @@ automation:
                   entity_id:
                     - light.livingroom_lights
                     - light.kitchen_lights
-                    - light.extended_color_light_2
-                    - light.dimmable_light_3
+                    - light.led_strip_rgb_livingroom
+                    - light.led_strip_white_livingroom
                     - light.livingroom_led_strip
                   state: 'off'
           sequence:
@@ -607,6 +607,20 @@ automation:
               - automation.entry_light_turn_on_light_through_motion
           - service: homeassistant.turn_off
             entity_id: climate.electric_blanket
+          - wait_for_trigger:
+              - platform: numeric_state
+                entity_id: sensor.people_in_bed
+                below: 1
+                for:
+                  minutes: 5
+          - wait_for_trigger:
+              - platform: state
+                entity_id: binary_sensor.motion_sensor_bedroom
+                to: 'off'
+                for:
+                  minutes: 10
+          - service: light.turn_off
+            entity_id: light.bedroom_lights
 
   #shelly toggle
   - alias: '[bedroom|light] Shelly toggle'
@@ -790,10 +804,35 @@ automation:
         data:
           entity_id:
             - light.bedroom_1
+          brightness_step: -50
+          transition: 0.5
+      - service: light.turn_on
+        data:
+          entity_id:
             - light.bedroom_2
+          brightness_step: -50
+          transition: 0.5
+      - service: light.turn_on
+        data:
+          entity_id:
             - light.bedroom_3
+          brightness_step: -50
+          transition: 0.5
+      - service: light.turn_on
+        data:
+          entity_id:
             - light.bedside_left
+          brightness_step: -50
+          transition: 0.5
+      - service: light.turn_on
+        data:
+          entity_id:
             - light.bedside_right
+          brightness_step: -50
+          transition: 0.5
+      - service: light.turn_on
+        data:
+          entity_id:
             - light.ledstrip_bed
           brightness_step: -50
           transition: 0.5
