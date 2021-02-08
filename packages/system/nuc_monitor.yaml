@@ -270,6 +270,11 @@ automation:
             group: reminder
             tag: hassiostopstart
             icon_url: local/icons/home-assistant.png
+      - condition: state
+        entity_id: switch.unrarredmovies_mounted
+        state: 'on'
+      - service: switch.turn_on
+        entity_id: switch.plexmediaserver
 
 
   - alias: '[System] Hass Started'
@@ -412,6 +417,17 @@ automation:
     action:
       - service: homeassistant.update_entity
         entity_id: sensor.mariadb_size
+
+  - alias: '[system|database] Auto purge database'
+    mode: single
+    trigger:
+      - platform: time
+        at: "01:00:00"
+    action:
+      - service: recorder.purge
+        data:
+          keep_days: 5
+          repack: true
 
 ################
 #    SCENES    #
