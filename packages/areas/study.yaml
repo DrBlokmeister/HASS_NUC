@@ -6,8 +6,14 @@ timer:
     duration: 60 #in seconds
 
 input_number:
-  study_illumination_limit:
-    name: Study illumination limit
+  study_illumination_limit_lightoff:
+    name: Study illumination limit with lights off
+    step: 1
+    min: 0
+    max: 200
+    mode: box
+  study_illumination_limit_lighton:
+    name: Study illumination limit with lights on
     step: 1
     min: 0
     max: 200
@@ -97,7 +103,13 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
       - condition: template
-        value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit')|int }}"
+        #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
+        value_template: >-
+          {% if is_state('light.study_lights', 'on') %}
+            {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lighton')|int }}
+          {% else %}
+            {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}
+          {% endif %}
     action:
       - service: light.turn_on
         data:
@@ -120,7 +132,7 @@ automation:
             for:
               minutes: 5
           - platform: template
-            value_template: "{{ states('sensor.average_illumination_study_2')|int > states('input_number.study_illumination_limit')|int + 20 }}"
+            value_template: "{{ states('sensor.average_illumination_study_2')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
             for:
               minutes: 5
       - service: light.turn_on
@@ -326,14 +338,14 @@ automation:
                 state: 'on'
             sequence:
               - service: input_number.increment
-                entity_id: input_number.study_illumination_limit
+                entity_id: input_number.study_illumination_limit_lightoff
           - conditions:
               - condition: state
                 entity_id: light.tvarea_and_ledstrips
                 state: 'off'
             sequence:
               - service: input_number.decrement
-                entity_id: input_number.study_illumination_limit
+                entity_id: input_number.study_illumination_limit_lightoff
 ################
 #    SCENES    #
 ################
