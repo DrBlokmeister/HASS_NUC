@@ -1,6 +1,12 @@
 homeassistant:
   customize:
 
+circadian_lighting:
+  min_colortemp: 2500 #default
+  max_colortemp: 5500 #default
+  sunrise_time: "06:00:00" #I want bright white in the morning
+  interval: 300 #default
+  transition: 30 #default
 #################
 #    SENSORS    #
 #################
@@ -25,86 +31,6 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-##############################################################################
-###  Detect when lights are turned on and adjust them accordingly based on time.
-###  Original Code by @JesseWebDotCom https://github.com/CCOSTAN/Home-AssistantConfig/blob/676c554698f6aeeef9637aa10dc231a2c3228bac/automation/System/detect_and_adjust_lights.yaml
-###
-###  Updated by Fabian Bader
-##############################################################################
-# - alias: detect lights and adjust the brightness when turned on based on time
-#   initial_state: false
-#   trigger:
-#     - platform: event
-#       event_type: state_changed
-##############################################################################
-###  Only trigger when entity_id is light
-###  Do not trigger when entity is_hue_group is true
-###  Do not trigger when entity_id is livingroom
-###  Only trigger when from_state is off
-###  Only trigger when to_state is on
-##############################################################################
-  # condition:
-  #   condition: and
-  #   conditions:
-  #     - condition: state
-  #       entity_id: person.sander_blok
-  #       state: 'home'
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data is not none }}"
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data.entity_id is not none }}"
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data.entity_id.split('.')[0] == 'light' }}"
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data.entity_id.split('_')[0] != 'light.livingroom' }}"
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data.old_state.attributes['is_hue_group'] != true }}"
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data.old_state.state == 'off' }}"
-  #     - condition: template
-  #       value_template: "{{ trigger.event.data.new_state.state == 'on' }}"
-##############################################################################
-###  Monday - Friday from 05 - 06 light will be dimmed to 75
-###  Monday - Friday from 06 - 08 light will be dimmed to 180
-###  Sunday - Thursday from 08 - 23 light will be dimmed to 255
-###  Friday - Saturday from 23 - 03 light will be dimmed to 150
-###  All other times are 1
-##############################################################################
-  # action:
-  #   - service: light.turn_on
-  #     data:
-  #       entity_id: "{{ trigger.event.data.entity_id }}"
-  #       brightness: >
-  #         {% set hour=states("sensor.time").split(':')[0] | int %}
-  #         {% set dayOfWeek=now().weekday()  %}
-  #         {%- if hour >= 0 and hour < 3 and dayOfWeek in [5,6] -%}
-  #           150
-  #         {%- elif hour >= 5 and hour < 6 and dayOfWeek in [0,1,2,3,4] -%}
-  #           75
-  #         {%- elif hour >= 6 and hour < 8 and dayOfWeek in [0,1,2,3,4] -%}
-  #           180
-  #         {%- elif hour >= 6 and hour < 8 and dayOfWeek in [5,6] -%}
-  #           75
-  #         {%- elif hour >= 8 and hour < 23  -%}
-  #           255
-  #         {%- elif hour >= 23 and hour < 24 and dayOfWeek in [4,5]  -%}
-  #           255
-  #         {%- elif hour >= 23 and hour < 24 and dayOfWeek in [0,1,2,3,6]  -%}
-  #           150
-  #         {%- else -%}
-  #           1
-  #         {%- endif %}
-  #       color_temp: >
-  #         {% set hour=states("sensor.time").split(':')[0] | int %}
-  #         {%- if hour >= 5 and hour < 8  -%}
-  #           400
-  #         {%- elif hour >= 8 and hour < 23  -%}
-  #           366
-  #         {%- else -%}
-  #           500
-  #         {%- endif %}
-
-
 
 ################
 #    SCENES    #
