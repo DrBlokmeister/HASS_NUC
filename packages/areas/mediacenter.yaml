@@ -124,11 +124,15 @@ automation:
             - light.livingroom_lights
             - light.falconlights_wled
             - switch.falconlights_wled_sync_receive
-            - light.light.ssdlights
-            - light.light.ssdlights_inner
+            - light.ssdlights
+            - light.ssdlights_inner
       - service: light.turn_off
         data:
-          entity_id: light.tvarea_lights
+          entity_id:
+            - light.tvarea_lights
+            - light.livingroom_led_strip
+            - light.led_strip_rgb_livingroom
+            - light.led_strip_white_livingroom
           transition: 5
       - service: light.turn_on
         data:
@@ -137,20 +141,21 @@ automation:
           transition: 5
       - service: light.turn_on
         data:
-          entity_id: light.falconlights_wled
-          brightness: 100
-          transition: 5
-          effect: none
+          entity_id:
+            - light.falconlights
+            - light.ssdlights
+            - light.ssdlights_inner
+          brightness: 255
+          transition: 1
+          effect: E1.31
       - service: light.turn_on
         data:
           entity_id:
-            - light.light.ssdlights
-            - light.light.ssdlights_inner
+            - light.hyperion
+            - light.super_star_destroyer_inner
+            - light.super_star_destroyer_outer
           brightness: 255
-          transition: 5
-          effect: E1.31
-      - service: switch.turn_on
-        entity_id: switch.falconlights_wled_sync_receive
+          effect: GRABBER
       - service: homeassistant.turn_off
         entity_id:
           - group.livingroom_lighting_automations
