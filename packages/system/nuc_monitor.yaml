@@ -130,16 +130,16 @@ sensor:
         database: _internal
         where: 'time > now() - 10s'
         field: diskBytes
-  - platform: template
-    sensors:
-      hassio_uptime_human_readable:
-        friendly_name: "Home Assistant uptime"
-        value_template: >
-          {{ (states( 'sensor.uptime' )|float * 60 | round(0) - 3600) | timestamp_custom(('%H:%M:%S')) }}
-      uptime_seconds:
-        device_class: timestamp
-        value_template: >
-          {{ states( 'sensor.uptime' )|float * 60 | float }}
+  # - platform: template
+  #   sensors:
+  #     hassio_uptime_human_readable:
+  #       friendly_name: "Home Assistant uptime"
+  #       value_template: >
+  #         {{ (states( 'sensor.uptime' )|float * 60 | round(0) - 3600) | timestamp_custom(('%H:%M:%S')) }}
+  #     uptime_seconds:
+  #       device_class: timestamp
+  #       value_template: >
+  #         {{ states( 'sensor.uptime' )|float * 60 | float }}
 
   - platform: command_line
     name: Plexmediaserver Status
@@ -301,13 +301,13 @@ automation:
     trigger:
       - platform: state
         entity_id: sensor.latest_version
-      - platform: numeric_state
-        entity_id: sensor.uptime
-        above: 1
+      # - platform: numeric_state
+      #   entity_id: sensor.uptime
+      #   above: 1
     condition:
-      - condition: numeric_state
-        entity_id: sensor.uptime
-        above: 1
+      # - condition: numeric_state
+      #   entity_id: sensor.uptime
+      #   above: 1
       - condition: template
         value_template: "{{ states('sensor.latest_version') != states('sensor.current_version') }}"
     action:
