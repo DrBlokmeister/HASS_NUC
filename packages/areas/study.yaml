@@ -83,6 +83,13 @@ switch:
       - light.study_3
       - light.study_candle
 
+  - platform: circadian_lighting
+    lights_ct:
+      - light.study_1
+      - light.study_2
+      - light.study_3
+      - light.study_candle
+
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -115,7 +122,8 @@ automation:
         data:
           entity_id: light.study_lights
           brightness: 255
-      - service: switch.flux_study_update
+          kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+      # - service: switch.flux_study_update
       - wait_for_trigger:
           - platform: state
             entity_id: group.study_motion_sensors
