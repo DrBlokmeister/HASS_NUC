@@ -972,6 +972,26 @@ automation:
       - service: script.tare_bed_scale
       - delay:
           minutes: 20
+
+  - alias: '[bedroom|lights] Turn off bedroom lighting automations when two people are in bed'
+    mode: single
+    trigger:
+        - platform: numeric_state
+          entity_id: sensor.people_in_bed
+          above: 1
+          for:
+            minutes: 1
+    action:
+      - service: homeassisstant.turn_off
+        entity_id: group.bedroom_lighting_automations
+      - wait_for_trigger:
+          - platform: numeric_state
+            entity_id: sensor.people_in_bed
+            below: 2
+            for:
+              minutes: 1
+      - service: homeassisstant.turn_on
+        entity_id: group.bedroom_lighting_automations
 ################
 #    SCENES    #
 ################
