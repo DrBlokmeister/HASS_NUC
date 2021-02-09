@@ -18,7 +18,7 @@ Config uses [Home Assistant Community Store](https://hacs.xyz/) to implement cur
 
 
 ## <a name="Ambilight">Ambilight</a>
-I use [Hyperion](https://github.com/hyperion-project/hyperion.ng) to provide Ambilight for my TV.
+I use [Hyperion](https://github.com/hyperion-project/hyperion.ng) to provide Ambilight for my TV. Hyperion forwards the data to the three LED strips connected to a Lego Millennium Falcon and a Lego Super Star Destroyer. The configs can be found under [esphome](./esphome).
 
 ## <a name="database">Taming the database</a>
 I use the [MariaDB](https://github.com/home-assistant/addons/tree/master/mariadb) plugin for Home Assistant. I save the last 7 days of data and I found out that I'm using over 8 GB to store all the data. That was too much for me, especially since the backup directory started growing to humungous sizes. I found [this](https://community.home-assistant.io/t/taming-the-recorder/271932) topic on the Home Assistant forums (thanks to the [author](https://community.home-assistant.io/u/heinrich)) in an attempt to tame the database.
