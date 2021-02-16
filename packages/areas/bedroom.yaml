@@ -411,17 +411,32 @@ automation:
         id: bedroom_smart_switch
         event: 1002
     action:
-      - service: script.toggle_bedroom_lights
+      - choose:
+        - conditions:
+            - condition: state
+              entity_id: light.bedroom_lights
+              state: 'off'
+          sequence:
+            - service: script.turn_on
+              entity_id: script.set_correct_bedroom_scene
+        - conditions:
+            - condition: state
+              entity_id: light.bedroom_lights
+              state: 'on'
+          sequence:
+            - service: light.turn_off
+              entity_id: light.bedroom_lights
+      # - service: script.toggle_bedroom_lights
       # - service: input_boolean.turn_on
       #   data:
       #     entity_id: input_boolean.bedroom_button_pressed
-      - service: timer.cancel
-        data:
-          entity_id: timer.bedroom_button_pressed
-      - service: timer.start
-        data:
-          entity_id: timer.bedroom_button_pressed
-          duration: '00:30:00'
+      # - service: timer.cancel
+      #   data:
+      #     entity_id: timer.bedroom_button_pressed
+      # - service: timer.start
+      #   data:
+      #     entity_id: timer.bedroom_button_pressed
+      #     duration: '00:30:00'
 
 
   #Cycle bedroom lights when switch is pressed twice
@@ -431,7 +446,7 @@ automation:
       platform: event
       event_type: deconz_event
       event_data:
-        id: bed_smart_switch
+        id: bedroom_smart_switch
         event: 1004
     action:
     - service: input_select.select_next
@@ -638,12 +653,27 @@ automation:
         for:
           seconds: 5
     action:
-      - service: light.toggle
-        data:
-          entity_id:
-            - light.bedroom_lights
-          brightness: 255
-          transition: 0.5
+      # - service: light.toggle
+      #   data:
+      #     entity_id:
+      #       - light.bedroom_lights
+      #     brightness: 255
+      #     transition: 0.5
+      - choose:
+        - conditions:
+            - condition: state
+              entity_id: light.bedroom_lights
+              state: 'off'
+          sequence:
+            - service: script.turn_on
+              entity_id: script.set_correct_bedroom_scene
+        - conditions:
+            - condition: state
+              entity_id: light.bedroom_lights
+              state: 'on'
+          sequence:
+            - service: light.turn_off
+              entity_id: light.bedroom_lights
       - service: switch.flux_bedroom_update
       - service: automation.turn_off
         entity_id:
@@ -730,71 +760,73 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
     action:
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.bedroom_1
-            - light.bedroom_2
-          transition: "{% if is_state('light.bedroom_1', 'on') %}3{% else %}0.5{% endif %}"
-          brightness: >-
-            {% if now().hour < 4 %}
-              50
-            {% elif now().hour < 19 %}
-              255
-            {% elif now().hour < 22 %}
-              {{ (255 - 205 * (now().hour - 19)/3)|int }}
-            {% else %}
-              50
-            {% endif %}
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.bedroom_3
-          transition: "{% if is_state('light.bedroom_3', 'on') %}3{% else %}0.5{% endif %}"
-          brightness: >-
-            {% if now().hour < 4 %}
-              0
-            {% elif now().hour < 19 %}
-              255
-            {% elif now().hour < 21 %}
-              {{ (255 - 255 * (now().hour - 19)/2)|int }}
-            {% else %}
-              0
-            {% endif %}
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.bedside_left
-            - light.bedside_right
-          transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
-          brightness: >-
-            {% if now().hour < 4 %}
-              0
-            {% elif now().hour < 21 %}
-              255
-            {% elif now().hour < 22.5 %}
-              {{ (255 - 245 * (now().hour - 19)/3.5)|int }}
-            {% else %}
-              10
-            {% endif %}
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.ledstrip_bed
-          transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
-          brightness: >-
-            {% if now().hour < 7 %}
-              100
-            {% elif now().hour < 20 %}
-              0
-            {% elif now().hour < 22.5 %}
-              {{ (255 - 100 * (now().hour - 19)/2.5)|int }}
-            {% else %}
-              155
-            {% endif %}
-      - delay:
-          seconds: 1
-      - service: switch.flux_bedroom_update
+      - service: script.turn_on
+        entity_id: script.set_correct_bedroom_scene
+      # - service: light.turn_on
+      #   data:
+      #     entity_id:
+      #       - light.bedroom_1
+      #       - light.bedroom_2
+      #     transition: "{% if is_state('light.bedroom_1', 'on') %}3{% else %}0.5{% endif %}"
+      #     brightness: >-
+      #       {% if now().hour < 4 %}
+      #         50
+      #       {% elif now().hour < 19 %}
+      #         255
+      #       {% elif now().hour < 22 %}
+      #         {{ (255 - 205 * (now().hour - 19)/3)|int }}
+      #       {% else %}
+      #         50
+      #       {% endif %}
+      # - service: light.turn_on
+      #   data:
+      #     entity_id:
+      #       - light.bedroom_3
+      #     transition: "{% if is_state('light.bedroom_3', 'on') %}3{% else %}0.5{% endif %}"
+      #     brightness: >-
+      #       {% if now().hour < 4 %}
+      #         0
+      #       {% elif now().hour < 19 %}
+      #         255
+      #       {% elif now().hour < 21 %}
+      #         {{ (255 - 255 * (now().hour - 19)/2)|int }}
+      #       {% else %}
+      #         0
+      #       {% endif %}
+      # - service: light.turn_on
+      #   data:
+      #     entity_id:
+      #       - light.bedside_left
+      #       - light.bedside_right
+      #     transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
+      #     brightness: >-
+      #       {% if now().hour < 4 %}
+      #         0
+      #       {% elif now().hour < 21 %}
+      #         255
+      #       {% elif now().hour < 22.5 %}
+      #         {{ (255 - 245 * (now().hour - 19)/3.5)|int }}
+      #       {% else %}
+      #         10
+      #       {% endif %}
+      # - service: light.turn_on
+      #   data:
+      #     entity_id:
+      #       - light.ledstrip_bed
+      #     transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
+      #     brightness: >-
+      #       {% if now().hour < 7 %}
+      #         100
+      #       {% elif now().hour < 20 %}
+      #         0
+      #       {% elif now().hour < 22.5 %}
+      #         {{ (255 - 100 * (now().hour - 19)/2.5)|int }}
+      #       {% else %}
+      #         155
+      #       {% endif %}
+      # - delay:
+      #     seconds: 1
+      # - service: switch.flux_bedroom_update
       - service: timer.start
         data:
           entity_id: timer.bedroom_lights
@@ -1182,6 +1214,74 @@ script:
     sequence:
         - service: light.turn_off
           entity_id: light.bedroom_lights
+
+  set_correct_bedroom_scene:
+    sequence:
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.bedroom_1
+            - light.bedroom_2
+          transition: "{% if is_state('light.bedroom_1', 'on') %}3{% else %}0.5{% endif %}"
+          brightness: >-
+            {% if now().hour < 4 %}
+              50
+            {% elif now().hour < 19 %}
+              255
+            {% elif now().hour < 22 %}
+              {{ (255 - 205 * (now().hour - 19)/3)|int }}
+            {% else %}
+              50
+            {% endif %}
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.bedroom_3
+          transition: "{% if is_state('light.bedroom_3', 'on') %}3{% else %}0.5{% endif %}"
+          brightness: >-
+            {% if now().hour < 4 %}
+              0
+            {% elif now().hour < 19 %}
+              255
+            {% elif now().hour < 21 %}
+              {{ (255 - 255 * (now().hour - 19)/2)|int }}
+            {% else %}
+              0
+            {% endif %}
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.bedside_left
+            - light.bedside_right
+          transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
+          brightness: >-
+            {% if now().hour < 4 %}
+              0
+            {% elif now().hour < 21 %}
+              255
+            {% elif now().hour < 22.5 %}
+              {{ (255 - 245 * (now().hour - 19)/3.5)|int }}
+            {% else %}
+              10
+            {% endif %}
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.ledstrip_bed
+          transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
+          brightness: >-
+            {% if now().hour < 7 %}
+              100
+            {% elif now().hour < 20 %}
+              0
+            {% elif now().hour < 22.5 %}
+              {{ (255 - 100 * (now().hour - 19)/2.5)|int }}
+            {% else %}
+              155
+            {% endif %}
+      - delay:
+          seconds: 1
+      - service: switch.flux_bedroom_update
 
   wakeup_sunrise_sequence:
     sequence:
