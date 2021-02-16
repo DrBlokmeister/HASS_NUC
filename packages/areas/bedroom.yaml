@@ -42,6 +42,7 @@ timer:
     duration: '00:30:00'
   get_out_of_bed:
     duration: '00:05:00'
+  bedroom_lights:
 
 input_number:
   bed_preheat_temp:
@@ -794,6 +795,10 @@ automation:
       - delay:
           seconds: 1
       - service: switch.flux_bedroom_update
+      - service: timer.start
+        data:
+          entity_id: timer.bedroom_lights
+          duration: "{{ states('input_number.bedroom_light_timeout')|int*60 }}"
       - wait_for_trigger:
           - platform: state
             entity_id: binary_sensor.motion_sensor_bedroom

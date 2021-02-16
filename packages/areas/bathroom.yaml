@@ -9,6 +9,9 @@ input_number:
     max: 30
     mode: box
 
+timer:
+  bathroom_lights:
+
 #################
 #    SENSORS    #
 #################
@@ -83,6 +86,10 @@ automation:
             - service: light.turn_on
               entity_id:
                 - light.bathroom_light_dim
+      - service: timer.start
+        data:
+          entity_id: timer.bathroom_lights
+          duration: "{{ states('input_number.bathroom_light_timeout')|int*60 }}"
       - wait_for_trigger:
           - platform: template
             value_template: "{{ is_state('binary_sensor.motion_sensor_bathroom', 'off') and is_state('input_boolean.shower_occupied', 'off') }}"
