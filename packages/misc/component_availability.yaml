@@ -1,0 +1,68 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: scrape
+    name: 6900 XT availability
+    resource: https://www.amd.com/en/direct-buy/5458374200/nl
+    select: ".product-out-of-stock"
+
+  - platform: scrape
+    name: 6900 XT price
+    resource: https://www.amd.com/en/direct-buy/5458374200/nl
+    select: ".product-page-description h4"
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[misc|availability] Notify when 6900 XT becomes available'
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.6900_xt_availability
+        from:  'Out of stock'
+    action:
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: "6900 XT available"
+          message: "AMD 6900 XT changed to <b>{{ states( 'sensor.6900_xt_availability' )}}</b>"
+          data:
+            group: notification
+            tag: component_availability
+            clickAction: 'https://www.amd.com/en/direct-buy/5458374200/nl' # action when clicking main notification
+            image: "https://drh1.img.digitalriver.com/DRHM/Storefront/Company/amd/images/product/detail/663934-amd-radeon-rx-6900xt-box-1260x709.png"
+            ledColor: "red"
+            channel: AMD
+            vibrationPattern: "200, 100, 200, 100, 500, 100, 500, 100"
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
