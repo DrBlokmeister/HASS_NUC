@@ -1,0 +1,43 @@
+esphome:
+  name: ambilightright
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Ambilightright Fallback Hotspot"
+    password: !secret esphome_fallback_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+e131:
+  method: unicast
+
+light:
+  - platform: neopixelbus
+    type: GRB
+    #color_correct: [80%, 80%, 80%]
+    variant: WS2812
+    method: ESP8266_DMA
+    pin: GPIO3 #RX
+    num_leds: 35
+    name: "Ambilight right"
+    gamma_correct: 1.5
+    effects:
+      - addressable_rainbow:
+          width: 35
+      - e131:
+          universe: 1
+          channels: RGB
