@@ -19,18 +19,19 @@ Config uses [Home Assistant Community Store](https://hacs.xyz/) to implement cur
 
 ## <a name="Ambilight">Ambilight</a>
 I use [Hyperion](https://github.com/hyperion-project/hyperion.ng) to provide Ambilight for my TV. Hyperion forwards the data to the three LED strips connected to a Lego Millennium Falcon and a Lego Super Star Destroyer. The configs can be found under [esphome](./esphome).
-
+- [ ] Component list with links for AtmoOrbs
+- [ ] Component list with links for Falconlights
+- [ ] Component list with links for SSDlights
+- [ ] Document Hyperion configuration
+- [ ] Document used protocol
+- [ ] Link to scripts in ./areas/mediacenter.yaml
 Atmoorbs:
-
-<img src="www/readme_images/AtmoOrb_withoutbulb.png" width=500>
-<img src="www/readme_images/AtmoOrb_withbulb.png" width=500>
+<img src="www/readme_images/AtmoOrb_withoutbulb.png" width=500><img src="www/readme_images/AtmoOrb_withbulb.png" width=500>
 
 Falcon:
-
 <img src="www/readme_images/Falcon.png" width=500>
 
 Super Star Destroyer:
-
 <img src="www/readme_images/superstardestroyer.png" width=500>
 <!-- ![alt text](www/readme_images/AtmoOrb_withoutbulb.png)
 ![alt text](www/readme_images/AtmoOrb_withbulb.png)
