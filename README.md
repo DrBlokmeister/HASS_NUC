@@ -26,12 +26,17 @@ I use [Hyperion](https://github.com/hyperion-project/hyperion.ng) to provide Amb
 - [ ] Document used protocol
 - [ ] Link to scripts in ./areas/mediacenter.yaml
 Atmoorbs:
+
 <img src="www/readme_images/AtmoOrb_withoutbulb.png" width=500><img src="www/readme_images/AtmoOrb_withbulb.png" width=500>
 
+The AtmoOrbs are made up by a NodeMCU board connected to a [LED ring with 35 integrated WS2812 LEDs](https://www.banggood.com/WS2812B-35-Bits-5050-RGB-DIY-LED-Module-Strip-Ring-Light-with-Integrated-Drivers-Board-DC5V-p-1491080.html) built inside an [Ikea Fado lamp](https://www.ikea.com/nl/en/p/fado-table-lamp-white-80096372/). The lamp requires a bit of modification to fit the LED ring, and I have designed a [holder](https://www.thingiverse.com/thing:4777153) to fix the ring and NodeMCU to the lamp base. The color data is sent from Hyperion to the NodeMCU via the UDP E1.31 protocol, and there is no noticable delay.
+
 Falcon:
+
 <img src="www/readme_images/Falcon.png" width=500>
 
 Super Star Destroyer:
+
 <img src="www/readme_images/superstardestroyer.png" width=500>
 <!-- ![alt text](www/readme_images/AtmoOrb_withoutbulb.png)
 ![alt text](www/readme_images/AtmoOrb_withbulb.png)
