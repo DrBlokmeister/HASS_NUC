@@ -23,18 +23,18 @@ I use [Hyperion](https://github.com/hyperion-project/hyperion.ng) to provide Amb
 
 ## <a name="atmoorbs">AtmoOrbs</a>:
 
-<img src="www/readme_images/AtmoOrb_withoutbulb.png" width=500><img src="www/readme_images/AtmoOrb_withbulb.png" width=500>
+<img src="../www/readme_images/AtmoOrb_withoutbulb.png" width=500><img src="../www/readme_images/AtmoOrb_withbulb.png" width=500>
 
 The AtmoOrbs are made up by a NodeMCU board connected to a [LED ring with 35 integrated WS2812 LEDs](https://www.banggood.com/WS2812B-35-Bits-5050-RGB-DIY-LED-Module-Strip-Ring-Light-with-Integrated-Drivers-Board-DC5V-p-1491080.html) built inside an [Ikea Fado lamp](https://www.ikea.com/nl/en/p/fado-table-lamp-white-80096372/). The lamp requires a bit of modification to fit the LED ring, and I have designed a [holder](https://www.thingiverse.com/thing:4777153) to fix the ring and NodeMCU to the lamp base. The color data is sent from Hyperion to the NodeMCU via the UDP E1.31 protocol, and there is no noticable delay.
 
 ## <a name="falcon">Falconlights</a>:
 
-<img src="www/readme_images/Falcon.png" width=500>
+<img src="../www/readme_images/Falcon.png" width=500>
 
 ## <a name="ssdlights">Star Destroyer Lights</a>:
 
-<img src="www/readme_images/superstardestroyer.png" width=500>
-<!-- ![alt text](www/readme_images/AtmoOrb_withoutbulb.png)
+<img src="../www/readme_images/superstardestroyer.png" width=500>
+<!-- ![alt text](/www/readme_images/AtmoOrb_withoutbulb.png)
 ![alt text](www/readme_images/AtmoOrb_withbulb.png)
 ![alt text](www/readme_images/Falcon.png)
 ![alt text](www/readme_images/superstardestroyer.png) -->
@@ -42,8 +42,8 @@ The AtmoOrbs are made up by a NodeMCU board connected to a [LED ring with 35 int
 # <a name="Sensors">Sensors</a>
 
 ## <a name="CO2sensor">CO2 Sensor</a>
-<img src="www/readme_images/CO2_sensor.png" width=500>
+<img src="../www/readme_images/CO2_sensor.png" width=500>
 
-<img src="www/readme_images/CO2_sensor_example_data.png" width=700>
+<img src="../www/readme_images/CO2_sensor_example_data.png" width=700>
 
 ## <a name="Bedscale">Bed scale</a>
