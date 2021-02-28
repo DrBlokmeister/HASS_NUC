@@ -59,14 +59,21 @@ input_boolean:
 #    SWITCHES    #
 ##################
 switch:
-  - platform: flux
-    name: flux_livingroom
-    mode: mired
-    disable_brightness_adjust: False
-    transition: 30
-    lights:
-      - light.tvarea_and_ledstrips
-
+  # - platform: flux
+  #   name: flux_livingroom
+  #   mode: mired
+  #   disable_brightness_adjust: False
+  #   transition: 30
+  #   lights:
+  #     - light.tvarea_and_ledstrips
+  - platform: circadian_lighting
+    lights_ct:
+      - light.hue_color_spot_1
+      - light.hue_color_spot_2
+      - light.hue_color_spot_3
+      - light.hue_color_spot_4
+      - light.hue_color_spot_5
+      - light.livingroom_led_strip
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -90,7 +97,8 @@ automation:
             - light.tvarea_and_ledstrips
           transition: "{% if is_state('light.tvarea_and_ledstrips', 'on') %}5{% else %}1{% endif %}"
           brightness: 255
-      - service: switch.flux_livingroom_update
+          kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+      # - service: switch.flux_livingroom_update
       - wait_for_trigger:
           - platform: state
             entity_id: group.livingroom_motion_sensors
@@ -127,7 +135,8 @@ automation:
         data:
           entity_id: light.tvarea_and_ledstrips
           brightness: 255
-      - service: switch.flux_livingroom_update
+          kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+      # - service: switch.flux_livingroom_update
       - service: automation.turn_off
         entity_id:
           - automation.livingroom_light_flux_light_through_motion

@@ -31,12 +31,18 @@ binary_sensor:
 #    SWITCHES    #
 ##################
 switch:
-  - platform: flux
-    name: flux_kitchen
-    mode: mired
-    disable_brightness_adjust: True
-    lights:
-      - light.kitchen_lights
+  # - platform: flux
+  #   name: flux_kitchen
+  #   mode: mired
+  #   disable_brightness_adjust: True
+  #   lights:
+  #     - light.kitchen_lights
+  - platform: circadian_lighting
+    lights_ct:
+      - light.kitchen_1
+      - light.kitchen_2
+      - light.kitchen_3
+
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -110,7 +116,8 @@ automation:
         data:
           entity_id: light.kitchen_lights
           brightness: 255
-      - service: switch.flux_study_update
+          kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+      # - service: switch.flux_study_update
       - service: automation.turn_off
         entity_id:
           - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
