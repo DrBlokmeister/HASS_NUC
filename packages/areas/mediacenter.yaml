@@ -102,7 +102,19 @@ binary_sensor:
 #    SWITCHES    #
 ##################
 switch:
-
+  - platform: template
+    switches:
+      ambilight:
+        value_template: >-
+          {{
+            is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and is_state('light.falconlights', 'on') and is_state('light.ssdlights_inner', 'on') and
+            is_state_attr('light.ambilight_left_bulb', 'effect', 'E1.31') and is_state_attr('light.ambilight_right_bulb', 'effect', 'E1.31') and is_state_attr('light.falconlights', 'effect', 'E1.31') and is_state_attr('light.ssdlights_inner', 'effect', 'E1.31') and
+            is_state_attr('light.hyperion_ambilightleft', 'effect', 'GRABBER') and is_state_attr('light.hyperion_ambilightright', 'effect', 'GRABBER') and is_state_attr('light.hyperion_falconlights', 'effect', 'GRABBER') and is_state_attr('light.hyperion_super_star_destroyer_inner', 'effect', 'GRABBER') and is_state_attr('light.hyperion_super_star_destroyer_outer', 'effect', 'GRABBER')
+          }}
+        turn_on:
+          service: script.turn_on_ambilight
+        turn_off:
+          service: script.turn_off_ambilight
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -139,23 +151,25 @@ automation:
           entity_id: light.plants
           brightness: 30
           transition: 5
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.falconlights
-            - light.ssdlights
-            - light.ssdlights_inner
-          brightness: 255
-          transition: 1
-          effect: E1.31
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.hyperion
-            - light.super_star_destroyer_inner
-            - light.super_star_destroyer_outer
-          brightness: 255
-          effect: GRABBER
+      - service: switch.turn_on
+        entity_id: switch.ambilight
+      # - service: light.turn_on
+      #   data:
+      #     entity_id:
+      #       - light.falconlights
+      #       - light.ssdlights
+      #       - light.ssdlights_inner
+      #     brightness: 255
+      #     transition: 1
+      #     effect: E1.31
+      # - service: light.turn_on
+      #   data:
+      #     entity_id:
+      #       - light.hyperion
+      #       - light.super_star_destroyer_inner
+      #       - light.super_star_destroyer_outer
+      #     brightness: 255
+      #     effect: GRABBER
       - service: homeassistant.turn_off
         entity_id:
           - group.livingroom_lighting_automations
@@ -166,7 +180,7 @@ automation:
             from: 'playing'
             to: 'idle'
             for:
-              seconds: 10
+              seconds: 60
           - platform: state
             entity_id: media_player.coreelec
             to: 'idle'
@@ -185,11 +199,10 @@ automation:
         entity_id:
           - group.livingroom_lighting_automations
           - automation.livingroom_light_automate_falconlights
-      - condition: time
-        before: '21:30:00'
-        after: '7:00:00'
-      - service: homeassistant.turn_on
-        entity_id: switch.blitzwolf_coffeeplant
+      - service: automation.trigger
+        data:
+          entity_id: automation.plants_light_turn_on_coffee_plant_according_to_schedule
+          skip_condition: false
 
   - alias: '[mediacenter|ambilight] Turn on ambilight when TV turns on'
     mode: restart
@@ -413,6 +426,7 @@ script:
           effect: GRABBER
           entity_id:
             - light.hyperion
+            - light.hyperion_apa102
             - light.hyperion_ambilightleft
             - light.hyperion_ambilightright
             - light.hyperion_falconlights
@@ -420,6 +434,7 @@ script:
             - light.hyperion_super_star_destroyer_outer
       - service: switch.turn_on
         entity_id:
+          - switch.apa102_component_led_device
           - switch.ambilightleft_component_led_device
           - switch.ambilightleft_component_platform_capture
           - switch.ambilightright_component_led_device
