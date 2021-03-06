@@ -308,36 +308,38 @@ automation:
           topic: "cmnd/sonoffs/SetOption19"
           payload: "1"
 
-  # - alias: "[power|water]Update water use sensor"
-  #   mode: single
-  #   trigger:
-  #     - platform: state
-  #       entity_id: sensor.waterverbruik_vandaag
-  #   action:
-  #     - repeat:
-  #         while:
-  #           - condition: template
-  #             value_template: "{{ ( as_timestamp(now()) - states.sensor.waterverbruik_vandaag.last_updated|as_timestamp )|int > 3900 }}"
-  #         sequence:
-  #           - service: homeassistant.update_entity
-  #             entity_id: sensor.waterverbruik_vandaag
-  #           - service: homeassistant.update_entity
-  #             entity_id: sensor.gas_consumption_per_hour_rest_api
-  #           - delay:
-  #               seconds: 10
+  - alias: "[power|warning] Send message when power usage is too high and not at home"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.unknown_power
+        above: 1500
+        # for:
+        #   minutes: 1
+      - platform: state
+        entity_id: binary_sensor.house_occupied
+        to: 'off'
+    condition:
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'off'
+      - condition: numeric_state
+        entity_id: sensor.unknown_power
+        above: 1500
+        # for:
+        #   minutes: 1
+    action:
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: "Warning: Power Usage!"
+          message: "Unknown power is <b>{{ states( 'sensor.unknown_power' )}} W</b> for a total of <b>{{ states('sensor.total_power_watt') }}</b>"
+          data:
+            group: notification
+            tag: powerwarning
+            clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
+            ledColor: "orange"
+            channel: warning
 
-  # - alias: '[powermonitor|sensors]Auto update sensors'
-  #   trigger:
-  #     - platform: time_pattern
-  #       minutes: "/1"
-  #   action:
-  #     - service: homeassistant.update_entity
-  #       entity_id:
-  #         - sensor.waterverbruik_vandaag
-  #         - sensor.consumption_gas_m3
-  #         - sensor.water_consumption_per_hour
-  #         - sensor.corrected_waterusage_day
-  #         - binary_sensor.hot_water_on
 
 ################
 #    SCENES    #
