@@ -38,20 +38,39 @@ sensor:
     co2:
       name: "MH-Z19 CO2 Value"
       accuracy_decimals: 0
-      filters:
-        - median:
-            window_size: 3
-            send_every: 1
-            send_first_at: 1
-        - sliding_window_moving_average:
-            window_size: 12
-            send_every: 12
-            send_first_at: 6
+      id: mhz19_CO2_value
+      unit_of_measurement: ppm
+      internal: true
+      # filters:
+      #   - median:
+      #       window_size: 3
+      #       send_every: 1
+      #       send_first_at: 1
+      #   - sliding_window_moving_average:
+      #       window_size: 12
+      #       send_every: 12
+      #       send_first_at: 6
     temperature:
       name: "MH-Z19 Temperature"
       internal: true
     update_interval: 5s
     automatic_baseline_calibration: false
+
+
+  - platform: template
+    name: "CO2 concentration filtered"
+    lambda: |-
+      if (id(mhz19_CO2_value).state > 1.0) {
+        return id(mhz19_CO2_value).state;
+      } else {
+        return {};
+      }
+    filters:
+      - sliding_window_moving_average:
+          window_size: 12
+          send_every: 1
+    accuracy_decimals: 0
+    unit_of_measurement: ppm
 
 switch:
   - platform: template
