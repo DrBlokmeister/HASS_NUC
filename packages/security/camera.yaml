@@ -1,0 +1,212 @@
+homeassistant:
+  customize:
+
+image_processing:
+  - platform: doods
+    scan_interval: 60
+    url: "http://192.168.1.252:8080"
+    detector: tensorflow
+    file_out:
+      - "/tmp/{{ camera_entity.split('.')[1] }}_latest.jpg"
+      - "/config/www/snapshots/persondetection/{{ states('sensor.date') }}/{{ camera_entity.split('.')[1] }}_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg"
+      - "/config/www/snapshots/persondetection/live_feed/person_detection_feed.jpg"
+    source:
+      - entity_id: camera.tapo_camera_d6d4_hd
+    confidence: 50
+    labels:
+      - name: person
+        confidence: 60
+        area:
+          # Exclude top 10% of image
+          top: 0.25
+          # Exclude right 15% of image
+          right: 0.45
+      - name: cat
+        confidence: 60
+
+camera:
+  - platform: local_file
+    name: Livingroom camera person detection feed
+    file_path: "/config/www/snapshots/persondetection/live_feed/person_detection_feed.jpg"
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+  - platform: template
+    sensors:
+      bedroom_motion_detection:
+        friendly_name: "Bedroom Motion Detection"
+        value_template: "{{ state_attr('camera.tapo_camera_d6d4_hd', 'motion_detection') == 'on' }}"
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+  always_take_camera_snapshots:
+    name: ALways take camera snapshots
+    icon: mdi:camera
+##################
+#    SWITCHES    #
+##################
+switch:
+  - platform: template
+    switches:
+      # This is a switch to turn the privacy mode on/off
+      livingroom_privacy_mode:
+        friendly_name: Privacy Mode
+        value_template: "{{ is_state_attr('camera.tapo_camera_d6d4_hd', 'privacy_mode', 'on') }}"
+        turn_on:
+          service: script.turn_on
+          entity_id: script.activate_livingroom_camera_privacy_mode
+        turn_off:
+          service: script.turn_on
+          entity_id: script.deactivate_livingroom_camera_privacy_mode
+        icon_template: >-
+          {% if state_attr('camera.tapo_camera_d6d4_hd', 'privacy_mode') == 'on' %}
+            mdi:eye-off-outline
+          {% else %}
+            mdi:eye-outline
+          {% endif %}
+      # This is a switch to turn the auto track mode on/off
+      livingroom_auto_track:
+        friendly_name: Auto Track
+        value_template: "{{ is_state_attr('camera.tapo_camera_d6d4_hd', 'auto_track', 'on') }}"
+        turn_on:
+          - service: tapo_control.set_auto_track_mode
+            data:
+              entity_id: camera.tapo_camera_d6d4_hd
+              auto_track_mode: 'on'
+        turn_off:
+          - service: tapo_control.set_auto_track_mode
+            data:
+              entity_id: camera.bedroom_hd
+              auto_track_mode: 'off'
+        icon_template: "mdi:radar"
+      # This is a switch to turn the alarm on/off
+      livingroom_alarm:
+        friendly_name: Alarm
+        value_template: "{{ is_state_attr('camera.tapo_camera_d6d4_hd', 'alarm', 'on')}}"
+        turn_on:
+          - service: tapo_control.set_alarm_mode
+            data:
+              entity_id: camera.tapo_camera_d6d4_hd
+              alarm_mode: 'on'
+        turn_off:
+          - service: tapo_control.set_alarm_mode
+            data:
+              entity_id: camera.tapo_camera_d6d4_hd
+              alarm_mode: 'off'
+        icon_template: >-
+          {% if state_attr('camera.tapo_camera_d6d4_hd', 'alarm') == 'on' %}
+            mdi:alarm-note
+          {% else %}
+            mdi:alarm-note-off
+          {% endif %}
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[security|camera] Make camera timelapse'
+    mode: queued
+    trigger:
+      - platform: time_pattern
+        seconds: "/10"
+    condition:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.sleep_tracking_on
+            state: 'on'
+          - condition: state
+            entity_id: binary_sensor.house_occupied
+            state: 'off'
+          - condition: state
+            entity_id: input_boolean.always_take_camera_snapshots
+            state: 'on'
+    action:
+      - service: camera.snapshot
+        data:
+          entity_id: camera.tapo_camera_d6d4_hd
+          filename: >-
+            /config/www/snapshots/{{ states('sensor.date') }}/{{ now().strftime("%Y%m%d-%H%M%S") }}_motion_{{ states('binary_sensor.tapo_camera_d6d4_motion') }}.jpg
+
+  - alias: '[security|camera] Create daily timelapse from snapshots'
+    mode: single
+    trigger:
+      - platform: time
+        at: "00:30:00"
+    action:
+      - service: script.turn_on
+        entity_id: script.generate_timelapse_from_snapshots
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  activate_livingroom_camera_privacy_mode:
+    alias: "Activate Livingroom Camera Privacy Mode"
+    sequence:
+      - service: tapo_control.ptz
+        data:
+          entity_id: camera.tapo_camera_d6d4_hd
+          preset: privacy
+      - delay:
+          seconds: 5
+      - service: tapo_control.set_privacy_mode
+        data:
+          entity_id: camera.tapo_camera_d6d4_hd
+          privacy_mode: "on"
+  deactivate_livingroom_camera_privacy_mode:
+    alias: "Deactivate Livingroom Camera Privacy Mode"
+    sequence:
+      - service: tapo_control.set_privacy_mode
+        data:
+          entity_id: camera.tapo_camera_d6d4_hd
+          privacy_mode: "off"
+      - delay:
+          seconds: 1
+      - service: tapo_control.ptz
+        data:
+          entity_id: camera.tapo_camera_d6d4_hd
+          preset: center
+  toggle_lights_for_camera:
+    alias: "Toggle livingroom lights for camera"
+    sequence:
+      - choose:
+        - conditions:
+            - condition: state
+              entity_id: light.livingroom_lights
+              state: 'off'
+          sequence:
+            - service: automation.trigger
+              entity_id: automation.livingroom_light_flux_light_through_motion
+        - conditions:
+            - condition: state
+              entity_id: light.livingroom_lights
+              state: 'on'
+          sequence:
+            - service: light.turn_off
+              entity_id: light.livingroom_lights
+
+  generate_timelapse_from_snapshots:
+    alias: "Generate timelapse from snapshots of previous day"
+    sequence:
+      - service: hassio.addon_stdin
+        data:
+          addon: a0d7b954_ssh
+          input: ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 'find /usr/share/hassio/homeassistant/www/snapshots/{{ (as_timestamp(now()) - (24*3600)) | timestamp_custom('%Y-%m-%d', True) }} -empty -type f -delete && ffmpeg -framerate 60 -pattern_type glob -i "/usr/share/hassio/homeassistant/www/snapshots/{{ (as_timestamp(now()) - (24*3600)) | timestamp_custom('%Y-%m-%d', True) }}/*.jpg" -c:v libx264 -crf 24 -pix_fmt yuv420p /usr/share/hassio/media/timelapse_{{ (as_timestamp(now()) - (24*3600)) | timestamp_custom('%Y-%m-%d', True) }}.mp4'
