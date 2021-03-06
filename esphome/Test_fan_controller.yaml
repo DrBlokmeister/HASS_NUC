@@ -1,0 +1,69 @@
+esphome:
+  name: test_fan_controller
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+
+  # manual_ip:
+  #   static_ip: 192.168.1.136
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Test Fan Controller"
+    password: !secret esphome_fallback_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+output:
+  - platform: esp8266_pwm
+    pin: D1
+    frequency: 10000 Hz
+    id: ventilation_fan_pwm
+
+fan:
+  - platform: speed
+    output: ventilation_fan_pwm
+    name: "Mediacenter cabinet fan"
+    
+light:
+  - platform: monochromatic
+    name: "Mock media center cabinet light"
+    output: ventilation_fan_pwm
+
+cover:
+  - platform: template
+    name: "Mock cover media center cabinet fan"
+    has_position: true
+    position_action:
+      - output.set_level:
+          id: ventilation_fan_pwm
+          level: !lambda 'return pos;'
+
+sensor:
+  - platform: pulse_counter
+    pin:
+      number: D2
+      inverted: false
+      mode: INPUT
+    name: "DBE Kantoor Speed"
+    unit_of_measurement: 'RPM'
+    filters:
+      - multiply: 0.5
+    count_mode:
+      rising_edge: INCREMENT
+      falling_edge: DISABLE
+    update_interval: 1s
+    internal_filter: 1us
