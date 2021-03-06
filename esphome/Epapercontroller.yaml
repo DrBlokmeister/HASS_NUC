@@ -1,0 +1,144 @@
+esphome:
+  name: epapercontroller
+  platform: ESP32
+  board: nodemcu-32s
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Epapercontroller"
+    password: !secret esphome_fallback_pass
+
+substitutions:
+  devicename: AQI Display
+  gpio_led_status: GPIO5
+  gpio_i2c_sda: GPIO21
+  gpio_i2c_scl: GPIO22
+  gpio_uart_rx_pin: GPIO14
+  gpio_uart_tx_pin: GPIO13
+  gpio_spi_clk_pin: GPIO25
+  gpio_spi_mosi_pin: GPIO26
+  gpio_cs_pin: GPIO32
+  gpio_busy_pin: GPIO33
+  gpio_reset_pin: GPIO27
+  gpio_dc_pin: GPIO17
+  gpio_buzzer: GPIO04
+  gpio_led_red: GPIO19
+  gpio_led_green: GPIO23
+  gpio_led_blue: GPIO18
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+status_led:
+  pin: $gpio_led_status
+
+i2c:
+  sda: $gpio_i2c_sda
+  scl: $gpio_i2c_scl
+  scan: False
+  id: bme_280
+
+uart:
+  rx_pin: $gpio_uart_rx_pin
+  tx_pin: $gpio_uart_tx_pin
+  baud_rate: 9600
+  id: sds_011
+
+spi:
+  clk_pin: $gpio_spi_clk_pin
+  mosi_pin: $gpio_spi_mosi_pin
+  id: epaper_display
+
+binary_sensor:
+  - platform: status
+    name: "$devicename Status"
+    
+sensor:
+  - platform: uptime
+    name: "$devicename Uptime Sec"
+    id: uptime_sec
+    internal: true
+
+  - platform: wifi_signal
+    name: "$devicename WiFi Signal"
+    update_interval: 60s
+    
+  - platform: homeassistant
+    id: bedroomtemp
+    entity_id:  sensor.temperature_bedroom
+    
+  - platform: homeassistant
+    id: livingroomtemp
+    entity_id: sensor.temperature_livingroom
+    
+  - platform: homeassistant
+    id: outsidetemp
+    entity_id: sensor.temperature_outside
+    
+text_sensor:
+  - platform: version
+    name: "$devicename Version"
+
+  - platform: wifi_info
+    ip_address:
+      name: "$devicename IPv4"
+      icon: "mdi:server-network"
+    ssid:
+      name: "$devicename Connected SSID"
+      icon: "mdi:wifi"
+      
+  - platform: template
+    name: "$devicename Uptime"
+    icon: "mdi:timer"
+    update_interval: 60s
+    lambda: |-
+      int seconds = id(uptime_sec).state;
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m").c_str() };
+
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: $gpio_cs_pin
+    busy_pin: $gpio_busy_pin
+    reset_pin: $gpio_reset_pin
+    dc_pin: $gpio_dc_pin
+    model: 2.90in
+    full_update_every: 3600
+    update_interval: 10s
+    lambda: |-
+      it.printf(0,215, id(font_medium_20), "Bedroom: %.1f °", id(bedroomtemp).state);
+      
+      
+      it.line(5, 240, 120, 240);
+      
+      it.printf(0,260, id(font_medium_20), "Livingroom: %.1f °", id(livingroomtemp).state);
+      
+      it.printf(0,280, id(font_medium_20), "Outside: %.1f °", id(outsidetemp).state);
+      
+font:
+  - file: 'fonts/gillsans.ttf'
+    id: font_medium_20
+    size: 20
+    glyphs:
+      ['&', '@', '!', ',', '.', '"', '%', '+', '-', '_', ':', '°', '0',
+       '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E',
+       'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+       'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', 'a', 'b', 'c', 'd', 'e', 'f',
+       'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+       'u', 'v', 'w', 'x', 'y', 'z', '/', 'é']
