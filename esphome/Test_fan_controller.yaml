@@ -21,11 +21,81 @@ captive_portal:
 
 # Enable logging
 logger:
-
+  level: debug
+  logs:
+    climate.component: info
+    pid.climate: info
+    climate: info
+    pulse_counter: info
 # Enable Home Assistant API
 api:
 
 ota:
+
+i2c:
+  sda: D3
+  scl: D4
+  scan: True
+  id: bus_a
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    rotation: 180°
+    lambda: |-
+      int x, y;
+      /* WiFi Signal Strength          x = 128, y = 64; */
+      x = 0, y = 0;
+      if(id(wifisignal).has_state()) {
+        if (id(wifisignal).state >= -50) {
+            //Excellent
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤨");
+            //ESP_LOGI("WiFi", "Exellent");
+        } else if (id(wifisignal).state  >= -60) {
+            //Good
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤥");
+            //ESP_LOGI("WiFi", "Good");
+        } else if (id(wifisignal).state  >= -67) {
+            //Fair
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤢");
+            //ESP_LOGI("WiFi", "Fair");
+        } else if (id(wifisignal).state  >= -70) {
+            //Weak
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤟");
+            //ESP_LOGI("WiFi", "Weak");
+        } else {
+            //Unlikely working signal
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤯");
+            //ESP_LOGI("WiFi", "Unlikely");
+        }
+      } else {
+        it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤮");
+      }
+      
+      if (id(connection).has_state()) {
+        if (id(connection).state == true) {
+          it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰟐"); //Home assistant icon
+        } else {
+          it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰒎"); //Server disconnected icon
+        }
+      } else {
+        it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰒎"); //Server disconnected icon
+      }
+      
+      it.printf(128, 0, id(size_10_uifont), TextAlign::TOP_RIGHT, "Up: %s", id(uptime_text).state.c_str());
+      //it.print(30, 0, id(size_10_uifont), TextAlign::TOP_LEFT, "Test_10");
+      //it.print(70, 0, id(size_8_uifont), TextAlign::TOP_LEFT, "Test_8");
+      
+      it.line(0, 28, 128, 28);
+      
+      it.print(0, 30, id(size_10_uifont), TextAlign::TOP_LEFT, "Fan target:");
+      it.printf(128, 30, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(pid_fanspeed).target_temperature);
+      it.printf(0, 41, id(size_10_uifont), TextAlign::TOP_LEFT, "Fan speed:");
+      it.printf(128, 41, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(fanspeed).state);
+      it.printf(0, 52, id(size_10_uifont), TextAlign::TOP_LEFT, "Temperature:");
+      it.printf(128, 52, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.1f °C", id(cabinet_temperature).state);
+      
 
 output:
   - platform: esp8266_pwm
@@ -33,24 +103,30 @@ output:
     frequency: 10000 Hz
     id: ventilation_fan_pwm
 
-fan:
-  - platform: speed
-    output: ventilation_fan_pwm
-    name: "Mediacenter cabinet fan"
+# fan:
+#   - platform: speed
+#     output: ventilation_fan_pwm
+#     name: "Mediacenter cabinet fan"
     
-light:
-  - platform: monochromatic
-    name: "Mock media center cabinet light"
-    output: ventilation_fan_pwm
+# light:
+#   - platform: monochromatic
+#     name: "Mock media center cabinet light"
+#     output: ventilation_fan_pwm
 
-cover:
-  - platform: template
-    name: "Mock cover media center cabinet fan"
-    has_position: true
-    position_action:
-      - output.set_level:
-          id: ventilation_fan_pwm
-          level: !lambda 'return pos;'
+# cover:
+#   - platform: template
+#     name: "Mock cover media center cabinet fan"
+#     has_position: true
+#     position_action:
+#       - output.set_level:
+#           id: ventilation_fan_pwm
+#           level: !lambda 'return pos;'
+
+binary_sensor:
+  - platform: status
+    name: "Board connected"
+    internal: true
+    id: connection
 
 sensor:
   - platform: pulse_counter
@@ -58,8 +134,9 @@ sensor:
       number: D2
       inverted: false
       mode: INPUT
-    name: "DBE Kantoor Speed"
+    name: "Mediacenter Cabinet Fan Speed"
     unit_of_measurement: 'RPM'
+    id: fanspeed
     filters:
       - multiply: 0.5
     count_mode:
@@ -67,3 +144,123 @@ sensor:
       falling_edge: DISABLE
     update_interval: 1s
     internal_filter: 1us
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.mediacenter_cabinet_bottom
+    name: "Cabinet Temperature"
+    id: cabinet_temperature
+    internal: true
+  - platform: template
+    name: "Filtered Mediacenter Cabinet Fan Speed"
+    lambda: |-
+      return id(fanspeed).state;
+    filters:
+      - sliding_window_moving_average:
+          window_size: 20
+          send_every: 20
+          send_first_at: 20
+    update_interval: 10s
+    unit_of_measurement: pwm
+    accuracy_decimals: 2    
+  - platform: wifi_signal
+    name: "Fancontroller WiFi Signal"
+    id: wifisignal
+    update_interval: 60s
+  - platform: uptime
+    name: "Fancontroller Uptime Sec"
+    id: uptime_sec
+    internal: true
+
+text_sensor:
+  - platform: template
+    name: "Fancontroller Uptime"
+    icon: "mdi:timer"
+    id: uptime_text
+    update_interval: 60s
+    lambda: |-
+      int seconds = id(uptime_sec).state;
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m").c_str() };
+    internal: true
+
+climate:
+  - platform: pid
+    name: "PID Fan controller"
+    id: pid_fanspeed
+    sensor: fanspeed
+    default_target_temperature: 800°C
+    heat_output: ventilation_fan_pwm
+    control_parameters:
+      kp: 0.00005
+      ki: 0.00050
+      kd: 0.00005
+    visual:
+      min_temperature: 0 °C
+      max_temperature: 1600 °C
+      temperature_step: 50 °C
+  # - platform: pid
+  #   name: "PID Cabinet Temperature Controller"
+  #   id: pid_cabinet_temperature
+  #   sensor: cabinet_temperature
+  #   default_target_temperature: 22°C
+  #   cool_output: ventilation_fan_pwm
+  #   control_parameters:
+  #     kp: 0.00010
+  #     ki: 0.00050
+  #     kd: 0.00012
+  #   visual:
+  #     min_temperature: 15 °C
+  #     max_temperature: 30 °C
+  #     temperature_step: 1 °C
+      
+switch:
+  - platform: template
+    name: "PID Fanspeed Autotune"
+    turn_on_action:
+      - climate.pid.autotune: pid_fanspeed
+  # - platform: template
+  #   name: "PID Cabinet Temperature Autotune"
+  #   turn_on_action:
+  #     - climate.pid.autotune: pid_cabinet_temperature
+
+font:
+  - file: 'fonts/SegoeUI.ttf'
+    id: size_8_uifont
+    size: 8
+  - file: 'fonts/SegoeUI.ttf'
+    id: size_10_uifont
+    size: 10
+  - file: 'fonts/Roboto-Medium.ttf'
+    id: size_10_font
+    size: 10
+  - file: 'fonts/Roboto-Medium.ttf'
+    id: size_13_font
+    size: 13
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: icon_20_font
+    size: 20
+    glyphs: [
+      "󰖜", # sun rise
+      "󰖛", # sun set
+      # Wifi
+      '󰤯', # mdi-wifi-strength-outline
+      '󰤟', # mdi-wifi-strength-1
+      '󰤢', # mdi-wifi-strength-2
+      '󰤥', # mdi-wifi-strength-3
+      '󰤨', # mdi-wifi-strength-4
+      '󰤮', # mdi-wifi-strength-off-outline
+      
+      '󰟐', # mdi-home-assistant
+      '󰒎', # mdi-server-network-off
+      
+      '󰢠', #bedroom
+      '󰦠', #bathroom
+      '󰹩', #tree
+      '󰹧', #sprout
+      '󱕭', #couch
+      '󰖎', #humidity
+      ]
