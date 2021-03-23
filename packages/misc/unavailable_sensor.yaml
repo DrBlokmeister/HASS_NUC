@@ -34,6 +34,29 @@ sensor:
               |rejectattr('entity_id', 'in', state_attr('group.additional_ignored_entities', 'entity_id'))
               |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
               |rejectattr('domain','eq','group')|map(attribute='name')|list|join(', ') }}
+      important_unavailable_entities:
+        friendly_name: Important Unavailable Entities
+        unit_of_measurement: entities
+        icon_template: "{{ 'mdi:check-circle' if is_state('sensor.important_unavailable_entities','0') else 'mdi:alert-circle' }}"
+        value_template: >
+          {{ states|selectattr('state','in',['unavailable','unknown','none'])
+            |rejectattr('entity_id','in',state_attr('group.base_ignored_entities', 'entity_id'))
+            |rejectattr('entity_id','in',state_attr('group.additional_ignored_entities', 'entity_id'))
+            |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
+            |selectattr('entity_id','in', state_attr('group.important_entities','entity_id') )|list|count }}
+        attribute_templates:
+          entities: >
+            {{ states|selectattr('state','in',['unavailable','unknown','none'])
+              |rejectattr('entity_id','in',state_attr('group.base_ignored_entities', 'entity_id'))
+              |rejectattr('entity_id','in',state_attr('group.additional_ignored_entities', 'entity_id'))
+              |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
+              |selectattr('entity_id','in', state_attr('group.important_entities','entity_id') )|map(attribute='entity_id')|list|join(', ') }}
+          names: >
+            {{ states|selectattr('state','in',['unavailable','unknown','none'])
+              |rejectattr('entity_id','in',state_attr('group.base_ignored_entities', 'entity_id'))
+              |rejectattr('entity_id','in',state_attr('group.additional_ignored_entities', 'entity_id'))
+              |rejectattr('entity_id', 'in', state_attr('group.battery_status', 'entity_id'))
+              |selectattr('entity_id','in', state_attr('group.important_entities','entity_id') )|map(attribute='name')|list|join(', ') }}
 
 ## REQUIRED add any entities you do not with to monitor in this group
 ## this group MUST exist even if is empty for sensor template to render
@@ -64,6 +87,33 @@ group:
   additional_ignored_entities:
     entities:
       - sensor.time
+  important_entities:
+    entities:
+      - device_tracker.bed_scale
+      - device_tracker.blokmeister_hue
+      - device_tracker.google_home_mini
+      - device_tracker.p1mon
+      - device_tracker.rockrobo
+      - device_tracker.blitzwolf_3dprinter
+      - device_tracker.blitzwolf_coffeeplant
+      - device_tracker.blitzwolf_computer
+      - device_tracker.blitzwolf_eletricblanket
+      - device_tracker.blitzwolf_mediacenter
+      - device_tracker.blitzwolf_nuc
+      - device_tracker.blitzwolf_plug1
+      - device_tracker.blitzwolf_plug2
+      - device_tracker.blitzwolf_washing
+      - device_tracker.blitzwolf_watercooker
+      - device_tracker.blokmeisternuc
+      - device_tracker.shelly_bathroom
+      - device_tracker.shelly_bedroom
+      - device_tracker.shelly_closet
+      - device_tracker.shelly_dinnertable
+      - device_tracker.shelly_entry
+      - device_tracker.shelly_hallway
+      - device_tracker.shelly_kitchen
+      - device_tracker.shelly_study
+      - device_tracker.stardestroyerlights
 
 
 ## OPTIONAL Example automations to demonstrate how you can utilize this sensor
@@ -129,6 +179,10 @@ automation:
               {%- if entities.entities != '' %}{% set entities.entities = entities.entities + ',' %}{%- endif %}
               {%- set entities.entities = entities.entities + (expand(group) | rejectattr('domain', 'eq', 'switch') | map(attribute='entity_id') | list | join(',')) %}
             {%- endfor %}
+            {%- if is_state('binary_sensor.octoprint_printing', 'off') -%}
+              {%- if entities.entities != '' %}{% set entities.entities = entities.entities + ',' %}{%- endif %}
+              {%- set entities.entities = entities.entities + 'switch.octoprint_cancel_print,switch.octoprint_pause_print' %}
+            {% endif %}
             {{- entities.entities }}
 
 # something to think about for setting plants to unavailable:
