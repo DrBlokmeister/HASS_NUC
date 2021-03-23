@@ -15,33 +15,33 @@ homeassistant:
           return 'hsl(' + hue.toString() + ',80%,50%)';
 
 media_player:
-  - platform: kodi
-    host: 192.168.1.50
-    name: CoreELEC
-    username: !secret coreelec_user
-    password: !secret coreelec_pass
-    turn_on_action:
-      service: kodi.call_method
-      data:
-        entity_id: media_player.kodi
-        method: Addons.ExecuteAddon
-        addonid: script.json-cec
-        params:
-          command: activate
-    turn_off_action:
-      - service: media_player.media_stop
-        data:
-          entity_id: media_player.kodi
-      - service: kodi.call_method
-        data:
-          entity_id: media_player.kodi
-          method: Addons.ExecuteAddon
-          addonid: script.json-cec
-          params:
-            command: standby
-  - platform: kodi
-    host: 192.168.1.51
-    name: Ambilight_RPI
+  # - platform: kodi
+  #   host: 192.168.1.50
+  #   name: CoreELEC
+  #   username: !secret coreelec_user
+  #   password: !secret coreelec_pass
+  #   turn_on_action:
+  #     service: kodi.call_method
+  #     data:
+  #       entity_id: media_player.kodi
+  #       method: Addons.ExecuteAddon
+  #       addonid: script.json-cec
+  #       params:
+  #         command: activate
+  #   turn_off_action:
+  #     - service: media_player.media_stop
+  #       data:
+  #         entity_id: media_player.kodi
+  #     - service: kodi.call_method
+  #       data:
+  #         entity_id: media_player.kodi
+  #         method: Addons.ExecuteAddon
+  #         addonid: script.json-cec
+  #         params:
+  #           command: standby
+  # - platform: kodi
+  #   host: 192.168.1.51
+  #   name: Ambilight_RPI
 
 #################
 #    SENSORS    #
@@ -134,8 +134,7 @@ automation:
           scene_id: livingroom_before
           snapshot_entities:
             - light.livingroom_lights
-            - light.falconlights_wled
-            - switch.falconlights_wled_sync_receive
+            - light.falconlights
             - light.ssdlights
             - light.ssdlights_inner
       - service: light.turn_off
@@ -415,6 +414,33 @@ script:
             command: activate
       - service: switch.turn_on
         entity_id: switch.blitzwolf_plug2
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.tvarea_lights
+            - light.livingroom_led_strip
+            - light.led_strip_rgb_livingroom
+            - light.led_strip_white_livingroom
+          brightness: 20
+          transition: 10
+      - delay:
+          seconds: 4
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.ambilight_left_bulb
+            - light.ambilight_right_bulb
+            - light.falconlights
+            - light.ssdlights
+            - light.ssdlights_inner
+          brightness: 150
+          effect: Rainbow
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.hyperion_apa102
+          brightness: 150
+          effect: Rainbow swirl fast
 
   turn_on_ambilight:
     sequence:
