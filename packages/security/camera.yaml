@@ -17,12 +17,11 @@ image_processing:
       - name: person
         confidence: 60
         area:
-          # Exclude top 10% of image
+
           top: 0.25
-          # Exclude right 15% of image
           right: 0.45
       - name: cat
-        confidence: 60
+        confidence: 20
 
 camera:
   - platform: local_file
@@ -144,6 +143,51 @@ automation:
     action:
       - service: script.turn_on
         entity_id: script.generate_timelapse_from_snapshots
+
+  - alias: '[security|camera] Run person detection when motion is detected'
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.tapo_camera_d6d4_motion
+        to: 'on'
+    action:
+      - service: image_processing.scan
+        target:
+          entity_id: image_processing.doods_tapo_camera_d6d4_hd
+      - delay:
+          seconds: 5
+
+  - alias: "tensorflow frontdoor"
+    trigger:
+      platform: state
+      entity_id: image_processing.doods_tapo_camera_d6d4_hd
+    condition:
+      - condition: template
+        value_template: "{{ 'person' in state_attr('image_processing.doods_tapo_camera_d6d4_hd', 'summary') }}"
+      - condition: state
+        entity_id: person.sander_blok
+        state: 'not_home'
+      - condition: state
+        entity_id: person.tamara
+        state: 'not_home'
+      - condition: state
+        entity_id: input_boolean.guest_mode
+        state: 'off'
+    action:
+      - service: notify.mobile_app_blokmeister_op6_haapp
+        data:
+          title: "Tensorflow"
+          message: "frontdoor"
+          data:
+            image: "https://tfc04fk5cx71j56sfuk4usm1hyamcg5k.ui.nabu.casa/local/snapshots/persondetection/live_feed/person_detection_feed.jpg"
+      - service: camera.record
+        data:
+          entity_id: camera.tapo_camera_d6d4_hd
+          filename: >-
+            "/config/www/recordings/{{ states('sensor.date') }}/{{ now().strftime("%Y%m%d-%H%M%S") }}_motion_{{ states('binary_sensor.tapo_camera_d6d4_motion') }}.mp4"
+          duration: 20
+          lookback: 10
 ################
 #    SCENES    #
 ################
