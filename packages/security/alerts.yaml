@@ -18,6 +18,24 @@ sensor:
   #             {{ sensor.name }}
   #           {% endif %}
   #         {% endfor %}
+  - platform: template
+    sensors:
+      last_triggered_motion_sensor:
+        friendly_name: Last Triggered Motion Sensor
+        icon_template: mdi:motion-sensor
+        value_template: >-
+          {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
+          {{ states.binary_sensor|selectattr('attributes.device_class','eq','motion')|selectattr('last_changed', 'eq', lastchangedtime)|map(attribute='attributes.friendly_name')|list|join(', ') }}
+        attribute_templates:
+          time: >-
+            {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
+            {{ lastchangedtime|as_timestamp|timestamp_custom('%d-%m-%Y %H:%M:%S') }}
+          timestamp: >-
+            {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
+            {{ lastchangedtime }}
+          entity_id: >-
+            {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
+            {{ states.binary_sensor|selectattr('attributes.device_class','eq','motion')|selectattr('last_changed', 'eq', lastchangedtime)|map(attribute='entity_id')|list|join(', ') }}
 
 ########################
 #    BINARY SENSORS    #
@@ -102,11 +120,14 @@ automation:
       # - service: light.turn_off
       #   entity_id: light.living_room
 
-  - alias: '[security|alert]Front door opened'
+  - alias: '[security|alert]Door opened'
     trigger:
       - platform: state
         entity_id: binary_sensor.door_window_sensor_frontdoor
-        to: 'Open'
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.kitchen_door_window_sensor
+        to: 'on'
     condition:
       - condition: state
         entity_id: person.sander_blok
@@ -120,7 +141,8 @@ automation:
     action:
       - service: notify.mobile_app_blokmeister_op6_haapp
         data:
-          message: "Front door has been opened!"
+          message: >
+            "{{ trigger.to_state.name }} has been triggered!!"
           title: "Home Assistant - Warning"
           data:
             group: info
@@ -128,31 +150,31 @@ automation:
             icon_url: local/icons/door-open.png
             timeout: 10800
 
-  - alias: '[security|alert]Kitchen door opened'
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.door_window_sensor_kitchen
-        to: 'Open'
-    condition:
-      - condition: state
-        entity_id: person.sander_blok
-        state: 'not_home'
-      - condition: state
-        entity_id: person.tamara
-        state: 'not_home'
-      - condition: state
-        entity_id: input_boolean.guest_mode
-        state: 'off'
-    action:
-      - service: notify.mobile_app_blokmeister_op6_haapp
-        data:
-          message: "Kitchen door has been opened!"
-          title: "Home Assistant - Warning"
-          data:
-            group: info
-            tag: security
-            icon_url: local/icons/door-open.png
-            timeout: 10800
+  # - alias: '[security|alert]Kitchen door opened'
+  #   trigger:
+  #     - platform: state
+  #       entity_id: binary_sensor.kitchen_door_window_sensor
+  #       to: 'on'
+  #   condition:
+  #     - condition: state
+  #       entity_id: person.sander_blok
+  #       state: 'not_home'
+  #     - condition: state
+  #       entity_id: person.tamara
+  #       state: 'not_home'
+  #     - condition: state
+  #       entity_id: input_boolean.guest_mode
+  #       state: 'off'
+  #   action:
+  #     - service: notify.mobile_app_blokmeister_op6_haapp
+  #       data:
+  #         message: "Kitchen door has been opened!"
+  #         title: "Home Assistant - Warning"
+  #         data:
+  #           group: info
+  #           tag: security
+  #           icon_url: local/icons/door-open.png
+  #           timeout: 10800
 
 
 ################
