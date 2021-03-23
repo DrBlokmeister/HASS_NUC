@@ -378,10 +378,14 @@ class HCIdump(Thread):
             return {"motion": xobj[0], "motion timer": xobj[0]}
 
         def obj0f00(xobj):
-            (light,) = LIGHT_STRUCT.unpack(xobj + b'\x00')
-            # MJYD02YL:  1 - moving no light, 100 - moving with light
-            # RTCGQ02LM: 0 - moving no light, 256 - moving with light
-            return {"motion": 1, "motion timer": 1, "light": int(light >= 100)}
+            if len(xobj) == 3:
+                (value,) = LIGHT_STRUCT.unpack(xobj + b'\x00')
+                # MJYD02YL:  1 - moving no light, 100 - moving with light
+                # RTCGQ02LM: 0 - moving no light, 256 - moving with light
+                # CGPR1:     moving, value is illumination in lux
+                return {"motion": 1, "motion timer": 1, "light": int(value >= 100), "illuminance": value}
+            else:
+                return {}
 
         def obj0110(xobj):
             if xobj[2] == 0:
@@ -395,30 +399,45 @@ class HCIdump(Thread):
             return {"button": press}
 
         def obj0410(xobj):
-            (temp,) = T_STRUCT.unpack(xobj)
-            return {"temperature": temp / 10}
+            if len(xobj) == 2:
+                (temp,) = T_STRUCT.unpack(xobj)
+                return {"temperature": temp / 10}
+            else:
+                return {}
 
         def obj0510(xobj):
             return {"switch": xobj[0], "temperature": xobj[1]}
 
         def obj0610(xobj):
-            (humi,) = H_STRUCT.unpack(xobj)
-            return {"humidity": humi / 10}
+            if len(xobj) == 2:
+                (humi,) = H_STRUCT.unpack(xobj)
+                return {"humidity": humi / 10}
+            else:
+                return {}
 
         def obj0710(xobj):
-            (illum,) = ILL_STRUCT.unpack(xobj + b'\x00')
-            return {"illuminance": illum, "light": 1 if illum == 100 else 0}
+            if len(xobj) == 3:
+                (illum,) = ILL_STRUCT.unpack(xobj + b'\x00')
+                return {"illuminance": illum, "light": 1 if illum == 100 else 0}
+            else:
+                return {}
 
         def obj0810(xobj):
             return {"moisture": xobj[0]}
 
         def obj0910(xobj):
-            (cond,) = CND_STRUCT.unpack(xobj)
-            return {"conductivity": cond}
+            if len(xobj) == 2:
+                (cond,) = CND_STRUCT.unpack(xobj)
+                return {"conductivity": cond}
+            else:
+                return {}
 
         def obj1010(xobj):
-            (fmdh,) = FMDH_STRUCT.unpack(xobj)
-            return {"formaldehyde": fmdh / 100}
+            if len(xobj) == 2:
+                (fmdh,) = FMDH_STRUCT.unpack(xobj)
+                return {"formaldehyde": fmdh / 100}
+            else:
+                return {}
 
         def obj1210(xobj):
             return {"switch": xobj[0]}
@@ -430,8 +449,13 @@ class HCIdump(Thread):
             return {"moisture": xobj[0]}
 
         def obj1710(xobj):
-            (motion,) = M_STRUCT.unpack(xobj)
-            return {"motion": 1 if motion == 0 else 0}
+            if len(xobj) == 4:
+                (motion,) = M_STRUCT.unpack(xobj)
+                # seconds since last motion detected message (not used, we use motion timer in obj0f00)
+                # 0 = motion detected
+                return {"motion": 1 if motion == 0 else 0}
+            else:
+                return {}
 
         def obj1810(xobj):
             return {"light": xobj[0]}
@@ -443,40 +467,58 @@ class HCIdump(Thread):
             return {"battery": xobj[0]}
 
         def obj0d10(xobj):
-            (temp, humi) = TH_STRUCT.unpack(xobj)
-            return {"temperature": temp / 10, "humidity": humi / 10}
+            if len(xobj) == 4:
+                (temp, humi) = TH_STRUCT.unpack(xobj)
+                return {"temperature": temp / 10, "humidity": humi / 10}
+            else:
+                return {}
 
         def obj0020(xobj):
-            (temp1, temp2, bat) = TTB_STRUCT.unpack(xobj)
-            # Body temperature is calculated from the two measured temperatures.
-            # Formula is based on approximation based on values inthe app in the range 36.5 - 37.8.
-            body_temp = (
+            if len(xobj) == 5:
+                (temp1, temp2, bat) = TTB_STRUCT.unpack(xobj)
+                # Body temperature is calculated from the two measured temperatures.
+                # Formula is based on approximation based on values inthe app in the range 36.5 - 37.8.
+                body_temp = (
                     3.71934 * pow(10, -11) * math.exp(0.69314 * temp1 / 100)
                     - 1.02801 * pow(10, -8) * math.exp(0.53871 * temp2 / 100)
                     + 36.413
-            )
-            return {"temperature": body_temp, "battery": bat}
+                )
+                return {"temperature": body_temp, "battery": bat}
+            else:
+                return {}
 
         # Qingping BLE advertisements
         def obj0104(xobj):
-            (temp, humi) = TH_STRUCT.unpack(xobj)
-            return {"temperature": temp / 10, "humidity": humi / 10}
+            if len(xobj) == 4:
+                (temp, humi) = TH_STRUCT.unpack(xobj)
+                return {"temperature": temp / 10, "humidity": humi / 10}
+            else:
+                return {}
 
         def obj0201(xobj):
             return {"battery": xobj[0]}
 
         def obj0702(xobj):
-            (pres,) = P_STRUCT.unpack(xobj)
-            return {"pressure": pres / 10}
+            if len(xobj) == 2:
+                (pres,) = P_STRUCT.unpack(xobj)
+                return {"pressure": pres / 10}
+            else:
+                return {}
 
         # ATC BLE advertisements
         def objATC_short(xobj):
-            (temp, humi, batt, volt) = THBV_STRUCT.unpack(xobj)
-            return {"temperature": temp / 10, "humidity": humi, "voltage": volt / 1000, "battery": batt}
+            if len(xobj) == 6:
+                (temp, humi, batt, volt) = THBV_STRUCT.unpack(xobj)
+                return {"temperature": temp / 10, "humidity": humi, "voltage": volt / 1000, "battery": batt}
+            else:
+                return {}
 
         def objATC_long(xobj):
-            (temp, humi, volt, batt) = THVB_STRUCT.unpack(xobj)
-            return {"temperature": temp / 100, "humidity": humi / 100, "voltage": volt / 1000, "battery": batt}
+            if len(xobj) == 7:
+                (temp, humi, volt, batt) = THVB_STRUCT.unpack(xobj)
+                return {"temperature": temp / 100, "humidity": humi / 100, "voltage": volt / 1000, "battery": batt}
+            else:
+                return {}
 
         def reverse_mac(rmac):
             """Change LE order to BE."""
@@ -533,7 +575,7 @@ class HCIdump(Thread):
         # dataObject id  (converter, binary, measuring)
         self._dataobject_dict = {
             b'\x03\x00': (obj0300, True, False),
-            b'\x0F\x00': (obj0f00, True, False),
+            b'\x0F\x00': (obj0f00, True, True),
             b'\x01\x10': (obj0110, False, True),
             b'\x04\x10': (obj0410, False, True),
             b'\x05\x10': (obj0510, True, True),
@@ -658,17 +700,18 @@ class HCIdump(Thread):
         qingping_index = data.find(b'\x16\xCD\xFD', 15 + 15 if is_ext_packet else 0)
         atc_index = data.find(b'\x16\x1A\x18', 15 + 15 if is_ext_packet else 0)
 
-        if xiaomi_index != -1:
-            return self.parse_xiaomi(data, xiaomi_index, is_ext_packet)
+        try:
+            if xiaomi_index != -1:
+                return self.parse_xiaomi(data, xiaomi_index, is_ext_packet)
+            elif qingping_index != -1:
+                return self.parse_qingping(data, qingping_index, is_ext_packet)
+            elif atc_index != -1:
+                return self.parse_atc(data, atc_index, is_ext_packet)
 
-        elif qingping_index != -1:
-            return self.parse_qingping(data, qingping_index, is_ext_packet)
+        except NoValidError as nve:
+            _LOGGER.debug("Invalid data: %s", nve)
 
-        elif atc_index != -1:
-            return self.parse_atc(data, atc_index, is_ext_packet)
-
-        else:
-            return None, None, None
+        return None, None, None
 
     def parse_xiaomi(self, data, xiaomi_index, is_ext_packet):
         # parse BLE message in Xiaomi MiBeacon format
@@ -679,14 +722,14 @@ class HCIdump(Thread):
         adv_index = data.find(b"\x02\x01\x06", advert_start, 3 + advert_start)
         adv_index2 = data.find(b"\x15\x16\x95", advert_start, 3 + advert_start)
         if adv_index == -1 and adv_index2 == -1:
-            return None, None, None
+            raise NoValidError("Invalid index")
         if adv_index2 != -1:
             adv_index = adv_index2
 
         # check for BTLE msg size
         msg_length = data[2] + 3
         if msg_length != len(data):
-            return None, None, None
+            raise NoValidError("Invalid msg size")
 
         # extract device type
         device_type = data[xiaomi_index + 5:xiaomi_index + 7]
@@ -711,7 +754,7 @@ class HCIdump(Thread):
             xiaomi_mac_reversed = data[xiaomi_index + 8:xiaomi_index + 14]
             source_mac_reversed = data[mac_index - 7:mac_index - 1]
             if xiaomi_mac_reversed != source_mac_reversed:
-                return None, None, None
+                raise NoValidError("Invalid MAC address")
         else:
             # for sensors without mac in service data, use the first mac in advertisment
             xiaomi_mac_reversed = data[mac_index - 7:mac_index - 1]
@@ -723,8 +766,10 @@ class HCIdump(Thread):
         try:
             prev_packet = self.lpacket_ids[xiaomi_mac_reversed]
         except KeyError:
+            # start with empty first packet
             prev_packet = None, None, None
         if prev_packet == packet_id:
+            # only process new messages
             return None, None, None
         self.lpacket_ids[xiaomi_mac_reversed] = packet_id
 
@@ -745,7 +790,7 @@ class HCIdump(Thread):
                     ''.join('{:02X}'.format(x) for x in xiaomi_mac_reversed[::-1]),
                     data.hex()
                 )
-            return None, None, None
+            raise NoValidError("Device unkown")
 
         # check data is present
         if not (framectrl & 0x4000):
@@ -780,12 +825,13 @@ class HCIdump(Thread):
         #     -capability byte offset
         xdata_length += msg_length - xiaomi_index - 15
         if xdata_length < 3:
-            return None, None, None
+            raise NoValidError("Xdata length invalid")
+
         xdata_point += xiaomi_index + 14
 
         # check if parse_xiaomi data start and length is valid
         if xdata_length != len(data[xdata_point:-1]):
-            return None, None, None
+            raise NoValidError("Invalid data length")
 
         # check encrypted data flags
         if framectrl & 0x0800:
@@ -794,7 +840,7 @@ class HCIdump(Thread):
                 key = self.aeskeys[xiaomi_mac_reversed]
             except KeyError:
                 # no encryption key found
-                return None, None, None
+                raise NoValidError("No encryption key found")
             nonce = b"".join(
                 [
                     xiaomi_mac_reversed,
@@ -820,13 +866,13 @@ class HCIdump(Thread):
                 _LOGGER.error("nonce: %s", nonce.hex())
                 _LOGGER.error("encrypted_payload: %s", encrypted_payload.hex())
                 _LOGGER.error("cipherpayload: %s", cipherpayload.hex())
-                return None, None, None
+                raise NoValidError("Error decrypting with arguments")
             if decrypted_payload is None:
                 _LOGGER.error(
                     "Decryption failed for %s, decrypted payload is None",
                     "".join("{:02X}".format(x) for x in xiaomi_mac_reversed[::-1]),
                 )
-                return None, None, None
+                raise NoValidError("Decryption failed")
 
             # replace cipher with decrypted data
             msg_length -= len(encrypted_payload)
@@ -899,12 +945,12 @@ class HCIdump(Thread):
         advert_start = 29 if is_ext_packet else 14
         adv_index = data.find(b"\x02\x01\x06", advert_start, 3 + advert_start)
         if adv_index == -1:
-            return None, None, None
+            raise NoValidError("Invalid index")
 
         # check for BTLE msg size
         msg_length = data[2] + 3
         if msg_length != len(data):
-            return None, None, None
+            raise NoValidError("Invalid msg size")
 
         # extract device type
         device_type = data[qingping_index + 3:qingping_index + 5]
@@ -914,7 +960,7 @@ class HCIdump(Thread):
         qingping_mac_reversed = data[qingping_index + 5:qingping_index + 11]
         source_mac_reversed = data[mac_index - 7:mac_index - 1]
         if qingping_mac_reversed != source_mac_reversed:
-            return None, None, None
+            raise NoValidError("Invalid MAC address")
 
         # check for MAC presence in whitelist, if needed
         if self.discovery is False and qingping_mac_reversed not in self.whitelist:
@@ -938,7 +984,7 @@ class HCIdump(Thread):
                     ''.join('{:02X}'.format(x) for x in qingping_mac_reversed[::-1]),
                     data.hex()
                 )
-            return None, None, None
+            raise NoValidError("Device unkown")
         xdata_length = 0
         xdata_point = 0
 
@@ -950,12 +996,13 @@ class HCIdump(Thread):
         #     -6 bytes MAC
         xdata_length += msg_length - qingping_index - 12
         if xdata_length < 3:
-            return None, None, None
+            raise NoValidError("Xdata length invalid")
+
         xdata_point += qingping_index + 11
 
         # check if parse_qingping data start and length is valid
         if xdata_length != len(data[xdata_point:-1]):
-            return None, None, None
+            raise NoValidError("Invalid data length")
         result = {
             "rssi": rssi,
             "mac": ''.join('{:02X}'.format(x) for x in qingping_mac_reversed[::-1]),
@@ -1016,7 +1063,7 @@ class HCIdump(Thread):
         # check for BTLE msg size
         msg_length = data[2] + 3
         if msg_length != len(data):
-            return None, None, None
+            raise NoValidError("Invalid index")
 
         # check for MAC presence in message and in service data
         if is_custom_adv is True:
@@ -1024,21 +1071,25 @@ class HCIdump(Thread):
             atc_mac = atc_mac_reversed[::-1]
         else:
             atc_mac = data[atc_index + 3:atc_index + 9]
+
         mac_index = atc_index - (22 if is_ext_packet else 8)
         source_mac_reversed = data[mac_index:mac_index + 6]
         source_mac = source_mac_reversed[::-1]
         if atc_mac != source_mac:
-            return None, None, None
+            raise NoValidError("Invalid MAC address")
 
         # check for MAC presence in whitelist, if needed
         if self.discovery is False and source_mac_reversed not in self.whitelist:
             return None, None, None
+
         packet_id = data[atc_index + 16 if is_custom_adv else atc_index + 15]
         try:
             prev_packet = self.lpacket_ids[atc_index]
         except KeyError:
+            # start with empty first packet
             prev_packet = None, None, None
         if prev_packet == packet_id:
+            # only process new messages
             return None, None, None
         self.lpacket_ids[atc_index] = packet_id
 
@@ -1060,7 +1111,7 @@ class HCIdump(Thread):
                     ''.join('{:02X}'.format(x) for x in atc_mac[:]),
                     data.hex()
                 )
-            return None, None, None
+            raise NoValidError("Device unkown")
 
         # ATC data length = message length
         # -all bytes before ATC UUID
@@ -1071,12 +1122,14 @@ class HCIdump(Thread):
         # -1 RSSI (normal, not extended packet only)
         xdata_length = msg_length - atc_index - (11 if is_custom_adv else 10) - (0 if is_ext_packet else 1)
         if xdata_length < 6:
-            return None, None, None
+            raise NoValidError("Xdata length invalid")
+
         xdata_point = atc_index + 9
 
         # check if parse_atc data start and length is valid
         if xdata_length != len(data[xdata_point:(-3 if (is_custom_adv and not is_ext_packet) else -2)]):
-            return None, None, None
+            raise NoValidError("Invalid data length")
+
         result = {
             "rssi": rssi,
             "mac": ''.join('{:02X}'.format(x) for x in atc_mac[:]),
@@ -1105,3 +1158,7 @@ class HCIdump(Thread):
                 )
         binary = binary and binary_data
         return result, binary, measuring
+
+
+class NoValidError(Exception):
+    pass

@@ -4,37 +4,40 @@ Component to show with breaking_changes.
 For more details about this component, please refer to
 https://github.com/custom-components/breaking_changes
 """
-import os
-from datetime import timedelta, datetime
 import logging
-import voluptuous as vol
+from datetime import timedelta
+
+from awesomeversion import AwesomeVersion
+
 import homeassistant.helpers.config_validation as cv
-from homeassistant.const import EVENT_HOMEASSISTANT_START
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 from homeassistant.helpers import discovery
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from integrationhelper import Throttle, WebClient
+from pyhaversion import LocalVersion, PyPiVersion
+
 from .const import (
-    DOMAIN_DATA,
+    CONF_NAME,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_NAME,
     DOMAIN,
-    ISSUE_URL,
+    DOMAIN_DATA,
+    INTERVAL,
     PLATFORMS,
-    REQUIRED_FILES,
     STARTUP,
     URL,
-    VERSION,
-    CONF_NAME,
-    DEFAULT_NAME,
-    INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+MINIMUM_VERSION = AwesomeVersion("2021.3")
 
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-                vol.Optional("scan_interval"): cv.positive_int,
+                vol.Optional(CONF_SCAN_INTERVAL): cv.positive_int,
             }
         )
     },
@@ -46,24 +49,23 @@ async def async_setup(hass, config):
     """Set up this component."""
 
     # Print startup message
-    startup = STARTUP.format(name=DOMAIN, version=VERSION, issueurl=ISSUE_URL)
-    _LOGGER.info(startup)
+    _LOGGER.info(STARTUP)
 
     throttle = Throttle()
-
-    # Check that all required files are present
-    file_check = await check_files(hass)
-    if not file_check:
-        return False
 
     # Create DATA dict
     hass.data[DOMAIN_DATA] = {}
     hass.data[DOMAIN_DATA]["throttle"] = throttle
-    hass.data[DOMAIN_DATA]["components"] = ["homeassistant"]
-    hass.data[DOMAIN_DATA]["potential"] = {}
+    hass.data[DOMAIN_DATA]["integrations"] = ["homeassistant"]
+    hass.data[DOMAIN_DATA]["potential"] = {
+        "changes": [],
+        "versions": set(),
+        "covered": set(),
+    }
 
-    if config[DOMAIN].get("scan_interval") is not None:
-        throttle.interval = timedelta(seconds=config[DOMAIN].get("scan_interval"))
+    throttle.interval = timedelta(
+        seconds=config[DOMAIN].get(CONF_SCAN_INTERVAL, INTERVAL)
+    )
 
     # Load platforms
     for platform in PLATFORMS:
@@ -76,44 +78,35 @@ async def async_setup(hass, config):
             )
         )
 
-    async def loaded_platforms(hass):
-        """Load platforms after HA startup."""
-        for component in hass.config.components:
-            hass.data[DOMAIN_DATA]["components"].append(component)
-
-        _LOGGER.debug("Loaded components %s", hass.data[DOMAIN_DATA]["components"])
-        await update_data(hass, throttle)  # pylint: disable=unexpected-keyword-arg
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, loaded_platforms(hass))
-
     return True
 
 
-async def update_data(hass, throttle):
+async def update_data(hass):
     """Update data."""
+    throttle = hass.data[DOMAIN_DATA]["throttle"]
     if throttle.throttle:
         return
-    throttle.set_last_run()
-    if len(hass.data[DOMAIN_DATA]["components"]) == 1:
-        return
-    from pyhaversion import LocalVersion, PyPiVersion
+
+    integrations = []
+    changes = hass.data[DOMAIN_DATA]["potential"]["changes"]
 
     session = async_get_clientsession(hass)
     webclient = WebClient(session)
     localversion = LocalVersion(hass.loop, session)
     pypiversion = PyPiVersion(hass.loop, session)
+    throttle.set_last_run()
 
     try:
         await localversion.get_version()
-        currentversion = localversion.version.split(".")[1]
+        currentversion = AwesomeVersion(localversion.version)
 
         await pypiversion.get_version()
-        remoteversion = pypiversion.version.split(".")[1]
+        remoteversion = AwesomeVersion(pypiversion.version)
     except Exception:  # pylint: disable=broad-except
         _LOGGER.warning("Could not get version data.")
         return
 
-    if currentversion == remoteversion:
+    if currentversion >= remoteversion:
         _LOGGER.debug(
             "Current version is %s and remote version is %s skipping update",
             currentversion,
@@ -121,55 +114,58 @@ async def update_data(hass, throttle):
         )
         return
 
-    versions = []
+    for integration in hass.config.components or []:
+        if "." in integration:
+            integration = integration.split(".")[0]
+        if integration not in integrations:
+            integrations.append(integration)
 
-    for platform in hass.data[DOMAIN_DATA]["components"]:
-        if "homeassistant.components." in platform:
-            name = platform.split("homeassistant.components.")[1]
-            if "." in name:
-                name = name.split(".")[0]
-            if name not in hass.data[DOMAIN_DATA]["components"]:
-                hass.data[DOMAIN_DATA]["components"].append(name)
-    _LOGGER.debug("Loaded components - %s", hass.data[DOMAIN_DATA]["components"])
+    _LOGGER.debug("Loaded integrations - %s", integrations)
 
-    try:
-        _LOGGER.debug("Running update")
+    c_split = [int(x) for x in currentversion.split(".")]
+    r_split = [int(x) for x in remoteversion.split(".")]
 
-        for version in range(int(currentversion) + 1, int(remoteversion) + 1):
-            versions.append(version)
-            jsondata = await webclient.async_get_json(URL.format(version))
-            _LOGGER.debug(jsondata)
-            for platform in jsondata:
-                _LOGGER.debug(platform["component"])
-                if platform["component"] is None or platform["component"] is "None":
-                    platform["component"] = "homeassistant"
-                if platform["component"] in hass.data[DOMAIN_DATA]["components"]:
-                    data = {
-                        "component": platform["component"],
-                        "prlink": platform["prlink"],
-                        "doclink": platform["doclink"],
-                        "description": platform["description"],
-                    }
-                    hass.data[DOMAIN_DATA]["potential"][platform["pull_request"]] = data
-        hass.data[DOMAIN_DATA]["potential"]["versions"] = versions
-    except Exception as error:  # pylint: disable=broad-except
-        _LOGGER.error("Could not update data - %s", error)
-
-
-async def check_files(hass):
-    """Return bool that indicates if all files are present."""
-    # Verify that the user downloaded all files.
-    base = "{}/custom_components/{}/".format(hass.config.path(), DOMAIN)
-    missing = []
-    for file in REQUIRED_FILES:
-        fullpath = "{}{}".format(base, file)
-        if not os.path.exists(fullpath):
-            missing.append(file)
-
-    if missing:
-        _LOGGER.critical("The following files are missing: %s", str(missing))
-        returnvalue = False
+    request_versions = []
+    if c_split[0] < r_split[0]:
+        for version in range(c_split[1] + 1, 13):
+            request_versions.append(f"{c_split[0]}.{version}")
+        for version in range(1, r_split[1] + 1):
+            request_versions.append(f"{r_split[0]}.{version}")
     else:
-        returnvalue = True
+        for version in range(c_split[1] + 1, r_split[1] + 1):
+            request_versions.append(f"{r_split[0]}.{version}")
 
-    return returnvalue
+    request_versions = [x for x in request_versions if x >= MINIMUM_VERSION]
+    if len(request_versions) == 0:
+        _LOGGER.debug("no valid versions")
+        return
+
+    if hass.data[DOMAIN_DATA]["integrations"] != integrations:
+        hass.data[DOMAIN_DATA]["potential"]["versions"] = set()
+        changes = []
+    hass.data[DOMAIN_DATA]["integrations"] = integrations
+
+    for version in request_versions:
+        if version in hass.data[DOMAIN_DATA]["potential"]["versions"]:
+            _LOGGER.debug("Allready have information for %s", version)
+            continue
+        try:
+            _LOGGER.debug("Checking breaking changes for %s", version)
+            request = await webclient.async_get_json(URL.format(version))
+
+            for change in request or []:
+                if change["integration"] in integrations:
+                    data = {
+                        "title": change["title"],
+                        "integration": change["integration"],
+                        "description": change["description"],
+                    }
+                    changes.append(data)
+
+            if version not in hass.data[DOMAIN_DATA]["potential"]["versions"]:
+                hass.data[DOMAIN_DATA]["potential"]["versions"].add(version)
+
+        except Exception as error:  # pylint: disable=broad-except
+            _LOGGER.error("Could not update data - %s", error)
+
+    hass.data[DOMAIN_DATA]["potential"]["changes"] = changes
