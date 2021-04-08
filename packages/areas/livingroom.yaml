@@ -84,6 +84,9 @@ automation:
       - platform: state
         entity_id: group.livingroom_motion_sensors
         to: 'on'
+      - platform: numeric_state
+        entity_id: image_processing.doods_tapo_camera_d6d4_hd
+        above: 0
     condition:
       - condition: template
         value_template: "{{ states('sensor.average_illumination_livingroom')|int < states('input_number.livingroom_illumination_limit')|int }}"
@@ -96,15 +99,19 @@ automation:
           entity_id:
             - light.tvarea_and_ledstrips
           transition: "{% if is_state('light.tvarea_and_ledstrips', 'on') %}5{% else %}1{% endif %}"
-          brightness: 255
+          brightness_pct: "{{ state_attr('switch.circadian_lighting_circadian_lighting', 'brightness') | int }}"
           kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
       # - service: switch.flux_livingroom_update
       - wait_for_trigger:
-          - platform: state
-            entity_id: group.livingroom_motion_sensors
-            to: 'off'
+          - platform: template
+            value_template: "{{ is_state('group.livingroom_motion_sensors', 'off') and is_state('image_processing.doods_tapo_camera_d6d4_hd', '0') }}"
             for:
               minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
+          # - platform: state
+          #   entity_id: group.livingroom_motion_sensors
+          #   to: 'off'
+          #   for:
+          #     minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
       - service: light.turn_on
         data:
           entity_id:
