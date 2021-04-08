@@ -85,10 +85,11 @@ SELECT
 FROM information_schema.TABLES
 WHERE table_schema = 'homeassistant'
 GROUP BY table_name
-ORDER BY table_name 
+ORDER BY table_name
 ```
 
 Another thing I found useful was to plot the first 1000 entities of the first query using Excel and then calculate the sum of all counts up until that entity. That way I found out I could reduce the size of my database by a factor of 10, simply by removing the first 100 entities from the database.
+
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
