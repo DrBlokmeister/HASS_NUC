@@ -97,15 +97,15 @@ sensor:
   #   folder: /home
     
   - platform: uptime
-    unit_of_measurement: minutes
 
-  - platform: version
-    name: Latest Version
-    source: hassio
 
-  - platform: version
-    name: Current Version
-    source: local
+  # - platform: version
+  #   name: Latest Version
+  #   source: hassio
+
+  # - platform: version
+  #   name: Current Version
+  #   source: local
 
   - platform: sql
     db_url: !secret mariadb_URL
@@ -153,6 +153,38 @@ sensor:
     name: Plexmediaserver Status Otherformat
     scan_interval: 30
     command: ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
+
+  - platform: filter
+    name: "Filtered NUC CPU Temperature"
+    entity_id: sensor.processor_temperature
+    filters:
+      - filter: lowpass
+        time_constant: 10
+  - platform: filter
+    name: "Filtered NUC Power"
+    entity_id: sensor.blitzwolf_nuc_energy_power
+    filters:
+      - filter: lowpass
+        time_constant: 10
+  - platform: filter
+    name: "Filtered NUC CPU Use"
+    entity_id: sensor.processor_use
+    filters:
+      - filter: lowpass
+        time_constant: 10
+  - platform: filter
+    name: "Filtered Docker CPU Use"
+    entity_id: sensor.docker_cpu
+    filters:
+      - filter: lowpass
+        time_constant: 10
+  - platform: filter
+    name: "Filtered HA Container CPU Use"
+    entity_id: sensor.docker_homeassistant_cpu
+    filters:
+      - filter: lowpass
+        time_constant: 10
+
 ########################
 #    BINARY SENSORS    #
 ########################
