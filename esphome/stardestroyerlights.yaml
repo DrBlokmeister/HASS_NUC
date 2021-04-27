@@ -78,9 +78,13 @@ light:
             }
       - addressable_lambda:
           name: "My Custom Effect"
-          update_interval: 15ms
+          update_interval: 20ms
           lambda: |-
             static int progress = 0;
+            static int width = it.size();
+            static bool brightleds [28];
+            float ledcolor [3];
+
             if (initial_run) {
               progress = 0;
             }
@@ -91,26 +95,49 @@ light:
             // Get the color at index num (ESPColor instance)
             // it[num].get();
 
+            // Move the fully lit spots one point across the strip
+            for (int i = 0; i < it.size()-1; i++) {
+              brightleds[i] = brightleds[i + 1];
+            }
+
             // Example: Simple color wipe
             // for (int i = it.size() - 1; i > 0; i--) {
             //   it[i] = it[i - 1].get();
             // }
+            // Slowly fade out LEDs
             for (int i = 0; i < it.size()-1; i++) {
-              it[i] = it[i + 1].get();
+              it[i] = it[i].get() - 30;
             }
 
             int random, red, green, blue;
-            random = rand() % 10;
+            random = rand() % 20;
             red = rand() % 100 + 50;
             green = rand() % 100 + 50;
             blue = rand() % 100 + 155;
 
-            if (progress < 5) {
-              it[it.size()-1] = ESPColor(255, 235, 235);
-            } else if (random == 4) {
-              it[it.size()-1] = ESPColor(red, green, blue);
-              progress = 0;
+            // Determine if we make a new bright point at the start of the strip:
+            if (random == 1) {
+              brightleds[width] = true;
+              brightleds[width-1] = true;
+            } else {
+              brightleds[width] = false;
+              brightleds[width-1] = false;
             }
+
+            // And now set the new bright LEDs
+            for (int i = 0; i < it.size()-1; i++) {
+              if (brightleds[i]) {
+                // it[i] = ESPColor(255, 235, 235);
+                it[i] = current_color;
+              }
+            }
+
+            // if (progress < 5) {
+            //   it[it.size()-1] = ESPColor(255, 235, 235);
+            // } else if (random == 4) {
+            //   it[it.size()-1] = ESPColor(red, green, blue);
+            //   progress = 0;
+            // }
 
             progress++;
       - e131:

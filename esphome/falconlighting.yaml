@@ -59,41 +59,14 @@ light:
     rgb_order: BGR
     default_transition_length: 2s
     name: "Falconlights"
-    gamma_correct: 1.5
+    gamma_correct: 1
     effects:
       - e131:
           universe: 1
           channels: RGB
-      - wled:
-          port: 65506
       - random:
       - addressable_rainbow:
           width: 25
-      - addressable_rainbow:
-          name: Rainbow Effect With Custom Values
-          speed: 10
-          width: 50
-      - lambda:
-          name: My Custom Effect
-          update_interval: 1s
-          lambda: |-
-            static int state = 0;
-            auto call = id(falconlights).turn_on();
-            // Transtion of 1000ms = 1s
-            call.set_transition_length(1000);
-            if (state == 0) {
-              call.set_rgb(1.0, 1.0, 1.0);
-            } else if (state == 1) {
-              call.set_rgb(1.0, 0.0, 1.0);
-            } else if (state == 2) {
-              call.set_rgb(0.0, 0.0, 1.0);
-            } else {
-              call.set_rgb(1.0, 0.0, 0.0);
-            }
-            call.perform();
-            state += 1;
-            if (state == 4)
-              state = 0;
       - automation:
           name: Incorrect engine pulse
           sequence:
