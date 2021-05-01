@@ -43,6 +43,8 @@ timer:
   get_out_of_bed:
     duration: '00:05:00'
   bedroom_lights:
+  realwakeup:
+    duration: '00:10:00'
 
 input_number:
   bed_preheat_temp:
@@ -1029,6 +1031,38 @@ automation:
               minutes: 1
       - service: homeassisstant.turn_on
         entity_id: group.bedroom_lighting_automations
+
+  - alias: '[bedroom|wakeup] Set timer when wakeup is turned off'
+    id: bedroom_wakeup_set_timer_when_wakeup_is_turned_off
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.sleep_tracking_on
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: person.tamara
+        state:
+          - 'not_home'
+          - 'unknown'
+        for:
+          hours: 10
+    action:
+      - service: timer.start
+        data:
+          entity_id: timer.realwakeup
+      - wait_for_trigger:
+          - platform: event
+            event_type: timer.finished
+            event_data:
+              entity_id: timer.realwakeup
+      - service: tts.cloud_say
+        data:
+          entity_id: media_player.living_room_speaker
+          message: 'Your time is up. Get out of bed!'
+          language: en-GB
+          options:
+            gender: female
 ################
 #    SCENES    #
 ################
