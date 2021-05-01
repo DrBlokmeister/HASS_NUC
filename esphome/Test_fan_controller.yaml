@@ -75,7 +75,7 @@ display:
       
       if (id(connection).has_state()) {
         if (id(connection).state == true) {
-          it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰟐"); //Home assistant icon
+          it.print(20, 0, id(icon_20_font), TextAlign::TOP_LEFT, "󰟐"); //Home assistant icon
         } else {
           it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰒎"); //Server disconnected icon
         }
@@ -149,6 +149,11 @@ sensor:
     entity_id: sensor.mediacenter_cabinet_bottom
     name: "Cabinet Temperature"
     id: cabinet_temperature
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.mediacenter_cabinet_top
+    name: "Cabinet Temperature"
+    id: cabinet_temperature_reference
     internal: true
   - platform: template
     name: "Filtered Mediacenter Cabinet Fan Speed"
@@ -226,6 +231,23 @@ switch:
   #   name: "PID Cabinet Temperature Autotune"
   #   turn_on_action:
   #     - climate.pid.autotune: pid_cabinet_temperature
+
+interval:
+  - interval: 5s
+    then:
+      - climate.control:
+          id: pid_fanspeed
+          mode: AUTO
+          target_temperature: !lambda |-
+            if (id(cabinet_temperature).has_state() && id(cabinet_temperature_reference).has_state()) {
+              if (id(cabinet_temperature).state < 20) {
+                return 0;
+              } else {
+                return ( (id(cabinet_temperature).state + 3 - id(cabinet_temperature_reference).state)*1400/4 );
+              }
+            } else {
+              return 800;
+            }
 
 font:
   - file: 'fonts/SegoeUI.ttf'
