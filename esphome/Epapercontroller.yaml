@@ -1,7 +1,7 @@
 esphome:
   name: epapercontroller
   platform: ESP32
-  board: nodemcu-32s
+  board: esp32doit-devkit-v1
 
 wifi:
   ssid: !secret wifi_ssid
@@ -14,17 +14,17 @@ wifi:
 
 substitutions:
   devicename: AQI Display
-  gpio_led_status: GPIO5
+  gpio_led_status: GPIO2
   gpio_i2c_sda: GPIO21
   gpio_i2c_scl: GPIO22
-  gpio_uart_rx_pin: GPIO14
-  gpio_uart_tx_pin: GPIO13
+  gpio_uart_rx_pin: GPIO16
+  gpio_uart_tx_pin: GPIO17
   gpio_spi_clk_pin: GPIO25
   gpio_spi_mosi_pin: GPIO26
   gpio_cs_pin: GPIO32
   gpio_busy_pin: GPIO33
   gpio_reset_pin: GPIO27
-  gpio_dc_pin: GPIO17
+  gpio_dc_pin: GPIO13
   gpio_buzzer: GPIO04
   gpio_led_red: GPIO19
   gpio_led_green: GPIO23
@@ -34,28 +34,39 @@ captive_portal:
 
 # Enable logging
 logger:
-
+  level: VERBOSE
 # Enable Home Assistant API
 api:
 
 ota:
 
-esp32_ble_tracker:
+# esp32_ble_tracker:
+#   scan_parameters:
+#     interval: 320ms
+#     window: 320ms
+#     active: false
 
-# status_led:
-#   pin: $gpio_led_status
-
-i2c:
-  sda: $gpio_i2c_sda
-  scl: $gpio_i2c_scl
-  scan: False
-  id: bme_280
-
+# UART for MH-Z19C CO2 sensor
 uart:
   rx_pin: $gpio_uart_rx_pin
   tx_pin: $gpio_uart_tx_pin
   baud_rate: 9600
-  id: sds_011
+
+# status_led:
+#   pin:
+#     number: $gpio_led_status
+#     inverted: False
+# i2c:
+#   sda: $gpio_i2c_sda
+#   scl: $gpio_i2c_scl
+#   scan: False
+#   id: bme_280
+
+# uart:
+#   rx_pin: $gpio_uart_rx_pin
+#   tx_pin: $gpio_uart_tx_pin
+#   baud_rate: 9600
+#   id: sds_011
 
 spi:
   clk_pin: $gpio_spi_clk_pin
@@ -64,19 +75,68 @@ spi:
 
 binary_sensor:
   - platform: status
-    name: "$devicename Status"
-  - platform: ble_presence
-    mac_address: 64:a2:f9:28:dc:9f
-    name: "Sander's Phone BLE tracker"
+    name: "Board connected"
+    id: connection
+  # - platform: ble_presence
+  #   mac_address: 64:a2:f9:28:dc:9f
+  #   name: "Sander's Phone BLE tracker"
 
 sensor:
+  - platform: mhz19
+    id: mhz19_sensor
+    co2:
+      name: "MH-Z19 CO2 Value Internal"
+      accuracy_decimals: 0
+      id: mhz19_CO2_value_internal
+      unit_of_measurement: ppm
+      internal: true
+      filters:
+        - exponential_moving_average:
+            alpha: 0.2
+            send_every: 1
+    temperature:
+      name: "MH-Z19 Temperature Internal"
+      id: mhz19_temperature_internal
+      internal: true
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 1
+    update_interval: 1s
+    automatic_baseline_calibration: false
+
+  - platform: template
+    id: mhz19_CO2_value
+    name: "MH-Z19 CO2 Value"
+    internal: false
+    force_update: true
+    accuracy_decimals: 0
+    update_interval: 1s
+    lambda: |-
+      return id(mhz19_CO2_value_internal).state;
+    filters:
+      - sliding_window_moving_average:
+          window_size: 60
+          send_every: 60
+  - platform: template
+    id: mhz19_temperature
+    name: "MH-Z19 Temperature"
+    internal: false
+    update_interval: 1s
+    lambda: |-
+      return id(mhz19_temperature_internal).state;
+    filters:
+      - sliding_window_moving_average:
+          window_size: 60
+          send_every: 60
+
   - platform: uptime
-    name: "$devicename Uptime Sec"
+    name: "Epaperdisplay Uptime Sec"
     id: uptime_sec
     internal: true
 
   - platform: wifi_signal
-    name: "$devicename WiFi Signal"
+    name: "Epaperdisplay WiFi Signal"
     id: wifisignal
     update_interval: 60s
 
@@ -116,13 +176,20 @@ sensor:
     id: outsidehumi
     entity_id: sensor.humidity_outside
     #internal: true
+  - platform: homeassistant
+    id: co2concentration
+    entity_id: sensor.co2_concentration_filtered
+  - platform: homeassistant
+    id: bedweight
+    entity_id: sensor.bed_weight_calibrated
 
-  - platform: ble_rssi
-    mac_address: !secret phone_mac
-    name: "Sander's Phone BLE strength"
-  - platform: ble_rssi
-    mac_address: !secret miband_mac
-    name: "Mi Band"
+
+  # - platform: ble_rssi
+  #   mac_address: !secret phone_mac
+  #   name: "Sander's Phone BLE strength"
+  # - platform: ble_rssi
+  #   mac_address: !secret miband_mac
+  #   name: "Mi Band"
 
 time:
   - platform: sntp
@@ -135,18 +202,18 @@ sun:
 
 text_sensor:
   - platform: version
-    name: "$devicename Version"
+    name: "Epaperdisplay Version"
 
   - platform: wifi_info
     ip_address:
-      name: "$devicename IPv4"
+      name: "Epaperdisplay IPv4"
       icon: "mdi:server-network"
     ssid:
-      name: "$devicename Connected SSID"
+      name: "Epaperdisplay Connected SSID"
       icon: "mdi:wifi"
 
   - platform: template
-    name: "$devicename Uptime"
+    name: "Epaperdisplay Uptime"
     icon: "mdi:timer"
     update_interval: 60s
     lambda: |-
@@ -168,12 +235,26 @@ text_sensor:
     type: sunset
     id: nextsunset
     format: "%H:%M"
+    
+  - platform: homeassistant
+    id: weather
+    entity_id: weather.home
 
 interval:
-  - interval: 5s
+  - interval: 10s
     then:
       - display.page.show_next: my_display
       - component.update: my_display
+
+switch:
+  - platform: template
+    name: "Calibrate MH-Z19"
+    optimistic: true
+    on_turn_on:
+      - mhz19.abc_enable: mhz19_sensor
+      - mhz19.calibrate_zero: mhz19_sensor
+    on_turn_off:
+      mhz19.abc_disable: mhz19_sensor
 
 display:
   - platform: waveshare_epaper
@@ -183,8 +264,8 @@ display:
     reset_pin: $gpio_reset_pin
     dc_pin: $gpio_dc_pin
     model: 2.90in
-    rotation: 90
-    full_update_every: 3600
+    rotation: 270°
+    full_update_every: 300
     update_interval: 1s
     pages:
       - id: page1
@@ -194,6 +275,46 @@ display:
           //  //ESP_LOGI("Moon icon", "%s", id(moon_icon).state.c_str());
           //  it.printf(25, 42, id(icon_45_font), TextAlign::BASELINE_CENTER, "%s", id(moon_icon).state.c_str());
           //}
+
+          int x, y;
+          x = 0, y = 0;
+          if (id(weather).has_state()) {
+            if (id(weather).state == "clear-night") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0594");
+            } else if (id(weather).state == "cloudy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0590");
+            } else if (id(weather).state == "fog") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0591");
+            } else if (id(weather).state == "hail") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0592");
+            } else if (id(weather).state == "lightning") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0593");
+            } else if (id(weather).state == "lightning-rainy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F067E");
+            } else if (id(weather).state == "partlycloudy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0595");
+            } else if (id(weather).state == "pouring") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0596");
+            } else if (id(weather).state == "rainy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0597");
+            } else if (id(weather).state == "snowy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0598");
+            } else if (id(weather).state == "snowy-rainy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F067F");
+            } else if (id(weather).state == "sunny") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0599");
+            } else if (id(weather).state == "windy") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F059D");
+            } else if (id(weather).state == "windy-variant") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F059E");
+            } else if (id(weather).state == "exceptional") {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0F30");
+            } else {
+              it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F14E4");
+            }
+          } else {
+            it.printf(x, y, id(icon_60_font), TextAlign::BASELINE_CENTER , "\U000F14E4");
+          }
 
           //sun set-rise
           it.printf(85, 22, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖜");
@@ -223,14 +344,14 @@ display:
           //Time
           it.strftime(3, 0, id(size_20_font), "%H:%M", id(sntp_time).now());
 
-          /* WiFi Signal Strength          x = 296, y = 128; */
+          /* WiFi Signal Strength */
+          x = 80, y = 20;
           if(id(wifisignal).has_state()) {
-            x = 80, y = 20;
             if (id(wifisignal).state >= -50) {
                 //Excellent
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤨");
                 //ESP_LOGI("WiFi", "Exellent");
-            } else if (id(wifisignal).state  >= -60) {
+            } else if (id(wifisignal).state  >= -62) {
                 //Good
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤥");
                 //ESP_LOGI("WiFi", "Good");
@@ -238,7 +359,7 @@ display:
                 //Fair
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤢");
                 //ESP_LOGI("WiFi", "Fair");
-            } else if (id(wifisignal).state  >= -70) {
+            } else if (id(wifisignal).state  >= -75) {
                 //Weak
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤟");
                 //ESP_LOGI("WiFi", "Weak");
@@ -247,25 +368,63 @@ display:
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤯");
                 //ESP_LOGI("WiFi", "Unlikely");
             }
+          } else {
+            // No state, mdi-wifi-strength-off-outline
+            it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F092E");
+          }
+
+          x = 105, y = 20;
+          if (id(connection).has_state()) {
+            if (id(connection).state == true) {
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰟐"); //Home assistant icon
+            } else {
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰒎"); //Server disconnected icon
+            }
+          } else {
+            it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰒎"); //Server disconnected icon
           }
 
           //Temperature
-          it.printf(-15, 125, id(icon_60_font), TextAlign::BOTTOM_LEFT, "󰔏");
-          it.printf(30, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰢠");
-          it.printf(30, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "󱕭");
-          it.printf(30, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰹩");
+          it.printf(5, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰢠");  //bedroom icon
+          it.printf(5, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "󱕭");  //livingroom icon
+          it.printf(5, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰹩");  //outside icon
+          it.printf(30, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰔏");  //thermometer icon
+          it.printf(30, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰔏");  //thermometer icon
+          it.printf(30, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰔏");  //thermometer icon
           it.printf(118, 83, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f°C", id(bedroomtemp).state);
           it.printf(118, 103, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f°C", id(livingroomtemp).state);
           it.printf(118, 123, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f°C", id(outsidetemp).state);
 
-          it.printf(140, 83, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎", id(bedroomhumi).state);
-          it.printf(140, 103, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎", id(livingroomhumi).state);
-          it.printf(140, 123, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎", id(outsidehumi).state);
+          it.printf(140, 83, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎");
+          it.printf(140, 103, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎");
+          it.printf(140, 123, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎");
           it.printf(190, 83, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f%%", id(bedroomhumi).state);
           it.printf(190, 103, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f%%", id(livingroomhumi).state);
           it.printf(190, 123, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f%%", id(outsidehumi).state);
 
+          //Bedscale
+          x = 195, y = 83;
+          if (id(bedweight).has_state()) {
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F0472"); // mdi-scale
+            it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.2f kg", id(bedweight).state);
+            it.printf(150 , 50, id(size_50_font), TextAlign::BASELINE_LEFT, "%02.0f", floor(id(bedweight).state));
+            it.printf(210 , 50, id(size_20_font), TextAlign::BASELINE_LEFT, "%02.0f", ((id(bedweight).state - floor(id(bedweight).state)) * 100));
+          } else {
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F105A"); //mdi-scale-off
+          }
 
+          //it.printf(150 , 50, id(size_50_font), TextAlign::BASELINE_LEFT, "%02.0f", floor(id(bedweight).state));
+          //it.printf(210 , 50, id(size_20_font), TextAlign::BASELINE_LEFT, "%02.0f", ((id(bedweight).state - floor(id(bedweight).state)) * 100));
+          
+          //CO2value
+          x = 195, y = 103;
+          if (id(mhz19_CO2_value).has_state()) {
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F07E4"); // mdi-co20-molecule
+            it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.0f ppm", id(mhz19_CO2_value_internal).state);
+          } else {
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "NC"); //mdi-scale-off
+          }
+          
 font:
   - file: 'fonts/Roboto-Medium.ttf'
     id: size_85_font
@@ -297,54 +456,72 @@ font:
   - file: 'fonts/Roboto-Medium.ttf'
     id: size_30_font
     size: 30
-  - file: 'fonts/materialdesignicons-webfont.ttf'
-    id: icon_120_font
-    size: 120
-    glyphs: [
-      # Weather
-      "", # mdi-weather-sunny
-      "", # mdi-weather-cloudy
-      "", # mdi-weather-pouring
-      "", # mdi-weather-snowy-rainy
-      "ｓ", # mdi-weather-snowy-heavy
-      "", # mdi-weather-windy-variant
-      "", # mdi-weather-fog
-      "ｎ", # mdi-weather-night-partly-cloudy
-      "", # mdi-weather-partly-cloudy
-      "", # mdi-weather-rainy
-      "", # mdi-weather-snowy
-      "", # mdi-weather-clear-night
-      "", # unknown
-      '󰔏', # mdi-thermometer
-      ]
-  - file: 'fonts/materialdesignicons-webfont.ttf'
-    id: icon_45_font
-    size: 45
-    glyphs: [
-      # Moon
-      "󰃜", # new_moon
-      "ﾄ", # waxing_crecent
-      "ｾ", # first_quarter
-      "ﾅ", # waxing_gibbous
-      "󰃚", # full_moon
-      "ﾃ", # waning_gibbous
-      "ﾀ", # last_quarter
-      "ﾂ", # waning_crescent
-      '󰔏', # mdi-thermometer
-      ]
+  # - file: 'fonts/materialdesignicons-webfont.ttf'
+  #   id: icon_120_font
+  #   size: 120
+  #   glyphs: [
+  #     # Weather
+  #     "", # mdi-weather-sunny
+  #     "", # mdi-weather-cloudy
+  #     "", # mdi-weather-pouring
+  #     "", # mdi-weather-snowy-rainy
+  #     "ｓ", # mdi-weather-snowy-heavy
+  #     "", # mdi-weather-windy-variant
+  #     "", # mdi-weather-fog
+  #     "ｎ", # mdi-weather-night-partly-cloudy
+  #     "", # mdi-weather-partly-cloudy
+  #     "", # mdi-weather-rainy
+  #     "", # mdi-weather-snowy
+  #     "", # mdi-weather-clear-night
+  #     "", # unknown
+  #     '󰔏', # mdi-thermometer
+  #     ]
+  # - file: 'fonts/materialdesignicons-webfont.ttf'
+  #   id: icon_45_font
+  #   size: 45
+  #   glyphs: [
+  #     # Moon
+  #     # "󰃜", # new_moon
+  #     # "ﾄ", # waxing_crecent
+  #     # "ｾ", # first_quarter
+  #     # "ﾅ", # waxing_gibbous
+  #     # "󰃚", # full_moon
+  #     # "ﾃ", # waning_gibbous
+  #     # "ﾀ", # last_quarter
+  #     # "ﾂ", # waning_crescent
+  #     '󰔏', # mdi-thermometer
+  #     ]
   - file: 'fonts/materialdesignicons-webfont.ttf'
     id: icon_60_font
     size: 60
     glyphs: [
-      # Moon
-      "󰃜", # new_moon
-      "ﾄ", # waxing_crecent
-      "ｾ", # first_quarter
-      "ﾅ", # waxing_gibbous
-      "󰃚", # full_moon
-      "ﾃ", # waning_gibbous
-      "ﾀ", # last_quarter
-      "ﾂ", # waning_crescent
+      # Weather
+      "\U000F0594", #clear-night
+      "\U000F0590", #cloudy
+      "\U000F0591", #fog
+      "\U000F0592", #hail
+      "\U000F0593", #lightning
+      "\U000F067E", #lightning-rainy
+      "\U000F0595", #partlycloudy
+      "\U000F0596", #pouring
+      "\U000F0597", #rainy
+      "\U000F0598", #snowy
+      "\U000F067F", #snowy-rainy
+      "\U000F0599", #sunny
+      "\U000F059D", #windy
+      "\U000F059E", #windy-variant
+      "\U000F0F30", #exceptional
+      "\U000F14E4", # mdi-weather-sunny-off
+
+      # # Moon
+      # "󰃜", # new_moon
+      # "ﾄ", # waxing_crecent
+      # "ｾ", # first_quarter
+      # "ﾅ", # waxing_gibbous
+      # "󰃚", # full_moon
+      # "ﾃ", # waning_gibbous
+      # "ﾀ", # last_quarter
+      # "ﾂ", # waning_crescent
       '󰔏', # mdi-thermometer
       '󰖎', #humidity
       ]
@@ -360,13 +537,21 @@ font:
       '󰤢', # mdi-wifi-strength-2
       '󰤥', # mdi-wifi-strength-3
       '󰤨', # mdi-wifi-strength-4
-      
+      "\U000F092E", #mdi-wifi-strength-off-outline
+      '󰟐', # mdi-home-assistant
+      '󰒎', # mdi-server-network-off
+
       '󰢠', #bedroom
       '󰦠', #bathroom
       '󰹩', #tree
       '󰹧', #sprout
       '󱕭', #couch
       '󰖎', #humidity
+      '󰔏', # mdi-thermometer
+      
+      "\U000F07E4", #mdi-molecule-co2
+      "\U000F0472", #mdi-scale
+      "\U000F105A", #mdi-scale-off
       ]
   # - file: 'fonts/materialdesignicons-webfont.ttf'
   #   id: weather_temp_icon_font
