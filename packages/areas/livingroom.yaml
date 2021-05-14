@@ -99,8 +99,10 @@ automation:
           entity_id:
             - light.tvarea_and_ledstrips
           transition: "{% if is_state('light.tvarea_and_ledstrips', 'on') %}5{% else %}1{% endif %}"
-          brightness_pct: "{{ state_attr('switch.circadian_lighting_circadian_lighting', 'brightness') | int }}"
-          kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+          #brightness_pct: "{{ state_attr('switch.circadian_lighting_circadian_lighting', 'brightness') | int }}"
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       # - service: switch.flux_livingroom_update
       - wait_for_trigger:
           - platform: template
@@ -142,7 +144,8 @@ automation:
         data:
           entity_id: light.tvarea_and_ledstrips
           brightness: 255
-          kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       # - service: switch.flux_livingroom_update
       - service: automation.turn_off
         entity_id:
