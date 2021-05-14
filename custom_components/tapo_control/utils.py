@@ -4,6 +4,7 @@ import asyncio
 import urllib.parse
 import socket
 import datetime
+import time
 from onvif import ONVIFCamera
 from pytapo import Tapo
 from .const import (
@@ -197,7 +198,11 @@ async def syncTime(hass, entry):
         time_params.DaylightSavings = True
         time_params.UTCDateTime = {
             "Date": {"Year": now.year, "Month": now.month, "Day": now.day},
-            "Time": {"Hour": now.hour, "Minute": now.minute, "Second": now.second},
+            "Time": {
+                "Hour": now.hour if time.localtime().tm_isdst == 0 else now.hour + 1,
+                "Minute": now.minute,
+                "Second": now.second,
+            },
         }
         await device_mgmt.SetSystemDateAndTime(time_params)
         hass.data[DOMAIN][entry.entry_id][
@@ -206,7 +211,9 @@ async def syncTime(hass, entry):
 
 
 async def setupOnvif(hass, entry):
+    LOGGER.debug("setupOnvif - entry")
     if hass.data[DOMAIN][entry.entry_id]["eventsDevice"]:
+        LOGGER.debug("Setting up onvif...")
         hass.data[DOMAIN][entry.entry_id]["events"] = EventManager(
             hass,
             hass.data[DOMAIN][entry.entry_id]["eventsDevice"],
@@ -219,15 +226,22 @@ async def setupOnvif(hass, entry):
 
 
 async def setupEvents(hass, entry):
+    LOGGER.debug("setupEvents - entry")
     if not hass.data[DOMAIN][entry.entry_id]["events"].started:
+        LOGGER.debug("Setting up events...")
         events = hass.data[DOMAIN][entry.entry_id]["events"]
         if await events.async_start():
+            LOGGER.debug("Events started.")
             if not hass.data[DOMAIN][entry.entry_id]["motionSensorCreated"]:
+                LOGGER.debug("Creating motion binary sensor...")
                 hass.data[DOMAIN][entry.entry_id]["motionSensorCreated"] = True
                 hass.async_create_task(
                     hass.config_entries.async_forward_entry_setup(
                         entry, "binary_sensor"
                     )
+                )
+                LOGGER.debug(
+                    "Binary sensor creation for motion has been forwarded to component."
                 )
             return True
         else:
