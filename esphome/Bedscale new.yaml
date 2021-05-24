@@ -1,0 +1,236 @@
+esphome:
+  name: bedscale_new
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+
+  # manual_ip:
+  #   static_ip: 192.168.1.138
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Bedscale New Fallback Hotspot"
+    password: !secret esphome_fallback_pass
+
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+# HX711 sensitivities in muV/kg:
+# Scale 1: -41170
+# Scale 2: -44849
+# Scale 3: -46172
+# Scale 4: -42438
+
+#matlab optimized weighted constants:
+#sensitivities in muV/kg:
+# Scale 1: -51462
+# Scale 2: -56061
+# Scale 3: -57571
+# Scale 4: -53047
+#offsets in muV:
+# Scale 1: 704999
+# Scale 2: 936393
+# Scale 3: 891783
+# Scale 4: 362130
+#relative weights:
+# Scale 1: 0.208
+# Scale 2: 0.213
+# Scale 3: 0.300  (hit limit of 0.3)
+# Scale 4: 0.279
+
+#matlab optimized weighted constants out of 50000 iterations:
+#sensitivities in muV/kg:
+# Scale 1: -58553
+# Scale 2: -71098
+# Scale 3: -43688
+# Scale 4: -56490
+#offsets in muV:
+# Scale 1: 642780
+# Scale 2: 920633
+# Scale 3: 909561
+# Scale 4: 331016
+#relative weights:
+# Scale 1: 0.222
+# Scale 2: 0.280
+# Scale 3: 0.237  (hit limit of 0.3)
+# Scale 4: 0.262
+
+sensor:
+  - platform: adc
+    pin: A0
+    name: "Bedscale output voltage"
+    update_interval: 1s
+    filters:
+      - multiply: 27.84
+
+  - platform: hx711
+    name: "HX711 raw value 1"
+    id: HX711_raw_value_1
+    dout_pin: D2
+    clk_pin: D1
+    update_interval: 0.2s
+    unit_of_measurement: muV
+    accuracy_decimals: 0
+    internal: false
+    filters:
+      - sliding_window_moving_average:
+          window_size: 25
+          send_every: 5 # 10 second updates @ 1 second scan interval.
+          send_first_at: 5
+      # - calibrate_linear:
+      #     - 573628 -> 0
+      #     - 538769 -> 0.7
+  - platform: template
+    name: "HX711 Value 1"
+    id: HX711_value_1
+    lambda: |-
+      return id(HX711_raw_value_1).state;
+    filters:
+      - calibrate_linear:
+          # calibration empty sensor without bed
+          # - 573628 -> 0
+          # - 538769 -> 0.7
+          # - -792890 -> 0
+          # - -1005729 -> 5.9
+          - -792896 -> 0
+          - -834060 -> 1
+    update_interval: 1s
+    unit_of_measurement: kg
+    accuracy_decimals: 3
+  - platform: hx711
+    name: "HX711 raw value 2"
+    id: HX711_raw_value_2
+    dout_pin: D4
+    clk_pin: D3
+    update_interval: 0.2s
+    unit_of_measurement: muV
+    accuracy_decimals: 0
+    internal: false
+    filters:
+      - sliding_window_moving_average:
+          window_size: 25
+          send_every: 5 # 10 second updates @ 1 second scan interval.
+          send_first_at: 5
+      # - calibrate_linear:
+      # calibration empty sensor without bed
+      #     - 397311 -> 0
+      #     - 295039 -> 0.7
+  - platform: template
+    name: "HX711 Value 2"
+    id: HX711_value_2
+    lambda: |-
+      return id(HX711_raw_value_2).state;
+    filters:
+      - calibrate_linear:
+          # calibration empty sensor without bed
+          # - 397311 -> 0
+          # - 295039 -> 0.7
+          # - -1143300 -> 0
+          # - -1361635 -> 5.9
+          - -1143300 -> 0
+          - -1188149 -> 1
+    update_interval: 1s
+    unit_of_measurement: kg
+    accuracy_decimals: 3
+  - platform: hx711
+    name: "HX711 raw value 3"
+    id: HX711_raw_value_3
+    dout_pin: D6
+    clk_pin: D5
+    update_interval: 0.2s
+    unit_of_measurement: muV
+    accuracy_decimals: 0
+    internal: false
+    filters:
+      - sliding_window_moving_average:
+          window_size: 25
+          send_every: 5 # 10 second updates @ 1 second scan interval.
+          send_first_at: 5
+      # - calibrate_linear:
+      #     - 65791 -> 0
+      #     - 4031 -> 0.7
+  - platform: template
+    name: "HX711 Value 3"
+    id: HX711_value_3
+    lambda: |-
+      return id(HX711_raw_value_3).state;
+    filters:
+      - calibrate_linear:
+          # calibration empty sensor without bed
+          # - 65791 -> 0
+          # - 4031 -> 0.7
+          # - -1110718 -> 0
+          # - -1346760 -> 5.9
+          - -1110718 -> 0
+          - -1156890 -> 1
+    update_interval: 1s
+    unit_of_measurement: kg
+    accuracy_decimals: 3
+  - platform: hx711
+    name: "HX711 raw value 4"
+    id: HX711_raw_value_4
+    dout_pin: D8
+    clk_pin: D7
+    update_interval: 0.1s
+    unit_of_measurement: muV
+    accuracy_decimals: 0
+    internal: false
+    filters:
+      - sliding_window_moving_average:
+          window_size: 25
+          send_every: 5 # 10 second updates @ 1 second scan interval.
+          send_first_at: 5
+      # - calibrate_linear:
+      #     - -58365 -> 0
+      #     - -379905 -> 0.7
+  - platform: template
+    name: "HX711 Value 4"
+    id: HX711_value_4
+    lambda: |-
+      return id(HX711_raw_value_4).state;
+    filters:
+      - calibrate_linear:
+          # calibration empty sensor without bed
+          # - 340000 -> 0
+          # - 40000 -> 1.8
+          # - -444015 -> 0
+          # - -667811 -> 5.9
+          - -407810 -> 0
+          - -450250 -> 1
+    update_interval: 1s
+    unit_of_measurement: kg
+    accuracy_decimals: 3
+
+  - platform: template
+    name: "Total weight"
+    id: total_weight
+    lambda: |-
+      return id(HX711_value_1).state + id(HX711_value_2).state + id(HX711_value_3).state + id(HX711_value_4).state;
+    unit_of_measurement: kg
+    accuracy_decimals: 2
+    update_interval: 1s
+  - platform: template
+    name: "Distribution right left"
+    lambda: |-
+      return (id(HX711_value_1).state + id(HX711_value_2).state - id(HX711_value_3).state - id(HX711_value_4).state)/id(total_weight).state;
+    accuracy_decimals: 2
+    update_interval: 1s
+  - platform: template
+    name: "Distribution upper lower"
+    lambda: |-
+      return (id(HX711_value_1).state - id(HX711_value_2).state + id(HX711_value_3).state - id(HX711_value_4).state)/id(total_weight).state;
+    accuracy_decimals: 2
+    update_interval: 1s
