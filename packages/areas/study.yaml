@@ -122,7 +122,8 @@ automation:
         data:
           entity_id:
             - light.study_lights
-          brightness: 255
+            - light.study_desk_a_rgb_ledstrip
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
           #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       # - service: switch.flux_study_update
@@ -147,13 +148,17 @@ automation:
               minutes: 5
       - service: light.turn_on
         data:
-          entity_id: light.study_lights
+          entity_id:
+            - light.study_lights
+            - light.study_desk_a_rgb_ledstrip
           brightness_step: -110
           transition: 0.5
       - delay:
           seconds: 15
       - service: light.turn_off
-        entity_id: light.study_lights
+        entity_id:
+          - light.study_lights
+          - light.study_desk_a_rgb_ledstrip
 
   #Turn off study lights if no motion has been detected for 1 hour
   # - alias: study_nomotion_pc_turn_off
