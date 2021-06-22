@@ -2,6 +2,11 @@ esphome:
   name: epapercontroller
   platform: ESP32
   board: esp32doit-devkit-v1
+  platformio_options:
+    platform: espressif32@3.2.0
+    board: az-delivery-devkit-v4
+    board_build.mcu: esp32
+    board_build.f_cpu: 240000000L
 
 wifi:
   ssid: !secret wifi_ssid
@@ -42,7 +47,7 @@ ota:
 
 # esp32_ble_tracker:
 #   scan_parameters:
-#     interval: 320ms
+#     interval: 1020ms
 #     window: 320ms
 #     active: false
 
@@ -78,6 +83,9 @@ binary_sensor:
     name: "Board connected"
     id: connection
   # - platform: ble_presence
+  #   mac_address: !secret miband_mac
+  #   name: "Mi Band BLE tracker"
+  # - platform: ble_presence
   #   mac_address: 64:a2:f9:28:dc:9f
   #   name: "Sander's Phone BLE tracker"
 
@@ -112,6 +120,7 @@ sensor:
     force_update: true
     accuracy_decimals: 0
     update_interval: 1s
+    unit_of_measurement: ppm
     lambda: |-
       return id(mhz19_CO2_value_internal).state;
     filters:
@@ -123,6 +132,7 @@ sensor:
     name: "MH-Z19 Temperature"
     internal: false
     update_interval: 1s
+    unit_of_measurement: °C
     lambda: |-
       return id(mhz19_temperature_internal).state;
     filters:
@@ -182,6 +192,12 @@ sensor:
   - platform: homeassistant
     id: bedweight
     entity_id: sensor.bed_weight_calibrated
+  - platform: homeassistant
+    id: bedweightbalanceupdown
+    entity_id: sensor.bed_weight_balance_updown
+  - platform: homeassistant
+    id: bedweightbalanceleftright
+    entity_id: sensor.bed_weight_balance_leftright
 
 
   # - platform: ble_rssi
