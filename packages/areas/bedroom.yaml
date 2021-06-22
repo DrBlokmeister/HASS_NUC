@@ -115,26 +115,26 @@ input_number:
   bedscale1_sensitivity:
     name: Bedscale 1 Sensitivity
     step: 1
-    min: 20000
-    max: 60000
+    min: 0
+    max: 80000
     mode: box
   bedscale2_sensitivity:
     name: Bedscale 2 Sensitivity
     step: 1
-    min: 20000
-    max: 60000
+    min: 0
+    max: 80000
     mode: box
   bedscale3_sensitivity:
     name: Bedscale 3 Sensitivity
     step: 1
-    min: 20000
-    max: 60000
+    min: 0
+    max: 80000
     mode: box
   bedscale4_sensitivity:
     name: Bedscale 4 Sensitivity
     step: 1
-    min: 20000
-    max: 60000
+    min: 0
+    max: 80000
     mode: box
   bedscale1_offset:
     name: Bedscale 1 Offset
@@ -164,25 +164,25 @@ input_number:
     name: Bedscale 1 Weight
     step: 0.01
     min: 0
-    max: 1
+    max: 2
     mode: box
   bedscale2_weight:
     name: Bedscale 2 Weight
     step: 0.01
     min: 0
-    max: 1
+    max: 2
     mode: box
   bedscale3_weight:
     name: Bedscale 3 Weight
     step: 0.01
     min: 0
-    max: 1
+    max: 2
     mode: box
   bedscale4_weight:
     name: Bedscale 4 Weight
     step: 0.01
     min: 0
-    max: 1
+    max: 2
     mode: box
 
 
@@ -266,7 +266,7 @@ sensor:
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template: >-
-          {{ -((states('sensor.hx711_raw_value_2_2')|round(0) + states('input_number.bedscale2_offset')|round(0))/states('input_number.bedscale2_sensitivity')|round(0))|round(2) }}
+          {{ -((states('sensor.hx711_raw_value_2')|round(0) + states('input_number.bedscale2_offset')|round(0))/states('input_number.bedscale2_sensitivity')|round(0))|round(2) }}
       bedscale_3_calibrated:
         friendly_name: "Bedscale 3 Calibrated"
         unit_of_measurement: kg
@@ -284,10 +284,10 @@ sensor:
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template: >-
-          {{ (states('input_number.bedscale1_weight')|round(2) * 4 * states('sensor.bedscale_1_calibrated')|round(2)
-            + states('input_number.bedscale2_weight')|round(2) * 4 * states('sensor.bedscale_2_calibrated')|round(2)
-            + states('input_number.bedscale3_weight')|round(2) * 4 * states('sensor.bedscale_3_calibrated')|round(2)
-            + states('input_number.bedscale4_weight')|round(2) * 4 * states('sensor.bedscale_4_calibrated')|round(2))|round(2) }}
+          {{ (states('input_number.bedscale1_weight')|round(2) * states('sensor.bedscale_1_calibrated')|round(2)
+            + states('input_number.bedscale2_weight')|round(2) * states('sensor.bedscale_2_calibrated')|round(2)
+            + states('input_number.bedscale3_weight')|round(2) * states('sensor.bedscale_3_calibrated')|round(2)
+            + states('input_number.bedscale4_weight')|round(2) * states('sensor.bedscale_4_calibrated')|round(2))|round(2) }}
       bed_weight_calibrated_unweighted:
         friendly_name: "Bed weight calibrated unweighted"
         unit_of_measurement: kg
@@ -299,6 +299,30 @@ sensor:
             + states('sensor.bedscale_4_calibrated')|round(2))|round(2) }}
         #value_template:  >-
         #  {{ ((states('sensor.hx711_raw_value')|round(1) - states('input_number.bedscalecalibration_lowvalue_raw')|round(1)) * ((states('input_number.bedscalecalibration_lowvalue_kg')|round(1) - states('input_number.bedscalecalibration_highvalue_kg')|round(1)) / (states('input_number.bedscalecalibration_lowvalue_raw')|round(1) - states('input_number.bedscalecalibration_highvalue_raw')|round(1))))|round(2) }}
+      bed_weight_balance_leftright:
+        friendly_name: "Bed Weight Balance Left/Right"
+        icon_template: mdi:scale-balance
+        unit_of_measurement: arb
+        value_template: >-
+          {% if is_state('sensor.bed_weight_calibrated_unweighted', '0.0') %}
+            0.00
+          {% else %}
+            {{ ((( states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_2_calibrated')|round(2) )
+            - ( states('sensor.bedscale_3_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2) ))
+            / ( states('sensor.bed_weight_calibrated_unweighted')|round(2) + 5/states('sensor.bed_weight_calibrated_unweighted')|round(2)) )|round(2) }}
+          {% endif %}
+      bed_weight_balance_updown:
+        friendly_name: "Bed Weight Balance Up/Down"
+        icon_template: mdi:scale-balance
+        unit_of_measurement: arb
+        value_template: >-
+            {% if is_state('sensor.bed_weight_calibrated_unweighted', '0.0') %}
+              0.00
+            {% else %}
+              {{ ((( states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2) )
+                  - ( states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2) ))
+                  / ( states('sensor.bed_weight_calibrated_unweighted')|round(2) + 5/states('sensor.bed_weight_calibrated_unweighted')|round(2)) )|round(2) }}
+            {% endif %}
       people_in_bed:
         value_template: >-
           {% if states('sensor.bed_weight_calibrated')|float < 10 %}
@@ -346,7 +370,18 @@ binary_sensor:
       bed_occupied:
         device_class: occupancy
         value_template: "{{ not is_state('sensor.people_in_bed', '0') }}"
-
+      bedsensor1_availability:
+        device_class: plug
+        value_template: "{{ not (states('sensor.hx711_raw_value_1') in ['0', 'unavailable','unknown','none'] or (as_timestamp(now()) - as_timestamp(states.sensor.hx711_raw_value_1.last_changed))/3600 > 1) }}"
+      bedsensor2_availability:
+        device_class: plug
+        value_template: "{{ not (states('sensor.hx711_raw_value_2') in ['0', 'unavailable','unknown','none'] or (as_timestamp(now()) - as_timestamp(states.sensor.hx711_raw_value_2.last_changed))/3600 > 1) }}"
+      bedsensor3_availability:
+        device_class: plug
+        value_template: "{{ not (states('sensor.hx711_raw_value_3') in ['0', 'unavailable','unknown','none'] or (as_timestamp(now()) - as_timestamp(states.sensor.hx711_raw_value_3.last_changed))/3600 > 1) }}"
+      bedsensor4_availability:
+        device_class: plug
+        value_template: "{{ not (states('sensor.hx711_raw_value_4') in ['0', 'unavailable','unknown','none'] or (as_timestamp(now()) - as_timestamp(states.sensor.hx711_raw_value_4.last_changed))/3600 > 1) }}"
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -876,71 +911,6 @@ automation:
     action:
       - service: script.turn_on
         entity_id: script.set_correct_bedroom_scene
-      # - service: light.turn_on
-      #   data:
-      #     entity_id:
-      #       - light.bedroom_1
-      #       - light.bedroom_2
-      #     transition: "{% if is_state('light.bedroom_1', 'on') %}3{% else %}0.5{% endif %}"
-      #     brightness: >-
-      #       {% if now().hour < 4 %}
-      #         50
-      #       {% elif now().hour < 19 %}
-      #         255
-      #       {% elif now().hour < 22 %}
-      #         {{ (255 - 205 * (now().hour - 19)/3)|int }}
-      #       {% else %}
-      #         50
-      #       {% endif %}
-      # - service: light.turn_on
-      #   data:
-      #     entity_id:
-      #       - light.bedroom_3
-      #     transition: "{% if is_state('light.bedroom_3', 'on') %}3{% else %}0.5{% endif %}"
-      #     brightness: >-
-      #       {% if now().hour < 4 %}
-      #         0
-      #       {% elif now().hour < 19 %}
-      #         255
-      #       {% elif now().hour < 21 %}
-      #         {{ (255 - 255 * (now().hour - 19)/2)|int }}
-      #       {% else %}
-      #         0
-      #       {% endif %}
-      # - service: light.turn_on
-      #   data:
-      #     entity_id:
-      #       - light.bedside_left
-      #       - light.bedside_right
-      #     transition: "{% if is_state('light.bedside_left', 'on') %}3{% else %}0.5{% endif %}"
-      #     brightness: >-
-      #       {% if now().hour < 4 %}
-      #         0
-      #       {% elif now().hour < 21 %}
-      #         255
-      #       {% elif now().hour < 22.5 %}
-      #         {{ (255 - 245 * (now().hour - 19)/3.5)|int }}
-      #       {% else %}
-      #         10
-      #       {% endif %}
-      # - service: light.turn_on
-      #   data:
-      #     entity_id:
-      #       - light.ledstrip_bed
-      #     transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
-      #     brightness: >-
-      #       {% if now().hour < 7 %}
-      #         100
-      #       {% elif now().hour < 20 %}
-      #         0
-      #       {% elif now().hour < 22.5 %}
-      #         {{ (255 - 100 * (now().hour - 19)/2.5)|int }}
-      #       {% else %}
-      #         155
-      #       {% endif %}
-      # - delay:
-      #     seconds: 1
-      # - service: switch.flux_bedroom_update
       - service: timer.start
         data:
           entity_id: timer.bedroom_lights
@@ -1175,6 +1145,30 @@ automation:
           language: en-GB
           options:
             gender: female
+
+  - alias: '[bedroom|lights] Turn off lights when I get out of bed'
+    id: bedroom_lights_turn_off_lights_when_I_get_out_of_bed
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bed_occupied
+        to: "off"
+        for:
+          minutes: 10
+    condition:
+      - condition: state
+        entity_id: light.bedroom_lights
+        state: "on"
+    action:
+      - delay:
+          minutes: 10
+      - wait_for_trigger:
+          - platform: template
+            value_template: "{{ is_state('binary_sensor.bed_occupied', 'off') and is_state('binary_sensor.motion_sensor_bedroom', 'off') }}"
+            for:
+              minutes: 10
+      - service: light.turn_off
+        entity_id: light.bedroom_lights
 ################
 #    SCENES    #
 ################
