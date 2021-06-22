@@ -109,7 +109,7 @@ switch:
           {{
             is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and is_state('light.falconlights', 'on') and is_state('light.ssdlights_inner', 'on') and
             is_state_attr('light.ambilight_left_bulb', 'effect', 'E1.31') and is_state_attr('light.ambilight_right_bulb', 'effect', 'E1.31') and is_state_attr('light.falconlights', 'effect', 'E1.31') and is_state_attr('light.ssdlights_inner', 'effect', 'E1.31') and
-            is_state_attr('light.hyperion_ambilightleft', 'effect', 'GRABBER') and is_state_attr('light.hyperion_ambilightright', 'effect', 'GRABBER') and is_state_attr('light.hyperion_falconlights', 'effect', 'GRABBER') and is_state_attr('light.hyperion_super_star_destroyer_inner', 'effect', 'GRABBER') and is_state_attr('light.hyperion_super_star_destroyer_outer', 'effect', 'GRABBER')
+            is_state_attr('light.hyperion_ambilightleft', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_ambilightright', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_falconlights', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_super_star_destroyer_inner', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_super_star_destroyer_outer', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_livingroom_ledstrip', 'effect', 'Platform Capture')
           }}
         turn_on:
           service: script.turn_on_ambilight
@@ -120,6 +120,7 @@ switch:
 #####################
 automation:
   - alias: '[mediacenter|light] Turn off lights when mediaplayer starts'
+    id: mediacenter_light_automation
     mode: restart
     trigger:
       - platform: state
@@ -152,10 +153,10 @@ automation:
           transition: 5
       - service: switch.turn_on
         entity_id: switch.ambilight
-      - service: tapo_control.set_day_night_mode
-        data:
-          entity_id: camera.tapo_camera_d6d4_hd
-          day_night_mode: 'off'
+      # - service: tapo_control.set_day_night_mode
+      #   data:
+      #     entity_id: camera.tapo_camera_d6d4_hd
+      #     day_night_mode: 'off'
       # - service: light.turn_on
       #   data:
       #     entity_id:
@@ -374,6 +375,11 @@ group:
       - light.hyperion_super_star_destroyer_outer
       - switch.super_star_destroyer_outer_component_led_device
       - switch.super_star_destroyer_outer_component_platform_capture
+  hyperion_livingroom_ledstrip:
+    entities:
+      - light.hyperion_livingroom_ledstrip
+      - switch.livingroom_ledstrip_component_led_device
+      - switch.livingroom_ledstrip_component_platform_capture
   hyperion_ssd:
     entities:
       - group.hyperion_ssd_inner
@@ -383,6 +389,7 @@ group:
       - group.hyperion_ambilightleft
       - group.hyperion_falconlights
       - group.hyperion_ssd
+      - group.hyperion_livingroom_ledstrip
 #################
 #    SCRIPTS    #
 #################
@@ -485,10 +492,11 @@ script:
             - light.falconlights
             - light.ssdlights
             - light.ssdlights_inner
+            - light.livingroom_a_rgb_ledstrip
       - service: light.turn_on
         data:
           brightness: 255
-          effect: GRABBER
+          effect: Platform Capture #used to be GRABBER
           entity_id:
             - light.hyperion
             - light.hyperion_apa102
@@ -497,6 +505,7 @@ script:
             - light.hyperion_falconlights
             - light.hyperion_super_star_destroyer_inner
             - light.hyperion_super_star_destroyer_outer
+            - light.hyperion_livingroom_ledstrip
       - service: switch.turn_on
         entity_id:
           - switch.apa102_component_led_device
@@ -510,6 +519,8 @@ script:
           - switch.super_star_destroyer_inner_component_platform_capture
           - switch.super_star_destroyer_outer_component_led_device
           - switch.super_star_destroyer_outer_component_platform_capture
+          - switch.livingroom_ledstrip_component_led_device
+          - switch.livingroom_ledstrip_component_platform_capture
   turn_off_ambilight:
     sequence:
       - service: light.turn_off
@@ -519,12 +530,14 @@ script:
           - light.falconlights
           - light.ssdlights
           - light.ssdlights_inner
+          - light.livingroom_a_rgb_ledstrip
           - light.hyperion
           - light.hyperion_ambilightleft
           - light.hyperion_ambilightright
           - light.hyperion_falconlights
           - light.hyperion_super_star_destroyer_inner
           - light.hyperion_super_star_destroyer_outer
+          - light.hyperion_livingroom_ledstrip
 ################
 #    LIGHTS    #
 ################
