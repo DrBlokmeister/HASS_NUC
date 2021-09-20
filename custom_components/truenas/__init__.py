@@ -9,8 +9,9 @@ from typing import Any, Dict, Optional
 import async_timeout
 import voluptuous as vol
 from aiotruenas_client import CachingMachine as Machine
-from aiotruenas_client.disk import Disk
-from aiotruenas_client.virtualmachine import VirtualMachine
+from aiotruenas_client.websockets.disk import CachingDisk
+from aiotruenas_client.websockets.jail import CachingJail
+from aiotruenas_client.websockets.virtualmachine import CachingVirtualMachine
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_API_KEY,
@@ -73,6 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 try:
                     await asyncio.gather(
                         machine.get_disks(include_temperature=True),
+                        machine.get_jails(),
                         machine.get_vms(),
                     )
                 except Exception as exc:
@@ -136,7 +138,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         data[CONF_AUTH_MODE] = CONF_AUTH_PASSWORD
         data[CONF_API_KEY] = None
 
-        config_entry.data = data
+        hass.config_entries.async_update_entry(config_entry, data=data)
 
         config_entry.version = 2
 
@@ -149,7 +151,7 @@ class TrueNASEntity(RestoreEntity):
     """Define a generic TrueNAS entity."""
 
     def __init__(
-        self, entry: dict, name: str, coordinator: DataUpdateCoordinator
+        self, entry: ConfigEntry, name: str, coordinator: DataUpdateCoordinator
     ) -> None:
         self._coordinator = coordinator
         self._entry = entry
@@ -198,7 +200,7 @@ class TrueNASSensor(TrueNASEntity):
     """Define a generic TrueNAS sensor."""
 
     @property
-    def state(self) -> any:
+    def state(self) -> Any:
         """Return the state of the sensor."""
         return self._get_state()
 
@@ -206,7 +208,7 @@ class TrueNASSensor(TrueNASEntity):
 class TrueNASDiskEntity:
     """Represents a disk on the TrueNAS host."""
 
-    _disk: Optional[Disk] = None
+    _disk: Optional[CachingDisk] = None
 
     @property
     def available(self) -> bool:
@@ -225,10 +227,41 @@ class TrueNASDiskEntity:
         }
 
 
+class TrueNASJailEntity:
+    """Represents a jail on the TrueNAS host."""
+
+    _jail: CachingJail
+
+    @property
+    def available(self) -> bool:
+        return self._jail.available
+
+    @property
+    def device_info(self):
+        return {
+            "name": self._jail.name,
+        }
+
+    async def start(self) -> None:
+        """Starts a Jail"""
+        assert self.available
+        await self._jail.start()
+
+    async def stop(self, force: bool = False) -> None:
+        """Starts a Jail"""
+        assert self.available
+        await self._jail.stop(force=force)
+
+    async def restart(self) -> None:
+        """Starts a Jail"""
+        assert self.available
+        await self._jail.restart()
+
+
 class TrueNASVirtualMachineEntity:
     """Represents a virtual machine on the TrueNAS host."""
 
-    _vm: Optional[VirtualMachine] = None
+    _vm: CachingVirtualMachine
 
     @property
     def available(self) -> bool:

@@ -37,6 +37,9 @@ XIAOMI_TYPE_DICT = {
     0x0387: "MHO-C401",
     0x02DF: "JQJCY01YM",
     0x0997: "JTYJGD03MI",
+    0x1568: "K9B-1BTN",
+    0x1569: "K9B-2BTN",
+    0x0DFD: "K9B-3BTN",
     0x07BF: "YLAI003",
     0x0153: "YLYK01YL",
     0x068E: "YLYK01YL-FANCL",
@@ -91,12 +94,21 @@ def obj1001(xobj):
         # YLYB01YL-BHFRC:       bathroom_remote_command, button
         # YLKG07YL/YLKG08YL:    button, dimmer
         # JTYJGD03MI:           button
+        # K9B-1BTN              1_btn_switch
+        # K9B-2BTN              2_btn_switch_left, 2_btn_switch_right
+        # K9B-3BTN              3_btn_switch_left, 3_btn_switch_middle, 3_btn_switch_right
 
         # remote command and remote binary
         remote_command = None
         fan_remote_command = None
         ven_fan_remote_command = None
         bathroom_remote_command = None
+        one_btn_switch = None
+        two_btn_switch_left = None
+        two_btn_switch_right = None
+        three_btn_switch_left = None
+        three_btn_switch_middle = None
+        three_btn_switch_right = None
         remote_binary = None
 
         if button_type == 0:
@@ -104,91 +116,119 @@ def obj1001(xobj):
             fan_remote_command = "fan toggle"
             ven_fan_remote_command = "swing"
             bathroom_remote_command = "stop"
+            one_btn_switch = "toggle"
+            two_btn_switch_left = "toggle"
+            three_btn_switch_left = "toggle"
             remote_binary = 1
         elif button_type == 1:
             remote_command = "off"
             fan_remote_command = "light toggle"
             ven_fan_remote_command = "power toggle"
             bathroom_remote_command = "air exchange"
+            two_btn_switch_right = "toggle"
+            three_btn_switch_middle = "toggle"
             remote_binary = 0
         elif button_type == 2:
             remote_command = "sun"
             fan_remote_command = "wind speed"
             ven_fan_remote_command = "timer 60 minutes"
             bathroom_remote_command = "fan"
+            two_btn_switch_left = "toggle"
+            two_btn_switch_right = "toggle"
+            three_btn_switch_right = "toggle"
             remote_binary = None
         elif button_type == 3:
             remote_command = "+"
-            fan_remote_command = "brightness min"
+            fan_remote_command = "color temperature"
             ven_fan_remote_command = "strong wind speed"
             bathroom_remote_command = "speed +"
+            three_btn_switch_left = "toggle"
+            three_btn_switch_middle = "toggle"
             remote_binary = 1
         elif button_type == 4:
             remote_command = "m"
             fan_remote_command = "wind mode"
             ven_fan_remote_command = "timer 30 minutes"
             bathroom_remote_command = "speed -"
+            three_btn_switch_middle = "toggle"
+            three_btn_switch_right = "toggle"
             remote_binary = None
         elif button_type == 5:
             remote_command = "-"
-            fan_remote_command = "brightness min"
+            fan_remote_command = "brightness"
             ven_fan_remote_command = "low wind speed"
             bathroom_remote_command = "dry"
+            three_btn_switch_left = "toggle"
+            three_btn_switch_right = "toggle"
             remote_binary = 1
         elif button_type == 6:
             bathroom_remote_command = "light toggle"
+            three_btn_switch_left = "toggle"
+            three_btn_switch_middle = "toggle"
+            three_btn_switch_right = "toggle"
         elif button_type == 7:
             bathroom_remote_command = "swing"
         elif button_type == 8:
             bathroom_remote_command = "heat"
 
         # press type and dimmer
-        press_type = "no press"
+        button_press_type = "no press"
+        btn_switch_press_type = "no press"
         dimmer = None
 
         if press == 0:
-            press_type = "single press"
+            button_press_type = "single press"
+            btn_switch_press_type = "single press"
         elif press == 1:
-            press_type = "double press"
+            button_press_type = "double press"
+            btn_switch_press_type = "long press"
         elif press == 2:
-            press_type = "long press"
+            button_press_type = "long press"
+            btn_switch_press_type = "double press"
         elif press == 3:
             if button_type == 0:
-                press_type = "short press"
-                dimmer = str(value) + " x"
+                button_press_type = "short press"
+                dimmer = value
             if button_type == 1:
-                press_type = "long press"
-                dimmer = str(value) + " seconds"
+                button_press_type = "long press"
+                dimmer = value
         elif press == 4:
             if button_type == 0:
                 if value <= 127:
-                    press_type = "rotate right"
-                    dimmer = str(value) + " step(s)"
+                    button_press_type = "rotate right"
+                    dimmer = value
                 else:
-                    press_type = "rotate left"
-                    dimmer = str(256 - value) + " step(s)"
+                    button_press_type = "rotate left"
+                    dimmer = 256 - value
             elif button_type <= 127:
-                press_type = "rotate right (pressed)"
-                dimmer = str(button_type) + " step(s)"
+                button_press_type = "rotate right (pressed)"
+                dimmer = button_type
             else:
-                press_type = "rotate left (pressed)"
-                dimmer = str(256 - button_type) + " step(s)"
+                button_press_type = "rotate left (pressed)"
+                dimmer = 256 - button_type
         elif press == 5:
-            press_type = "short press"
+            button_press_type = "short press"
         elif press == 6:
-            press_type = "long press"
+            button_press_type = "long press"
 
         result = {
             "remote": remote_command,
             "fan remote": fan_remote_command,
             "ventilator fan remote": ven_fan_remote_command,
             "bathroom heater remote": bathroom_remote_command,
-            "button": press_type,
+            "one btn switch": one_btn_switch,
+            "two btn switch left": two_btn_switch_left,
+            "two btn switch right": two_btn_switch_right,
+            "three btn switch left": three_btn_switch_left,
+            "three btn switch middle": three_btn_switch_middle,
+            "three btn switch right": three_btn_switch_right,
+            "button": button_press_type,
+            "button switch": btn_switch_press_type,
             "dimmer": dimmer,
         }
 
         if remote_binary is not None:
-            if press_type == "single press":
+            if button_press_type == "single press":
                 result["remote single press"] = remote_binary
             else:
                 result["remote long press"] = remote_binary
@@ -327,6 +367,7 @@ xiaomi_dataobject_dict = {
     0x1012: obj1012,
     0x1013: obj1013,
     0x1014: obj1014,
+    0x1015: obj1015,
     0x1017: obj1017,
     0x1018: obj1018,
     0x1019: obj1019,
@@ -380,7 +421,6 @@ def parse_xiaomi(self, data, source_mac, rssi):
             return None
     else:
         xiaomi_mac = source_mac
-        xiaomi_mac_reversed = source_mac[::-1]
 
     # determine the device type
     device_id = data[6] + (data[7] << 8)
@@ -417,8 +457,9 @@ def parse_xiaomi(self, data, source_mac, rssi):
     elif frctrl_auth_mode == 2:
         sinfo += ', Standard certification'
 
-    # check for MAC presence in whitelist, if needed
-    if self.discovery is False and xiaomi_mac.lower() not in self.whitelist:
+    # check for MAC presence in sensor whitelist, if needed
+    if self.discovery is False and xiaomi_mac.lower() not in self.sensor_whitelist:
+        _LOGGER.debug("Discovery is disabled. MAC: %s is not whitelisted!", to_mac(xiaomi_mac))
         return None
 
     # check for unique packet_id and advertisement priority
@@ -442,7 +483,10 @@ def parse_xiaomi(self, data, source_mac, rssi):
         elif adv_priority == prev_adv_priority:
             # only process messages with same priority that have a unique packet id
             if prev_packet == packet_id:
-                return None
+                if self.filter_duplicates is True:
+                    return None
+                else:
+                    pass
             else:
                 pass
         else:
@@ -452,8 +496,9 @@ def parse_xiaomi(self, data, source_mac, rssi):
             return None
     else:
         if prev_packet == packet_id:
-            # only process messages with highest priority and messages with unique packet id
-            return None
+            if self.filter_duplicates is True:
+                # only process messages with highest priority and messages with unique packet id
+                return None
     self.lpacket_ids[xiaomi_mac] = packet_id
 
     # check for capability byte present
