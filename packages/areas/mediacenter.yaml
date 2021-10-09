@@ -134,7 +134,8 @@ automation:
         data:
           scene_id: livingroom_before
           snapshot_entities:
-            - light.livingroom_lights
+            - light.tvarea_lights
+            - light.livingroom_a_rgb_ledstrip
             - light.falconlights
             - light.ssdlights
             - light.ssdlights_inner
@@ -142,15 +143,15 @@ automation:
         data:
           entity_id:
             - light.tvarea_lights
-            - light.livingroom_led_strip
+            - light.livingroom_a_rgb_ledstrip
             - light.led_strip_rgb_livingroom
             - light.led_strip_white_livingroom
           transition: 5
-      - service: light.turn_on
-        data:
-          entity_id: light.plants
-          brightness: 30
-          transition: 5
+      # - service: light.turn_on
+      #   data:
+      #     entity_id: light.plants
+      #     brightness: 30
+      #     transition: 5
       - service: switch.turn_on
         entity_id: switch.ambilight
       # - service: tapo_control.set_day_night_mode
@@ -202,10 +203,11 @@ automation:
       - service: homeassistant.turn_on
         entity_id:
           - group.livingroom_lighting_automations
-          - automation.livingroom_light_automate_falconlights
       - service: automation.trigger
         data:
-          entity_id: automation.plants_light_turn_on_coffee_plant_according_to_schedule
+          entity_id:
+            - automation.plants_light_turn_on_coffee_plant_according_to_schedule
+            - automation.plants_light_turn_off_coffee_plant_according_to_schedule
           skip_condition: false
       - service: tapo_control.set_day_night_mode
         data:

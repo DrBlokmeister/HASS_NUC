@@ -138,6 +138,11 @@ automation:
         below: 50
         for:
           minutes: 2
+      - platform: state
+        entity_id: binary_sensor.motion_sensor_bathroom
+        to: 'off'
+        for:
+          minutes: 60
     action:
       - choose:
           - conditions:
@@ -148,7 +153,7 @@ automation:
                 entity_id: input_boolean.shower_occupied
           - conditions:
               - condition: template
-                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' or trigger.entity_id == 'sensor.water_consumption_per_hour'}}"
+                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' or trigger.entity_id == 'sensor.water_consumption_per_hour' or trigger.entity_id == 'binary_sensor.motion_sensor_bathroom'}}"
             sequence:
               - service: input_boolean.turn_off
                 entity_id: input_boolean.shower_occupied
