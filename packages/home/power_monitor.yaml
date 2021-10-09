@@ -50,7 +50,7 @@ sensor:
         value_template: "{{ (states( 'sensor.blitzwolf_washingmachine_energy_today' )|float * (0.2221|float))|round(2) }}"
       unknown_power:
         unit_of_measurement: 'W'
-        value_template: "{{ ( states( 'sensor.total_power_watt' )|float - states( 'sensor.total_power_blitzwolf' )|float - states( 'sensor.light_power_estimate' )|float )|round(2) }}"
+        value_template: "{{ ( states( 'sensor.home_power_consumption' )|float - states( 'sensor.total_power_blitzwolf' )|float - states( 'sensor.light_power_estimate' )|float )|round(2) }}"
   - platform: filter
     name: "filtered unknown power"
     entity_id: sensor.unknown_power
@@ -103,7 +103,7 @@ sensor:
     unit_of_measurement: "€"
 
   - platform: rest
-    resource: http://192.168.1.61/api/v1/watermeter/day?limit=1&json=object&round=off
+    resource: http://192.168.1.61/api/v2/watermeter/day?limit=1&json=object&round=off
     name: Waterverbruik_vandaag
     value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
     unit_of_measurement: "l"
@@ -133,51 +133,51 @@ sensor:
     unit_of_measurement: "m3"
     force_update: true
 
-  - platform: mqtt
-    name: timestamp_local
-    state_topic: "p1monitor/smartmeter/timestamp_local"
-    device_class: timestamp
-  - platform: mqtt
-    name: timestamp_utc
-    state_topic: "p1monitor/smartmeter/timestamp_utc"
-    device_class: timestamp
-  - platform: mqtt
-    name: consumption_gas_m3
-    state_topic: "p1monitor/smartmeter/consumption_gas_m3"
-    unit_of_measurement: m3
-    force_update: true
-  - platform: mqtt
-    name: consumption_kwh_high
-    state_topic: "p1monitor/smartmeter/consumption_kwh_high"
-    unit_of_measurement: kWh
-  - platform: mqtt
-    name: consumption_kwh_low
-    state_topic: "p1monitor/smartmeter/consumption_kwh_low"
-    unit_of_measurement: kWh
-  - platform: mqtt
-    name: consumption_kw
-    state_topic: "p1monitor/smartmeter/consumption_kw"
-    device_class: power
-    unit_of_measurement: kW
-  - platform: mqtt
-    name: tarifcode
-    state_topic: "p1monitor/smartmeter/tarifcode"
-  - platform: mqtt
-    name: record_is_processed
-    state_topic: "p1monitor/smartmeter/record_is_processed"
-  - platform: mqtt
-    name: consumption_l1_w
-    state_topic: "p1monitor/phase/consumption_l1_w"
-    device_class: power
-    unit_of_measurement: W
-  - platform: mqtt
-    name: l1_v
-    state_topic: "p1monitor/phase/l1_v"
-    unit_of_measurement: V
-  - platform: mqtt
-    name: l1_a
-    state_topic: "p1monitor/phase/l1_a"
-    unit_of_measurement: A
+  # - platform: mqtt
+  #   name: timestamp_local
+  #   state_topic: "p1monitor/smartmeter/timestamp_local"
+  #   device_class: timestamp
+  # - platform: mqtt
+  #   name: timestamp_utc
+  #   state_topic: "p1monitor/smartmeter/timestamp_utc"
+  #   device_class: timestamp
+  # - platform: mqtt
+  #   name: consumption_gas_m3
+  #   state_topic: "p1monitor/smartmeter/consumption_gas_m3"
+  #   unit_of_measurement: m3
+  #   force_update: true
+  # - platform: mqtt
+  #   name: consumption_kwh_high
+  #   state_topic: "p1monitor/smartmeter/consumption_kwh_high"
+  #   unit_of_measurement: kWh
+  # - platform: mqtt
+  #   name: consumption_kwh_low
+  #   state_topic: "p1monitor/smartmeter/consumption_kwh_low"
+  #   unit_of_measurement: kWh
+  # - platform: mqtt
+  #   name: consumption_kw
+  #   state_topic: "p1monitor/smartmeter/consumption_kw"
+  #   device_class: power
+  #   unit_of_measurement: kW
+  # - platform: mqtt
+  #   name: tarifcode
+  #   state_topic: "p1monitor/smartmeter/tarifcode"
+  # - platform: mqtt
+  #   name: record_is_processed
+  #   state_topic: "p1monitor/smartmeter/record_is_processed"
+  # - platform: mqtt
+  #   name: consumption_l1_w
+  #   state_topic: "p1monitor/phase/consumption_l1_w"
+  #   device_class: power
+  #   unit_of_measurement: W
+  # - platform: mqtt
+  #   name: l1_v
+  #   state_topic: "p1monitor/phase/l1_v"
+  #   unit_of_measurement: V
+  # - platform: mqtt
+  #   name: l1_a
+  #   state_topic: "p1monitor/phase/l1_a"
+  #   unit_of_measurement: A
 
   - platform: template
     sensors:
@@ -332,7 +332,7 @@ automation:
       - service: notify.mobile_app_blokmeister_op6_haapp
         data:
           title: "Warning: Power Usage!"
-          message: "Unknown power is <b>{{ states( 'sensor.unknown_power' )}} W</b> for a total of <b>{{ states('sensor.total_power_watt') }}</b>"
+          message: "Unknown power is <b>{{ states( 'sensor.unknown_power' )}} W</b> for a total of <b>{{ states('sensor.home_power_consumption') }}</b>"
           data:
             group: notification
             tag: powerwarning
@@ -458,31 +458,31 @@ group:
       - sensor.blitzwolf_washingmachine_energy_bl0940_temperature
   blitzwolf_plug1:
     entities:
-      - switch.blitzwolf_plug1
-      - sensor.blitzwolf_plug1_status
-      - sensor.blitzwolf_plug1_energy_voltage
-      - sensor.blitzwolf_plug1_energy_current
-      - sensor.blitzwolf_plug1_energy_power
-      - sensor.blitzwolf_plug1_energy_apparentpower
-      - sensor.blitzwolf_plug1_energy_reactivepower
-      - sensor.blitzwolf_plug1_energy_today
-      - sensor.blitzwolf_plug1_energy_yesterday
-      - sensor.blitzwolf_plug1_energy_total
-      - sensor.blitzwolf_plug1_energy_totalstarttime
-      - sensor.blitzwolf_plug1_energy_bl0940_temperature
+      - switch.blitzwolf_nas
+      - sensor.blitzwolf_nas_status
+      - sensor.blitzwolf_nas_energy_voltage
+      - sensor.blitzwolf_nas_energy_current
+      - sensor.blitzwolf_nas_energy_power
+      - sensor.blitzwolf_nas_energy_apparentpower
+      - sensor.blitzwolf_nas_energy_reactivepower
+      - sensor.blitzwolf_nas_energy_today
+      - sensor.blitzwolf_nas_energy_yesterday
+      - sensor.blitzwolf_nas_energy_total
+      - sensor.blitzwolf_nas_energy_totalstarttime
+      - sensor.blitzwolf_nas_energy_bl0940_temperature
   blitzwolf_plug2:
     entities:
-      - switch.blitzwolf_plug2
-      - sensor.blitzwolf_plug2_status
-      - sensor.blitzwolf_plug2_energy_voltage
-      - sensor.blitzwolf_plug2_energy_current
-      - sensor.blitzwolf_plug2_energy_power
-      - sensor.blitzwolf_plug2_energy_apparentpower
-      - sensor.blitzwolf_plug2_energy_reactivepower
-      - sensor.blitzwolf_plug2_energy_today
-      - sensor.blitzwolf_plug2_energy_yesterday
-      - sensor.blitzwolf_plug2_energy_total
-      - sensor.blitzwolf_plug2_energy_totalstarttime
+      - switch.blitzwolf_ambilight
+      - sensor.blitzwolf_ambilight_status
+      - sensor.blitzwolf_ambilight_energy_voltage
+      - sensor.blitzwolf_ambilight_energy_current
+      - sensor.blitzwolf_ambilight_energy_power
+      - sensor.blitzwolf_ambilight_energy_apparentpower
+      - sensor.blitzwolf_ambilight_energy_reactivepower
+      - sensor.blitzwolf_ambilight_energy_today
+      - sensor.blitzwolf_ambilight_energy_yesterday
+      - sensor.blitzwolf_ambilight_energy_total
+      - sensor.blitzwolf_ambilight_energy_totalstarttime
       - sensor.blitzwolf_plug2_energy_bl0940_temperature
   meter_readings:
     name: Meter readings
