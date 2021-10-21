@@ -279,15 +279,55 @@ sensor:
         icon_template: mdi:scale
         value_template: >-
           {{ -((states('sensor.hx711_raw_value_4')|round(0) + states('input_number.bedscale4_offset')|round(0))/states('input_number.bedscale4_sensitivity')|round(0))|round(2) }}
+      bedscale_1_final:
+        friendly_name: "Bedscale 1 Final"
+        unit_of_measurement: kg
+        icon_template: mdi:scale
+        value_template: >-
+          {% if is_state('binary_sensor.bedsensor1_availability', 'on')%}
+            {{ states('sensor.bedscale_1_calibrated')|round(2) }}
+          {% else %}
+            {{ ((states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2))/3)|round(2) }}
+          {% endif %}
+      bedscale_2_final:
+        friendly_name: "Bedscale 2 Final"
+        unit_of_measurement: kg
+        icon_template: mdi:scale
+        value_template: >-
+          {% if is_state('binary_sensor.bedsensor2_availability', 'on')%}
+            {{ states('sensor.bedscale_2_calibrated')|round(2) }}
+          {% else %}
+            {{ ((states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2))/3)|round(2) }}
+          {% endif %}
+      bedscale_3_final:
+        friendly_name: "Bedscale 3 Final"
+        unit_of_measurement: kg
+        icon_template: mdi:scale
+        value_template: >-
+          {% if is_state('binary_sensor.bedsensor3_availability', 'on')%}
+            {{ states('sensor.bedscale_3_calibrated')|round(2) }}
+          {% else %}
+            {{ ((states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2))/3)|round(2) }}
+          {% endif %}
+      bedscale_4_final:
+        friendly_name: "Bedscale 4 Final"
+        unit_of_measurement: kg
+        icon_template: mdi:scale
+        value_template: >-
+          {% if is_state('binary_sensor.bedsensor4_availability', 'on')%}
+            {{ states('sensor.bedscale_4_calibrated')|round(2) }}
+          {% else %}
+            {{ ((states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2))/3)|round(2) }}
+          {% endif %}
       bed_weight_calibrated:
         friendly_name: "Bed weight calibrated"
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template: >-
-          {{ (states('input_number.bedscale1_weight')|round(2) * states('sensor.bedscale_1_calibrated')|round(2)
-            + states('input_number.bedscale2_weight')|round(2) * states('sensor.bedscale_2_calibrated')|round(2)
-            + states('input_number.bedscale3_weight')|round(2) * states('sensor.bedscale_3_calibrated')|round(2)
-            + states('input_number.bedscale4_weight')|round(2) * states('sensor.bedscale_4_calibrated')|round(2))|round(2) }}
+          {{ (states('input_number.bedscale1_weight')|round(2) * states('sensor.bedscale_1_final')|round(2)
+            + states('input_number.bedscale2_weight')|round(2) * states('sensor.bedscale_2_final')|round(2)
+            + states('input_number.bedscale3_weight')|round(2) * states('sensor.bedscale_3_final')|round(2)
+            + states('input_number.bedscale4_weight')|round(2) * states('sensor.bedscale_4_final')|round(2))|round(2) }}
       bed_weight_calibrated_unweighted:
         friendly_name: "Bed weight calibrated unweighted"
         unit_of_measurement: kg
@@ -921,6 +961,10 @@ automation:
             to: 'off'
             for:
               minutes: "{{ states('input_number.bedroom_light_timeout')|int }}"
+          - platform: template
+            value_template: "{{ states('sensor.average_illumination_bedroom')|int > states('input_number.bedroom_illumination_limit')|int }}"
+            for:
+              minutes: 10
       - service: light.turn_on
         data:
           entity_id:
@@ -1517,7 +1561,7 @@ script:
         data:
           entity_id: input_number.bedscale2_offset
           value: >-
-            {{ -(states('sensor.hx711_raw_value_2_2')|int) }}
+            {{ -(states('sensor.hx711_raw_value_2')|int) }}
       - service: input_number.set_value
         data:
           entity_id: input_number.bedscale3_offset
