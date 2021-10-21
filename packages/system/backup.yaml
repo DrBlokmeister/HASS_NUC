@@ -47,7 +47,7 @@ automation:
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.backup_running
-      - service: auto_backup.snapshot_partial
+      - service: auto_backup.backup_partial
         data:
           keep_days: 7
 
@@ -62,14 +62,14 @@ automation:
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.backup_running
-      - service: auto_backup.snapshot_full
+      - service: auto_backup.backup_full
         data:
           keep_days: 31
 
   - alias: Report successful backup
     trigger:
       - platform: event
-        event_type: auto_backup.snapshot_successful
+        event_type: auto_backup.backup_successful
     condition:
       condition: state
       entity_id: input_boolean.backup_running
@@ -94,7 +94,7 @@ automation:
   - alias: Report failed backup
     trigger:
       - platform: event
-        event_type: auto_backup.snapshot_failed
+        event_type: auto_backup.backup_failed
     condition:
       condition: state
       entity_id: input_boolean.backup_running
