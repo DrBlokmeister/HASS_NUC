@@ -66,7 +66,7 @@ automation:
     mode: restart
     trigger:
       - platform: state
-        entity_id: group.entry_motion_sensors
+        entity_id: binary_sensor.entry_motion_combined
         to: 'on'
     condition:
       - condition: template
@@ -82,10 +82,15 @@ automation:
           # kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - wait_for_trigger:
-          platform: template
-          value_template: "{{ is_state('binary_sensor.motion_sensor_entry', 'off') and is_state('binary_sensor.motion_sensor_entry2', 'off') }}"
-          for:
-            minutes: 3
+          - platform: state
+            entity_id: binary_sensor.entry_motion_combined
+            to: 'off'
+            for:
+              minutes: 3
+          - platform: template
+            value_template: "{{ states('sensor.illumination_entry')|int > states('input_number.entry_illumination_limit')|int }}"
+            for:
+              minutes: 10
       - service: light.turn_off
         entity_id: light.entry_lights
 
