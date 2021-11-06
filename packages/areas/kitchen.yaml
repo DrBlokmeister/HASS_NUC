@@ -60,13 +60,18 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
     action:
-      - service: light.turn_on
-        data:
-          entity_id: light.kitchen_lights
-          brightness: 255
-          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
-          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-      # - service: switch.flux_kitchen_update
+      - repeat:
+          count: 5
+          sequence:
+            - service: light.turn_on
+              data:
+                entity_id: light.kitchen_lights
+                brightness: 255
+                #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+            # - service: switch.flux_kitchen_update
+            - delay:
+                milliseconds: 100
       - service: timer.start
         data:
           entity_id: timer.kitchen_lights

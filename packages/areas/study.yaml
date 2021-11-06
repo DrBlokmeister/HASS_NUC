@@ -119,14 +119,19 @@ automation:
             {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}
           {% endif %}
     action:
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.study_lights
-          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
-          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-      # - service: switch.flux_study_update
+      - repeat:
+          count: 5
+          sequence:
+            - service: light.turn_on
+              data:
+                entity_id:
+                  - light.study_lights
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+            # - service: switch.flux_study_update
+            - delay:
+                milliseconds: 100
       - wait_for_trigger:
           - platform: state
             entity_id: group.study_motion_sensors

@@ -949,8 +949,13 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
     action:
-      - service: script.turn_on
-        entity_id: script.set_correct_bedroom_scene
+      - repeat:
+          count: 5
+          sequence:
+            - service: script.turn_on
+              entity_id: script.set_correct_bedroom_scene
+            - delay:
+                milliseconds: 100
       - service: timer.start
         data:
           entity_id: timer.bedroom_lights
