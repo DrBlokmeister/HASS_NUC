@@ -1,0 +1,217 @@
+#############################################################################################
+################ DON'T FORGET TO CHANGE THE NOTIFICATION SERVICE IN LINE 50! ################
+#############################################################################################
+
+
+  #######################################################
+  ### Sensor for unavailable entities, also good for UI.
+  ### Updates immediately as soon as entities change.
+  #######################################################
+
+  template:
+    - sensor:
+        - name: "Unavailable Entities"
+          state: "{{ expand('group.monitored_entities') | selectattr('state', 'in', ['unavailable', 'unknown', 'none']) | join(', ', attribute='attributes.friendly_name') | truncate(252) or 'Online' }}"
+  
+    #######################################################
+    ### Helper
+    #######################################################
+  
+  input_text:
+    unavailable_entities_temp_state:
+  
+  automation:
+    #######################################################
+    ### Alert about entities becoming unavailable or online
+    #######################################################
+  
+    - id: Unavailable Entities - Notify
+      alias: Unavailable Entities - Notify
+      variables:
+        from_state: "{{ states('input_text.unavailable_entities_temp_state') }}"
+        from_state_list: "{{ from_state.split(', ') }}"
+        to_state: "{{ trigger.to_state.state if trigger.to_state.state != 'Online' else '' }}"
+        to_state_list: "{{ to_state.split(', ') }}"
+        became_online: "{{ from_state_list | reject('in', to_state_list) | join(', ') }}"
+        became_unavailable_list: "{{ to_state_list | reject('in', from_state_list) | list }}"
+        became_unavailable: "{{ became_unavailable_list | join(', ') }}"
+        other_unavailable_entities: "{{ to_state_list | reject('in', became_unavailable_list) | join(', ') }}"
+  
+      trigger:
+        - platform: state
+          entity_id: sensor.unavailable_entities
+  
+          #Let other entities change as well so that we don't spam.
+          #Has to be a minimum of 1 second, otherwise you won't get ONLINE notifications (because of the way I wrote this).
+          for:
+            seconds: 10
+  
+      action:
+        - service: persistent_notification.create #Notifies me via telegram. Change this to your preferred service (such as: persistent_notification.create).
+          data:
+            notification_id: "unavailable_notification"
+            message: |
+              {% if became_unavailable != '' -%}🚨 Became <b>UNAVAILABLE</b>: {{ became_unavailable }}
+              ------{%- endif %}
+              {%- if became_online != ''%}
+              ✅ Became <b>ONLINE</b>: {{ became_online }}
+              ------{%- endif %}
+              {% if other_unavailable_entities != '' %}🚨 Still <b>UNAVAILABLE</b>: {{ other_unavailable_entities }}{% else %}✅ Everything else is ONLINE!{%- endif %}
+  
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.unavailable_entities_temp_state
+            value: ""
+  
+    #######################################################
+    ### When entities start changing,
+    ### store the initial state temporarily so that
+    ### we could tell which entities have changes.
+    #######################################################
+  
+    - id: Unavailable Entities - Store Temp State
+      alias: Unavailable Entities - Store Temp State
+  
+      trigger:
+        - platform: state
+          entity_id: sensor.unavailable_entities
+  
+      condition:
+        alias: "Temp State is Empty"
+        condition: template
+        value_template: "{{ is_state('input_text.unavailable_entities_temp_state', '') }}"
+  
+      action:
+        service: input_text.set_value
+        data:
+          entity_id: input_text.unavailable_entities_temp_state
+          value: "{{ '' if trigger.from_state.state == 'Online' else trigger.from_state.state }}"
+  
+  
+  
+    #######################################################
+    ### Group of monitored entities.
+    ### Add any entities you want to be notified about.
+    #######################################################
+  
+  group:
+    monitored_entities:
+      entities:
+        - device_tracker.bed_scale
+        - device_tracker.blokmeister_hue
+        - device_tracker.google_home_mini
+        - device_tracker.p1mon
+        - device_tracker.rockrobo
+        - device_tracker.blitzwolf_3dprinter
+        - device_tracker.blitzwolf_coffeeplant
+        - device_tracker.blitzwolf_computer
+        - device_tracker.blitzwolf_eletricblanket
+        - device_tracker.blitzwolf_mediacenter
+        - device_tracker.blitzwolf_nuc
+        - device_tracker.blitzwolf_plug1
+        - device_tracker.blitzwolf_ambilight
+        - device_tracker.blitzwolf_washing
+        - device_tracker.blitzwolf_watercooker
+        - device_tracker.blokmeisternuc
+        - device_tracker.shelly_bathroom
+        - device_tracker.shelly_bedroom
+        - device_tracker.shelly_closet
+        - device_tracker.shelly_dinnertable
+        - device_tracker.shelly_entry
+        - device_tracker.shelly_hallway
+        - device_tracker.shelly_kitchen
+        - device_tracker.shelly_study
+        - device_tracker.stardestroyerlights
+        - binary_sensor.entry_motion_combined
+        - binary_sensor.livingroom_motion_combined
+
+        # Motion sensors:
+        - binary_sensor.motion_sensor_bathroom
+        - binary_sensor.motion_sensor_bedroom
+        - binary_sensor.motion_sensor_entry
+        - binary_sensor.motion_sensor_entry2
+        - binary_sensor.motion_sensor_kitchen
+        - binary_sensor.motion_sensor_livingroom
+        - binary_sensor.motion_sensor_livingroom2
+        # - binary_sensor.motion_sensor_livingroom3
+        - binary_sensor.motion_sensor_study
+        - binary_sensor.motion_sensor_study2
+        - binary_sensor.motion_sensor_toilet
+        - binary_sensor.study_motion_combined
+        - binary_sensor.tapo_camera_d6d4_motion
+
+        # Lights:
+        - light.ambilight_left_bulb
+        - light.ambilight_right_bulb
+        - light.bathroom_light_bright
+        - light.bathroom_light_dim
+        - light.bathroom_lights
+        - light.bedroom
+        - light.bedroom_1
+        - light.bedroom_2
+        - light.bedroom_3
+        - light.bedroom_ceiling_lights
+        - light.bedroom_lights
+        - light.bedside_left
+        - light.bedside_right
+        - light.entertainment_area_1
+        - light.entry_lights
+        - light.entry_spotlight
+        - light.falconlights
+        - light.group_for_wakeup
+        - light.hallway
+        - light.hue_ambiance_spot_gallileo
+        - light.hue_ambiance_spot_kepler
+        - light.hue_color_spot_1
+        - light.hue_color_spot_2
+        - light.hue_color_spot_3
+        - light.hue_color_spot_4
+        - light.hue_color_spot_5
+        - light.hyperion_ambilightleft
+        - light.hyperion_ambilightright
+        - light.hyperion_apa102
+        - light.hyperion_falconlights
+        - light.hyperion_livingroom_ledstrip
+        - light.hyperion_super_star_destroyer_inner
+        - light.hyperion_super_star_destroyer_outer
+        - light.kitchen
+        - light.kitchen_1
+        - light.kitchen_2
+        - light.kitchen_3
+        - light.kitchen_lights
+        - light.ledstrip_bed
+        - light.living_room
+        - light.livingroom_a_rgb_ledstrip
+        - light.livingroom_led_strip
+        - light.livingroom_lights
+        - light.livingroom_lights_noplants
+        - light.plants
+        - light.shelly_closet
+        - light.shelly_dinner_table
+        - light.shelly_entry_light
+        - light.ssd_lights_grouped
+        - light.ssdlights
+        - light.ssdlights_inner
+        - light.study
+        - light.study_1
+        - light.study_2
+        - light.study_3
+        - light.study_candle
+        - light.study_desk_a_rgb_ledstrip
+        - light.study_lights
+        - light.tv_area
+        - light.tvarea_and_ledstrips
+        - light.tvarea_lights
+        - light.white_led_strip_living_room
+        - switch.blitzwolf_3dprinter
+        - switch.blitzwolf_ambilight
+        - switch.blitzwolf_coffeeplant
+        - switch.blitzwolf_computer
+        - switch.blitzwolf_computer_2
+        - switch.blitzwolf_electricblanket
+        - switch.blitzwolf_mediacenter_2
+        - switch.blitzwolf_nuc
+        - switch.blitzwolf_plug_1
+        - switch.blitzwolf_washingmachine
+        - switch.blitzwolf_watercooker
+        - switch.blitzwolf_watercooker_2
