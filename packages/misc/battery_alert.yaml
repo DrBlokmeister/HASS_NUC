@@ -623,6 +623,7 @@ automation:
       data_template:
         title: "Low Battery Levels"
         message: *message
+
 - alias: battery_notification_slack
   initial_state: 'on'
   trigger:
@@ -658,11 +659,8 @@ automation:
   mode: single
   max_exceeded: silent
   trigger:
-    # - platform: event
-    #   event_type: state_changed
-    - platform: time_pattern
-      minutes: '/15'
-      seconds: 00
+    - platform: event
+      event_type: state_changed
   condition:
     - condition: template
       value_template: "{{ trigger is not none }}"
@@ -815,7 +813,7 @@ automation:
   initial_state: 'on'
   trigger:
     - platform: time_pattern
-      minutes: '/15'
+      minutes: '/10'
       seconds: 00
   action:
     - service: group.set
@@ -824,7 +822,6 @@ automation:
         entities: >-
           {%- for item in states.sensor if (
             not is_state_attr(item.entity_id, 'hidden', true)
-            and (item.attributes.icon is defined)
             and (
               is_state_attr(item.entity_id, 'device_class', 'battery')
               or 'battery' in item.attributes.icon | lower
