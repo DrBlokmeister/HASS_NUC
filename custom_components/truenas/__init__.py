@@ -11,6 +11,7 @@ import voluptuous as vol
 from aiotruenas_client import CachingMachine as Machine
 from aiotruenas_client.websockets.disk import CachingDisk
 from aiotruenas_client.websockets.jail import CachingJail
+from aiotruenas_client.websockets.pool import CachingPool
 from aiotruenas_client.websockets.virtualmachine import CachingVirtualMachine
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -75,6 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     await asyncio.gather(
                         machine.get_disks(include_temperature=True),
                         machine.get_jails(),
+                        machine.get_pools(),
                         machine.get_vms(),
                     )
                 except Exception as exc:
@@ -225,6 +227,33 @@ class TrueNASDiskEntity:
             "name": self._disk.name,
             "model": self._disk.model,
         }
+
+
+class TrueNASPoolEntity:
+    """Represents a pool on the TrueNAS host."""
+
+    _pool: Optional[CachingPool] = None
+
+    @property
+    def available(self) -> bool:
+        assert self._pool is not None
+        return self._pool.available
+
+    @property
+    def device_info(self):
+        assert self._pool is not None
+        return {
+            "identifiers": {
+                (DOMAIN, slugify(self._pool.guid)),
+            },
+            "name": self._pool.name,
+            "manufacturer": f"TrueNAS",
+        }
+
+    @property
+    def unique_id(self):
+        assert self._pool is not None
+        return self._pool.guid
 
 
 class TrueNASJailEntity:

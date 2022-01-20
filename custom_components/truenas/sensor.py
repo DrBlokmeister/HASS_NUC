@@ -2,6 +2,7 @@ from typing import Any, Callable, List, Mapping, Optional
 
 from aiotruenas_client import CachingMachine as Machine
 from aiotruenas_client.disk import Disk, DiskType
+from aiotruenas_client.pool import Pool
 from homeassistant.components.sensor import DEVICE_CLASS_TEMPERATURE
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, TEMP_CELSIUS
@@ -11,8 +12,8 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
-from . import TrueNASDiskEntity, TrueNASSensor
-from .const import DOMAIN
+from . import TrueNASDiskEntity, TrueNASPoolEntity, TrueNASSensor
+from .const import ATTR_POOL_GUID, ATTR_POOL_NAME, DOMAIN
 
 
 async def async_setup_entry(
@@ -40,6 +41,9 @@ def _create_entities(hass: HomeAssistant, entry: ConfigEntry) -> List[Entity]:
 
     for disk in machine.disks:
         entities.append(DiskTemperatureSensor(entry, name, disk, coordinator))
+
+    for pool in machine.pools:
+        entities.append(PoolSensor(entry, name, pool, coordinator))
 
     return entities
 
@@ -88,3 +92,47 @@ class DiskTemperatureSensor(TrueNASDiskEntity, TrueNASSensor, Entity):
         if self.available:
             return self._disk.temperature
         return None
+
+
+class PoolSensor(TrueNASPoolEntity, TrueNASSensor, Entity):
+    _pool: Pool
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        name: str,
+        pool: Pool,
+        coordinator: DataUpdateCoordinator,
+    ) -> None:
+        self._pool = pool
+        super().__init__(entry, name, coordinator)
+
+    @property
+    def name(self) -> str:
+        """Return the name of the pool."""
+        return f"{self._pool.name} Pool"
+
+    @property
+    def unique_id(self):
+        """Return the Unique ID of the pool."""
+        return slugify(self._pool.guid)
+
+    @property
+    def extra_state_attributes(self):
+        """Return extra Pool attributes"""
+        assert self._pool is not None
+        return {
+            ATTR_POOL_NAME: f"{self._pool.name}",
+            ATTR_POOL_GUID: f"{self._pool.guid}",
+        }
+
+    @property
+    def icon(self):
+        """Return an icon for the pool."""
+        return "mdi:database"
+
+    def _get_state(self):
+        """Returns the current state of the pool."""
+        if not isinstance:
+            return None
+        return self._pool.status.name
