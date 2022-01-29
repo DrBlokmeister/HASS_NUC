@@ -14,6 +14,8 @@ XIAOMI_TYPE_DICT = {
     0x01AA: "LYWSDCGQ",
     0x045B: "LYWSD02",
     0x055B: "LYWSD03MMC",
+    0x1203: "XMWSDJ04MMC",
+    0x04E1: "XMMF01JQD",
     0x0098: "HHCCJCY01",
     0x03BC: "GCLS002",
     0x015D: "HHCCPOT002",
@@ -64,6 +66,7 @@ FMDH_STRUCT = struct.Struct("<H")
 M_STRUCT = struct.Struct("<L")
 P_STRUCT = struct.Struct("<H")
 BUTTON_STRUCT = struct.Struct("<BBB")
+FLOAT_STRUCT = struct.Struct("<f")
 
 # Definition of lock messages
 BLE_LOCK_ERROR = {
@@ -223,7 +226,7 @@ def obj000f(xobj, device_type):
             return {"motion": 1, "motion timer": 1, "light": int(value >= 100)}
         elif device_type == "CGPR1":
             # CGPR1:     moving, value is illumination in lux
-            return {"motion": 1, "motion timer": 1, "illuminance": value}
+            return {"motion": 1, "motion timer": 1, "illuminance": value, "light": int(value >= 100)}
         else:
             return {}
     else:
@@ -245,6 +248,7 @@ def obj1001(xobj, device_type):
         three_btn_switch_left = None
         three_btn_switch_middle = None
         three_btn_switch_right = None
+        cube_direction = None
         remote_binary = None
 
         if button_type == 0:
@@ -255,6 +259,7 @@ def obj1001(xobj, device_type):
             one_btn_switch = "toggle"
             two_btn_switch_left = "toggle"
             three_btn_switch_left = "toggle"
+            cube_direction = "right"
             remote_binary = 1
         elif button_type == 1:
             remote_command = "off"
@@ -263,6 +268,7 @@ def obj1001(xobj, device_type):
             bathroom_remote_command = "air exchange"
             two_btn_switch_right = "toggle"
             three_btn_switch_middle = "toggle"
+            cube_direction = "left"
             remote_binary = 0
         elif button_type == 2:
             remote_command = "sun"
@@ -349,8 +355,10 @@ def obj1001(xobj, device_type):
 
         # return device specific output
         result = {}
-        if device_type in ["RTCGQ02LM", "YLAI003", "JTYJGD03MI"]:
+        if device_type in ["RTCGQ02LM", "YLAI003", "JTYJGD03MI", "SJWS01LM"]:
             result["button"] = button_press_type
+        elif device_type == "XMMF01JQD":
+            result["button"] = cube_direction
         elif device_type == "YLYK01YL":
             result["remote"] = remote_command
             result["button"] = button_press_type
@@ -539,6 +547,30 @@ def obj2000(xobj):
         return {}
 
 
+# The following data objects are device specific. For now only added for XMWSDJ04MMC
+# https://miot-spec.org/miot-spec-v2/instances?status=all
+def obj4803(xobj):
+    # Battery
+    batt = xobj[0]
+    return {"battery": batt}
+
+
+def obj4c01(xobj):
+    if len(xobj) == 4:
+        temp = FLOAT_STRUCT.unpack(xobj)[0]
+        return {"temperature": temp}
+    else:
+        return {}
+
+
+def obj4c08(xobj):
+    if len(xobj) == 4:
+        humi = FLOAT_STRUCT.unpack(xobj)[0]
+        return {"humidity": humi}
+    else:
+        return {}
+
+
 # Dataobject dictionary
 # {dataObject_id: (converter}
 xiaomi_dataobject_dict = {
@@ -565,6 +597,9 @@ xiaomi_dataobject_dict = {
     0x100A: obj100a,
     0x100D: obj100d,
     0x2000: obj2000,
+    0x4803: obj4803,
+    0x4c01: obj4c01,
+    0x4c08: obj4c08,
 }
 
 
@@ -848,4 +883,5 @@ def decrypt_mibeacon_legacy(self, data, i, xiaomi_mac):
 
 
 def to_mac(addr: int):
+    """Return formatted MAC address"""
     return ':'.join('{:02x}'.format(x) for x in addr).upper()
