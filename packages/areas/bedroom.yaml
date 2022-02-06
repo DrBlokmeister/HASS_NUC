@@ -8,16 +8,16 @@ homeassistant:
       icon: mdi:light-switch
     automation.bedroom_light_switch_scene_cycle:
       icon: mdi:light-switch
-    sensor.wakeup_time:
-      icon: mdi:clock-outline
-    sensor.bed_time:
-      icon: mdi:clock-outline
-    automation.bedroom_light_lights_timeout_start:
-      icon: mdi:clock-outline
-    automation.bedroom_light_lights_timeout_stop:
-      icon: mdi:clock-outline
-    sensor.bedroom_scene:
-      icon: mdi:lightbulb-outline
+    # sensor.wakeup_time:
+    #   icon: mdi:clock-outline
+    # sensor.bed_time:
+    #   icon: mdi:clock-outline
+    # automation.bedroom_light_lights_timeout_start:
+    #   icon: mdi:clock-outline
+    # automation.bedroom_light_lights_timeout_stop:
+    #   icon: mdi:clock-outline
+    # sensor.bedroom_scene:
+    #   icon: mdi:lightbulb-outline
     script.bed_preheating:
       icon: mdi:bed-empty
     light.ledstrip_bed:
@@ -204,57 +204,57 @@ input_select:
 sensor:
   - platform: template
     sensors:
-      wakeup_time:
-        value_template: >-
-          {% if is_state('input_boolean.override_alarm', 'on') %}
-            {{ as_timestamp(states.input_datetime.wakeup_time.datetime) }}
-          {% elif as_timestamp(state_attr('calendar.asml_werkschema', 'start_time'))|timestamp_custom('%y%m%d')|int>(now().strftime('%y%m%d')|int+1) %}
-            {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 08:00:00") }}
-          {% elif as_timestamp(state_attr('calendar.asml_werkschema', 'start_time'))|timestamp_custom('%H%M')|int >= 1100 %}
-            {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 10:00:00") }}
-          {% else %}
-            {{ (as_timestamp(state_attr('calendar.asml_werkschema', 'start_time'))-3600) }}
-          {% endif %}
-      wakeup_time_human_readable:
-        device_class: timestamp
-        value_template: >-
-          {{ states( 'sensor.wakeup_time' )|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
-      bed_time:
-        device_class: timestamp
-        value_template: >-
-          {{ states( 'sensor.wakeup_time' )|int-8.5*3600 }}
-      bed_time_human_readable:
-        device_class: timestamp
-        value_template: >-
-          {{ states( 'sensor.bed_time' )|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
-      wakeuplight_time:
-        device_class: timestamp
-        value_template: >-
-          {{ states( 'sensor.wakeup_time' )|int-0.5*3600 }}
-      wakeuplight_time_human_readable:
-        device_class: timestamp
-        value_template: >-
-          {{ states( 'sensor.wakeuplight_time' )|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
-      time_until_wakeuplight_time:
-        device_class: timestamp
-        value_template: >-
-          {{ states( 'sensor.wakeuplight_time' )|int-as_timestamp(now()) }}
-      time_until_wakeuplight_time_human_readable:
-        value_template: >-
-          {{ states( 'sensor.time_until_wakeuplight_time' )|int|timestamp_custom(('%H:%M:%S')) }}
-      bedroom_scene:
-        value_template: >-
-          {% if is_state('input_boolean.sleep_tracking_on', 'on') or
-            (is_state('input_boolean.tamara_sleeping', 'on') and is_state('person.tamara', 'home'))
-          %}
-          bedroom_nightlight
-          {% elif states( 'sensor.bed_time' )|int <= (as_timestamp(now())+0.5*3600)%}
-          bedroom_goodnight
-          {% elif states( 'sensor.bed_time' )|int <= (as_timestamp(now())+2*3600)%}
-          bedroom_bright_warm
-          {% else %}
-          bedroom_bright_cool
-          {% endif %}
+      # wakeup_time:
+      #   value_template: >-
+      #     {% if is_state('input_boolean.override_alarm', 'on') %}
+      #       {{ as_timestamp(states.input_datetime.wakeup_time.datetime) }}
+      #     {% elif as_timestamp(state_attr('calendar.asml_werkschema', 'start_time'))|timestamp_custom('%y%m%d')|int>(now().strftime('%y%m%d')|int+1) %}
+      #       {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 08:00:00") }}
+      #     {% elif as_timestamp(state_attr('calendar.asml_werkschema', 'start_time'))|timestamp_custom('%H%M')|int >= 1100 %}
+      #       {{ as_timestamp((as_timestamp(now())+24*3600)|timestamp_custom(('%Y-%m-%d')) + " 10:00:00") }}
+      #     {% else %}
+      #       {{ (as_timestamp(state_attr('calendar.asml_werkschema', 'start_time'))-3600) }}
+      #     {% endif %}
+      # wakeup_time_human_readable:
+      #   device_class: timestamp
+      #   value_template: >-
+      #     {{ states( 'sensor.wakeup_time' )|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
+      # bed_time:
+      #   device_class: timestamp
+      #   value_template: >-
+      #     {{ states( 'sensor.wakeup_time' )|int-8.5*3600 }}
+      # bed_time_human_readable:
+      #   device_class: timestamp
+      #   value_template: >-
+      #     {{ states( 'sensor.bed_time' )|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
+      # wakeuplight_time:
+      #   device_class: timestamp
+      #   value_template: >-
+      #     {{ states( 'sensor.wakeup_time' )|int-0.5*3600 }}
+      # wakeuplight_time_human_readable:
+      #   device_class: timestamp
+      #   value_template: >-
+      #     {{ states( 'sensor.wakeuplight_time' )|int|timestamp_custom(('%d-%m-%Y %H:%M:%S')) }}
+      # time_until_wakeuplight_time:
+      #   device_class: timestamp
+      #   value_template: >-
+      #     {{ states( 'sensor.wakeuplight_time' )|int-as_timestamp(now()) }}
+      # time_until_wakeuplight_time_human_readable:
+      #   value_template: >-
+      #     {{ states( 'sensor.time_until_wakeuplight_time' )|int|timestamp_custom(('%H:%M:%S')) }}
+      # bedroom_scene:
+      #   value_template: >-
+      #     {% if is_state('input_boolean.sleep_tracking_on', 'on') or
+      #       (is_state('input_boolean.tamara_sleeping', 'on') and is_state('person.tamara', 'home'))
+      #     %}
+      #     bedroom_nightlight
+      #     {% elif states( 'sensor.bed_time' )|int <= (as_timestamp(now())+0.5*3600)%}
+      #     bedroom_goodnight
+      #     {% elif states( 'sensor.bed_time' )|int <= (as_timestamp(now())+2*3600)%}
+      #     bedroom_bright_warm
+      #     {% else %}
+      #     bedroom_bright_cool
+      #     {% endif %}
       bedscale_1_calibrated:
         friendly_name: "Bedscale 1 Calibrated"
         unit_of_measurement: kg
