@@ -25,25 +25,60 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: turn on closet light when door opens
+  - alias: "[closet|light] Automate closet lights"
+    mode: queued
     trigger:
-      platform: state
-      entity_id: binary_sensor.door_window_sensor_cabinet
-      to: 'on'
+      - platform: state
+        entity_id: binary_sensor.door_window_sensor_cabinet
     action:
-      service: light.turn_on
-      entity_id: light.shelly_closet
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: light.turn_on
+                entity_id: light.shelly_closet
+          - conditions: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - service: light.turn_off
+                entity_id: light.shelly_closet
 
-  - alias: turn off closet light when door closes
+  - alias: "[closet|light] Containment turn off light when door is closed"
+    mode: restart
     trigger:
-      platform: state
-      entity_id: binary_sensor.door_window_sensor_cabinet
-      to: 'off'
+      - platform: state
+        entity_id: light.shelly_closet
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.door_window_sensor_cabinet
+        state:
+          - "off"
+          - "unknown"
+          - "unavailable"
+        for:
+          minutes: 5
     action:
-      service: light.turn_off
-      entity_id:
-        - light.shelly_closet
-        - light.gateway_light_34ce008c0f6f
+      - service: light.turn_off
+        entity_id: light.shelly_closet
+
+  # - alias: turn on closet light when door opens
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.door_window_sensor_cabinet
+  #     to: 'on'
+  #   action:
+  #     service: light.turn_on
+  #     entity_id: light.shelly_closet
+
+  # - alias: turn off closet light when door closes
+  #   trigger:
+  #     platform: state
+  #     entity_id: binary_sensor.door_window_sensor_cabinet
+  #     to: 'off'
+  #   action:
+  #     service: light.turn_off
+  #     entity_id:
+  #       - light.shelly_closet
+  #       - light.gateway_light_34ce008c0f6f
 
   - alias: '[closet|alarm] Alert when closet is open too long'
     mode: restart
@@ -55,11 +90,11 @@ automation:
     action:
       repeat:
         sequence:
-          - service: light.turn_on
-            data:
-              entity_id: light.gateway_light_34ce008c0f6f
-              brightness: 255
-              color_name: red
+          # - service: light.turn_on
+          #   data:
+          #     entity_id: light.gateway_light_34ce008c0f6f
+          #     brightness: 255
+          #     color_name: red
           - service: tts.google_say
             entity_id: media_player.living_room_speaker
             data:
@@ -73,7 +108,7 @@ automation:
               state: 'on'
             - condition: state
               entity_id: automation.closet_alarm_alert_when_closet_is_open_too_long
-              state: 'on'
+              state: 'off'
 
 ################
 #    SCENES    #
