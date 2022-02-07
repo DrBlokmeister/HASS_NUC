@@ -212,6 +212,23 @@ automation:
           tag: transmission
           icon_url: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Transmission_icon.png"
           timeout: 1800
+
+  - alias: '[network|notify]Alert phone when network speed is too low'
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.speedtest_download
+        below: 100
+        for:
+          minutes: 70
+    action:
+      service: notify.mobile_app_blokmeister_op6_haapp
+      data:
+        title: "Network speed 100mbit!"
+        message: "Current network speed {{ states('sensor.speedtest_download') }} Mbit/s."
+        data:
+          group: reminder
+          tag: networkspeed
+          timeout: 1800
 ################
 #    SCENES    #
 ################
