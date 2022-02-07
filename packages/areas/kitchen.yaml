@@ -8,6 +8,12 @@ input_number:
     min: 0
     max: 200
     mode: box
+  kitchen_illumination_limit_lightson:
+    name: Kitchen illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
   kitchen_light_timeout: #in minutes
     name: Kitchen light timeout
     step: 1
@@ -60,26 +66,21 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
     action:
-      - repeat:
-          count: 5
-          sequence:
-            - service: light.turn_on
-              data:
-                entity_id: light.kitchen_lights
-                brightness: 255
-                #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
-                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-            # - service: switch.flux_kitchen_update
-            - delay:
-                milliseconds: 100
-      - service: timer.start
+      - service: light.turn_on
         data:
-          entity_id: timer.kitchen_lights
-          duration: "{{ states('input_number.kitchen_light_timeout')|int*60 }}"
+          entity_id: light.kitchen_lights
+          brightness: 255
+          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      # - service: switch.flux_kitchen_update
       - wait_for_trigger:
           - platform: state
             entity_id: binary_sensor.motion_sensor_kitchen
             to: 'off'
+            for:
+              minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
+          - platform: template
+            value_template: "{{ states('sensor.illumination_kitchen')|int > states('input_number.kitchen_illumination_limit_lightson')|int }}"
             for:
               minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
       - service: light.turn_on
