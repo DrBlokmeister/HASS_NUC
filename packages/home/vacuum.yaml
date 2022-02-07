@@ -74,18 +74,18 @@ camera:
 sensor:
   - platform: template
     sensors:
-      area_last_clean:
-        unit_of_measurement: 'm2'
-        value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'cleaned_area')|int }}"
-      area_total_clean:
-        unit_of_measurement: 'm2'
-        value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int }}"
+      # area_last_clean:
+      #   unit_of_measurement: 'm2'
+      #   value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'cleaned_area')|int }}"
+      # area_total_clean:
+      #   unit_of_measurement: 'm2'
+      #   value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int }}"
       area_cleaned_today:
         unit_of_measurement: 'm2'
-        value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int - states('input_number.area_cleaned_at_start_of_day')|int }}"
+        value_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|int - states('input_number.area_cleaned_at_start_of_day')|int }}"
       area_cleaned_since_last_empty_bin:
         unit_of_measurement: 'm2'
-        value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int - states('input_number.area_cleaned_at_last_empty_bin')|int }}"
+        value_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|int  - states('input_number.area_cleaned_at_last_empty_bin')|int }}"
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -141,10 +141,14 @@ automation:
         entity_id: sensor.area_cleaned_today
         below: 50
     action:
-      - service: system_log.write
+      # - service: system_log.write
+      #   data:
+      #     message: 'Started vacuum automation: auto clean whole house when not home'
+      #     level: info
+      - service: vacuum.set_fan_speed
+        entity_id: vacuum.xiaomi_vacuum_cleaner
         data:
-          message: 'Started vacuum automation: auto clean whole house when not home'
-          level: info
+          fan_speed: Medium
       - service: vacuum.start
         entity_id: vacuum.xiaomi_vacuum_cleaner
       - service: notify.mobile_app_blokmeister_op6_haapp
@@ -218,115 +222,7 @@ automation:
       - service: input_number.set_value
         data:
           entity_id: input_number.area_cleaned_at_last_empty_bin
-          value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
-
-
-#Turns off the vacuumed today boolean at the start of every day. Used by vacuum automations
-  # - alias: '[home|vacuum]turn_off_vacuumed_today_each_night'
-  #   trigger:
-  #     platform: time
-  #     at: 01:00:00
-  #   action:
-  #     - service: system_log.write
-  #       data:
-  #         message: 'Turn off input boolean vacuumed today'
-  #         level: info
-  #     - service: input_boolean.turn_off
-  #       data:
-  #         entity_id: input_boolean.vacuumed_today
-
-#Buttons:
-  # - alias: '[home|vacuum]button_drive_to_trashbin'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_vacuumcleaner
-  #         click_type: double
-  #     - platform: event
-  #       event_type: deconz_event
-  #       event_data:
-  #         id: lumi_sensor_switch_50
-  #         event: 1004
-  #   condition:
-  #     - condition: state
-  #       entity_id: vacuum.xiaomi_vacuum_cleaner
-  #       state: docked
-  #   action:
-  #     - service: automation.trigger
-  #       data:
-  #         entity_id: automation.home_vacuum_counter_drive_to_trashbin
-  #         skip_condition: true
-  #     - wait_for_trigger:
-  #         platform: state
-  #         entity_id: vacuum.xiaomi_vacuum_cleaner
-  #         to: 'Docked'
-  #     - service: input_number.set_value
-  #       data:
-  #         entity_id: input_number.area_cleaned_at_last_empty_bin
-  #         value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
-  #     # - service: script.vacuum_goto_kitchen
-  #     # - service: counter.reset
-  #     #   data:
-  #     #     entity_id: counter.times_vacuumed_since_empty_bin
-
-  # - alias: '[home|vacuum]button_dock_vacuum'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_vacuumcleaner
-  #         click_type: double
-  #     - platform: event
-  #       event_type: deconz_event
-  #       event_data:
-  #         id: lumi_sensor_switch_50
-  #         event: 1004
-  #   condition:
-  #     condition: template
-  #     value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
-  #   action:
-  #     - service: vacuum.return_to_base
-  #       entity_id: vacuum.xiaomi_vacuum_cleaner
-
-  # - alias: '[home|vacuum]button_start_vacuum'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_vacuumcleaner
-  #         click_type: single
-  #     - platform: event
-  #       event_type: deconz_event
-  #       event_data:
-  #         id: lumi_sensor_switch_50
-  #         event: 1002
-  #   condition:
-  #     condition: template
-  #     value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
-  #   action:
-  #     - service: vacuum.start
-  #       entity_id: vacuum.xiaomi_vacuum_cleaner
-
-  # - alias: '[home|vacuum]button_pause_vacuum'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_vacuumcleaner
-  #         click_type: single
-  #     - platform: event
-  #       event_type: deconz_event
-  #       event_data:
-  #         id: lumi_sensor_switch_50
-  #         event: 1002
-  #   condition:
-  #     condition: state
-  #     entity_id: vacuum.xiaomi_vacuum_cleaner
-  #     state: cleaning
-  #   action:
-  #     - service: vacuum.pause
-  #       entity_id: vacuum.xiaomi_vacuum_cleaner
+          value: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area') }}"
 
   - alias: '[home|vacuum] Button control vacuum'
     mode: restart
@@ -382,27 +278,6 @@ automation:
               - service: vacuum.return_to_base
                 entity_id: vacuum.xiaomi_vacuum_cleaner
 
-
-  - alias: '[home|vacuum]update_template_sensors'
-    trigger:
-      platform: state
-      entity_id: vacuum.xiaomi_vacuum_cleaner
-      to: 'cleaning'
-    action:
-      - repeat:
-          while:
-            - condition: state
-              entity_id: vacuum.xiaomi_vacuum_cleaner
-              state: 'cleaning'
-          sequence:
-            - service: homeassistant.update_entity
-              data:
-                entity_id:
-                  - sensor.area_last_clean
-                  - sensor.area_total_clean
-                  - sensor.area_cleaned_today
-            - delay: 00:00:05
-
   - alias: '[home|vacuum]reset_area_cleaned_input_number'
     trigger:
       platform: time
@@ -411,7 +286,7 @@ automation:
       - service: input_number.set_value
         data:
           entity_id: input_number.area_cleaned_at_start_of_day
-          value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
+          value: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area') }}"
 
 ########## NOTIFICATIONS ##########
 #Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
@@ -423,15 +298,6 @@ automation:
     action:
       service: script.vacuum_message_done_cleaning
 
-  # - alias: '[home|vacuum]write_log_when_counter_changes'
-  #   trigger:
-  #     platform: state
-  #     entity_id: counter.times_vacuumed_since_empty_bin
-  #   action:
-  #     - service: system_log.write
-  #       data:
-  #         message: 'Counter counter.times_vacuumed_since_empty_bin changed to {{ states('counter.times_vacuumed_since_empty_bin')}}'
-  #         level: info
 ################
 #    SCENES    #
 ################
