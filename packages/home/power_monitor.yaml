@@ -120,11 +120,11 @@ sensor:
 #     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
 #     unit_of_measurement: "€"
 
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
-#     name: Verbruik Per Dag
-#     value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
-#     unit_of_measurement: "kWh"
+  - platform: rest
+    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+    name: Verbruik Per Dag
+    value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
+    unit_of_measurement: "kWh"
 
   - platform: rest
     resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
@@ -201,6 +201,9 @@ sensor:
             {{ states('sensor.waterverbruik_vandaag') }}
           {% endif %}
         unit_of_measurement: "l"
+      # verbruik_per_dag:
+      #   value_template: "{{ states('sensor.home_energy_consumption_high')|float + states('home_energy_consumption_low')|float | round(2) }}"
+      #   unit_of_measurement: ""
 
   - platform: derivative
     source: sensor.consumption_gas_m3
@@ -340,6 +343,32 @@ automation:
             ledColor: "orange"
             channel: warning
 
+  - alias: "[power|autodiscover] Turn Blitzwolf BlokmeisterNUC autodiscovery back off"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.blitzwolf_nuc_energy_power
+        to:
+          - 'unavailable'
+          - 'unknown'
+        for:
+          minutes: 20
+      - platform: homeassistant
+        event: start
+    action:
+      - delay:
+          minutes: 2
+      - service: rest_command.nuc_autodiscover_off
+
+
+######################
+#    REST COMMAND    #
+######################
+
+rest_command:
+  nuc_autodiscover_off:
+    url: "http://192.168.1.155/cm?cmnd=SO19%20off"
+    method: put
 
 ################
 #    SCENES    #
