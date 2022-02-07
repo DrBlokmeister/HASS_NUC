@@ -82,7 +82,7 @@ automation:
     mode: restart
     trigger:
       - platform: state
-        entity_id: group.livingroom_motion_sensors
+        entity_id: binary_sensor.livingroom_motion_combined
         to: 'on'
       # - platform: numeric_state
       #   entity_id: image_processing.doods_tapo_camera_d6d4_hd
@@ -229,6 +229,119 @@ automation:
       - service: light.turn_off
         entity_id:
           - light.tvarea_and_ledstrips
+
+  - alias: '[bedroom|light] Toggle independent bedroom lights'
+    mode: single
+    trigger:
+      platform: event
+      event_type: deconz_event
+      event_data:
+        id: livingroom_multiswitch
+    action:
+      - choose:
+          - conditions:   ################## CONDITIONS BELOW ARE FOR QUICK PRESS-RELEASE ##################
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" # X000 means quick-press X002 means quick-press release
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.tvarea_and_ledstrips
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2002 }}"
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id:
+                    - light.plants
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3002 }}"
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id:
+                    - light.ssd_lights_grouped
+                    - light.falconlights
+                  effect: Rainbow
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4002 }}"
+            sequence:
+              - service: light.toggle
+                entity_id:
+                  - light.shelly_dinner_table
+          - conditions: ################## CONDITIONS BELOW ARE FOR LONG PRESS ##################
+            - condition: template
+              value_template: "{{ trigger.event.data.event == 1001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  entity_id:
+                    - light.tvarea_and_ledstrips
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  entity_id:
+                    - light.plants
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3001 }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  brightness_step_pct: 10
+                  entity_id:
+                    - light.falconlights
+                    - light.ssd_lights_grouped
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4001 }}"
+            sequence:
+              - service: homeassistant.toggle
+                entity_id:
+                  - group.livingroom_lighting_automations
+              - delay:
+                  seconds: 0.1
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: automation.livingroom_light_flux_light_through_motion
+                        state: 'on'
+                    sequence:
+                      - service: tts.cloud_say
+                        data:
+                          entity_id: media_player.living_room_speaker
+                          message: 'Livingroom motion sensors turned on.'
+                          language: en-GB
+                          options:
+                            gender: female
+                      - delay:
+                          seconds: 10
+                  - conditions:
+                      - condition: state
+                        entity_id: automation.livingroom_light_flux_light_through_motion
+                        state: 'off'
+                    sequence:
+                      - service: tts.cloud_say
+                        data:
+                          entity_id: media_player.living_room_speaker
+                          message: 'Livingroom motion sensors turned off.'
+                          language: en-GB
+                          options:
+                            gender: female
+                      - delay:
+                          seconds: 10
+
 ################
 #    SCENES    #
 ################
@@ -323,11 +436,11 @@ light:
   - platform: group
     name: TVarea_Lights
     entities:
-      - light.hue_color_spot_1
-      - light.hue_color_spot_2
-      - light.hue_color_spot_3
-      - light.hue_color_spot_4
-      - light.hue_color_spot_5
+      - light.tvarea_1
+      - light.tvarea_2
+      - light.tvarea_3
+      - light.tvarea_4
+      - light.tvarea_5
   - platform: group
     name: TVarea_and_LEDstrips
     entities:
