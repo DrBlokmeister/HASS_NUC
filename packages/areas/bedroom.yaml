@@ -446,36 +446,13 @@ input_boolean:
 #    SWITCHES    #
 ##################
 switch:
-  - platform: flux
-    name: flux_bedroom
-    mode: mired
-    disable_brightness_adjust: true
-    lights:
-      - light.bedroom_1
-      - light.bedroom_2
-      - light.bedroom_3
-      - light.bedside_left
-      - light.bedside_right
-      - light.ledstrip_bed
-  - platform: flux
-    name: flux_bedroom_fast
-    mode: mired
-    transition: 1
-    disable_brightness_adjust: true
-    lights:
-      - light.bedroom_1
-      - light.bedroom_2
-      - light.bedroom_3
-      - light.bedside_left
-      - light.bedside_right
-      - light.ledstrip_bed
 
 #####################
 #    AUTOMATIONS    #
 #####################
 automation:
   - alias: '[bedroom|light] Toggle independent bedroom lights'
-    mode: single
+    mode: restart
     trigger:
       platform: event
       event_type: deconz_event
@@ -488,53 +465,42 @@ automation:
                 value_template: "{{ trigger.event.data.event == 1002 }}" # X000 means quick-press X002 means quick-press release
             sequence:
               - service: light.toggle
-                entity_id:
-                  - light.bedroom_ceiling_lights
-              - delay:
-                  milliseconds: 100
-              - condition: state
-                entity_id: light.bedroom_1
-                state: 'on'
-              - service: switch.flux_bedroom_fast_update
+                data:
+                  entity_id:
+                    - light.bedroom_ceiling_lights
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
+
+
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 2002 }}"
             sequence:
               - service: light.toggle
-                entity_id:
-                  - light.bedside_left
-              - delay:
-                  milliseconds: 100
-              - condition: state
-                entity_id: light.bedside_left
-                state: 'on'
-              - service: switch.flux_bedroom_fast_update
+                data:
+                  entity_id:
+                    - light.bedside_left
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
+              # - service: switch.flux_bedroom_fast_update
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 3002 }}"
             sequence:
               - service: light.toggle
-                entity_id:
-                  - light.bedside_right
-              - delay:
-                  milliseconds: 100
-              - condition: state
-                entity_id: light.bedside_right
-                state: 'on'
-              - service: switch.flux_bedroom_fast_update
+                data:
+                  entity_id:
+                    - light.bedside_right
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
+
+              # - service: switch.flux_bedroom_fast_update
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 4002 }}"
             sequence:
               - service: light.toggle
-                entity_id:
-                  - light.ledstrip_bed
-              - delay:
-                  milliseconds: 100
-              - condition: state
-                entity_id: light.bedside_right
-                state: 'on'
-              - service: switch.flux_bedroom_fast_update
+                data:
+                  entity_id:
+                    - light.ledstrip_bed
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
           - conditions: ################## CONDITIONS BELOW ARE FOR LONG PRESS ##################
             - condition: template
               value_template: "{{ trigger.event.data.event == 1001 }}"
@@ -546,9 +512,7 @@ automation:
                     - light.bedroom_1
                     - light.bedroom_2
                     - light.bedroom_3
-              - delay:
-                  milliseconds: 100
-              - service: switch.flux_bedroom_fast_update
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 2001 }}"
@@ -558,9 +522,7 @@ automation:
                   brightness_step_pct: 10
                   entity_id:
                     - light.bedside_left
-              - delay:
-                  milliseconds: 100
-              - service: switch.flux_bedroom_fast_update
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 3001 }}"
@@ -570,9 +532,10 @@ automation:
                   brightness_step_pct: 10
                   entity_id:
                     - light.bedside_right
-              - delay:
-                  milliseconds: 100
-              - service: switch.flux_bedroom_fast_update
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
+              # - delay:
+              #     milliseconds: 100
+              # - service: switch.flux_bedroom_fast_update
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 4001 }}"
@@ -582,12 +545,7 @@ automation:
                   brightness_step_pct: 10
                   entity_id:
                     - light.ledstrip_bed
-              - delay:
-                  milliseconds: 100
-              - service: switch.flux_bedroom_fast_update
-      # - delay:
-      #     seconds: 1
-      # - service: switch.flux_bedroom_fast_update
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
 
 
   #Toggle bedroom lights when switch is pressed
@@ -615,17 +573,6 @@ automation:
           sequence:
             - service: light.turn_off
               entity_id: light.bedroom_lights
-      # - service: script.toggle_bedroom_lights
-      # - service: input_boolean.turn_on
-      #   data:
-      #     entity_id: input_boolean.bedroom_button_pressed
-      # - service: timer.cancel
-      #   data:
-      #     entity_id: timer.bedroom_button_pressed
-      # - service: timer.start
-      #   data:
-      #     entity_id: timer.bedroom_button_pressed
-      #     duration: '00:30:00'
 
 
   #Cycle bedroom lights when switch is pressed twice
@@ -863,7 +810,6 @@ automation:
           sequence:
             - service: light.turn_off
               entity_id: light.bedroom_lights
-      - service: switch.flux_bedroom_update
       - service: automation.turn_off
         entity_id:
           - group.bedroom_lighting_automations
@@ -949,13 +895,8 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
     action:
-      - repeat:
-          count: 5
-          sequence:
-            - service: script.turn_on
-              entity_id: script.set_correct_bedroom_scene
-            - delay:
-                milliseconds: 100
+      - service: script.turn_on
+        entity_id: script.set_correct_bedroom_scene
       - service: timer.start
         data:
           entity_id: timer.bedroom_lights
@@ -1422,6 +1363,7 @@ script:
             {% else %}
               50
             {% endif %}
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
       - service: light.turn_on
         data:
           entity_id:
@@ -1437,6 +1379,7 @@ script:
             {% else %}
               0
             {% endif %}
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
       - service: light.turn_on
         data:
           entity_id:
@@ -1453,6 +1396,7 @@ script:
             {% else %}
               10
             {% endif %}
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
       - service: light.turn_on
         data:
           entity_id:
@@ -1468,9 +1412,7 @@ script:
             {% else %}
               155
             {% endif %}
-      - delay:
-          seconds: 1
-      - service: switch.flux_bedroom_update
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
 
   wakeup_sunrise_sequence:
     sequence:
@@ -1577,21 +1519,3 @@ script:
           entity_id: input_number.bedscale4_offset
           value: >-
             {{ -(states('sensor.hx711_raw_value_4')|int) }}
-
-  test_ledstrip_autobrightness:
-    sequence:
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.ledstrip_bed
-          transition: "{% if is_state('light.ledstrip_bed', 'on') %}3{% else %}0.5{% endif %}"
-          brightness: >-
-            {% if now().hour < 7 %}
-              50
-            {% elif now().hour < 20 %}
-              0
-            {% elif now().hour < 22.5 %}
-              {{ (255 - 255 * (now().hour - 19)/2.5)|int }}
-            {% else %}
-              50
-            {% endif %}
