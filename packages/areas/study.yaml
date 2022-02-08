@@ -72,24 +72,6 @@ binary_sensor:
 #    SWITCHES    #
 ##################
 switch:
-  # - platform: flux
-  #   name: flux_study
-  #   mode: mired
-  #   disable_brightness_adjust: True
-  #   transition: 30
-  #   lights:
-  #     - light.study_1
-  #     - light.study_2
-  #     - light.study_3
-  #     - light.study_candle
-
-  - platform: circadian_lighting
-    lights_ct:
-      - light.study_1
-      - light.study_2
-      - light.study_3
-      - light.study_candle
-      - light.study_desk_a_rgb_ledstrip
 
 #####################
 #    AUTOMATIONS    #
@@ -124,16 +106,13 @@ automation:
           entity_id:
             - light.study
           brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - service: light.turn_on
         data:
           entity_id:
             - light.study_desk_a_rgb_ledstrip
           brightness_pct: 100
-          #kelvin: "{{ state_attr('sensor.circadian_values', 'colortemp') | int }}"
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-      # - service: switch.flux_study_update
       - wait_for_trigger:
           - platform: state
             entity_id: group.study_motion_sensors
