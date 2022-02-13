@@ -74,18 +74,14 @@ camera:
 sensor:
   - platform: template
     sensors:
-      # area_last_clean:
-      #   unit_of_measurement: 'm2'
-      #   value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'cleaned_area')|int }}"
-      # area_total_clean:
-      #   unit_of_measurement: 'm2'
-      #   value_template: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner', 'total_cleaned_area')|int }}"
       area_cleaned_today:
         unit_of_measurement: 'm2'
-        value_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|int - states('input_number.area_cleaned_at_start_of_day')|int }}"
+        value_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|int(states('input_number.area_cleaned_at_start_of_day')|int) - states('input_number.area_cleaned_at_start_of_day')|int }}"
+        availability_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|is_number }}"
       area_cleaned_since_last_empty_bin:
         unit_of_measurement: 'm2'
-        value_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|int  - states('input_number.area_cleaned_at_last_empty_bin')|int }}"
+        value_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|int(states('input_number.area_cleaned_at_start_of_day')|int)  - states('input_number.area_cleaned_at_last_empty_bin')|int }}"
+        availability_template: "{{ states('sensor.xiaomi_vacuum_cleaner_total_clean_area')|is_number }}"
 ########################
 #    BINARY SENSORS    #
 ########################

@@ -261,24 +261,28 @@ sensor:
         icon_template: mdi:scale
         value_template: >-
           {{ -((states('sensor.hx711_raw_value_1')|round(0) + states('input_number.bedscale1_offset')|round(0))/states('input_number.bedscale1_sensitivity')|round(0))|round(2) }}
+        availability_template: "{{ states('sensor.hx711_raw_value_1')|is_number and states('input_number.bedscale1_offset')|is_number and states('input_number.bedscale1_sensitivity')|is_number }}"
       bedscale_2_calibrated:
         friendly_name: "Bedscale 2 Calibrated"
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template: >-
           {{ -((states('sensor.hx711_raw_value_2')|round(0) + states('input_number.bedscale2_offset')|round(0))/states('input_number.bedscale2_sensitivity')|round(0))|round(2) }}
+        availability_template: "{{ states('sensor.hx711_raw_value_2')|is_number and states('input_number.bedscale2_offset')|is_number and states('input_number.bedscale2_sensitivity')|is_number }}"
       bedscale_3_calibrated:
         friendly_name: "Bedscale 3 Calibrated"
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template: >-
           {{ -((states('sensor.hx711_raw_value_3')|round(0) + states('input_number.bedscale3_offset')|round(0))/states('input_number.bedscale3_sensitivity')|round(0))|round(2) }}
+        availability_template: "{{ states('sensor.hx711_raw_value_3')|is_number and states('input_number.bedscale3_offset')|is_number and states('input_number.bedscale3_sensitivity')|is_number }}"
       bedscale_4_calibrated:
         friendly_name: "Bedscale 4 Calibrated"
         unit_of_measurement: kg
         icon_template: mdi:scale
         value_template: >-
           {{ -((states('sensor.hx711_raw_value_4')|round(0) + states('input_number.bedscale4_offset')|round(0))/states('input_number.bedscale4_sensitivity')|round(0))|round(2) }}
+        availability_template: "{{ states('sensor.hx711_raw_value_4')|is_number and states('input_number.bedscale4_offset')|is_number and states('input_number.bedscale4_sensitivity')|is_number }}"
       bedscale_1_final:
         friendly_name: "Bedscale 1 Final"
         unit_of_measurement: kg
@@ -337,8 +341,6 @@ sensor:
             + states('sensor.bedscale_2_calibrated')|round(2)
             + states('sensor.bedscale_3_calibrated')|round(2)
             + states('sensor.bedscale_4_calibrated')|round(2))|round(2) }}
-        #value_template:  >-
-        #  {{ ((states('sensor.hx711_raw_value')|round(1) - states('input_number.bedscalecalibration_lowvalue_raw')|round(1)) * ((states('input_number.bedscalecalibration_lowvalue_kg')|round(1) - states('input_number.bedscalecalibration_highvalue_kg')|round(1)) / (states('input_number.bedscalecalibration_lowvalue_raw')|round(1) - states('input_number.bedscalecalibration_highvalue_raw')|round(1))))|round(2) }}
       bed_weight_balance_leftright:
         friendly_name: "Bed Weight Balance Left/Right"
         icon_template: mdi:scale-balance
@@ -1285,20 +1287,20 @@ group:
       - scene.bedroom_nightlight
       - scene.bedroom_readinglight
       - scene.bedroom_midnight_walkaround
-  bedscale_entities:
-    entities:
-      - input_number.bedscalecalibration_lowvalue_kg
-      - input_number.bedscalecalibration_highvalue_kg
-      - input_number.bedscalecalibration_lowvalue_raw
-      - input_number.bedscalecalibration_highvalue_raw
-      - sensor.bed_weight_calibrated
-      - sensor.bed_weight_change_per_minute
-      - sensor.bed_weight_drift_compensated
-      - sensor.hx711_raw_value
-      - sensor.hx711_value
-      - sensor.people_in_bed
-      - binary_sensor.bed_occupied
-      - script.tare_bed_scale
+  # bedscale_entities:
+  #   entities:
+  #     - input_number.bedscalecalibration_lowvalue_kg
+  #     - input_number.bedscalecalibration_highvalue_kg
+  #     - input_number.bedscalecalibration_lowvalue_raw
+  #     - input_number.bedscalecalibration_highvalue_raw
+  #     - sensor.bed_weight_calibrated
+  #     - sensor.bed_weight_change_per_minute
+  #     - sensor.bed_weight_drift_compensated
+  #     - sensor.hx711_raw_value
+  #     - sensor.hx711_value
+  #     - sensor.people_in_bed
+  #     - binary_sensor.bed_occupied
+  #     - script.tare_bed_scale
 
 
 ################
@@ -1479,24 +1481,6 @@ script:
       - service: climate.turn_off
         entity_id: climate.electric_blanket
   
-  tare_bed_scale:
-    sequence:
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.bedscalecalibration_helper
-          value: >-
-            {{ states('input_number.bedscalecalibration_lowvalue_raw')|int - states('sensor.hx711_raw_value')|int }}
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.bedscalecalibration_lowvalue_raw
-          value: >-
-            {{ states('input_number.bedscalecalibration_lowvalue_raw')|int - states('input_number.bedscalecalibration_helper')|int }}
-      - service: input_number.set_value
-        data_template:
-          entity_id: input_number.bedscalecalibration_highvalue_raw
-          value: >-
-            {{ (states('input_number.bedscalecalibration_highvalue_raw')|int - states('input_number.bedscalecalibration_helper')|int)|int}}
-
   tare_all_scales:
     sequence:
       - service: input_number.set_value
