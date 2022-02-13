@@ -30,6 +30,7 @@ sensor:
         device_class: illuminance
         unit_of_measurement: 'lx'
         value_template: "{{ (states('sensor.illumination_livingroom')|round(1)+states('sensor.illumination_livingroom2')|round(1))/2 }}"
+        availability_template: "{{ states('sensor.illumination_livingroom')|is_number and states('sensor.illumination_livingroom2')|is_number }}"
   # - platform: statistics
   #   name: average_illumination_livingroom_stats
   #   entity_id: sensor.average_illumination_livingroom
@@ -49,6 +50,7 @@ binary_sensor:
             is_state('binary_sensor.motion_sensor_livingroom2', 'on') or
             is_state('binary_sensor.motion_sensor_livingroom3', 'on')
           }}
+        availability_template: "{{ (states('binary_sensor.motion_sensor_livingroom') in ['on', 'off']) and (states('binary_sensor.motion_sensor_livingroom2') in ['on', 'off'] and (states('binary_sensor.motion_sensor_livingroom3') in ['on', 'off'])) }}"
 
 ########################
 #    INPUT BOOLEANS    #

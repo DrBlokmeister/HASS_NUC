@@ -293,6 +293,7 @@ sensor:
           {% else %}
             {{ ((states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2))/3)|round(2) }}
           {% endif %}
+        availability_template: "{{ states('binary_sensor.bedsensor1_availability')|is_number or (states('sensor.bedscale_2_calibrated')|is_number and states('sensor.bedscale_3_calibrated')|is_number and states('sensor.bedscale_4_calibrated')|is_number) }}"
       bedscale_2_final:
         friendly_name: "Bedscale 2 Final"
         unit_of_measurement: kg
@@ -303,6 +304,7 @@ sensor:
           {% else %}
             {{ ((states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2))/3)|round(2) }}
           {% endif %}
+        availability_template: "{{ states('binary_sensor.bedsensor2_availability')|is_number or (states('sensor.bedscale_1_calibrated')|is_number and states('sensor.bedscale_3_calibrated')|is_number and states('sensor.bedscale_4_calibrated')|is_number) }}"
       bedscale_3_final:
         friendly_name: "Bedscale 3 Final"
         unit_of_measurement: kg
@@ -313,6 +315,7 @@ sensor:
           {% else %}
             {{ ((states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2))/3)|round(2) }}
           {% endif %}
+        availability_template: "{{ states('binary_sensor.bedsensor3_availability')|is_number or (states('sensor.bedscale_2_calibrated')|is_number and states('sensor.bedscale_1_calibrated')|is_number and states('sensor.bedscale_4_calibrated')|is_number) }}"
       bedscale_4_final:
         friendly_name: "Bedscale 4 Final"
         unit_of_measurement: kg
@@ -323,6 +326,7 @@ sensor:
           {% else %}
             {{ ((states('sensor.bedscale_1_calibrated')|round(2) + states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_3_calibrated')|round(2))/3)|round(2) }}
           {% endif %}
+        availability_template: "{{ states('binary_sensor.bedsensor4_availability')|is_number or (states('sensor.bedscale_2_calibrated')|is_number and states('sensor.bedscale_3_calibrated')|is_number and states('sensor.bedscale_1_calibrated')|is_number) }}"
       bed_weight_calibrated:
         friendly_name: "Bed weight calibrated"
         unit_of_measurement: kg
@@ -332,6 +336,7 @@ sensor:
             + states('input_number.bedscale2_weight')|round(2) * states('sensor.bedscale_2_final')|round(2)
             + states('input_number.bedscale3_weight')|round(2) * states('sensor.bedscale_3_final')|round(2)
             + states('input_number.bedscale4_weight')|round(2) * states('sensor.bedscale_4_final')|round(2))|round(2) }}
+        availability_template: "{{ states('input_number.bedscale1_weight')|is_number and states('input_number.bedscale2_weight')|is_number and states('input_number.bedscale3_weight')|is_number and states('input_number.bedscale4_weight')|is_number and states('sensor.bedscale_1_final')|is_number and states('sensor.bedscale_2_final')|is_number and states('sensor.bedscale_3_final')|is_number and states('sensor.bedscale_4_final')|is_number }}"
       bed_weight_calibrated_unweighted:
         friendly_name: "Bed weight calibrated unweighted"
         unit_of_measurement: kg
@@ -341,6 +346,7 @@ sensor:
             + states('sensor.bedscale_2_calibrated')|round(2)
             + states('sensor.bedscale_3_calibrated')|round(2)
             + states('sensor.bedscale_4_calibrated')|round(2))|round(2) }}
+        availability_template: "{{ states('sensor.bedscale_1_calibrated')|is_number and states('sensor.bedscale_2_calibrated')|is_number and states('sensor.bedscale_3_calibrated')|is_number and states('sensor.bedscale_4_calibrated')|is_number }}"
       bed_weight_balance_leftright:
         friendly_name: "Bed Weight Balance Left/Right"
         icon_template: mdi:scale-balance
@@ -353,6 +359,7 @@ sensor:
             - ( states('sensor.bedscale_3_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2) ))
             / ( states('sensor.bed_weight_calibrated_unweighted')|round(2) + 5/states('sensor.bed_weight_calibrated_unweighted')|round(2)) )|round(2) }}
           {% endif %}
+        availability_template: "{{ states('sensor.bed_weight_calibrated_unweighted')|is_number and states('sensor.bedscale_1_calibrated')|is_number and states('sensor.bedscale_2_calibrated')|is_number and states('sensor.bedscale_3_calibrated')|is_number and states('sensor.bedscale_4_calibrated')|is_number }}"
       bed_weight_balance_updown:
         friendly_name: "Bed Weight Balance Up/Down"
         icon_template: mdi:scale-balance
@@ -365,6 +372,7 @@ sensor:
                   - ( states('sensor.bedscale_2_calibrated')|round(2) + states('sensor.bedscale_4_calibrated')|round(2) ))
                   / ( states('sensor.bed_weight_calibrated_unweighted')|round(2) + 5/states('sensor.bed_weight_calibrated_unweighted')|round(2)) )|round(2) }}
             {% endif %}
+        availability_template: "{{ states('sensor.bed_weight_calibrated_unweighted')|is_number and states('sensor.bedscale_1_calibrated')|is_number and states('sensor.bedscale_2_calibrated')|is_number and states('sensor.bedscale_3_calibrated')|is_number and states('sensor.bedscale_4_calibrated')|is_number }}"
       people_in_bed:
         value_template: >-
           {% if states('sensor.bed_weight_calibrated')|float < 10 %}
@@ -386,17 +394,19 @@ sensor:
           {% else %}
             mdi:account-group
           {% endif %}
+        availability_template: "{{ states('sensor.bed_weight_calibrated')|is_number }}"
       average_illumination_bedroom:
         device_class: illuminance
         unit_of_measurement: 'lx'
         value_template: >-
           {{ (states('sensor.illumination_bedroom')|round(1) + states('sensor.lightlevel_12')|round(1))/2 }}
-      bed_weight_drift_compensated:
-        friendly_name: "Bed weight drift compensated"
-        unit_of_measurement: kg
-        icon_template: mdi:scale
-        value_template: >-
-          {{ (states('sensor.bed_weight_calibrated')|round(2) - 2*states('sensor.bed_weight_change_per_minute')|round(2))|round(2) }}
+        availability_template: "{{ states('sensor.illumination_bedroom')|is_number and states('sensor.lightlevel_12')|is_number }}"
+      # bed_weight_drift_compensated:
+      #   friendly_name: "Bed weight drift compensated"
+      #   unit_of_measurement: kg
+      #   icon_template: mdi:scale
+      #   value_template: >-
+      #     {{ (states('sensor.bed_weight_calibrated')|round(2) - 2*states('sensor.bed_weight_change_per_minute')|round(2))|round(2) }}
 
   - platform: derivative
     source: sensor.bed_weight_calibrated
@@ -412,6 +422,7 @@ binary_sensor:
       bed_occupied:
         device_class: occupancy
         value_template: "{{ not is_state('sensor.people_in_bed', '0') }}"
+        availability_template: "{{ states('sensor.people_in_bed')|is_number }}"
       bedsensor1_availability:
         device_class: plug
         value_template: "{{ not (states('sensor.hx711_raw_value_1') in ['0', 'unavailable','unknown','none'] or (as_timestamp(now()) - as_timestamp(states.sensor.hx711_raw_value_1.last_changed))/3600 > 1) }}"
