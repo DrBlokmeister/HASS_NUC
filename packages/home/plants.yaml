@@ -8,6 +8,12 @@ homeassistant:
       friendly_name: 'Zerumbet Left'
     plant.zerumbetright:
       friendly_name: 'Zerumbet Right'
+    plant.asperge:
+      friendly_name: 'Asperge'
+    plant.euler:
+      friendly_name: 'Euler'
+    plant.sinas:
+      friendly_name: 'Sinas'
   customize_glob:
     "sensor.filtered_*_moisture":
       icon: mdi:water
@@ -20,8 +26,7 @@ homeassistant:
 
 ble_monitor:
   restore_state: True
-  #batt_entities: True
-  active_scan: True
+  active_scan: False
   hci_interface:
     - 0
     - 1
@@ -520,57 +525,6 @@ automation:
         data:
           notification_id: low-water-alert
 
-  # - alias: '[plants|light]Button turn plant lights on'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_plants
-  #         click_type: single
-  #     # condition:
-  #     #   - condition: state
-  #     #     entity_id: light.plants
-  #     #     state: 'on'
-  #   action:
-  #     - service: light.toggle
-  #       entity_id: light.plants
-
-  # - alias: '[plants|light]Button dim plant lights'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_plants
-  #         click_type: double
-  #   condition:
-  #     condition: numeric_state
-  #     entity_id: light.plants
-  #     value_template: "{% if is_state('light.plants', 'on')  %}{{ state_attr('light.plants', 'brightness')}}{% else %}0{% endif %}"
-  #     above: 150
-  #   action:
-  #     - service: light.turn_on
-  #       entity_id: light.plants
-  #       data:
-  #         brightness: 130
-
-  # - alias: '[plants|light]Button brighten plant lights'
-  #   trigger:
-  #     - platform: event
-  #       event_type: xiaomi_aqara.click
-  #       event_data:
-  #         entity_id: binary_sensor.switch_plants
-  #         click_type: double
-  #   condition:
-  #     condition: numeric_state
-  #     entity_id: light.plants
-  #     value_template: "{% if is_state('light.plants', 'on')  %}{{ state_attr('light.plants', 'brightness')}}{% else %}0{% endif %}"
-  #     below: 150
-  #   action:
-  #     - service: light.turn_on
-  #       entity_id: light.plants
-  #       data:
-  #         brightness: 250
-
   - alias: '[plants|light] Button control plant lights'
     mode: queued
     trigger:
@@ -594,6 +548,28 @@ automation:
                 entity_id: light.plants
                 data:
                   brightness: "{% if is_state('light.plants', 'off') or state_attr('light.plants', 'brightness')|int < 150 %}255{% else %}130{% endif %}"
+
+  - alias: '[plants|battery] Notify when no connection has been made for some time'
+    mode: restart
+    trigger:
+      - platform: time_pattern
+        minutes: 30
+    condition:
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp((states.plant|map(attribute='last_updated')|min)))>3600 }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "The following plants have not been seen in over an hour: "
+          message: "{%- for plant in states.plant if (as_timestamp(now()) - as_timestamp(plant.last_updated))>3600 -%}{{ plant.entity_id }}{%- if not loop.last -%}{{', '}}{%-endif-%}{%- endfor -%}"
+          notification_id: plants-low-battery-alert
+      - wait_for_trigger:
+          - platform: template
+            value_template: "{{ (as_timestamp(now()) - as_timestamp((states.plant|map(attribute='last_updated')|min)))<600 }}"
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: plants-low-battery-alert
+
 ################
 #    SCENES    #
 ################
