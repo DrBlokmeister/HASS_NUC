@@ -36,6 +36,7 @@ sensor:
           entity_id: >-
             {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
             {{ states.binary_sensor|selectattr('attributes.device_class','eq','motion')|selectattr('last_changed', 'eq', lastchangedtime)|map(attribute='entity_id')|list|join(', ') }}
+        availability_template: "{{ (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined']))|rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|list|count > 0}}"
 
 ########################
 #    BINARY SENSORS    #

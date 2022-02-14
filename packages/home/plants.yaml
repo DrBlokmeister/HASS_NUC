@@ -414,6 +414,7 @@ sensor:
             {%- if "moisture" in item.name | lower and ((item.state | int < threshold and item.state|int != 0) or item.state | lower == "low" or item.state | lower == "unknown") -%}
               {{ item.attributes.friendly_name }} ({{ item.state }}){%- if not loop.last %}, {% endif -%} {% endif -%}
           {%- endfor -%}
+        availability_template: "{{ states.plant not in ['unavailable', 'unknown', 'none']}}"
 
 ########################
 #    BINARY SENSORS    #
@@ -435,6 +436,7 @@ binary_sensor:
             {% endif -%}
           {%- endfor -%}
           {{ns.water_needed}}
+        availability_template: "{{ states.plant not in ['unavailable', 'unknown', 'none']}}"
 
 ########################
 #    INPUT BOOLEANS    #

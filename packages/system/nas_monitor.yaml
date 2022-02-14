@@ -101,126 +101,17 @@ rest_command:
 #    SENSORS    #
 #################
 sensor:
-  # - platform: rest
-  #   name: FN_NewStorage_report
-  #   json_attributes:
-  #     - name
-  #     - used
-  #     - used_pct
-  #   resource: http://192.168.1.250:250/api/v2.0/storage/volume/NewStorage/?format=json
-  #   value_template: '{{ value_json.status }}'
-  #   username: !secret nas_user
-  #   password: !secret nas_pass
-  #   authentication: basic
-  #   scan_interval: 604800
-  #   force_update: true
-  #   headers:
-  #     Content-Type: application/json
-
-  # - platform: template
-  #   sensors:
-  #     fn_newstorage_pct_used:
-  #       value_template: "{{ state_attr('sensor.FN_NewStorage_report', 'used_pct')|replace('%','') }}"
-  #       unit_of_measurement: '%'
-  #       availability_template : "{{ not is_state('sensor.FN_NewStorage_report', 'unknown') }}"
-
-  # - platform: template
-  #   sensors:
-  #     fn_newstorage_used:
-  #       value_template: "{{ (state_attr('sensor.FN_NewStorage_report', 'used') / (1024**4)) | round(2) }}"
-  #       unit_of_measurement: 'TB'
-  #       availability_template : "{{ not is_state('sensor.FN_NewStorage_report', 'unknown') }}"
-
-  # - platform: rest
-  #   name: FN_Storage2_report
-  #   json_attributes:
-  #     - name
-  #     - used
-  #     - used_pct
-  #   resource: http://192.168.1.250:250/api/v2.0/storage/volume/Storage2/?format=json
-  #   value_template: '{{ value_json.status }}'
-  #   username: !secret nas_user
-  #   password: !secret nas_pass
-  #   authentication: basic
-  #   scan_interval: 604800
-  #   force_update: true
-  #   headers:
-  #     Content-Type: application/json
-
-  # - platform: template
-  #   sensors:
-  #     fn_storage2_pct_used:
-  #       value_template: "{{ state_attr('sensor.FN_Storage2_report', 'used_pct')|replace('%','') }}"
-  #       unit_of_measurement: '%'
-  #       availability_template : "{{ not is_state('sensor.FN_Storage2_report', 'unknown') }}"
-
-  # - platform: template
-  #   sensors:
-  #     fn_storage2_used:
-  #       value_template: "{{ (state_attr('sensor.FN_Storage2_report', 'used') / (1024**4)) | round(2) }}"
-  #       unit_of_measurement: 'TB'
-  #       availability_template : "{{ not is_state('sensor.FN_Storage2_report', 'unknown') }}"
-
-  # - platform: rest
-  #   name: FN_alert_level
-  #   resource: http://192.168.1.250:250/api/v2.0/system/alert/?format=json
-  #   value_template: '{{ value_json.objects[0].level }}'
-  #   username: !secret nas_user
-  #   password: !secret nas_pass
-  #   authentication: basic
-  #   scan_interval: 604800
-  #   headers:
-  #     Content-Type: application/json
-
-  # - platform: rest
-  #   name: FN_alert_message
-  #   resource: http://192.168.1.250:250/api/v2.0/system/alert/?format=json
-  #   value_template: '{{ value_json.objects[0].message }}'
-  #   username: !secret nas_user
-  #   password: !secret nas_pass
-  #   authentication: basic
-  #   scan_interval: 604800
-  #   headers:
-  #     Content-Type: application/json
-
-  # - platform: rest
-  #   name: FN_version
-  #   json_attributes:
-  #     - fullversion
-  #     - name
-  #     - version
-  #   resource: http://192.168.1.250:250/api/v2.0/system/version/?format=json
-  #   value_template: '{{ value_json.fullversion }}'
-  #   username: !secret nas_user
-  #   password: !secret nas_pass
-  #   authentication: basic
-  #   scan_interval: 604800
-  #   headers:
-  #     Content-Type: application/json
-
-  # - platform: rest
-  #   name: 'Ubuntu_VM'
-  #   json_attributes_path: "$.[0]"
-  #   json_attributes:
-  #     - state
-  #     - info
-  #   resource: http://192.168.1.250:250/api/v1.0/vm/vm/?format=json
-  #   value_template: '{{ value_json.state }}'
-  #   username: !secret nas_user
-  #   password: !secret nas_pass
-  #   authentication: basic
-  #   headers:
-  #     Content-Type: application/json
-
   - platform: template
     sensors:
       nas_cpu_alert_level:
         value_template: >-
           {{ (states("sensor.nas_cpu_use_percent")|int > 100)|int
             + (states("sensor.nas_cpu_use_percent")|int > 300)|int }}
+        availability_template: "{{ states('sensor.nas_nas_cpu_use_percent')|is_number and states('sensor.nas_nas_cpu_use_percent')|is_number }}"
       nas_memory_alert_level:
         value_template: >-
           {{ (states("sensor.nas_memory_use_percent")|int > 70)|int }}
+        availability_template: "{{ states('sensor.nas_nas_memory_use_percent')|is_number }}"
       nas_disks_alert_level:
         value_template: >-
           {{ [
@@ -249,6 +140,17 @@ sensor:
               + (states("sensor.nas_disk_ada7_temperature")|int > 45)|int
               + (states("sensor.nas_disk_ada7_temperature")|int > 55)|int,
           ]|max }}
+        availability_template: >-
+          {{
+            states("sensor.nas_disk_ada0_temperature")|is_number
+            and states("sensor.nas_disk_ada1_temperature")|is_number
+            and states("sensor.nas_disk_ada2_temperature")|is_number
+            and states("sensor.nas_disk_ada3_temperature")|is_number
+            and states("sensor.nas_disk_ada4_temperature")|is_number
+            and states("sensor.nas_disk_ada5_temperature")|is_number
+            and states("sensor.nas_disk_ada6_temperature")|is_number
+            and states("sensor.nas_disk_ada7_temperature")|is_number
+          }}
       nas_pools_alert_level:
         value_template: >-
           {{ [
@@ -257,6 +159,11 @@ sensor:
             2 - 2 * (states("sensor.nas_pool_NewStorage_health") == 'ONLINE')|int
               - (states("sensor.nas_pool_NewStorage_health") == 'DEGRADED')|int,
           ]|max }}
+        availability_template: >-
+          {{
+            states("sensor.nas_pool_NewStorage_use_percent")|is_number
+            and states("sensor.nas_pool_NewStorage_health")|is_number
+          }}
       nas_alert_level:
         value_template: >-
           {{ [
@@ -265,10 +172,18 @@ sensor:
             states("sensor.nas_disks_alert_level"),
             states("sensor.nas_pools_alert_level"),
           ]|max }}
+        availability_template: >-
+          {{
+            states("sensor.nas_cpu_alert_level")|is_number
+            and states("sensor.nas_memory_alert_level")|is_number
+            and states("sensor.nas_disks_alert_level")|is_number
+            and states("sensor.nas_pools_alert_level")|is_number
+          }}
       nas_load_pct:
         value_template: "{{ states('sensor.nas_load')|float * 25}}"
         unit_of_measurement: '%'
         friendly_name: "Nas Load"
+        availability_template: "{{ states('sensor.nas_load')|is_number }}"
   - platform: mqtt
     name: nas_last_boot
     state_topic: "sensor/blokmeisternas_8_8_8_8_state"

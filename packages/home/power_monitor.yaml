@@ -23,34 +23,82 @@ sensor:
     sensors:
       total_power_blitzwolf:
         unit_of_measurement: 'W'
-        value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_power' )|float + states( 'sensor.blitzwolf_computer_energy_power' )|float + states( 'sensor.blitzwolf_mediacenter_energy_power' )|float + states( 'sensor.blitzwolf_watercooker_energy_power' )|float + states( 'sensor.blitzwolf_coffeeplant_energy_power' )|float + states.sensor.blitzwolf_3dprinter_energy_power.state|float + states( 'sensor.blitzwolf_washingmachine_energy_power' )|float) |round(2) }}"
-      total_energy_today:
+        value_template: >-
+          {{
+            (states( 'sensor.blitzwolf_electricblanket_energy_power' )|float(0)
+            + states( 'sensor.blitzwolf_computer_energy_power' )|float(0)
+            + states( 'sensor.blitzwolf_mediacenter_energy_power' )|float(0)
+            + states( 'sensor.blitzwolf_watercooker_energy_power' )|float(0)
+            + states( 'sensor.blitzwolf_coffeeplant_energy_power' )|float(0)
+            + states( 'sensor.blitzwolf_3dprinter_energy_power' )|float(0)
+            + states( 'sensor.blitzwolf_washingmachine_energy_power' )|float(0)) |round(2)
+          }}
+        availability_template: >-
+          {{
+            states( 'sensor.blitzwolf_electricblanket_energy_power' )|is_number
+            or states( 'sensor.blitzwolf_computer_energy_power' )|is_number
+            or states( 'sensor.blitzwolf_mediacenter_energy_power' )|is_number
+            or states( 'sensor.blitzwolf_watercooker_energy_power' )|is_number
+            or states( 'sensor.blitzwolf_coffeeplant_energy_power' )|is_number
+            or states( 'sensor.blitzwolf_3dprinter_energy_power' )|is_number
+            or states( 'sensor.blitzwolf_washingmachine_energy_power' )|is_number
+          }}
+      total_blitzwolf_energy_today:
         unit_of_measurement: 'kWh'
-        value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float + states( 'sensor.blitzwolf_computer_energy_today' )|float + states( 'sensor.blitzwolf_mediacenter_energy_today' )|float + states( 'sensor.blitzwolf_watercooker_energy_today' )|float + states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float) |round(2) }}"
+        value_template: >-
+          {{
+            (
+              states( 'sensor.blitzwolf_electricblanket_energy_today' )|float
+              + states( 'sensor.blitzwolf_computer_energy_today' )|float
+              + states( 'sensor.blitzwolf_mediacenter_energy_today' )|float
+              + states( 'sensor.blitzwolf_watercooker_energy_today' )|float
+              + states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float
+              + states( 'sensor.blitzwolf_3dprinter_energy_today' )|float
+              + states( 'sensor.blitzwolf_washingmachine_energy_today' )|float
+            )|round(2)
+          }}
+        availability_template: >-
+          {{
+            states( 'sensor.blitzwolf_electricblanket_energy_today' )|is_number
+            or states( 'sensor.blitzwolf_computer_energy_today' )|is_number
+            or states( 'sensor.blitzwolf_mediacenter_energy_today' )|is_number
+            or states( 'sensor.blitzwolf_watercooker_energy_today' )|is_number
+            or states( 'sensor.blitzwolf_coffeeplant_energy_today' )|is_number
+            or states( 'sensor.blitzwolf_3dprinter_energy_today' )|is_number
+            or states( 'sensor.blitzwolf_washingmachine_energy_today' )|is_number
+          }}
       electricblanket_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_electricblanket_energy_today')|is_number }}"
       mediacenter_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_mediacenter_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_mediacenter_energy_today')|is_number }}"
       watercooker_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_watercooker_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_watercooker_energy_today')|is_number }}"
       computer_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_computer_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_computer_energy_today')|is_number }}"
       coffeeplant_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_coffeeplant_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_coffeeplant_energy_today')|is_number }}"
       ender3_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_3dprinter_energy_today')|is_number }}"
       washingmachine_cost_today:
         unit_of_measurement: '€'
         value_template: "{{ (states( 'sensor.blitzwolf_washingmachine_energy_today' )|float * (0.2221|float))|round(2) }}"
+        availability_template: "{{ states('sensor.blitzwolf_washingmachine_energy_today')|is_number }}"
       unknown_power:
         unit_of_measurement: 'W'
         value_template: "{{ ( states( 'sensor.home_power_consumption' )|float - states( 'sensor.total_power_blitzwolf' )|float - states( 'sensor.light_power_estimate' )|float )|round(2) }}"
+        availability_template: "{{ states('sensor.home_power_consumption')|is_number and states('sensor.total_power_blitzwolf')|is_number and states('sensor.light_power_estimate')|is_number }}"
   - platform: filter
     name: "filtered unknown power"
     entity_id: sensor.unknown_power

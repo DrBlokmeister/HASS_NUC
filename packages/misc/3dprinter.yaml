@@ -32,13 +32,13 @@ sensor:
       print_time_remaining_human_readable:
         friendly_name: "Print time remaining"
         icon_template: mdi:clock-end
-        value_template: >
-          {{ ( states( 'octoprint_print_time_left.state' )|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
+        value_template: "{{ ( states( 'sensor.octoprint_print_time_left' )|int - 3600) |timestamp_custom(('%H:%M:%S')) }}"
+        availability_template: "{{ states('sensor.octoprint_print_time_left')|is_number }}"
       print_elapsed_human_readable:
         friendly_name: "Print time elapsed"
         icon_template: mdi:clock-start
-        value_template: >
-          {{ ( states( 'sensor.octoprint_print_estimated_time' )|int - 3600) |timestamp_custom(('%H:%M:%S')) }}
+        value_template: "{{ ( states( 'sensor.octoprint_print_estimated_time' )|int - 3600) |timestamp_custom(('%H:%M:%S')) }}"
+        availability_template: "{{ states('sensor.octoprint_print_estimated_time')|is_number }}"
 
   - platform: command_line
     name: 'OctoPi CPU temp'
