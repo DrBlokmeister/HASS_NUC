@@ -82,6 +82,7 @@ class ShellyLightRelay(ShellyDevice, LightEntity):
     def __init__(self, dev, instance):
         """Initialize an ShellyLightRelay."""
         ShellyDevice.__init__(self, dev, instance)
+        self.entity_id = "light" + self.entity_id
         self._state = None
         self._master_unit = True
         self.update()
@@ -111,6 +112,7 @@ class ShellyDimmer(ShellyDevice, LightEntity):
     def __init__(self, dev, instance):
         """Initialize an ShellyDimmer."""
         ShellyDevice.__init__(self, dev, instance)
+        self.entity_id = "light" + self.entity_id
         self._state = None
         self._brightness = None
         self._color_temp = None
@@ -138,7 +140,7 @@ class ShellyDimmer(ShellyDevice, LightEntity):
         brightness = None
         color_temp = None
         if ATTR_BRIGHTNESS in kwargs:
-            brightness = int(kwargs[ATTR_BRIGHTNESS] / 2.55)
+            brightness = round(kwargs[ATTR_BRIGHTNESS] / 2.55)
             self._brightness = brightness
         if ATTR_COLOR_TEMP in kwargs:
             color_temp = int(mired_to_kelvin(kwargs[ATTR_COLOR_TEMP]))
@@ -159,7 +161,7 @@ class ShellyDimmer(ShellyDevice, LightEntity):
         color_temp = None
         state = None
         if ATTR_BRIGHTNESS in kwargs:
-            brightness = int(kwargs[ATTR_BRIGHTNESS] / 2.55)
+            brightness = round(kwargs[ATTR_BRIGHTNESS] / 2.55)
         if ATTR_COLOR_TEMP in kwargs:
             color_temp = int(mired_to_kelvin(kwargs[ATTR_COLOR_TEMP]))
             if color_temp > self._color_temp_max:
@@ -183,7 +185,7 @@ class ShellyDimmer(ShellyDevice, LightEntity):
         """Return the brightness of the light."""
         if self._brightness is None:
             return None
-        return int(self._brightness * 2.55)
+        return round(self._brightness * 2.55)
 
     @property
     def color_temp(self):
@@ -219,6 +221,7 @@ class ShellyRGB(ShellyDevice, LightEntity):
     def __init__(self, dev, instance):
         """Initialize an ShellyLightRelay."""
         ShellyDevice.__init__(self, dev, instance)
+        self.entity_id = "light" + self.entity_id
         self._state = None
         self._brightness = None
         self._white_value = None
@@ -250,7 +253,7 @@ class ShellyRGB(ShellyDevice, LightEntity):
     @property
     def brightness(self):
         """Return the brightness of the light."""
-        return int(self._brightness * 2.55)
+        return round(self._brightness * 2.55)
 
     @property
     def white_value(self):
@@ -267,7 +270,7 @@ class ShellyRGB(ShellyDevice, LightEntity):
         color_temp = None
         state = None
         if ATTR_BRIGHTNESS in kwargs:
-            brightness = int(kwargs[ATTR_BRIGHTNESS] / 2.55)
+            brightness = round(kwargs[ATTR_BRIGHTNESS] / 2.55)
         if ATTR_COLOR_TEMP in kwargs:
             color_temp = int(mired_to_kelvin(kwargs[ATTR_COLOR_TEMP]))
             if color_temp > self._color_temp_max:
@@ -291,7 +294,7 @@ class ShellyRGB(ShellyDevice, LightEntity):
         white_value = None
 
         if ATTR_BRIGHTNESS in kwargs:
-            brightness = int(kwargs[ATTR_BRIGHTNESS] / 2.55)
+            brightness = round(kwargs[ATTR_BRIGHTNESS] / 2.55)
             self._brightness = brightness
 
         if ATTR_WHITE_VALUE in kwargs:

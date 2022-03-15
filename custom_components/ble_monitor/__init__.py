@@ -38,6 +38,7 @@ from .const import (
     CONF_DEVICE_DECIMALS,
     CONF_DEVICE_ENCRYPTION_KEY,
     CONF_DEVICE_USE_MEDIAN,
+    CONF_DEVICE_REPORT_UNKNOWN,
     CONF_DEVICE_RESTORE_STATE,
     CONF_DEVICE_RESET_TIMER,
     CONF_DEVICE_TRACK,
@@ -58,6 +59,7 @@ from .const import (
     DEFAULT_BT_AUTO_RESTART,
     DEFAULT_DECIMALS,
     DEFAULT_DEVICE_DECIMALS,
+    DEFAULT_DEVICE_REPORT_UNKNOWN,
     DEFAULT_DEVICE_RESTORE_STATE,
     DEFAULT_DEVICE_RESET_TIMER,
     DEFAULT_DEVICE_TRACK,
@@ -119,6 +121,7 @@ DEVICE_SCHEMA = vol.Schema(
         vol.Optional(
             CONF_DEVICE_RESET_TIMER, default=DEFAULT_DEVICE_RESET_TIMER
         ): cv.positive_int,
+        vol.Optional(CONF_DEVICE_REPORT_UNKNOWN, default=DEFAULT_DEVICE_REPORT_UNKNOWN): cv.boolean,
         vol.Optional(CONF_DEVICE_TRACK, default=DEFAULT_DEVICE_TRACK): cv.boolean,
         vol.Optional(
             CONF_DEVICE_TRACKER_SCAN_INTERVAL,
@@ -301,7 +304,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             hci_list = ["disable"]
             bt_mac_list = ["disable"]
         else:
-            bt_interface_list = config[CONF_BT_INTERFACE]
+            bt_interface_list = list(set(config[CONF_BT_INTERFACE]))
             for bt_mac in bt_interface_list:
                 try:
                     hci = list(BT_INTERFACES.keys())[
@@ -314,7 +317,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                         "Bluetooth adapter with MAC address %s was not found. "
                         "It is therefore changed back to the default adapter. "
                         "Check the BLE monitor settings, if needed.",
-                        config[CONF_BT_INTERFACE]
+                        bt_mac
                     )
                     try:
                         default_hci = list(BT_INTERFACES.keys())[
@@ -555,7 +558,7 @@ class HCIdump(Thread):
         self._joining = False
         self.evt_cnt = 0
         self.config = config
-        self._interfaces = config[CONF_HCI_INTERFACE]
+        self._interfaces = list(set(config[CONF_HCI_INTERFACE]))
         self._active = int(config[CONF_ACTIVE_SCAN] is True)
         self.discovery = True
         self.filter_duplicates = True
@@ -563,14 +566,28 @@ class HCIdump(Thread):
         self.sensor_whitelist = []
         self.tracker_whitelist = []
         self.report_unknown = False
+        self.report_unknown_whitelist = []
         self.last_bt_reset = dt_util.now()
         if self.config[CONF_REPORT_UNKNOWN]:
-            self.report_unknown = self.config[CONF_REPORT_UNKNOWN]
-            _LOGGER.info(
-                "Attention! Option report_unknown is enabled for %s sensors, "
-                "be ready for a huge output",
-                self.report_unknown,
-            )
+            if self.config[CONF_REPORT_UNKNOWN] != "Off":
+                self.report_unknown = self.config[CONF_REPORT_UNKNOWN]
+                _LOGGER.info(
+                    "Attention! Option report_unknown is enabled for %s sensors, "
+                    "be ready for a huge output",
+                    self.report_unknown,
+                )
+        if self.config[CONF_DEVICES]:
+            for device in self.config[CONF_DEVICES]:
+                if CONF_DEVICE_REPORT_UNKNOWN in device and device[CONF_DEVICE_REPORT_UNKNOWN]:
+                    p_id = bytes.fromhex(dict_get_or_clean(device).lower())
+                    self.report_unknown_whitelist.append(p_id)
+                else:
+                    continue
+            if self.report_unknown_whitelist:
+                _LOGGER.info(
+                    "Attention! Option report_unknown is enabled for sensor with id(s): %s",
+                    self.report_unknown_whitelist,
+                )
         # prepare device:key lists to speedup parser
         if self.config[CONF_DEVICES]:
             for device in self.config[CONF_DEVICES]:
@@ -619,6 +636,7 @@ class HCIdump(Thread):
             filter_duplicates=self.filter_duplicates,
             sensor_whitelist=self.sensor_whitelist,
             tracker_whitelist=self.tracker_whitelist,
+            report_unknown_whitelist=self.report_unknown_whitelist,
             aeskeys=self.aeskeys,
         )
 
@@ -693,6 +711,9 @@ class HCIdump(Thread):
                                 " and will be skipped for current scan period.",
                                 hci,
                             )
+                            conn[hci].close()
+                            fac[hci].close()
+                            mysocket[hci].close()
                         else:
                             btctrl[hci].process = self.process_hci_events
                             _LOGGER.debug("HCIdump thread: connected to hci%i", hci)
@@ -706,6 +727,9 @@ class HCIdump(Thread):
                                     hci,
                                     error,
                                 )
+                                conn[hci].close()
+                                fac[hci].close()
+                                mysocket[hci].close()
                             else:
                                 interface_is_ok[hci] = True
                                 _LOGGER.debug(
@@ -753,6 +777,8 @@ class HCIdump(Thread):
                                 )
                         try:
                             conn[hci].close()
+                            fac[hci].close()
+                            mysocket[hci].close()
                         except KeyError:
                             _LOGGER.debug(
                                 "HCIdump thread: Key error while closing connection on hci%i",
