@@ -35,7 +35,9 @@ automation:
           - conditions: "{{ trigger.to_state.state == 'on' }}"
             sequence:
               - service: light.turn_on
-                entity_id: light.shelly_closet
+                data:
+                  entity_id: light.shelly_closet
+                  brightness_pct: "{% if is_state('input_boolean.sleep_tracking_on', 'on') %}20{% else %}{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}{% endif %}"
           - conditions: "{{ trigger.to_state.state == 'off' }}"
             sequence:
               - service: light.turn_off
