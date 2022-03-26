@@ -10,6 +10,7 @@ from .brifit import parse_brifit
 from .const import GATT_CHARACTERISTICS
 from .govee import parse_govee
 from .ha_ble import parse_ha_ble
+from .ha_ble_legacy import parse_ha_ble_legacy
 from .ibeacon import parse_ibeacon
 from .inkbird import parse_inkbird
 from .inode import parse_inode
@@ -136,10 +137,13 @@ class BleParser:
                         else:
                             sensor_data = parse_atc(self, service_data, mac, rssi)
                         break
-                    elif uuid16 == 0x181B or uuid16 == 0x181D:
+                    elif uuid16 in [0x181B, 0x181D]:
                         # UUID16 = Body Composition and Weight Scale (used by Mi Scale)
                         sensor_data = parse_miscale(self, service_data, mac, rssi)
                         break
+                    elif uuid16 in [0x181C, 0x181E]:
+                        # UUID16 = User Data and Bond Management (used by BLE HA)
+                        sensor_data = parse_ha_ble(self, service_data, uuid16, mac, rssi)
                     elif uuid16 in [0xAA20, 0xAA21, 0xAA22] and complete_local_name == "ECo":
                         # UUID16 = Relsib
                         sensor_data = parse_relsib(self, service_data, mac, rssi)
@@ -160,13 +164,13 @@ class BleParser:
                         # UUID16 = FIDO (used by Cleargrass)
                         sensor_data = parse_qingping(self, service_data, mac, rssi)
                         break
-                    elif uuid16 == 0x0D00:
+                    elif uuid16 in [0x0D00, 0xFD3D]:
                         # UUID16 = unknown (used by Switchbot)
                         sensor_data = parse_switchbot(self, service_data, mac, rssi)
                         break
                     elif uuid16 in GATT_CHARACTERISTICS and shortened_local_name == "HA_BLE":
-                        # HA BLE
-                        sensor_data = parse_ha_ble(self, service_data_list, mac, rssi)
+                        # HA BLE legacy (deprecated)
+                        sensor_data = parse_ha_ble_legacy(self, service_data_list, mac, rssi)
                         break
                     elif uuid16 == 0x2A6E or uuid16 == 0x2A6F:
                         # UUID16 = Temperature and Humidity (used by Teltonika)
