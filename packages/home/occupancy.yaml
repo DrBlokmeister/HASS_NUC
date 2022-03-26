@@ -131,13 +131,14 @@ automation:
                 data:
                   message: "Tamara mode disabled. The house is now fully automated again!"
 
-  - alias: 'Xiaomi Aqara Motion Sensors duration fix'
+  - alias: '[occupancy|sensors]Deconz Xiaomi Aqara Motion attributes fix'
     trigger:
       - platform: homeassistant
         event: start
     action:
       - delay:
           minutes: 2
+      # set hacked motion sensor timout duration to 5 seconds
       - service: deconz.configure
         data:
           entity: binary_sensor.motion_sensor_bedroom
@@ -171,6 +172,15 @@ automation:
           entity: binary_sensor.motion_sensor_kitchen
           field: "/config"
           data: {"duration": 5}
+      - delay:
+          seconds: 1
+      # Set study chair vibration sensitivity to 1 (highest)
+      - service: deconz.configure
+        data:
+          entity: binary_sensor.vibration_sensor
+          data: {"sensitivity": 2}
+          field: "/config"
+
 ################
 #    SCENES    #
 ################
