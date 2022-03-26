@@ -17,11 +17,7 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      bedroom_motion_detection:
-        friendly_name: "Bedroom Motion Detection"
-        value_template: "{{ state_attr('camera.tapo_camera_d6d4_hd', 'motion_detection') == 'on' }}"
+
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -124,6 +120,26 @@ automation:
       - service: script.turn_on
         entity_id: script.generate_timelapse_from_snapshots
 
+  - alias: '[security|camera] Turn on image processing during living room motion'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.livingroom_motion_combined
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+    action:
+      - service: switch.turn_on
+        entity_id: switch.livingroom_camera_detect
+      - wait_for_trigger:
+        - platform: template
+          value_template: "{{ states('binary_sensor.livingroom_motion_combined') in ['unavailable', 'unknown', 'off'] and (states('image_processing.doods_tapo_camera_d6d4_hd')|int(0) == 0) }}"
+          for:
+            minutes: "{{ states('input_number.livingroom_light_timeout')|int(10) }}"
+      - service: switch.turn_off
+        entity_id: switch.livingroom_camera_detect
 ################
 #    SCENES    #
 ################

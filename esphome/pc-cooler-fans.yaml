@@ -1,0 +1,303 @@
+esphome:
+  name: pc-cooler-fans-new
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_pass
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Pc-Cooler-Fans Fallback Hotspot"
+    password: !secret esphome_fallback_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: debug
+  logs:
+    climate.component: info
+    pid.climate: info
+    climate: info
+    pulse_counter: info
+# Enable Home Assistant API
+api:
+
+ota:
+
+i2c:
+ sda: D2
+ scl: D1
+ scan: True
+ id: bus_a
+
+display:
+  - platform: ssd1306_i2c
+    model: "SH1106 128x64"
+    address: 0x3C
+    rotation: 180°
+    update_interval: 0.2s
+    lambda: |-
+      int x, y;
+      /* WiFi Signal Strength          x = 128, y = 128; */
+      x = 0, y = 0;
+      if(id(wifisignal).has_state()) {
+        if (id(wifisignal).state >= -50) {
+            //Excellent
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤨");
+            //ESP_LOGI("WiFi", "Exellent");
+        } else if (id(wifisignal).state  >= -60) {
+            //Good
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤥");
+            //ESP_LOGI("WiFi", "Good");
+        } else if (id(wifisignal).state  >= -67) {
+            //Fair
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤢");
+            //ESP_LOGI("WiFi", "Fair");
+        } else if (id(wifisignal).state  >= -70) {
+            //Weak
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤟");
+            //ESP_LOGI("WiFi", "Weak");
+        } else {
+            //Unlikely working signal
+            it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤯");
+            //ESP_LOGI("WiFi", "Unlikely");
+        }
+      } else {
+        it.print(x, y, id(icon_20_font), TextAlign::TOP_LEFT, "󰤮");
+      }
+      
+      
+      if (id(connection).has_state()) {
+        if (id(connection).state == true) {
+          it.print(20, 0, id(icon_20_font), TextAlign::TOP_LEFT, "󰟐"); //Home assistant icon
+        } else {
+          it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰒎"); //Server disconnected icon
+        }
+      } else {
+        it.print(20, 2, id(icon_20_font), TextAlign::TOP_LEFT, "󰒎"); //Server disconnected icon
+      }
+    
+      it.printf(128, 0, id(size_10_uifont), TextAlign::TOP_RIGHT, "Up: %s", id(uptime_text).state.c_str());
+    
+      // it.line(0, 28, 128, 28);
+      it.rectangle(0, 26, 128, 5);
+      it.filled_rectangle(0, 26, id(potmeter_position).state * 1.28, 5);
+    
+      it.print(0, 30, id(size_10_uifont), TextAlign::TOP_LEFT, "Fan target:");
+      it.printf(128, 30, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(pid_fanspeed).target_temperature);
+      it.printf(0, 41, id(size_10_uifont), TextAlign::TOP_LEFT, "Fan speed:");
+      it.printf(128, 41, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(fanspeed_filtered).state);
+      it.printf(0, 52, id(size_10_uifont), TextAlign::TOP_LEFT, "Position:");
+      it.printf(128, 52, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f", id(potmeter_position).state);
+      
+
+output:
+  - platform: esp8266_pwm
+    pin: D3
+    frequency: 10000 Hz
+    id: ventilation_fan_pwm
+
+binary_sensor:
+  - platform: status
+    name: "Board connected"
+    internal: false
+    id: connection
+  - platform: gpio
+    pin: D5
+    name: "Potmeter on"
+    device_class: power
+  - platform: gpio
+    pin: D6
+    name: "Pressbutton"
+    device_class: power
+
+sensor:
+  - platform: adc
+    pin: A0
+    name: "Potmeter position"
+    id: potmeter_position
+    update_interval: 0.1s
+    device_class: power_factor
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - multiply: -100
+      - offset: 100
+      - median:
+          window_size: 5
+          send_every: 1
+          send_first_at: 1
+    on_value:
+      then:
+        - climate.control:
+            id: pid_fanspeed
+            mode: AUTO
+            target_temperature: !lambda |-
+              return id(potmeter_position).state * 18;
+    #           /*
+    #           if (id(cabinet_temperature).has_state() && id(cabinet_temperature_reference).has_state()) {
+    #             if (id(cabinet_temperature).state < 20) {
+    #               return 0;
+    #             } else {
+    #               return ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 );
+    #             }
+    #           } else {
+    #             return 800;
+    #           }
+    #           */
+  - platform: pulse_counter
+    pin:
+      number: D4
+      inverted: false
+      mode: INPUT
+    name: "Computer Cooler Fan Speed"
+    unit_of_measurement: 'RPM'
+    id: fanspeed
+    filters:
+      - multiply: 0.5
+    count_mode:
+      rising_edge: INCREMENT
+      falling_edge: DISABLE
+    update_interval: 0.5s
+    internal_filter: 10us
+    internal: false
+  - platform: integration
+    name: "Total fan pulses"
+    sensor: fanspeed
+    time_unit: min
+
+  - platform: template
+    name: "Filtered Computer Cooler Fan Speed"
+    id: fanspeed_filtered
+    lambda: |-
+      return id(fanspeed).state;
+    filters:
+      - sliding_window_moving_average:
+          window_size: 8
+          send_every: 1
+          send_first_at: 1
+    update_interval: 0.5s
+    unit_of_measurement: pwm
+    accuracy_decimals: 0
+  - platform: wifi_signal
+    name: "Computer Cooler WiFi Signal"
+    id: wifisignal
+    update_interval: 60s
+  - platform: uptime
+    name: "Computer Cooler Uptime Sec"
+    id: uptime_sec
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.ble_temperature_plant_box_temp
+    name: "PC Temperature"
+    id: pc_temperature
+    internal: true
+    
+
+text_sensor:
+  - platform: template
+    name: "Computer Cooler Uptime"
+    icon: "mdi:timer"
+    id: uptime_text
+    update_interval: 60s
+    lambda: |-
+      int seconds = id(uptime_sec).state;
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m").c_str() };
+    internal: false
+
+climate:
+  - platform: pid
+    name: "PID Computer Cooler fanspeed"
+    id: pid_fanspeed
+    sensor: fanspeed
+    default_target_temperature: 800°C
+    heat_output: ventilation_fan_pwm
+    control_parameters:
+      kp: 0.00005
+      ki: 0.00050
+      kd: 0.00005
+    visual:
+      min_temperature: 0 °C
+      max_temperature: 1600 °C
+      temperature_step: 50 °C
+
+switch:
+  - platform: template
+    name: "PID Fanspeed Autotune"
+    turn_on_action:
+      - climate.pid.autotune: pid_fanspeed
+  # - platform: template
+  #   name: "PID Cabinet Temperature Autotune"
+  #   turn_on_action:
+  #     - climate.pid.autotune: pid_cabinet_temperature
+
+interval:
+  - interval: 5s
+    then:
+  #     - output.set_level:
+  #         id: ventilation_fan_pwm
+  #         level: !lambda |-
+  #           return id(potmeter_position).state / 100;
+      - climate.control:
+          id: pid_fanspeed
+          mode: cool
+          target_temperature: !lambda |-
+            return id(potmeter_position).state * 18;
+            /*
+            if (id(cabinet_temperature).has_state() && id(cabinet_temperature_reference).has_state()) {
+              if (id(cabinet_temperature).state < 20) {
+                return 0;
+              } else {
+                return ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 );
+              }
+            } else {
+              return 800;
+            }
+            */
+
+font:
+  - file: 'fonts/SegoeUI.ttf'
+    id: size_8_uifont
+    size: 8
+  - file: 'fonts/SegoeUI.ttf'
+    id: size_10_uifont
+    size: 10
+  - file: 'fonts/Roboto-Medium.ttf'
+    id: size_10_font
+    size: 10
+  - file: 'fonts/Roboto-Medium.ttf'
+    id: size_13_font
+    size: 13
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: icon_20_font
+    size: 20
+    glyphs: [
+      "󰖜", # sun rise
+      "󰖛", # sun set
+      # Wifi
+      '󰤯', # mdi-wifi-strength-outline
+      '󰤟', # mdi-wifi-strength-1
+      '󰤢', # mdi-wifi-strength-2
+      '󰤥', # mdi-wifi-strength-3
+      '󰤨', # mdi-wifi-strength-4
+      '󰤮', # mdi-wifi-strength-off-outline
+      
+      '󰟐', # mdi-home-assistant
+      '󰒎', # mdi-server-network-off
+      
+      '󰢠', #bedroom
+      '󰦠', #bathroom
+      '󰹩', #tree
+      '󰹧', #sprout
+      '󱕭', #couch
+      '󰖎', #humidity
+      ]

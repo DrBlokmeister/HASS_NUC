@@ -13,9 +13,9 @@ wifi:
   #   subnet: 255.255.255.0
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Test Fan Controller"
-    password: !secret esphome_fallback_pass
+  # ap:
+  #   ssid: "Test Fan Controller"
+  #   password: !secret esphome_fallback_pass
 
 captive_portal:
 
@@ -90,7 +90,8 @@ display:
       it.line(0, 28, 128, 28);
       
       it.print(0, 30, id(size_10_uifont), TextAlign::TOP_LEFT, "Fan target:");
-      it.printf(128, 30, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(pid_fanspeed).target_temperature);
+      //it.printf(128, 30, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(pid_fanspeed).target_temperature);
+      it.printf(128, 30, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f %",  id(speedfan).speed);
       it.printf(0, 41, id(size_10_uifont), TextAlign::TOP_LEFT, "Fan speed:");
       it.printf(128, 41, id(size_10_uifont), TextAlign::TOP_RIGHT, "%.0f RPM", id(fanspeed).state);
       it.printf(0, 52, id(size_10_uifont), TextAlign::TOP_LEFT, "Temperature:");
@@ -157,16 +158,48 @@ sensor:
     internal: true
   - platform: template
     name: "Filtered Mediacenter Cabinet Fan Speed"
+    id: filtered_fanspeed
     lambda: |-
       return id(fanspeed).state;
     filters:
-      - sliding_window_moving_average:
-          window_size: 20
-          send_every: 20
-          send_first_at: 20
-    update_interval: 10s
-    unit_of_measurement: pwm
+      # - sliding_window_moving_average:
+      #     window_size: 5
+      #     send_every: 1
+      #     send_first_at: 1
+        - exponential_moving_average:
+            alpha: 0.3
+            send_every: 1
+    update_interval: 1s
+    unit_of_measurement: rpm
     accuracy_decimals: 2
+  - platform: template
+    name: "Target Fan Speed"
+    id: fanspeed_target
+    unit_of_measurement: rpm
+    lambda: |-
+      float fanspeed;
+      
+      if (id(cabinet_temperature).has_state() && id(cabinet_temperature_reference).has_state()) {
+        if (id(cabinet_temperature).state < 20) {
+          fanspeed = 0;
+        } else if (id(cabinet_temperature).state > 24) {
+          fanspeed = ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 );
+        } else {
+          fanspeed = ( ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 ) * (id(cabinet_temperature).state - 20) / 4 );
+        }
+      } else {
+        fanspeed = 800;
+      }
+      if (fanspeed > 400) {
+        return fanspeed;
+      } else {
+        return 0;
+      }
+    # filters:
+    #   - sliding_window_moving_average:
+    #       window_size: 60
+    #       send_every: 1
+    #       send_first_at: 1
   - platform: wifi_signal
     name: "Fancontroller WiFi Signal"
     id: wifisignal
@@ -192,21 +225,27 @@ text_sensor:
       return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m").c_str() };
     internal: true
 
-climate:
-  - platform: pid
-    name: "PID Fan controller"
-    id: pid_fanspeed
-    sensor: fanspeed
-    default_target_temperature: 800°C
-    heat_output: ventilation_fan_pwm
-    control_parameters:
-      kp: 0.00005
-      ki: 0.00050
-      kd: 0.00005
-    visual:
-      min_temperature: 0 °C
-      max_temperature: 1600 °C
-      temperature_step: 50 °C
+fan:
+  - platform: speed
+    id: speedfan
+    output: ventilation_fan_pwm
+    
+
+# climate:
+#   - platform: pid
+#     name: "PID Fan controller"
+#     id: pid_fanspeed
+#     sensor: filtered_fanspeed
+#     default_target_temperature: 800°C
+#     heat_output: ventilation_fan_pwm
+#     control_parameters:
+#       kp: 0.00005
+#       ki: 0.00050
+#       kd: 0.00005
+#     visual:
+#       min_temperature: 0 °C
+#       max_temperature: 1600 °C
+#       temperature_step: 50 °C
   # - platform: pid
   #   name: "PID Cabinet Temperature Controller"
   #   id: pid_cabinet_temperature
@@ -222,11 +261,11 @@ climate:
   #     max_temperature: 30 °C
   #     temperature_step: 1 °C
 
-switch:
-  - platform: template
-    name: "PID Fanspeed Autotune"
-    turn_on_action:
-      - climate.pid.autotune: pid_fanspeed
+# switch:
+#   - platform: template
+#     name: "PID Fanspeed Autotune"
+#     turn_on_action:
+#       - climate.pid.autotune: pid_fanspeed
   # - platform: template
   #   name: "PID Cabinet Temperature Autotune"
   #   turn_on_action:
@@ -235,19 +274,44 @@ switch:
 interval:
   - interval: 5s
     then:
-      - climate.control:
-          id: pid_fanspeed
-          mode: AUTO
-          target_temperature: !lambda |-
+      # - climate.control:
+      #     id: pid_fanspeed
+      #     mode: AUTO
+      #     target_temperature: !lambda |-
+      #       return id(fanspeed_target).state;
+      - fan.turn_on:
+          id: speedfan
+          speed: !lambda |-
+            float fanspeed;
+            
             if (id(cabinet_temperature).has_state() && id(cabinet_temperature_reference).has_state()) {
               if (id(cabinet_temperature).state < 20) {
-                return 0;
+                fanspeed = 0;
+              } else if (id(cabinet_temperature).state > 24) {
+                fanspeed = ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*100/4 );
               } else {
-                return ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 );
+                fanspeed = ( ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*100/4 ) * (id(cabinet_temperature).state - 20) / 4 );
               }
             } else {
-              return 800;
+              fanspeed = 40;
             }
+            if (fanspeed > 30) {
+              return fanspeed;
+            } else {
+              return 0;
+            }
+            
+# if (id(cabinet_temperature).has_state() && id(cabinet_temperature_reference).has_state()) {
+#   if (id(cabinet_temperature).state < 20) {
+#     return 0;
+#   } else if (id(cabinet_temperature).state > 24) {
+#     return ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 );
+#   } else {
+#     return ( ( (id(cabinet_temperature).state + 4 - id(cabinet_temperature_reference).state)*1400/4 ) * (id(cabinet_temperature).state - 20) / 4 );
+#   }
+# } else {
+#   return 800;
+# }
 
 font:
   - file: 'fonts/SegoeUI.ttf'

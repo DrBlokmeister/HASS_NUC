@@ -1,0 +1,121 @@
+esphome:
+  name: proximity-sensor-study
+
+  
+esp8266:
+  board: nodemcuv2
+  framework:
+    version: 2.7.4
+
+wifi:
+  ssid: BlokmeisterWIFI
+  password: ithurtswhenIP
+  # ssid: !secret wifi_ssid
+  # password: !secret wifi_pass
+
+  # # Enable fallback hotspot (captive portal) in case wifi connection fails
+  # ap:
+  #   ssid: "Proximity-Sensor-Study"
+  #   password: !secret esphome_fallback_pass
+
+# Enable logging
+logger:
+  on_message:
+    - level: ERROR
+      then:
+        - if:
+            condition:
+              switch.is_on: statuslederror
+            then:
+              - light.turn_on:
+                  id: statusled
+                  brightness: 100%
+                  red: 100%
+                  effect: "Fast Pulse"
+    - level: WARN
+      then:
+        - if:
+            condition:
+              switch.is_on: statuslederror
+            then:
+              - light.turn_on:
+                  id: statusled
+                  brightness: 70%
+                  red: 100%
+                  green: 100%
+                  effect: "Slow Pulse"
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+
+captive_portal:
+
+switch:
+  - platform: template
+    name: "Status LED shows proximity"
+    id: statusledproximity
+    optimistic: true
+  - platform: template
+    name: "Status LED shows error/warning"
+    id: statuslederror
+    optimistic: true
+
+sensor:
+  - platform: ultrasonic
+    trigger_pin: D1
+    echo_pin: D2
+    name: "Ultrasonic Sensor"
+    update_interval: 0.2s
+    unit_of_measurement: cm
+    accuracy_decimals: 2
+    filters:
+      - multiply: 100
+      - sliding_window_moving_average:
+          window_size: 5
+          send_every: 2
+      - or:
+        - throttle_average: 60s
+        - delta: 0.5
+    on_raw_value:
+      then:
+        - if:
+            condition:
+              switch.is_on: statusledproximity
+            then:
+              - light.turn_on:
+                  id: statusled
+                  transition_length: 0.2s
+                  brightness: !lambda |-
+                    if ( 100*x < 80) {
+                      return 1-100*x/80;
+                    } else {
+                      return 0;
+                    }
+
+light:
+  - platform: fastled_spi
+    chipset: APA102
+    id: statusled
+    data_pin: D4
+    clock_pin: D3
+    num_leds: 1
+    rgb_order: BGR
+    name: "Study Proximity Sensor Status LED"
+    gamma_correct: 3
+    effects:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.4s
+          update_interval: 0.5s
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 2s      # defaults to 1s
+          update_interval: 3s
+
+binary_sensor:
+  - platform: status
+    name: "Study proximity sensor status"
+    internal: true
