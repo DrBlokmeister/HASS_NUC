@@ -10,7 +10,7 @@ esphome:
 
 wifi:
   ssid: !secret wifi_ssid
-  password: !secret wifi_pass
+  password: !secret wifi_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -61,17 +61,6 @@ uart:
 #   pin:
 #     number: $gpio_led_status
 #     inverted: False
-# i2c:
-#   sda: $gpio_i2c_sda
-#   scl: $gpio_i2c_scl
-#   scan: False
-#   id: bme_280
-
-# uart:
-#   rx_pin: $gpio_uart_rx_pin
-#   tx_pin: $gpio_uart_tx_pin
-#   baud_rate: 9600
-#   id: sds_011
 
 spi:
   clk_pin: $gpio_spi_clk_pin
@@ -102,6 +91,9 @@ sensor:
         - exponential_moving_average:
             alpha: 0.2
             send_every: 1
+        - or:
+            - throttle_average: 60s
+            - delta: 5
     temperature:
       name: "MH-Z19 Temperature Internal"
       id: mhz19_temperature_internal
@@ -110,6 +102,9 @@ sensor:
         - sliding_window_moving_average:
             window_size: 5
             send_every: 1
+        - or:
+            - throttle_average: 60s
+            - delta: 1
     update_interval: 1s
     automatic_baseline_calibration: false
 
@@ -127,6 +122,9 @@ sensor:
       - sliding_window_moving_average:
           window_size: 60
           send_every: 60
+      - or:
+          - throttle_average: 60s
+          - delta: 5
   - platform: template
     id: mhz19_temperature
     name: "MH-Z19 Temperature"
@@ -139,6 +137,9 @@ sensor:
       - sliding_window_moving_average:
           window_size: 60
           send_every: 60
+      - or:
+          - throttle_average: 60s
+          - delta: 1
 
   - platform: uptime
     name: "Epaperdisplay Uptime Sec"
@@ -161,18 +162,6 @@ sensor:
   - platform: homeassistant
     id: outsidetemp
     entity_id: sensor.temperature_outside
-    #internal: true
-  # - platform: homeassistant
-  #   id: bedroompress
-  #   entity_id:  sensor.pressure_bedroom
-  #   #internal: true
-  # - platform: homeassistant
-  #   id: livingroompress
-  #   entity_id: sensor.livingroom_pressure
-  #   #internal: true
-  # - platform: homeassistant
-  #   id: outsidepress
-  #   entity_id: sensor.pressure_outside
     #internal: true
   - platform: homeassistant
     id: bedroomhumi
