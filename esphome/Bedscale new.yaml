@@ -1,11 +1,17 @@
 esphome:
-  name: bedscale_new
-  platform: ESP8266
+  name: bedscale
+
+  
+esp8266:
   board: nodemcuv2
+  # framework:
+  #   version: 2.7.4
+
 
 wifi:
   ssid: !secret wifi_ssid
-  password: !secret wifi_pass
+  password: !secret wifi_password
+  fast_connect: true
 
   # manual_ip:
   #   static_ip: 192.168.1.138
@@ -14,7 +20,7 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Bedscale New Fallback Hotspot"
+    ssid: "Bedscale Fallback Hotspot"
     password: !secret esphome_fallback_pass
 
 
@@ -27,6 +33,10 @@ logger:
 api:
 
 ota:
+
+status_led:
+  pin:
+    number: D0
 
 # HX711 sensitivities in muV/kg:
 # Scale 1: -41170
@@ -92,12 +102,15 @@ sensor:
     update_interval: 1s
     filters:
       - multiply: 29.11
+      - or:
+        - throttle_average: 60s
+        - delta: 0.1
 
   - platform: hx711
     name: "HX711 raw value 1"
     id: HX711_raw_value_1
-    dout_pin: D2
-    clk_pin: D1
+    dout_pin: D1
+    clk_pin: D2
     update_interval: 0.2s
     unit_of_measurement: muV
     accuracy_decimals: 0
@@ -111,6 +124,9 @@ sensor:
           window_size: 25
           send_every: 5 # 10 second updates @ 1 second scan interval.
           send_first_at: 5
+      - or:
+          - throttle_average: 60s
+          - delta: 450
       # - calibrate_linear:
       #     - 573628 -> 0
       #     - 538769 -> 0.7
@@ -149,6 +165,9 @@ sensor:
           window_size: 25
           send_every: 5 # 10 second updates @ 1 second scan interval.
           send_first_at: 5
+      - or:
+          - throttle_average: 60s
+          - delta: 450
       # - calibrate_linear:
       # calibration empty sensor without bed
       #     - 397311 -> 0
@@ -188,6 +207,9 @@ sensor:
           window_size: 25
           send_every: 5 # 10 second updates @ 1 second scan interval.
           send_first_at: 5
+      - or:
+          - throttle_average: 60s
+          - delta: 450
       # - calibrate_linear:
       #     - 65791 -> 0
       #     - 4031 -> 0.7
@@ -226,6 +248,9 @@ sensor:
           window_size: 25
           send_every: 5 # 10 second updates @ 1 second scan interval.
           send_first_at: 5
+      - or:
+          - throttle_average: 60s
+          - delta: 450
       # - calibrate_linear:
       #     - -58365 -> 0
       #     - -379905 -> 0.7
