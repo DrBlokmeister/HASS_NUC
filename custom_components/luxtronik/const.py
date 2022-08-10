@@ -1,0 +1,76 @@
+"""Constants for the Luxtronik integration."""
+from homeassistant.const import (
+    DEVICE_CLASS_TEMPERATURE,
+    DEVICE_CLASS_PRESSURE,
+    DEVICE_CLASS_TIMESTAMP,
+    DEVICE_CLASS_ENERGY,
+    ENERGY_KILO_WATT_HOUR,
+    PRESSURE_BAR,
+    TEMP_CELSIUS,
+)
+
+ATTR_PARAMETER = "parameter"
+ATTR_VALUE = "value"
+
+CONF_STATE_CLASS = "state_class"
+CONF_INVERT_STATE = "invert"
+CONF_SAFE = "safe"
+CONF_GROUP = "group"
+CONF_PARAMETERS = "parameters"
+CONF_CALCULATIONS = "calculations"
+CONF_VISIBILITIES = "visibilities"
+CONF_CELSIUS = "celsius"
+CONF_SECONDS = "seconds"
+CONF_TIMESTAMP = "timestamp"
+CONF_KELVIN = "kelvin"
+CONF_BAR = "bar"
+CONF_PERCENT = "percent"
+CONF_ENERGY = "energy"
+CONF_VOLTAGE = "voltage"
+CONF_HOURS = "hours"
+CONF_FLOW = "flow"
+CONF_LOCK_TIMEOUT = "lock_timeout"
+CONF_UPDATE_IMMEDIATELY_AFTER_WRITE = "update_immediately_after_write"
+
+
+ICONS = {
+    "celsius": "mdi:thermometer",
+    "seconds": "mdi:timer-sand",
+    "pulses": "mdi:pulse",
+    "ipaddress": "mdi:ip-network-outline",
+    "timestamp": "mdi:calendar-range",
+    "errorcode": "mdi:alert-circle-outline",
+    "kelvin": "mdi:thermometer",
+    "bar": "mdi:arrow-collapse-all",
+    "percent": "mdi:percent",
+    "rpm": "mdi:rotate-right",
+    "energy": "mdi:flash-circle",
+    "voltage": "mdi:flash-outline",
+    "hours": "mdi:clock-outline",
+    "flow": "mdi:chart-bell-curve",
+    "level": "mdi:format-list-numbered",
+    "count": "mdi:counter",
+    "version": "mdi:information-outline",
+}
+
+DEVICE_CLASSES = {
+    CONF_CELSIUS: DEVICE_CLASS_TEMPERATURE,
+    CONF_KELVIN: DEVICE_CLASS_TEMPERATURE,
+    CONF_BAR: DEVICE_CLASS_PRESSURE,
+    CONF_SECONDS: DEVICE_CLASS_TIMESTAMP,
+    CONF_HOURS: DEVICE_CLASS_TIMESTAMP,
+    CONF_TIMESTAMP: DEVICE_CLASS_TIMESTAMP,
+    CONF_ENERGY: DEVICE_CLASS_ENERGY,
+}
+
+UNITS = {
+    CONF_CELSIUS: TEMP_CELSIUS,
+    CONF_SECONDS: "s",
+    CONF_KELVIN: "K",
+    CONF_BAR: PRESSURE_BAR,
+    CONF_PERCENT: "%",
+    CONF_ENERGY: ENERGY_KILO_WATT_HOUR,
+    CONF_VOLTAGE: "V",
+    CONF_HOURS: "h",
+    CONF_FLOW: "l/h",
+}
