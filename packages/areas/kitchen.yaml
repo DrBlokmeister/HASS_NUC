@@ -27,7 +27,11 @@ timer:
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: derivative
+    source: sensor.temperature_fridge
+    name: Fridge Temperature Change per Minute
+    unit_time: min
+    time_window: "00:10:00"
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -46,7 +50,9 @@ automation:
     mode: restart
     trigger:
       - platform: state
-        entity_id: binary_sensor.motion_sensor_kitchen
+        entity_id:
+          - binary_sensor.motion_sensor_kitchen
+          - binary_sensor.motion_sensor_kitchen_2
         to: 'on'
     condition:
       - condition: template
@@ -62,7 +68,9 @@ automation:
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - wait_for_trigger:
           - platform: state
-            entity_id: binary_sensor.motion_sensor_kitchen
+            entity_id:
+              - binary_sensor.motion_sensor_kitchen
+              - binary_sensor.motion_sensor_kitchen_2
             to: 'off'
             for:
               minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
@@ -181,7 +189,6 @@ group:
   kitchen_lighting_automations:
     entities:
       - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
-      - automation.kitchen_lights_turn_off_when_no_motion
 
 ################
 #    LIGHTS    #
