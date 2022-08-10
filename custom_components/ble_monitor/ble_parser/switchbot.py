@@ -2,6 +2,11 @@
 import logging
 from struct import unpack
 
+from .helpers import (
+    to_mac,
+    to_unformatted_mac,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -9,17 +14,23 @@ def parse_switchbot(self, data, source_mac, rssi):
     """Switchbot parser"""
     msg_length = len(data)
     switchbot_mac = source_mac
-    device_id = data[4] + (data[5] << 8)
+    device_id = data[4]
 
-    if msg_length == 10 and device_id in [0x0054, 0x0069]:
+    if msg_length == 10 and device_id in [0x54, 0x69]:
         xvalue = data[6:10]
-        (byte1, byte2, byte3, byte4) = unpack("<BBBB", xvalue)
-        batt = (byte1 & 127)
-        temp = float(byte3 - 128) + float(byte2 / 10.0)
-        humi = (byte4 & 127)
-        if device_id == 0x0054:
+        (batt, temp_frac, temp_int, humi) = unpack("<BBBB", xvalue)
+        batt = (batt & 127)
+
+        temp_sign = temp_int & 128
+        temp = float(temp_int & 127) + float((temp_frac & 15) / 10.0)
+        if temp_sign == 0:
+            # Negative temperature
+            temp = -1 * temp
+
+        humi = (humi & 127)
+        if device_id == 0x54:
             device_type = "Meter TH S1"
-        elif device_id == 0x0069:
+        elif device_id == 0x69:
             device_type = "Meter TH plus"
         else:
             device_type = "unknown"
@@ -49,15 +60,10 @@ def parse_switchbot(self, data, source_mac, rssi):
 
     result.update({
         "rssi": rssi,
-        "mac": ''.join(f'{i:02X}' for i in switchbot_mac),
+        "mac": to_unformatted_mac(switchbot_mac),
         "type": device_type,
         "packet": "no packet id",
         "firmware": firmware,
         "data": True
     })
     return result
-
-
-def to_mac(addr: int):
-    """Return formatted MAC address"""
-    return ':'.join(f'{i:02X}' for i in addr)
