@@ -43,39 +43,6 @@ homeassistant:
           if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
           var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
 
-# speedtestdotnet:
-#   server_id: 13883
-#   scan_interval:
-#     minutes: 60
-#   monitored_conditions:
-#     - ping
-#     - download
-#     - upload
-
-# asuswrt:
-#   host: 192.168.1.1
-#   username: !secret router_user
-#   password: !secret router_pass
-#   sensors:
-#     - upload
-#     - download
-#     - upload_speed
-#     - download_speed
-
-# transmission:
-#   host: 192.168.1.11
-#   username: !secret transmission_user
-#   password: !secret transmission_pass
-  # monitored_conditions:
-  #   - current_status
-  #   - download_speed
-  #   - upload_speed
-  #   - active_torrents
-  #   - paused_torrents
-  #   - total_torrents
-  #   - started_torrents
-  #   - completed_torrents
-
 #################
 #    SENSORS    #
 #################
@@ -83,10 +50,10 @@ sensor:
   - platform: template
     sensors:
       ping_router_avg:
-        value_template: "{{ state_attr('binary_sensor.router', 'round_trip_time_avg')|round(2) }}"
+        value_template: "{{ state_attr('binary_sensor.udm_pro', 'round_trip_time_avg')|round(2) }}"
         unit_of_measurement: ms
         friendly_name: "Router ping average"
-        availability_template: "{{ state_attr('binary_sensor.router', 'round_trip_time_avg')|is_number }}"
+        availability_template: "{{ state_attr('binary_sensor.udm_pro', 'round_trip_time_avg')|is_number }}"
 
       ping_blokmeisternas_avg:
         value_template: "{{ state_attr('binary_sensor.blokmeisternas', 'round_trip_time_avg')|round(2) }}"
@@ -112,23 +79,38 @@ sensor:
         friendly_name: "Ambilight RPI ping average"
         availability_template: "{{ state_attr('binary_sensor.ambilight_rpi', 'round_trip_time_avg')|is_number }}"
 
-      ping_transmission_avg:
-        value_template: "{{ state_attr('binary_sensor.transmission', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Transmission jail ping average"
-        availability_template: "{{ state_attr('binary_sensor.transmission', 'round_trip_time_avg')|is_number }}"
-
-      ping_plinq_avg:
-        value_template: "{{ state_attr('binary_sensor.plinq', 'round_trip_time_avg')|round(2) }}"
+      ping_snlr_avg:
+        value_template: "{{ state_attr('binary_sensor.snlr', 'round_trip_time_avg')|round(2) }}"
         unit_of_measurement: ms
         friendly_name: "Plinq ping average"
-        availability_template: "{{ state_attr('binary_sensor.plinq', 'round_trip_time_avg')|is_number }}"
+        availability_template: "{{ state_attr('binary_sensor.snlr', 'round_trip_time_avg')|is_number }}"
 
       ping_google_dns_avg:
         value_template: "{{ state_attr('binary_sensor.google_dns', 'round_trip_time_avg')|round(2) }}"
         unit_of_measurement: ms
-        friendly_name: "Google DNS jail ping average"
+        friendly_name: "Google DNS ping average"
         availability_template: "{{ state_attr('binary_sensor.google_dns', 'round_trip_time_avg')|is_number }}"
+
+      udmp_download_speed_mbs:
+        value_template: "{{ (states('sensor.unifi_dream_machine_kib_s_received')|float/1024)|round(1) }}"
+        unit_of_measurement: MB/s
+        friendly_name: "Router Download Speed"
+        availability_template: "{{ states('sensor.unifi_dream_machine_kib_s_received')|is_number }}"
+      udmp_upload_speed_mbs:
+        value_template: "{{ (states('sensor.unifi_dream_machine_kib_s_sent')|float/1024)|round(1) }}"
+        unit_of_measurement: MB/s
+        friendly_name: "Router Download Speed"
+        availability_template: "{{ states('sensor.unifi_dream_machine_kib_s_sent')|is_number }}"
+      udmp_download_gb:
+        value_template: "{{ (states('sensor.unifi_dream_machine_b_received')|float/1024**3)|round(1) }}"
+        unit_of_measurement: GB
+        friendly_name: "Router Total Download"
+        availability_template: "{{ states('sensor.unifi_dream_machine_b_received')|is_number }}"
+      udmp_upload_gb:
+        value_template: "{{ (states('sensor.unifi_dream_machine_b_sent')|float/1024**3)|round(1) }}"
+        unit_of_measurement: GB
+        friendly_name: "Router Total Upload"
+        availability_template: "{{ states('sensor.unifi_dream_machine_b_sent')|is_number }}"
 
   - platform: statistics
     entity_id: sensor.asuswrt_download_speed
@@ -152,37 +134,32 @@ sensor:
 binary_sensor:
   - platform: ping
     name: BlokmeisterNAS
-    host: 192.168.1.250
+    host: tower.local
     count: 10
     scan_interval: 60
   - platform: ping
-    name: Router
-    host: 192.168.1.1
+    name: UDM Pro
+    host: unifi.local
     count: 10
     scan_interval: 60
   - platform: ping
     name: Phone
-    host: 192.168.1.100
+    host: 10.0.0.100
     count: 10
     scan_interval: 60
   - platform: ping
     name: Odroid_C2
-    host: 192.168.1.50
+    host: CoreELEC.local
     count: 10
     scan_interval: 60
   - platform: ping
     name: Ambilight_RPI
-    host: 192.168.1.51
+    host: HyperBian.local
     count: 10
     scan_interval: 60
   - platform: ping
-    name: Transmission
-    host: 192.168.1.11
-    count: 10
-    scan_interval: 60
-  - platform: ping
-    name: Plinq
-    host: 82.150.155.66
+    name: SNLR
+    host: 45.145.109.105
     count: 10
     scan_interval: 60
   - platform: ping
@@ -192,7 +169,7 @@ binary_sensor:
     scan_interval: 60
   - platform: ping
     name: Blokmeisterdesktop
-    host: 192.168.1.187
+    host: 10.0.0.101
     count: 10
     scan_interval: 60
 
