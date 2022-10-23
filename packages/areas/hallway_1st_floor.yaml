@@ -1,0 +1,61 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[hallway|lights]Toggle lights through switch press'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: switch.shelly_hallway_1st_floor
+    condition:
+      - condition: state
+        entity_id: switch.shelly_hallway_1st_floor
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
+    action:
+      - service: light.toggle
+        data:
+          entity_id: light.hallway_1st_floor
+          brightness: 255
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
