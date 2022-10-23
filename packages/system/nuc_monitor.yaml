@@ -85,25 +85,6 @@ sensor:
       - type: processor_use
       - type: processor_temperature
 
-  # - platform: folder
-  #   folder: /backup
-
-  # - platform: folder
-  #   folder: /config
-
-  # - platform: folder
-  #   folder: /home
-    
-  - platform: uptime
-
-
-  # - platform: version
-  #   name: Latest Version
-  #   source: hassio
-
-  # - platform: version
-  #   name: Current Version
-  #   source: local
 
   - platform: sql
     db_url: !secret mariadb_URL
@@ -139,18 +120,6 @@ sensor:
   #       value_template: >
   #         {{ states( 'sensor.uptime' )|float * 60 | float }}
 
-  - platform: command_line
-    name: Plexmediaserver Status
-    scan_interval: 30
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.252
-      systemctl is-active plexmediaserver
-
-  - platform: command_line
-    name: Plexmediaserver Status Otherformat
-    scan_interval: 30
-    command: ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
 
   - platform: filter
     name: "Filtered NUC CPU Temperature"
@@ -187,97 +156,12 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: command_line
-    name: 'Unrarredmovies mounted'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.252
-      '[ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"'
-    payload_on: "True"
-    payload_off: "False"
-  - platform: command_line
-    name: 'Unrarredseries mounted'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.252
-      '[ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"'
-    payload_on: "True"
-    payload_off: "False"
-  - platform: command_line
-    name: 'Newstorage mounted'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.252
-      '[ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"'
-    payload_on: "True"
-    payload_off: "False"
-  - platform: command_line
-    name: 'Plexmediaserver'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
-    payload_on: "active"
-    payload_off: "inactive"
-    
+
 ##################
 #    SWITCHES    #
 ##################
 switch:
-  - platform: command_line
-    switches:
-      newstorage_mounted:
-        command_on: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          'mount -a'
-        command_off: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          'umount /mnt/NewStorage'
-        command_state: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          '[ "$(ls -A /mnt/NewStorage)" ] && echo "True" || echo "False"'
-        value_template: '{{ value == "True" }}'
-      unrarredseries_mounted:
-        command_on: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          'rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Series /mnt/unrarred/unrarredseries'
-        command_off: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          'fusermount -u /mnt/unrarred/unrarredseries'
-        command_state: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          '[ "$(ls -A /mnt/unrarred/unrarredseries)" ] && echo "True" || echo "False"'
-        value_template: '{{ value == "True" }}'
-      unrarredmovies_mounted:
-        command_on: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          'rar2fs -o allow_other --seek-length=0 /mnt/NewStorage/Movies /mnt/unrarred/unrarredmovies'
-        command_off: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          'fusermount -u /mnt/unrarred/unrarredmovies'
-        command_state: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-          root@192.168.1.252
-          '[ "$(ls -A /mnt/unrarred/unrarredmovies)" ] && echo "True" || echo "False"'
-        value_template: '{{ value == "True" }}'
-      plexmediaserver:
-        command_on: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 service plexmediaserver start
-        command_off: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 service plexmediaserver stop
-        command_state: >-
-          ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q root@192.168.1.252 systemctl is-active plexmediaserver
-        value_template: '{{ value == "active" }}'
+
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -361,83 +245,6 @@ automation:
           message: "**{{states( 'sensor.potential_breaking_changes' )}}** potential breaking changes detected between version **[{{states( 'sensor.current_version' )}}](https://www.home-assistant.io/latest-release-notes/)** and version **{{states( 'sensor.latest_version' )}}**"
           title: "Potential breaking changes"
           notification_id: breaking_changes
-
-  - alias: '[System] Mount NAS drives'
-    initial_state: on
-    trigger:
-      - platform: state
-        entity_id: switch.blokmeisternas
-        from: 'off'
-        to: 'on'
-        for:
-          minutes: 5
-    condition:
-      - condition: or
-        conditions:
-          - condition: state
-            entity_id: binary_sensor.newstorage_mounted
-            state: 'off'
-          - condition: state
-            entity_id: binary_sensor.unrarredmovies_mounted
-            state: 'off'
-          - condition: state
-            entity_id: binary_sensor.unrarredseries_mounted
-            state: 'off'
-    action:
-      - service: switch.turn_on
-        entity_id: switch.newstorage_mounted
-      - delay:
-          seconds: 10
-      - wait_template: "{{ is_state('switch.newstorage_mounted', 'on')}}"
-        timeout:
-          minutes: 5
-        continue_on_timeout: false
-      - service: switch.turn_on
-        entity_id: switch.unrarredmovies_mounted
-      - service: switch.turn_on
-        entity_id: switch.unrarredseries_mounted
-      - delay:
-          seconds: 10
-      - wait_template: "{{ is_state('switch.unrarredmovies_mounted', 'on') and is_state('switch.unrarredseries_mounted', 'on') }}"
-        timeout:
-          minutes: 5
-        continue_on_timeout: false
-      - service: system_log.write
-        data:
-          message: 'BlokmeisterNAS directories mounted successfully'
-          level: info
-      - service: tts.google_say
-        entity_id: media_player.living_room_speaker
-        data:
-          message: "BlokmeisterNAS powered up and drives mounted successfully!"
-      - service: notify.mobile_app_blokmeisters21u
-        data:
-          message: "NAS bootup detected. NAS drives mounted successfully"
-          title: "NAS drives mounted"
-          data:
-            group: reminder
-            tag: drivemount
-            icon_url: local/icons/server-network.png
-
-  - alias: '[system|mediacenter] Regulate plexmediaserver status through nas mounts'
-    mode: queued
-    trigger:
-      platform: state
-      entity_id: switch.unrarredmovies_mounted
-    action:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.to_state.state == 'on' }}"
-            sequence:
-              - service: switch.turn_on
-                entity_id: switch.plexmediaserver
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.to_state.state == 'off' }}"
-            sequence:
-              - service: switch.turn_on
-                entity_id: switch.plexmediaserver
 
   - alias: '[system|database] Update MariaDB database size sensor'
     mode: single
