@@ -17,17 +17,16 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      entry_motion_combined:
-        device_class: motion
-        value_template: >-
-          {{
-            is_state('binary_sensor.motion_sensor_entry', 'on') or
-            is_state('binary_sensor.motion_sensor_entry2', 'on')
-          }}
-        availability_template: "{{ (states('binary_sensor.motion_sensor_entry') in ['on', 'off']) and (states('binary_sensor.motion_sensor_entry2') in ['on', 'off']) }}"
-
+  # - platform: template
+  #   sensors:
+  #     entry_motion_combined:
+  #       device_class: motion
+  #       value_template: >-
+  #         {{
+  #           is_state('binary_sensor.motion_sensor_entry', 'on') or
+  #           is_state('binary_sensor.motion_sensor_entry2', 'on')
+  #         }}
+  #       availability_template: "{{ (states('binary_sensor.motion_sensor_entry') in ['on', 'off']) and (states('binary_sensor.motion_sensor_entry2') in ['on', 'off']) }}"
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -46,21 +45,50 @@ automation:
     trigger:
       platform: state
       entity_id: switch.shelly_entry
-      to: 'on'
+    condition:
+      - condition: state
+        entity_id: switch.shelly_entry
+        state:
+          - 'on'
+          - 'off'
+        for:
+          seconds: 5
     action:
-      service: light.turn_on
+      service: light.toggle
       data:
-        entity_id: light.entry_lights
+        entity_id: light.entry
         brightness: 255
+        kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
-  - alias: '[entry|light]Turn off entry lights through switch press'
+  - alias: '[entry|light]Lights_when_utility_cabinet_is_open'
+    mode: queued
     trigger:
       platform: state
-      entity_id: switch.shelly_entry
-      to: 'off'
+      entity_id: binary_sensor.kitchen_door_window_sensor
+      to: 'on'
     action:
-      service: light.turn_off
-      entity_id: light.entry_lights
+      - service: scene.create
+        data:
+          scene_id: entry_1_before
+          snapshot_entities:
+            light.entry_1
+      - service: light.turn_on
+        data:
+          entity_id: light.entry_1
+          brightness: 255
+          color_temp: 280
+          transition: 0.5
+      - delay:
+          seconds: 1
+      - wait_template: "{{ is_state('binary_sensor.kitchen_door_window_sensor', 'off')}}"
+        timeout: '00:10:00'
+        continue_on_timeout: false   #prevent restoring old light state if the closet remains open for a long time
+      - service: scene.turn_on
+        data:
+          entity_id: scene.entry_1_before
+          transition: 1
+      - delay:
+          seconds: 2
 
   - alias: '[entry|light] Turn on light through motion'
     mode: restart
@@ -116,6 +144,30 @@ automation:
               message: "Front door is still open!"
           - delay:
               minutes: 2
+
+  - alias: '[entry|mail] Alert when mail delivered'
+    mode: queued
+    trigger:
+      platform: state
+      entity_id: binary_sensor.vibration_sensor_mailbox
+      to: 'on'
+    condition:
+      - condition: state
+        entity_id: binary_sensor.door_window_sensor_frontdoor
+        state: 'off'
+        for:
+          minutes: 2
+    action:
+      - service: notify.mobile_app_blokmeisters21u
+        data_template:
+          title: Mail Delivered!
+          message: "Mail delivery has been detected."
+          data:
+            group: Info
+            tag: mailbox
+            clickAction: '/lovelace/8'
+            icon_url: /local/icons/email-alert.png
+
 ################
 #    SCENES    #
 ################
