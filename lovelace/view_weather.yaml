@@ -18,8 +18,6 @@ cards:
             suffix: '%'
         camera_image: camera.buienradar
       - entities:
-          #- entity: sensor.illumination_hub
-          #  name: Xiaomi hub
           - entity: sensor.illumination_bedroom
             name: Bedroom
           - entity: sensor.average_illumination_livingroom
@@ -28,8 +26,6 @@ cards:
             name: Kitchen
           - entity: sensor.average_illumination_study
             name: Study 2
-          #- entity: sensor.illumination_balcony
-          #  name: Balcony
           - entity: sun.sun
             name: Night
             color: gray
@@ -57,16 +53,16 @@ cards:
         type: custom:mini-graph-card
     type: vertical-stack
   - cards:
-      - entity:  climate.heating
-        type: thermostat
-        name: Tado
+      # - entity:  climate.heating
+      #   type: thermostat
+      #   name: Tado
       - type: glance
         entities:
           - entity: sensor.temperature_outside
             name: Outside
-          - entity: sensor.heating_temperature
+          - entity: sensor.woonkamer_temperatuur
             name: Living room
-          - entity: sensor.ble_temperature_study_temp
+          - entity: sensor.slaapkamer5_temperatuur
             name: Study
       - type: custom:mini-graph-card
         entities:
@@ -78,8 +74,8 @@ cards:
             name: Living room
             color: '#ffc733'
             show_fill: false
-          - entity: sensor.heating_temperature
-            name: Tado
+          - entity: sensor.woonkamer_temperatuur
+            name: Living Room Thermostat
             color: '#f8ff33'
             show_fill: false
           - entity: sensor.temperature_bedroom
@@ -148,4 +144,64 @@ cards:
           tap_action:
             action: call-service
             service: script.turn_off_bed_preheating
+    type: vertical-stack
+  - cards:
+      - type: custom:mini-graph-card
+        entities:
+          - entity: luxtronik.temperatuur_vv_aanvoer
+            name: Verwarming Aanvoer
+            color: '#33ff61'
+            show_fill: false
+          - entity: luxtronik.temperatuur_vv_retour
+            name: Verwarming Retour
+            color: '#ffc733'
+            show_fill: false
+          - entity: luxtronik.temperatuur_warmtebron_uitgang
+            name: Bron Uitgang
+            color: '#f8ff33'
+            show_fill: false
+          - entity: luxtronik.temperatuur_warmtebron_ingang
+            name: Bron Ingang
+            color: '#ff7a33'
+            show_fill: false
+        hours_to_show: 24
+        points_per_hour: 5
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 4
+        upper_bound: 30
+        lower_bound: 5
+        show:
+          labels_secondary: false
+      - type: glance
+        entities:
+          - entity: luxtronik.temperatuur_vv_aanvoer
+            name: Verwarming Aanvoer
+          - entity: luxtronik.temperatuur_vv_retour
+            name: Verwarming Retour
+          - entity: luxtronik.temperatuur_warmtebron_uitgang
+            name: Bron Aanvoer
+          - entity: luxtronik.temperatuur_warmtebron_ingang
+            name: Bron Retour
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.warmtebron_in_uit_delta
+            name: Bron Delta
+            color: '#33ff61'
+            show_fill: false
+          - entity: sensor.vloerverwarming_in_uit_delta
+            name: Verwarming Delta
+            color: '#ff7a33'
+            show_fill: false
+        hours_to_show: 24
+        points_per_hour: 5
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 4
+        upper_bound: 5
+        lower_bound: -5
+        show:
+          labels_secondary: false
     type: vertical-stack

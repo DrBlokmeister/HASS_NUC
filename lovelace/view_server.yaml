@@ -19,26 +19,20 @@ cards:
             - switch.blokmeisternas
   - cards:
       - entities:
-          - entity: sensor.nas_disk_ada0_temperature
-            name: ada0
-          - entity: sensor.nas_disk_ada1_temperature
-            name: ada1
-          - entity: sensor.nas_disk_ada2_temperature
-            name: ada2
-          - entity: sensor.nas_disk_ada3_temperature
-            name: ada3
-          - entity: sensor.nas_disk_ada4_temperature
-            name: ada4
-          - entity: sensor.nas_disk_ada5_temperature
-            name: ada5
-          - entity: sensor.nas_disk_ada6_temperature
-            name: ada6
-          - entity: sensor.nas_disk_ada7_temperature
-            name: ada7
-          - entity: sensor.nas_disk_da0_temperature
-            name: da0
-          - entity: sensor.nas_disk_da1_temperature
-            name: da1
+          - entity: sensor.nas_parity_temperature
+            name: Parity
+          - entity: sensor.nas_disk1_temperature
+            name: Disk 1
+          - entity: sensor.nas_disk2_temperature
+            name: Disk 2
+          - entity: sensor.nas_disk3_temperature
+            name: Disk 3
+          - entity: sensor.nas_dev1_temperature
+            name: Dev 1
+          - entity: sensor.nas_dev2_temperature
+            name: Dev 2
+          - entity: sensor.nas_cache_temperature
+            name: Cache
         icon: mdi:harddisk
         name: Disk temperatures
         hours_to_show: 48
@@ -54,46 +48,51 @@ cards:
           average: true
         type: custom:mini-graph-card
       - entities:
-          - entity: sensor.nas_disk_ada0_temperature
-            name: ada0
+          - entity: sensor.nas_parity_temperature
+            name: Parity
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada1_temperature
-            name: ada1
+          - entity: sensor.nas_disk1_temperature
+            name: Disk 1
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada2_temperature
-            name: ada2
+          - entity: sensor.nas_disk2_temperature
+            name: Disk 2
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada3_temperature
-            name: ada3
+          - entity: sensor.nas_disk3_temperature
+            name: Disk 3
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada4_temperature
-            name: ada4
+          - entity: sensor.nas_dev1_temperature
+            name: Dev 1
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada5_temperature
-            name: ada5
+          - entity: sensor.nas_dev2_temperature
+            name: Dev 2
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada6_temperature
-            name: ada6
+          - entity: sensor.nas_cache_temperature
+            name: Cache
             icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_ada7_temperature
-            name: ada7
-            icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_da0_temperature
-            name: da0
-            icon: 'mdi:harddisk'
-          - entity: sensor.nas_disk_da1_temperature
-            name: da1
-            icon: 'mdi:harddisk'
-        columns: 5
+          # - entity: sensor.nas_disk_ada7_temperature
+          #   name: ada7
+          #   icon: 'mdi:harddisk'
+          # - entity: sensor.nas_disk_da0_temperature
+          #   name: da0
+          #   icon: 'mdi:harddisk'
+          # - entity: sensor.nas_disk_da1_temperature
+          #   name: da1
+          #   icon: 'mdi:harddisk'
+        columns: 4
         type: glance
     type: vertical-stack
   - cards:
       - entities:
-          - entity: sensor.nas_cpu0_temp
-          - entity: sensor.nas_cpu1_temp
-          - entity: sensor.nas_cpu2_temp
-          - entity: sensor.nas_cpu3_temp
-          - entity: sensor.nas_cpu_temperature
+          - entity: sensor.nas_core0_temperature
+            name: Core0
+          - entity: sensor.nas_core1_temperature
+            name: Core1
+          - entity: sensor.nas_core2_temperature
+            name: Core2
+          - entity: sensor.nas_core3_temperature
+            name: Core3
+          - entity: sensor.glances_package_id_0_temperature
+            name: Package
         name: CPU temperature
         hours_to_show: 48
         points_per_hour: 12
@@ -108,9 +107,10 @@ cards:
           average: true
         type: custom:mini-graph-card
       - entities:
-          - entity: sensor.nas_cpu_load_1m
-          - entity: sensor.nas_cpu_load_5m
-          - entity: sensor.nas_cpu_load_15m
+          - entity: sensor.glances_cpu_used
+            name: Total
+          - entity: sensor.glances_containers_cpu_used
+            name: Containers
         name: NAS Load
         hours_to_show: 48
         points_per_hour: 12
@@ -119,7 +119,7 @@ cards:
         height: 250
         line_width: 2.5
         lower_bound: 0
-        upper_bound: 4
+        upper_bound: 100
         show:
           labels: true
           average: true
@@ -134,13 +134,13 @@ cards:
           # - entity: sensor.fn_alert_message
           #   icon: none
           #   name: msg
-          - entity: switch.blokmeisternas
-            tap_action:
-              action: toggle
-              confirmation:
-                text: Are you sure you want to power on/off?
-            name: Power
-            icon: mdi:server-network
+          # - entity: switch.blokmeisternas
+          #   tap_action:
+          #     action: toggle
+          #     confirmation:
+          #       text: Are you sure you want to power on/off?
+          #   name: Power
+          #   icon: mdi:server-network
           - entity: sensor.nas_last_boot
             name: Last boot
           - entity: sensor.blitzwolf_nas_energy_power
@@ -232,8 +232,7 @@ cards:
           - entity: sensor.ping_phone_avg
           - entity: sensor.ping_odroid_c2_avg
           - entity: sensor.ping_ambilight_rpi_avg
-          - entity: sensor.ping_transmission_avg
-          - entity: sensor.ping_plinq_avg
+          - entity: sensor.ping_snlr_avg
           - entity: sensor.ping_google_dns_avg
         name: Ping
         hours_to_show: 48
@@ -259,18 +258,18 @@ cards:
   - cards:
       - columns: 4
         entities:
-          - entity: sensor.asuswrt_download
+          - entity: sensor.udmp_download_gb
             icon: 'mdi:progress-download'
-            name: Daily download
-          - entity: sensor.asuswrt_download_speed
+            name: Down Daily
+          - entity: sensor.udmp_download_speed_mbs
             icon: 'mdi:speedometer'
-            name: Current download
-          - entity: sensor.asuswrt_upload
+            name: Down Speed
+          - entity: sensor.udmp_upload_gb
             icon: 'mdi:progress-upload'
-            name: Daily upload
-          - entity: sensor.asuswrt_upload_speed
+            name: Up Daily
+          - entity: sensor.udmp_upload_speed_mbs
             icon: 'mdi:speedometer'
-            name: Current upload
+            name: Up Speed
           - entity: sensor.speedtest_download
           - entity: sensor.speedtest_upload
           - entity: sensor.speedtest_ping
@@ -316,9 +315,9 @@ cards:
           labels_secondary: true
         type: custom:mini-graph-card
       - entities:
-          - entity: sensor.asuswrt_download_speed
+          - entity: sensor.udmp_download_speed_mbs
             name: Down
-          - entity: sensor.asuswrt_upload_speed
+          - entity: sensor.udmp_upload_speed_mbs
             name: Up
         icon: mdi:swap-vertical-bold
         name: Router
