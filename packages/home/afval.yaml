@@ -6,41 +6,71 @@ input_boolean:
     name: Garbage Reminder
     icon: mdi:trash-can-outline
 
+afvalbeheer:
+  - name: 'Afval Voor'
+    wastecollector: MijnAfvalwijzer
+    resources:
+      - restafval
+      - gft
+      - papier
+    postcode: !secret postal_code
+    streetnumber: !secret street_number_nosuffix
+    suffix: !secret street_number_suffix
+    upcomingsensor: 1
+    dateformat: '%d-%m-%Y'
+    dateonly: 1
+    nameprefix: 1
+    builtinicons: 1
+    printwastetypes: 0
+  - name: 'Afval Achter'
+    wastecollector: MijnAfvalwijzer
+    resources:
+      - restafval
+      - gft
+      - papier
+    postcode: !secret postal_code_afval_achter
+    streetnumber: !secret street_number_afval_achter
+    upcomingsensor: 1
+    dateformat: '%d-%m-%Y'
+    dateonly: 1
+    nameprefix: 1
+    builtinicons: 1
+    printwastetypes: 0
 #################
 #    SENSORS    #
 #################
 sensor:
-- platform: afvalbeheer
-  name: 'Afval Voor'
-  wastecollector: MijnAfvalwijzer
-  resources:
-    - restafval
-    - gft
-    - papier
-  postcode: !secret postal_code
-  streetnumber: !secret street_number_nosuffix
-  suffix: !secret street_number_suffix
-  upcomingsensor: 1
-  dateformat: '%d-%m-%Y'
-  dateonly: 1
-  nameprefix: 1
-  builtinicons: 0
-  printwastetypes: 0
-- platform: afvalbeheer
-  name: 'Afval Achter'
-  wastecollector: MijnAfvalwijzer
-  resources:
-    - restafval
-    - gft
-    - papier
-  postcode: !secret postal_code_afval_achter
-  streetnumber: !secret street_number_afval_achter
-  upcomingsensor: 1
-  dateformat: '%d-%m-%Y'
-  dateonly: 1
-  nameprefix: 1
-  builtinicons: 0
-  printwastetypes: 0
+# - platform: afvalbeheer
+#   name: 'Afval Voor'
+#   wastecollector: MijnAfvalwijzer
+#   resources:
+#     - restafval
+#     - gft
+#     - papier
+#   postcode: !secret postal_code
+#   streetnumber: !secret street_number_nosuffix
+#   suffix: !secret street_number_suffix
+#   upcomingsensor: 1
+#   dateformat: '%d-%m-%Y'
+#   dateonly: 1
+#   nameprefix: 1
+#   builtinicons: 0
+#   printwastetypes: 0
+# - platform: afvalbeheer
+#   name: 'Afval Achter'
+#   wastecollector: MijnAfvalwijzer
+#   resources:
+#     - restafval
+#     - gft
+#     - papier
+#   postcode: !secret postal_code_afval_achter
+#   streetnumber: !secret street_number_afval_achter
+#   upcomingsensor: 1
+#   dateformat: '%d-%m-%Y'
+#   dateonly: 1
+#   nameprefix: 1
+#   builtinicons: 0
+#   printwastetypes: 0
 
 ########################
 #    BINARY SENSORS    #
@@ -88,7 +118,7 @@ automation:
       #       entity_id: sensor.mijnafvalwijzer_afval_voor_morgen
       #       state: "None"
       - condition: template
-        value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_morgen', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_morgen', 'None') }}"
+        value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -100,7 +130,7 @@ automation:
             - service: notify.mobile_app_blokmeisters21u
               data:
                 title: Afval morgen
-                message: "Afval achter: {{ states( 'sensor.mijnafvalwijzer_afval_achter_morgen' ) }}, afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_morgen' ) }}"
+                message: "Afval achter: {{ states( 'sensor.mijnafvalwijzer_afval_achter_tomorrow' ) }}, afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_tomorrow' ) }}"
                 data:
                   group: reminder
                   tag: garbagenotify
@@ -121,7 +151,7 @@ automation:
                   entity_id: input_boolean.garbagereminder
                   state: 'off'
                 - condition: template
-                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_morgen', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_morgen', 'None') }}"
+                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
 
   - alias: '[afval|notify]Herinnering afval vandaag'
     trigger:
@@ -133,7 +163,7 @@ automation:
         for: 00:10:00
     condition:
       - condition: template
-        value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_vandaag', 'None') or not is_state('sensor.sensor.mijnafvalwijzer_afval_voor_vandaag', 'None') }}"
+        value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', 'None') or not is_state('sensor.sensor.mijnafvalwijzer_afval_voor_today', 'None') }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -143,7 +173,7 @@ automation:
             - service: notify.mobile_app_blokmeisters21u
               data:
                 title: Afval vandaag
-                message: "Afval achter: {{ states( 'sensor.mijnafvalwijzer_afval_achter_vandaag' ) }}, afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_vandaag' ) }}"
+                message: "Afval achter: {{ states( 'sensor.mijnafvalwijzer_afval_achter_today' ) }}, afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_today' ) }}"
                 data:
                   group: reminder
                   tag: garbagenotify
@@ -164,7 +194,7 @@ automation:
                   entity_id: input_boolean.garbagereminder
                   state: 'off'
                 - condition: template
-                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_morgen', 'none') and not is_state('sensor.mijnafvalwijzer_afval_achter_morgen', '-') }}"
+                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', 'none') and not is_state('sensor.mijnafvalwijzer_afval_achter_today', '-') }}"
 
 ################
 #    SCENES    #
