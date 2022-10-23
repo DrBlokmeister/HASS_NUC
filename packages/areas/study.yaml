@@ -57,13 +57,13 @@ sensor:
 binary_sensor:
   - platform: template
     sensors:
-      computer_on:
-        device_class: power
-        value_template: >-
-          {{
-            states('sensor.blitzwolf_computer_energy_power')|float > 100
-          }}
-        availability_template: "{{ states('sensor.blitzwolf_computer_energy_power')|is_number }}"
+      # computer_on:
+      #   device_class: power
+      #   value_template: >-
+      #     {{
+      #       states('sensor.blitzwolf_computer_energy_power')|float > 100
+      #     }}
+      #   availability_template: "{{ states('sensor.blitzwolf_computer_energy_power')|is_number }}"
       study_motion_combined:
         device_class: motion
         value_template: >-
@@ -99,7 +99,7 @@ automation:
       - condition: template
         #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
         value_template: >-
-          {% if is_state('light.study_lights', 'on') %}
+          {% if is_state('light.study', 'on') %}
             {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lighton')|int }}
           {% else %}
             {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}
@@ -139,14 +139,14 @@ automation:
       - service: light.turn_on
         data:
           entity_id:
-            - light.study_lights
+            - light.study
           brightness_step: -110
           transition: 0.5
       - delay:
           seconds: 15
       - service: light.turn_off
         entity_id:
-          - light.study_lights
+          - light.study
 
   #Turn off study lights if no motion has been detected for 1 hour
   # - alias: study_nomotion_pc_turn_off
@@ -160,30 +160,30 @@ automation:
   #     service: light.turn_off
   #     entity_id: light.study_lights
 
-  - alias: 'Message when computer is still on when not home'
-    trigger:
-      - platform: state
-        entity_id: person.sander_blok
-        from: 'home'
-        to: 'not_home'
-        for: 00:20:00
-    condition:
-      - condition: state
-        entity_id: binary_sensor.computer_on
-        state: 'on'
-      - condition: state
-        entity_id: binary_sensor.house_occupied
-        state: 'on'
-    action:
-      - service: notify.mobile_app_blokmeisters21u
-        data:
-          message: "Computer still draws power: {{ states( 'sensor.blitzwolf_computer_energy_power' ) }}W"
-          title: "Home Assistant - Computer on"
-          data:
-            group: Warning
-            tag: computeron
-            clickAction: '/lovelace/6'
-            icon_url: /local/icons/desktop-tower-monitor.png
+  # - alias: 'Message when computer is still on when not home'
+  #   trigger:
+  #     - platform: state
+  #       entity_id: person.sander_blok
+  #       from: 'home'
+  #       to: 'not_home'
+  #       for: 00:20:00
+  #   condition:
+  #     - condition: state
+  #       entity_id: binary_sensor.computer_on
+  #       state: 'on'
+  #     - condition: state
+  #       entity_id: binary_sensor.house_occupied
+  #       state: 'on'
+  #   action:
+  #     - service: notify.mobile_app_blokmeisters21u
+  #       data:
+  #         message: "Computer still draws power: {{ states( 'sensor.blitzwolf_computer_energy_power' ) }}W"
+  #         title: "Home Assistant - Computer on"
+  #         data:
+  #           group: Warning
+  #           tag: computeron
+  #           clickAction: '/lovelace/6'
+  #           icon_url: /local/icons/desktop-tower-monitor.png
 
   - alias: '[study|lights]Toggle lights through switch press'
     mode: restart
@@ -199,13 +199,14 @@ automation:
         for:
           seconds: 5
     action:
-      - service: notify.filed_notifications
-        data:
-          message: "{{ states('switch.shelly_study'), states('sensor.average_illumination_study_2') }}"
+      # - service: notify.filed_notifications
+      #   data:
+      #     message: "{{ states('switch.shelly_study'), states('sensor.average_illumination_study_2') }}"
       - service: light.toggle
         data:
-          entity_id: light.study_lights
-          brightness_step: 255
+          entity_id: light.study
+          brightness: 255
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       # - service: switch.flux_study_update
       - service: automation.turn_off
         entity_id:
@@ -216,79 +217,79 @@ automation:
         entity_id:
           - automation.study_lights_turn_on_lights_when_motion_is_detected
 
-  - alias: '[study|power]Turn off pc plug'
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: group.study_motion_sensors
-        to: 'off'
-        for:
-          minutes: 20
-      - platform: state
-        entity_id: binary_sensor.vibration_sensor
-        to: 'off'
-        for:
-          minutes: 20
-    condition:
-      - condition: numeric_state
-        entity_id: sensor.blitzwolf_computer_energy_power
-        below: 15
-      # - condition: state
-      #   entity_id: device_tracker.blokmeisterh2o
-      #   state: 'not_home'
-      - condition: state
-        entity_id: binary_sensor.vibration_sensor
-        state: 'off'
-        for:
-          minutes: 7
-      - condition: state
-        entity_id: group.study_motion_sensors
-        state: 'off'
-        for:
-          minutes: 7
-      - condition: state
-        entity_id: switch.blitzwolf_computer
-        state: 'on'
-      - condition: not
-        conditions:
-            condition: state
-            entity_id: binary_sensor.octoprint_printing
-            state: 'on'
-    action:
-      - service: switch.turn_off
-        entity_id: switch.blitzwolf_computer
+  # - alias: '[study|power]Turn off pc plug'
+  #   mode: single
+  #   trigger:
+  #     - platform: state
+  #       entity_id: group.study_motion_sensors
+  #       to: 'off'
+  #       for:
+  #         minutes: 20
+  #     - platform: state
+  #       entity_id: binary_sensor.vibration_sensor
+  #       to: 'off'
+  #       for:
+  #         minutes: 20
+  #   condition:
+  #     - condition: numeric_state
+  #       entity_id: sensor.blitzwolf_computer_energy_power
+  #       below: 15
+  #     # - condition: state
+  #     #   entity_id: device_tracker.blokmeisterh2o
+  #     #   state: 'not_home'
+  #     - condition: state
+  #       entity_id: binary_sensor.vibration_sensor
+  #       state: 'off'
+  #       for:
+  #         minutes: 7
+  #     - condition: state
+  #       entity_id: group.study_motion_sensors
+  #       state: 'off'
+  #       for:
+  #         minutes: 7
+  #     - condition: state
+  #       entity_id: switch.blitzwolf_computer
+  #       state: 'on'
+  #     - condition: not
+  #       conditions:
+  #           condition: state
+  #           entity_id: binary_sensor.octoprint_printing
+  #           state: 'on'
+  #   action:
+  #     - service: switch.turn_off
+  #       entity_id: switch.blitzwolf_computer
 
-  - alias: '[study|power]Turn on pc plug'
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: group.study_motion_sensors
-        to: 'on'
-      - platform: state
-        entity_id: binary_sensor.vibration_sensor
-        to: 'on'
-    condition:
-      - condition: state
-        entity_id: switch.blitzwolf_computer
-        state: 'off'
-      - condition: state
-        entity_id: person.sander_blok
-        state: 'home'
-      - condition: not
-        conditions:
-            condition: state
-            entity_id: binary_sensor.octoprint_printing
-            state: 'on'
-    action:
-      - service: switch.turn_on
-        entity_id: switch.blitzwolf_computer
-      - delay:
-          seconds: 5
-      - condition: state
-        entity_id: light.study_1
-        state: 'off'
-      - service: light.turn_off
-        entity_id: light.study_candle
+  # - alias: '[study|power]Turn on pc plug'
+  #   mode: single
+  #   trigger:
+  #     - platform: state
+  #       entity_id: group.study_motion_sensors
+  #       to: 'on'
+  #     - platform: state
+  #       entity_id: binary_sensor.vibration_sensor
+  #       to: 'on'
+  #   condition:
+  #     - condition: state
+  #       entity_id: switch.blitzwolf_computer
+  #       state: 'off'
+  #     - condition: state
+  #       entity_id: person.sander_blok
+  #       state: 'home'
+  #     - condition: not
+  #       conditions:
+  #           condition: state
+  #           entity_id: binary_sensor.octoprint_printing
+  #           state: 'on'
+  #   action:
+  #     - service: switch.turn_on
+  #       entity_id: switch.blitzwolf_computer
+  #     - delay:
+  #         seconds: 5
+  #     - condition: state
+  #       entity_id: light.study_1
+  #       state: 'off'
+  #     - service: light.turn_off
+  #       entity_id: light.study_candle
 
   # - alias: '[study|lights] Start timer when presence is detected'
   #   mode: restart
@@ -384,11 +385,11 @@ group:
 #    LIGHTS    #
 ################
 light:
-  - platform: group
-    name: Study Lights
-    entities:
-      - light.study_1
-      - light.study_2
-      - light.study_3
-      - light.study_candle
-      - light.study_desk_a_rgb_ledstrip
+  # - platform: group
+  #   name: Study Lights
+  #   entities:
+  #     - light.study_1
+  #     - light.study_2
+  #     - light.study_3
+  #     - light.study_candle
+  #     - light.study_desk_a_rgb_ledstrip
