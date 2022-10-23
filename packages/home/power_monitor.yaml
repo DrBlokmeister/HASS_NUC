@@ -106,80 +106,35 @@ sensor:
       - filter: lowpass
         time_constant: 10
 
-# #sensor.kosten_hoog_tarief
-
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=on
-#     name: Huidig verbruik
-#     value_template: '{{ value_json.0.CONSUMPTION_W }}'
-#     unit_of_measurement: "W"
-
   - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/hour?limit=1&json=object&round=off
-    name: Current gas usage per hour
-    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 }}'
-    unit_of_measurement: "m3"
-
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/powergas/hour?limit=1&json=object&round=off
-#     name: Current gas usage per hour
-#     value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 }}'
-#     unit_of_measurement: "m3"
-
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
-#     name: Meterstand hoog
-#     value_template: '{{ value_json.0.CONSUMPTION_KWH_HIGH | round(2) }}'
-#     unit_of_measurement: "kWh"
-
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/smartmeter?limit=1&json=object&round=off
-#     name: Meterstand laag
-#     value_template: '{{ value_json.0.CONSUMPTION_KWH_LOW | round(2) }}'
-#     unit_of_measurement: "kWh"
-
-  - platform: rest
-    resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
+    resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
     name: Kosten Hoog Tarief
     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
     unit_of_measurement: "€"
 
   - platform: rest
-    resource: http://192.168.1.61/api/v1/financial/day?limit=1&json=object&round=off
+    resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
     name: Kosten Laag Tarief
     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
     unit_of_measurement: "€"
 
   - platform: rest
-    resource: http://192.168.1.61/api/v2/watermeter/day?limit=1&json=object&round=off
+    resource: http://10.0.30.40/api/v2/watermeter/day?limit=1&json=object&round=off
     name: Waterverbruik_vandaag
     value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
     unit_of_measurement: "l"
 
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
-#     name: Maand Hoog Tarief
-#     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
-#     unit_of_measurement: "€"
-
-#   - platform: rest
-#     resource: http://192.168.1.61/api/v1/financial/month?limit=1&json=object&round=off
-#     name: Maand Laag Tarief
-#     value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
-#     unit_of_measurement: "€"
-
   - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
+    resource: http://10.0.30.40/api/v1/powergas/day?limit=1&json=object&round=off
     name: Verbruik Per Dag
     value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
     unit_of_measurement: "kWh"
 
   - platform: rest
-    resource: http://192.168.1.61/api/v1/powergas/day?limit=1&json=object&round=off
-    name: Gasverbruik Per Dag
-    value_template: '{{ value_json.0.CONSUMPTION_GAS_DELTA_M3 | round(4) }}'
-    unit_of_measurement: "m3"
-    force_update: true
+    resource: http://10.0.30.40/api/v1/powerproductionsolar/day?limit=1&json=object&round=off
+    name: Verbruik Per Dag
+    value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
+    unit_of_measurement: "kWh"
 
   # - platform: mqtt
   #   name: timestamp_local
@@ -249,6 +204,7 @@ sensor:
             {{ states('sensor.waterverbruik_vandaag') }}
           {% endif %}
         unit_of_measurement: "l"
+        availability_template: "{{ states('sensor.waterverbruik_vandaag')|is_number }}"
       # verbruik_per_dag:
       #   value_template: "{{ states('sensor.home_energy_consumption_high')|float + states('home_energy_consumption_low')|float | round(2) }}"
       #   unit_of_measurement: ""
