@@ -31,6 +31,17 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: Restore Samba Backup sensor on startup
+    trigger:
+    - event: start
+      platform: homeassistant
+    action:
+    - service: hassio.addon_stdin
+      data:
+        addon: 15d21743_samba_backup
+        input: restore-sensor
+    mode: single
+
   - alias: Daily Backup at 3 AM
     trigger:
       platform: time
@@ -45,11 +56,30 @@ automation:
         - fri
         - sat
     action:
-      - service: input_boolean.turn_on
-        entity_id: input_boolean.backup_running
-      - service: auto_backup.backup_partial
+      - service: hassio.addon_stdin
         data:
-          keep_days: 7
+          addon: 15d21743_samba_backup
+          input:
+            command: trigger
+            exclude: [15d21743_samba_backup, a0d7b954_esphome, a0d7b954_grafana, a0d7b954_influxdb, a0d7b954_motioneye, a0d7b954_phpmyadmin, a0d7b954_portainer, a0d7b954_sonweb, a0d7b954_ssh, a0d7b954_tautulli, a0d7b954_vscode, ccab4aaf_frigate, ccab4aaf_frigate-fa-beta, core_rpc_shutdown, core_samba]
+      - wait_for_trigger:
+          - platform: state
+            entity_id: sensor.samba_backup
+            from: 'RUNNING'
+      - service: notify.mobile_app_blokmeisters21u
+        data:
+          message: "Backup {{ states('sensor.samba_backup') }}!"
+          title: "Home Assistant - Backup {{ states('sensor.samba_backup') }}!"
+          data:
+            group: info
+            tag: backup
+            icon_url: local/icons/file-check-outline.png
+            timeout: 10800
+      # - service: input_boolean.turn_on
+      #   entity_id: input_boolean.backup_running
+      # - service: auto_backup.backup_partial
+      #   data:
+      #     keep_days: 7
 
   - alias: Weekly Backup at 3 AM
     trigger:
@@ -60,14 +90,36 @@ automation:
       weekday:
         - sun
     action:
-      - service: input_boolean.turn_on
-        entity_id: input_boolean.backup_running
-      - service: auto_backup.backup_full
+      - service: hassio.addon_stdin
         data:
-          keep_days: 31
+          addon: 15d21743_samba_backup
+          input:
+            command: trigger
+            exclude: [a0d7b954_influxdb]
+      - wait_for_trigger:
+          - platform: state
+            entity_id: sensor.samba_backup
+            from: 'RUNNING'
+      - service: notify.mobile_app_blokmeisters21u
+        data:
+          message: "Backup {{ states('sensor.samba_backup') }}!"
+          title: "Home Assistant - Backup {{ states('sensor.samba_backup') }}!"
+          data:
+            group: info
+            tag: backup
+            icon_url: local/icons/file-check-outline.png
+            timeout: 10800
+      # - service: input_boolean.turn_on
+      #   entity_id: input_boolean.backup_running
+      # - service: auto_backup.backup_full
+      #   data:
+      #     keep_days: 31
 
   - alias: Report successful backup
     trigger:
+      - platform: state
+        entity_id: sensor.samba_backup
+        to: 'SUCCEEDED'
       - platform: event
         event_type: auto_backup.backup_successful
     condition:
@@ -83,7 +135,6 @@ automation:
             group: info
             tag: backup
             icon_url: local/icons/file-check-outline.png
-            timeout: 10800
       - service: system_log.write
         data:
           message: 'Scheduled backup successful.'
@@ -93,6 +144,9 @@ automation:
 
   - alias: Report failed backup
     trigger:
+      - platform: state
+        entity_id: sensor.samba_backup
+        to: 'FAILED'
       - platform: event
         event_type: auto_backup.backup_failed
     condition:
@@ -108,7 +162,6 @@ automation:
             group: info
             tag: backup
             icon_url: local/icons/file-alert-outline.png
-            timeout: 10800
       - service: system_log.write
         data:
           message: 'Scheduled backup failed!'
