@@ -101,7 +101,7 @@ camera:
       scale: 2
       trim:
         top: 0
-        bottom: 0
+        bottom: 30
         left: 10
         right: 25
     colors:
@@ -120,7 +120,7 @@ camera:
       scale: 2
       trim:
         top: 28
-        bottom: 20
+        bottom: 25
         left: 20
         right: 15
     colors:
@@ -350,10 +350,10 @@ automation:
       - wait_for_trigger:
           - platform: state
             entity_id: vacuum.alfred
-            to: 'Rreturning'
+            to: 'returning'
       - service: input_number.set_value
         data:
-          entity_id: input_number.alfred_area_at_since_last_empty_bin
+          entity_id: input_number.alfred_area_cleaned_at_last_empty_bin
           value: "{{ states('sensor.alfred_total_clean_area') }}"
 
   - alias: '[home|vacuum]Drive Argus to Hallway when Dust Bin is full'
@@ -499,6 +499,12 @@ automation:
     action:
       - variables:
           vacuumentityid: "{{ trigger.entity_id }}"
+      - service: camera.snapshot
+        data:
+          entity_id: "camera.{{ vacuumentityid[7:] }}_map"
+          filename: "/config/www/tmp/snapshot_vacuum_error.jpg"
+      - delay:
+          seconds: 5
       - service: notify.mobile_app_blokmeisters21u
         data:
           title: "Error with {{ trigger.id }}"
@@ -507,6 +513,7 @@ automation:
             group: vacuum
             tag: vacuumerror
             icon_url: local/icons/robot-vacuum.png
+            image: "/local/tmp/snapshot_vacuum_error.jpg"
       - wait_template: "{{ not is_state( vacuumentityid, 'error' ) }}"
       # - wait_for_trigger:
       #     - platform: state
