@@ -117,8 +117,14 @@ automation:
       #     - condition: state
       #       entity_id: sensor.mijnafvalwijzer_afval_voor_morgen
       #       state: "None"
-      - condition: template
-        value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
+      # - condition: template
+      #   value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
+      - condition: or
+        conditions:
+          - condition: template
+            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24}}"
+          - condition: template
+            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 24}}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -152,6 +158,12 @@ automation:
                   state: 'off'
                 - condition: template
                   value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
+                - condition: or
+                  conditions:
+                    - condition: template
+                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
+                    - condition: template
+                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
 
   - alias: '[afval|notify]Herinnering afval vandaag'
     trigger:
@@ -162,8 +174,12 @@ automation:
         to: 'off'
         for: 00:10:00
     condition:
-      - condition: template
-        value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', 'None') or not is_state('sensor.sensor.mijnafvalwijzer_afval_voor_today', 'None') }}"
+      - condition: or
+        conditions:
+          - condition: template
+            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
+          - condition: template
+            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -195,6 +211,12 @@ automation:
                   state: 'off'
                 - condition: template
                   value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', 'none') and not is_state('sensor.mijnafvalwijzer_afval_achter_today', '-') }}"
+                - condition: or
+                  conditions:
+                    - condition: template
+                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < -16}}"
+                    - condition: template
+                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < -16}}"
 
 ################
 #    SCENES    #
