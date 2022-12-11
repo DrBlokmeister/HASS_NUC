@@ -30,19 +30,16 @@ automation:
     trigger:
       - platform: state
         entity_id: switch.shelly_hallway_1st_floor
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: "Shelly Hallway 1st Floor"
     condition:
-      - condition: state
-        entity_id: switch.shelly_hallway_1st_floor
-        state:
-          - 'on'
-          - 'off'
-        for:
-          seconds: 5
     action:
       - service: light.toggle
         data:
           entity_id: light.hallway_1st_floor
-          brightness: 255
+          brightness: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
 ################

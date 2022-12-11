@@ -25,6 +25,15 @@ input_number:
     max: 30
     mode: box
 
+input_select:
+  study_scenes:
+    options:
+      - bright_cool
+      - bright_warm
+      - dim_warm
+    initial: bright_warm
+    icon: mdi:lightbulb-on-outline
+
 #################
 #    SENSORS    #
 #################
@@ -186,36 +195,65 @@ automation:
   #           icon_url: /local/icons/desktop-tower-monitor.png
 
   - alias: '[study|lights]Toggle lights through switch press'
+    id: studylightsswitchpress
     mode: restart
     trigger:
-      - platform: state
-        entity_id: switch.shelly_study
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_desk_switch
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: "Shelly Study"
     condition:
-      - condition: state
-        entity_id: switch.shelly_study
-        state:
-          - 'on'
-          - 'off'
-        for:
-          seconds: 5
+      # - condition: state
+      #   entity_id: switch.shelly_study
+      #   state:
+      #     - 'on'
+      #     - 'off'
+      #   for:
+      #     seconds: 5
     action:
-      # - service: notify.filed_notifications
-      #   data:
-      #     message: "{{ states('switch.shelly_study'), states('sensor.average_illumination_study_2') }}"
-      - service: light.toggle
-        data:
-          entity_id: light.study
-          brightness: 255
-          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-      # - service: switch.flux_study_update
-      - service: automation.turn_off
-        entity_id:
-          - automation.study_lights_turn_on_lights_when_motion_is_detected
-      - delay:
-          seconds: 30
-      - service: automation.turn_on
-        entity_id:
-          - automation.study_lights_turn_on_lights_when_motion_is_detected
+      - choose:
+          - conditions:
+              - condition: or
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.event.data.click_count == '1' }}" # Single click of switch
+                  - condition: template
+                    value_template: "{{ trigger.event.data.event == 1002 }}" # Single click of switch
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.study
+                  brightness: 255
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+              # - service: switch.flux_study_update
+              - service: automation.turn_off
+                entity_id:
+                  - automation.study_lights_turn_on_lights_when_motion_is_detected
+              - delay:
+                  seconds: 30
+              - service: automation.turn_on
+                entity_id:
+                  - automation.study_lights_turn_on_lights_when_motion_is_detected
+          - conditions:
+              - condition: or
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.event.data.click_count == '2' }}" # Double click of switch
+                  - condition: template
+                    value_template: "{{ trigger.event.data.event == 1004 }}" # Single click of switch
+            sequence:
+              - service: input_select.select_next
+                data:
+                  entity_id: input_select.study_scenes
+              - service: scene.turn_on
+                data:
+                  entity_id: scene.study_{{ states('input_select.study_scenes') }}
+
+
 
   # - alias: '[study|power]Turn off pc plug'
   #   mode: single
@@ -356,18 +394,25 @@ automation:
 scene:
   - name: study_bright_cool
     entities:
-      light.study_lights:
+      light.study:
         state: on
         brightness: 254
         color_temp: 280
-        transition: 2
+        transition: 1
   - name: study_bright_warm
     entities:
-      light.study_lights:
+      light.study:
         state: on
         brightness: 254
         color_temp: 454
-        transition: 2
+        transition: 1
+  - name: study_dim_warm
+    entities:
+      light.study:
+        state: on
+        brightness: 100
+        color_temp: 454
+        transition: 1
 
 ################
 #    GROUPS    #
