@@ -4,6 +4,8 @@ from homeassistant.const import (
     DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TIMESTAMP,
     DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_POWER,
+    DEVICE_CLASS_FREQUENCY,
     ENERGY_KILO_WATT_HOUR,
     PRESSURE_BAR,
     TEMP_CELSIUS,
@@ -29,6 +31,8 @@ CONF_ENERGY = "energy"
 CONF_VOLTAGE = "voltage"
 CONF_HOURS = "hours"
 CONF_FLOW = "flow"
+CONF_WATT = "W"
+CONF_FREQUENCY = "Hz"
 CONF_LOCK_TIMEOUT = "lock_timeout"
 CONF_UPDATE_IMMEDIATELY_AFTER_WRITE = "update_immediately_after_write"
 
@@ -51,6 +55,7 @@ ICONS = {
     "level": "mdi:format-list-numbered",
     "count": "mdi:counter",
     "version": "mdi:information-outline",
+    "frequency": "mdi:cosine-wave",
 }
 
 DEVICE_CLASSES = {
@@ -61,6 +66,8 @@ DEVICE_CLASSES = {
     CONF_HOURS: DEVICE_CLASS_TIMESTAMP,
     CONF_TIMESTAMP: DEVICE_CLASS_TIMESTAMP,
     CONF_ENERGY: DEVICE_CLASS_ENERGY,
+    CONF_WATT: DEVICE_CLASS_POWER,
+    CONF_FREQUENCY: DEVICE_CLASS_FREQUENCY,
 }
 
 UNITS = {
@@ -73,4 +80,6 @@ UNITS = {
     CONF_VOLTAGE: "V",
     CONF_HOURS: "h",
     CONF_FLOW: "l/h",
+    CONF_WATT: "W",
+    CONF_FREQUENCY: "Hz"
 }

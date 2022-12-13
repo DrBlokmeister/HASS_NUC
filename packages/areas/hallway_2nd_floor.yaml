@@ -1,0 +1,58 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[hallway2ndfloor|lights]Toggle lights through switch press'
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: switch.shelly_hallway_2st_floor
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: "Shelly Hallway 2nd Floor"
+    condition:
+    action:
+      - service: light.toggle
+        data:
+          entity_id: light.hallway_2nd_floor_lamp
+          #brightness: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+          #kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
