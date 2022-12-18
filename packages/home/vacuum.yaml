@@ -153,14 +153,14 @@ sensor:
     sensors:
       consuela_area_cleaned_today:
         unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.roborock_vacuum_s5_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int) - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.roborock_vacuum_s5_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
-        availability_template: "{{ states('sensor.roborock_vacuum_s5_total_clean_area')|is_number }}"
+        #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int) - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
+        value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
+        availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
       consuela_area_cleaned_since_last_empty_bin:
         unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.roborock_vacuum_s5_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int)  - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
-        value_template: "{{ states('sensor.roborock_vacuum_s5_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
-        availability_template: "{{ states('sensor.roborock_vacuum_s5_total_clean_area')|is_number }}"
+        #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int)  - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
+        value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
+        availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
       argus_area_cleaned_today:
         unit_of_measurement: 'm2'
         #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int) - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
@@ -181,11 +181,16 @@ sensor:
         #value_template: "{{ states('sensor.alfred_total_clean_area')|int(states('input_number.alfred_area_cleaned_at_start_of_day')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
         value_template: "{{ states('sensor.alfred_total_clean_area')|int - states('input_number.alfred_area_cleaned_at_last_empty_bin')|int }}"
         availability_template: "{{ states('sensor.alfred_total_clean_area')|is_number }}"
+
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-
+  - platform: template
+    sensors:
+      tamara_or_sander_downstairs:
+        value_template: "{{ not is_state_attr('device_tracker.huawei_p20_lite_f024a4d74_2', 'ap_mac', 'd0:21:f9:64:06:39') or not is_state_attr('device_tracker.blokmeisters21u_2', 'ap_mac', 'd0:21:f9:64:06:39') }}"
+        availability_template: "{{ not is_state('device_tracker.huawei_p20_lite_f024a4d74_2', 'unavailable') or not is_state('device_tracker.blokmeisters21u_2', 'unavailable') }}"
 ##################
 #    SWITCHES    #
 ##################
@@ -216,25 +221,12 @@ automation:
       - platform: time
         at: '07:00:00'
     condition:
-      - condition: or
-        conditions:
-          - condition: time
-            weekday:
-              - mon
-              - wed
-              - fri
-          - condition: numeric_state
-            entity_id: 'sensor.sander_home_yesterday'
-            above: 16
       - condition: time
         after: '7:00:00'
         before: '22:00:00'
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'off'
-      - condition: numeric_state
-        entity_id: sensor.alfred_area_cleaned_today
-        below: 20
     action:
       - choose:
           - conditions:
@@ -267,11 +259,11 @@ automation:
                 below: 20
             sequence:
               - service: vacuum.set_fan_speed
-                entity_id: vacuum.roborock_vacuum_s5
+                entity_id: vacuum.consuela
                 data:
                   fan_speed: Medium
               - service: vacuum.start
-                entity_id: vacuum.roborock_vacuum_s5
+                entity_id: vacuum.consuela
       - service: notify.mobile_app_blokmeisters21u
         data:
           message: "Started scheduled cleanup"
@@ -282,11 +274,41 @@ automation:
             icon_url: local/icons/robot-vacuum.png
             timeout: 1800
 
+  - alias: '[home|vacuum]backup cleanup' #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.tamara_or_sander_downstairs
+        to: 'off'
+        for:
+          minutes: 15
+      - platform: time
+        at: '15:00:00'
+    condition:
+      - condition: time
+        after: '15:00:00'
+        before: '22:00:00'
+      - condition: numeric_state
+        entity_id: sensor.argus_area_cleaned_today
+        below: 20
+      - condition: state
+        entity_id: binary_sensor.tamara_or_sander_downstairs
+        state: 'off'
+        for:
+          minutes: 15
+    action:
+      - service: vacuum.set_fan_speed
+        entity_id: vacuum.argus
+        data:
+          fan_speed: Medium
+      - service: vacuum.start
+        entity_id: vacuum.argus
+
   - alias: '[home|vacuum]Drive Consuela to Hallway when Dust Bin is full'
     mode: single
     trigger:
       - platform: numeric_state
-        entity_id: vacuum.roborock_vacuum_s5
+        entity_id: vacuum.consuela
         attribute: battery_level
         above: 99
       - platform: state
@@ -302,7 +324,7 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'on'
       - condition: numeric_state
-        entity_id: vacuum.roborock_vacuum_s5
+        entity_id: vacuum.consuela
         attribute: battery_level
         above: 99
       - condition: time
@@ -312,12 +334,12 @@ automation:
       - service: script.consuela_goto_hallway
       - wait_for_trigger:
           - platform: state
-            entity_id: vacuum.roborock_vacuum_s5
+            entity_id: vacuum.consuela
             to: 'returning'
       - service: input_number.set_value
         data:
           entity_id: input_number.consuela_area_cleaned_at_last_empty_bin
-          value: "{{ states('sensor.roborock_vacuum_s5_total_clean_area') }}"
+          value: "{{ states('sensor.consuela_total_clean_area') }}"
 
   - alias: '[home|vacuum]Drive Alfred to Hallway when Dust Bin is full'
     mode: single
@@ -455,7 +477,7 @@ automation:
       - service: input_number.set_value
         data:
           entity_id: input_number.consuela_area_cleaned_at_start_of_day
-          value: "{{ states('sensor.roborock_vacuum_s5_total_clean_area') }}"
+          value: "{{ states('sensor.consuela_total_clean_area') }}"
       - service: input_number.set_value
         data:
           entity_id: input_number.argus_area_cleaned_at_start_of_day
@@ -534,7 +556,15 @@ scene:
 #    GROUPS    #
 ################
 group:
-
+  vacuum_automations:
+    name: "Vacuum Automations Group"
+    entities:
+      - automation.home_vacuum_scheduled_cleanup
+      - automation.home_vacuum_backup_cleanup
+      - automation.home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
+      - automation.home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
+      - automation.home_vacuum_drive_consuela_to_hallway_when_dust_bin_is_full
+      - automation.home_vacuum_reset_area_cleaned_input_number
 #################
 #    SCRIPTS    #
 #################
@@ -601,7 +631,7 @@ script:
     sequence:
     - service: xiaomi_miio.vacuum_clean_zone
       data:
-        entity_id: vacuum.roborock_vacuum_s5
+        entity_id: vacuum.consuela
         repeats: 2
         zone: [[26952,24836,30911,30071]]
   vacuum_bathroom_twice:
@@ -609,7 +639,7 @@ script:
     sequence:
     - service: xiaomi_miio.vacuum_clean_zone
       data:
-        entity_id: vacuum.roborock_vacuum_s5
+        entity_id: vacuum.consuela
         repeats: 2
         zone: [[21388,27120,23885,30072]]
   vacuum_livingroom_twice:
@@ -634,7 +664,7 @@ script:
     sequence:
     - service: xiaomi_miio.vacuum_goto
       data:
-        entity_id: vacuum.roborock_vacuum_s5
+        entity_id: vacuum.consuela
         x_coord: 25226
         y_coord: 28459
   argus_goto_kitchen:
