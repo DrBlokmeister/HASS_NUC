@@ -227,36 +227,36 @@ sensor:
     unit_time: h
     time_window: "00:02:00"
 
-  - platform: template
-    sensors:
-      light_power_estimate: #I fitted power monitoring data to the power consumption using a trendline in Excel. Formula is 0.35*exp(brightness*0.0096)
-        unit_of_measurement: 'W'
-        value_template: >-
-          {% set lights = [
-            states.light.bedroom_1,
-            states.light.bedroom_2,
-            states.light.bedroom_3,
-            states.light.tvarea_1,
-            states.light.tvarea_2,
-            states.light.tvarea_3,
-            states.light.tvarea_4,
-            states.light.tvarea_5,
-            states.light.kitchen_1,
-            states.light.kitchen_2,
-            states.light.kitchen_3,
-            states.light.study_1,
-            states.light.study_2,
-            states.light.study_3,
-            states.light.plant_1,
-            states.light.plant_2,
-            states.light.entry_1
-          ] %}
-          {%- set ns = namespace(power = 0) -%}
-          {%- set threshold = 100 -%}
-          {%- for item in lights if (item.attributes.brightness is defined) -%}
-            {%- set ns.power = ns.power + (0.35*2.72**(item.attributes['brightness']|round(1) * 0.0096))|round(2) -%}
-          {%- endfor -%}
-          {{ ns.power|round(1) }}
+  # - platform: template
+  #   sensors:
+  #     light_power_estimate: #I fitted power monitoring data to the power consumption using a trendline in Excel. Formula is 0.35*exp(brightness*0.0096)
+  #       unit_of_measurement: 'W'
+  #       value_template: >-
+  #         {% set lights = [
+  #           states.light.bedroom_1,
+  #           states.light.bedroom_2,
+  #           states.light.bedroom_3,
+  #           states.light.tvarea_1,
+  #           states.light.tvarea_2,
+  #           states.light.tvarea_3,
+  #           states.light.tvarea_4,
+  #           states.light.tvarea_5,
+  #           states.light.kitchen_1,
+  #           states.light.kitchen_2,
+  #           states.light.kitchen_3,
+  #           states.light.study_1,
+  #           states.light.study_2,
+  #           states.light.study_3,
+  #           states.light.plant_1,
+  #           states.light.plant_2,
+  #           states.light.entry_1
+  #         ] %}
+  #         {%- set ns = namespace(power = 0) -%}
+  #         {%- set threshold = 100 -%}
+  #         {%- for item in lights if (item.attributes.brightness is defined) -%}
+  #           {%- set ns.power = ns.power + (0.35*2.72**(item.attributes['brightness']|round(1) * 0.0096))|round(2) -%}
+  #         {%- endfor -%}
+  #         {{ ns.power|round(1) }}
 
 
 ########################
