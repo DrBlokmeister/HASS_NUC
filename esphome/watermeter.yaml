@@ -1,0 +1,273 @@
+substitutions:
+  device_name: watermeter
+  friendly_name: Water Meter
+  # Higher value gives lower watt readout
+
+esphome:
+  name: '${device_name}'
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Hotspot
+    password: !secret esphome_fallback_pass
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+# Enable OTA updates
+ota:
+
+script:
+  - id: reset_main_counter
+    then:
+      - lambda: |-
+          id(main_counter_pulses) = 0;
+          id(water_main_consumption).publish_state(id(main_counter_pulses));
+  - id: reset_secondary_counter
+    then:
+      - lambda: |-
+          id(secondary_counter_pulses) = 0;
+          id(water_secondary_consumption).publish_state(id(secondary_counter_pulses));
+  - id: publish_states
+    then:
+      - lambda: |-
+          id(water_main_consumption).publish_state(id(main_counter_pulses));
+          id(water_secondary_consumption).publish_state(id(secondary_counter_pulses));
+          id(water_daily_consumption).publish_state(id(daily_counter_pulses));
+          id(water_weekly_consumption).publish_state(id(weekly_counter_pulses));
+          id(water_monthly_consumption).publish_state(id(monthly_counter_pulses));
+          id(water_yearly_consumption).publish_state(id(yearly_counter_pulses));
+          id(current_water_consumption).publish_state(id(event_quantity));
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+  - platform: sntp
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 0
+        then:
+          - globals.set:
+              id: daily_counter_pulses
+              value: '0'
+          - lambda: id(water_daily_consumption).publish_state(id(daily_counter_pulses));
+      - seconds: 0
+        minutes: 0
+        hours: 0
+        days_of_week: MON
+        then:
+          - globals.set:
+              id: weekly_counter_pulses
+              value: '0'
+          - lambda: id(water_weekly_consumption).publish_state(id(weekly_counter_pulses));
+      - seconds: 0
+        minutes: 0
+        hours: 0
+        days_of_month: 1
+        then:
+          - globals.set:
+              id: monthly_counter_pulses
+              value: '0'
+          - lambda: id(water_monthly_consumption).publish_state(id(monthly_counter_pulses));
+      - seconds: 0
+        minutes: 0
+        hours: 0
+        days_of_month: 1
+        months: JAN
+        then:
+          - globals.set:
+              id: yearly_counter_pulses
+              value: '0'
+          - lambda: id(water_yearly_consumption).publish_state(id(yearly_counter_pulses));
+sensor:
+  - platform: pulse_counter
+    id: water_pulse_counter
+    pin: D1
+    name: "${friendly_name} water consumption"
+    update_interval: 2sec
+    internal_filter: 10us
+    unit_of_measurement: "L/min"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+    filters:
+      # Divide by 60
+      - multiply: 0.0167
+      - lambda: return abs(x);
+  - platform: template
+    id: water_main_consumption
+    name: "${friendly_name} main water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: water_secondary_consumption
+    name: "${friendly_name} secondary water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: water_daily_consumption
+    name: "${friendly_name} daily water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: water_weekly_consumption
+    name: "${friendly_name} weekly water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: water_monthly_consumption
+    name: "${friendly_name} monthly water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: water_yearly_consumption
+    name: "${friendly_name} yearly water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: current_water_consumption
+    name: "${friendly_name} current water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+  - platform: template
+    id: last_water_consumption
+    name: "${friendly_name} last water consumption"
+    unit_of_measurement: "L"
+    accuracy_decimals: 0
+    icon: "mdi:water"
+
+binary_sensor:
+  # Nabijheidssensor
+  - platform: gpio
+    id: water_pulse
+    pin: D1
+    internal: true
+    filters:
+        - delayed_on_off: 50ms
+        - lambda: |-
+            id(main_counter_pulses) += x;
+            id(secondary_counter_pulses) += x;
+            id(daily_counter_pulses) += x;
+            id(weekly_counter_pulses) += x;
+            id(monthly_counter_pulses) += x;
+            id(yearly_counter_pulses) += x;
+            id(event_quantity) += x;
+            return x;
+    on_state:
+        - script.execute: publish_states
+
+switch:
+  - platform: template
+    name: "${friendly_name} reset main counter button"
+    icon: "mdi:restart"
+    turn_on_action:
+      - script.execute: reset_main_counter
+  - platform: template
+    name: "${friendly_name} reset secondary counter button"
+    icon: "mdi:restart"
+    turn_on_action:
+      - script.execute: reset_secondary_counter
+  - platform: restart
+    name: "${friendly_name} restart"
+interval:
+  # Save the last consumption
+  #
+  # An event is published when a water flow (>= 1L / 15 seconds) is
+  # detected and followed by a stop of consumption for a defined time.
+  - interval: 15sec
+    then:
+      - lambda: |-
+          if (id(event_quantity) != id(last_event_quantity)) {
+            // Water continues to flow
+            // Reset event counter
+            id(event_counter) = 0;
+          } else {
+            // Water no longer flows
+            if (id(event_quantity)) {
+              // 4 * 15 * 5 = 5min
+              if (id(event_counter) < 4 * 5) {
+                // Timeout is not reaches
+                id(event_counter)++;
+              } else {
+                  // Timeout is reaches
+                  id(last_water_consumption).publish_state(id(event_quantity));
+                  // Send event to Home Assistant
+                  api::HomeAssistantServiceCallAction<> *api;
+                  api = new api::HomeAssistantServiceCallAction<>(api_apiserver, true);
+                  // Event id length limit is 32 characters
+                  api->set_service("esphome.last_consumption_changes");
+                  api->play();
+                  id(event_quantity) = 0;
+              }
+            }
+          }
+          id(last_event_quantity) = id(event_quantity);
+  # Track the current consumption
+  - interval: 2sec
+    then:
+      - lambda: |-
+          if (id(event_quantity) != id(current_event_quantity)) {
+            id(current_water_consumption).publish_state(id(event_quantity));
+          }
+          id(current_event_quantity) = id(event_quantity);
+globals:
+  - id: main_counter_pulses
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: secondary_counter_pulses
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: daily_counter_pulses
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: weekly_counter_pulses
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: monthly_counter_pulses
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: yearly_counter_pulses
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: event_quantity
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: last_event_quantity
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: event_counter
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: current_event_quantity
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: higher_resistance
+    type: float
+    restore_value: yes
+    initial_value: '0'
