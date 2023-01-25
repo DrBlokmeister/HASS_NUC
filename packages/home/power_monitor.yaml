@@ -15,12 +15,89 @@ homeassistant:
       icon: mdi:water
     sensor.water_consumption_per_hour:
       icon: mdi:water
+
+utility_meter:
+  hourly_energy_use:
+    source: sensor.net_energy_usage
+    cycle: hourly
+    unique_id: yaml_tempate_sensor_hourly_energy_use
+    net_consumption: true
+  daily_energy_use:
+    source: sensor.net_energy_usage
+    cycle: daily
+    unique_id: yaml_tempate_sensor_daily_energy_use
+    net_consumption: true
+  weekly_energy_use:
+    source: sensor.net_energy_usage
+    cycle: weekly
+    unique_id: yaml_tempate_sensor_weekly_energy_use
+    net_consumption: true
+  monthly_energy_use:
+    source: sensor.net_energy_usage
+    cycle: monthly
+    unique_id: yaml_tempate_sensor_monthly_energy_use
+    net_consumption: true
+  yearly_energy_use:
+    source: sensor.net_energy_usage
+    cycle: yearly
+    unique_id: yaml_tempate_sensor_yearly_energy_use
+    net_consumption: true
+#######################
+#    INPUT NUMBERS    #
+#######################
+input_number:
+  water_meter_daily_consumption:
+    min: 0
+    max: 2000000
+    name: Daily Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_weekly_consumption:
+    min: 0
+    max: 2000000
+    name: Weekly Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_monthly_consumption:
+    min: 0
+    max: 2000000
+    name: Monthly Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_yearly_consumption:
+    min: 0
+    max: 2000000
+    name: Yearly Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_total_consumption:
+    min: 0
+    max: 2000000
+    name: Total Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+
 #################
 #    SENSORS    #
 #################
 sensor:
   - platform: template
     sensors:
+      net_energy_usage:
+        unit_of_measurement: 'kW'
+        value_template: >-
+          {{ states( 'sensor.electricity_meter_power_consumption' )|float(0) - states( 'sensor.electricity_meter_power_production' )|float(0) }}
+        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       total_power_blitzwolf:
         unit_of_measurement: 'W'
         value_template: >-
@@ -106,35 +183,35 @@ sensor:
       - filter: lowpass
         time_constant: 10
 
-  - platform: rest
-    resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
-    name: Kosten Hoog Tarief
-    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
-    unit_of_measurement: "€"
+  # - platform: rest
+  #   resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
+  #   name: Kosten Hoog Tarief
+  #   value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
+  #   unit_of_measurement: "€"
 
-  - platform: rest
-    resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
-    name: Kosten Laag Tarief
-    value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
-    unit_of_measurement: "€"
+  # - platform: rest
+  #   resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
+  #   name: Kosten Laag Tarief
+  #   value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
+  #   unit_of_measurement: "€"
 
-  - platform: rest
-    resource: http://10.0.30.40/api/v2/watermeter/day?limit=1&json=object&round=off
-    name: Waterverbruik_vandaag
-    value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
-    unit_of_measurement: "l"
+  # - platform: rest
+  #   resource: http://10.0.30.40/api/v2/watermeter/day?limit=1&json=object&round=off
+  #   name: Waterverbruik_vandaag
+  #   value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
+  #   unit_of_measurement: "l"
 
-  - platform: rest
-    resource: http://10.0.30.40/api/v1/powergas/day?limit=1&json=object&round=off
-    name: Verbruik Per Dag
-    value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
-    unit_of_measurement: "kWh"
+  # - platform: rest
+  #   resource: http://10.0.30.40/api/v1/powergas/day?limit=1&json=object&round=off
+  #   name: Verbruik Per Dag
+  #   value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
+  #   unit_of_measurement: "kWh"
 
-  - platform: rest
-    resource: http://10.0.30.40/api/v1/powerproductionsolar/day?limit=1&json=object&round=off
-    name: Verbruik Per Dag
-    value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
-    unit_of_measurement: "kWh"
+  # - platform: rest
+  #   resource: http://10.0.30.40/api/v1/powerproductionsolar/day?limit=1&json=object&round=off
+  #   name: Verbruik Per Dag
+  #   value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
+  #   unit_of_measurement: "kWh"
 
   # - platform: mqtt
   #   name: timestamp_local
@@ -191,10 +268,10 @@ sensor:
       #   value_template: "{{ states('sensor.maand_hoog_tarief') | float + states('sensor.maand_laag_tarief') | float | round(2) }}"
       #   unit_of_measurement: "€"
       total_power_watt:
-        value_template: "{{ states('sensor.consumption_kw') | float * 1000 | float | round(2) }}"
+        value_template: "{{ states('sensor.electricity_meter_power_consumption') | float * 1000 | float | round(2) }}"
         unit_of_measurement: "W"
       current_costs_per_hour:
-        value_template: "{{ ( states('sensor.consumption_kw') | float * ( 0.2221 | float) | float ) | round(2) }}"
+        value_template: "{{ ( states('sensor.electricity_meter_power_consumption') | float * ( 0.2221 | float) | float ) | round(2) }}"
         unit_of_measurement: "€/h"
       corrected_waterusage_day:
         value_template: >-
@@ -209,11 +286,11 @@ sensor:
       #   value_template: "{{ states('sensor.home_energy_consumption_high')|float + states('home_energy_consumption_low')|float | round(2) }}"
       #   unit_of_measurement: ""
 
-  - platform: derivative
-    source: sensor.consumption_gas_m3
-    name: Gas consumption per hour
-    unit_time: h
-    time_window: "00:10:00"
+  # - platform: derivative
+  #   source: sensor.consumption_gas_m3
+  #   name: Gas consumption per hour
+  #   unit_time: h
+  #   time_window: "00:10:00"
 
   # - platform: derivative
   #   source: sensor.gasverbruik_per_dag
@@ -347,6 +424,35 @@ automation:
             clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
             ledColor: "orange"
             channel: warning
+
+  - alias: "[power|watermeter] Save watermeter states to HA"
+    trigger:
+      - platform: state
+        entity_id: sensor.water_meter_main_water_consumption
+    condition:
+      - "{{ ( now() - states('sensor.uptime_10')|as_datetime ).seconds > 60 }}"
+    action:
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.water_meter_daily_consumption
+          value: "{{ states('sensor.water_meter_daily_water_consumption')|int }}"
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.water_meter_weekly_consumption
+          value: "{{ states('sensor.water_meter_weekly_water_consumption')|int }}"
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.water_meter_monthly_consumption
+          value: "{{ states('sensor.water_meter_monthly_water_consumption')|int }}"
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.water_meter_yearly_consumption
+          value: "{{ states('sensor.water_meter_yearly_water_consumption')|int }}"
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.water_meter_total_consumption
+          value: "{{ states('sensor.water_meter_main_water_consumption')|int }}"
+
 
 ################
 #    SCENES    #
