@@ -122,9 +122,9 @@ automation:
       - condition: or
         conditions:
           - condition: template
-            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24}}"
+            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
           - condition: template
-            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 24}}"
+            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -161,9 +161,9 @@ automation:
                 - condition: or
                   conditions:
                     - condition: template
-                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
+                      value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) }}"
                     - condition: template
-                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
+                      value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0) }}"
 
   - alias: '[afval|notify]Herinnering afval vandaag'
     trigger:
@@ -177,9 +177,9 @@ automation:
       - condition: or
         conditions:
           - condition: template
-            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
+            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}"
           - condition: template
-            value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0}}"
+            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0)  and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 > -12) }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
