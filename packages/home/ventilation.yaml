@@ -1,0 +1,85 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[ventilation|regulation] Regulate ventilation speed based on sensors'
+    id: ventilation_regulation_regulate_ventilation_speed_based_on_sensors
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: sensor.mh_z19_co2_value_2
+      - platform: state
+        entity_id: sensor.humidity_bathroom
+    condition:
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ (states('sensor.humidity_bathroom')|int > 70) or (states('sensor.mh_z19_co2_value_2')|int > 1000) }}"
+            sequence:
+              - service: fan.turn_on
+                data:
+                  entity_id: fan.ventilation_system
+                  percentage: 100
+          - conditions:
+              - condition: template
+                value_template: "{{ (states('sensor.humidity_bathroom')|int > 60) or (states('sensor.mh_z19_co2_value_2')|int > 800) }}"
+            sequence:
+              - service: fan.turn_on
+                data:
+                  entity_id: fan.ventilation_system
+                  percentage: 60
+        default:
+          - service: fan.turn_on
+            data:
+              entity_id: fan.ventilation_system
+              percentage: 20
+
+  - alias: '[ventilation|regulation] Toggle fan based on occupancy'
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.house_occupied
+        to: 'off'
+    action:
+      - service: fan.turn_off
+        entity_id: fan.ventilation_system
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
