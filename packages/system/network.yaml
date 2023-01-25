@@ -112,21 +112,26 @@ sensor:
         friendly_name: "Router Total Upload"
         availability_template: "{{ states('sensor.unifi_dream_machine_b_sent')|is_number }}"
 
-  - platform: statistics
-    entity_id: sensor.asuswrt_download_speed
-    name: Average download
-    precision: 2
-    sampling_size: 60
-    max_age:
-      minutes: 60
-
-  - platform: statistics
-    entity_id: sensor.asuswrt_upload_speed
-    name: Average upload
-    precision: 2
-    sampling_size: 60
-    max_age:
-      minutes: 60
+      ap_groundfloor_number_of_clients:
+        value_template: "{{ states.device_tracker | selectattr('attributes.ap_mac','defined') | selectattr('attributes.ap_mac','eq','d0:21:f9:64:06:39') | list | count }}"
+        friendly_name: "AP Ground Floor Number of Clients"
+        unit_of_measurement: "Clients"
+        availability_template: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
+      ap_firstfloor_number_of_clients:
+        value_template: "{{ states.device_tracker | selectattr('attributes.ap_mac','defined') | selectattr('attributes.ap_mac','eq','d0:21:f9:b7:9c:88') | list | count }}"
+        friendly_name: "AP First Floor Number of Clients"
+        unit_of_measurement: "Clients"
+        availability_template: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
+      ap_secondfloor_number_of_clients:
+        value_template: "{{ states.device_tracker | selectattr('attributes.ap_mac','defined') | selectattr('attributes.ap_mac','eq','d0:21:f9:b7:ea:68') | list | count }}"
+        friendly_name: "AP Second Floor Number of Clients"
+        unit_of_measurement: "Clients"
+        availability_template: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
+      number_of_guests_connected:
+        value_template: "{{ states.device_tracker | selectattr('attributes.essid','defined') | selectattr('attributes.essid','eq','BlokmeisterWIFI_Guest') | list | count }}"
+        friendly_name: "Number of Guests Connected"
+        unit_of_measurement: "Clients"
+        availability_template: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
 
 ########################
 #    BINARY SENSORS    #
@@ -139,7 +144,7 @@ binary_sensor:
     scan_interval: 60
   - platform: ping
     name: UDM Pro
-    host: unifi.local
+    host: 10.0.0.1
     count: 10
     scan_interval: 60
   - platform: ping
