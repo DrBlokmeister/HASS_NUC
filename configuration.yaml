@@ -31,7 +31,7 @@ shelly:
     - id: "D0A822" #192.168.1.161
       name: Closet
       #light_switch: true
-    - id: "E098068D0EC5" #192.168.1.162
+    - id: "C8C9A3709780" #10.0.30.162
       name: Bedroom
       #light_switch: true
     - id: "C4BF21" #192.168.1.163
@@ -52,6 +52,8 @@ shelly:
     - id: "500291EFFD03" #192.168.1.168
       name: Study
       #light_switch: true
+    - id: "C8C9A3709095"
+      name: Tamara's Room
 
 influxdb:
   username: !secret influxdb_user
@@ -64,6 +66,9 @@ influxdb:
       - binary_sensor
       - automation
       - device_tracker
+    entities:
+      - sensor.blitzwolf_nas_energy_today
+      - sensor.blitzwolf_computer_energy_today
   exclude:
     entity_globs:
       - sensor.br_*
@@ -177,6 +182,10 @@ recorder:
   commit_interval: 2
   purge_keep_days: 7
   db_url: !secret mariadb_URL
+  include:
+    entities:
+      - sensor.blitzwolf_nas_energy_today
+      - sensor.blitzwolf_computer_energy_today
   exclude:
     entity_globs:
       - sensor.*_human_readable
