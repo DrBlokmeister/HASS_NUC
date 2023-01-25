@@ -5,8 +5,15 @@ substitutions:
 
 esphome:
   name: '${device_name}'
-  platform: ESP8266
+  # on_boot:
+  #   priority: -100
+  #   then:
+
+
+esp8266:
   board: nodemcuv2
+  restore_from_flash: true
+
 
 wifi:
   ssid: !secret wifi_ssid
@@ -90,6 +97,27 @@ time:
               value: '0'
           - lambda: id(water_yearly_consumption).publish_state(id(yearly_counter_pulses));
 sensor:
+  - platform: homeassistant
+    name: "HA Input Number Daily Water Consumption"
+    id: ha_input_number_daily_consumption
+    entity_id: input_number.water_meter_daily_consumption
+  - platform: homeassistant
+    name: "HA Input Number Weekly Water Consumption"
+    id: ha_input_number_weekly_consumption
+    entity_id: input_number.water_meter_weekly_consumption
+  - platform: homeassistant
+    name: "HA Input Number Monthly Water Consumption"
+    id: ha_input_number_monthly_consumption
+    entity_id: input_number.water_meter_monthly_consumption
+  - platform: homeassistant
+    name: "HA Input Number Yearly Water Consumption"
+    id: ha_input_number_yearly_consumption
+    entity_id: input_number.water_meter_yearly_consumption
+  - platform: homeassistant
+    name: "HA Input Number Total Water Consumption"
+    id: ha_input_number_total_consumption
+    entity_id: input_number.water_meter_total_consumption
+
   - platform: pulse_counter
     id: water_pulse_counter
     pin: D1
@@ -151,7 +179,7 @@ sensor:
     unit_of_measurement: "L"
     accuracy_decimals: 0
     icon: "mdi:water"
-
+#195 754
 binary_sensor:
   # Nabijheidssensor
   - platform: gpio
@@ -171,6 +199,92 @@ binary_sensor:
             return x;
     on_state:
         - script.execute: publish_states
+  - platform: status
+    name: "Board connected"
+    id: connection
+    on_state:
+      then:
+        - wait_until:
+            condition:
+              binary_sensor.is_on: connection
+        - wait_until:
+            condition:
+              api.connected:
+        - wait_until:
+            condition:
+              time.has_time:
+        - wait_until:
+            condition:
+              sensor.in_range:
+                id: ha_input_number_total_consumption
+                above: 100000
+                below: 2000001
+        - lambda: |-
+            ESP_LOGD("INFO", "Daily pulse counter has value %d", id(daily_counter_pulses));
+            ESP_LOGD("INFO", "Weekly pulse counter has value %d", id(weekly_counter_pulses));
+            ESP_LOGD("INFO", "Monthly pulse counter has value %d", id(monthly_counter_pulses));
+            ESP_LOGD("INFO", "Yearly pulse counter has value %d", id(yearly_counter_pulses));
+            ESP_LOGD("INFO", "Total pulse counter has value %d", id(main_counter_pulses));
+            ESP_LOGD("INFO", "HA Daily pulse counter has value %d", id(ha_input_number_daily_consumption));
+            ESP_LOGD("INFO", "HA Weekly pulse counter has value %d", id(ha_input_number_weekly_consumption));
+            ESP_LOGD("INFO", "HA Monthly pulse counter has value %d", id(ha_input_number_monthly_consumption));
+            ESP_LOGD("INFO", "HA Yearly pulse counter has value %d", id(ha_input_number_yearly_consumption));
+            ESP_LOGD("INFO", "HA Total pulse counter has value %d", id(ha_input_number_total_consumption));
+        - delay: 5s
+        - lambda: |-
+            id(daily_counter_pulses) = id(ha_input_number_daily_consumption).state;
+            ESP_LOGD("INFO", "Set daily pulse counter to %d", id(daily_counter_pulses));
+            id(weekly_counter_pulses) = id(ha_input_number_weekly_consumption).state;
+            ESP_LOGD("INFO", "Set weekly pulse counter to %d", id(weekly_counter_pulses));
+            id(monthly_counter_pulses) = id(ha_input_number_monthly_consumption).state;
+            ESP_LOGD("INFO", "Set monthly pulse counter to %d", id(monthly_counter_pulses));
+            id(yearly_counter_pulses) = id(ha_input_number_yearly_consumption).state;
+            ESP_LOGD("INFO", "Set yearly pulse counter to %d", id(yearly_counter_pulses));
+            id(main_counter_pulses) = id(ha_input_number_total_consumption).state;
+            ESP_LOGD("INFO", "Set total pulse counter to %d", id(main_counter_pulses));
+        - delay: 5s
+        - script.execute: publish_states
+    # on_state:
+    #   then:
+    #     - if:
+    #         condition:
+    #           binary_sensor.is_on: connection
+    #         then:
+    #           - wait_until:
+    #               condition:
+    #                 api.connected:
+    #           - delay: 5s
+    #           - lambda: |-
+    #               id(daily_counter_pulses) = id(ha_input_number_daily_consumption).state;
+    #               ESP_LOGD("INFO", "Set daily pulse counter to %d", id(daily_counter_pulses));
+    #               id(weekly_counter_pulses) = id(ha_input_number_weekly_consumption).state;
+    #               ESP_LOGD("INFO", "Set weekly pulse counter to %d", id(weekly_counter_pulses));
+    #               id(monthly_counter_pulses) = id(ha_input_number_monthly_consumption).state;
+    #               ESP_LOGD("INFO", "Set monthly pulse counter to %d", id(monthly_counter_pulses));
+    #               id(yearly_counter_pulses) = id(ha_input_number_yearly_consumption).state;
+    #               ESP_LOGD("INFO", "Set yearly pulse counter to %d", id(yearly_counter_pulses));
+    #               id(main_counter_pulses) = id(ha_input_number_total_consumption).state;
+    #               ESP_LOGD("INFO", "Set total pulse counter to %d", id(main_counter_pulses));
+              # - globals.set:
+              #     id: daily_counter_pulses
+              #     value: !lambda |-
+              #       return id(ha_input_number_daily_consumption).state;
+              # - globals.set:
+              #     id: weekly_counter_pulses
+              #     value: !lambda |-
+              #       return id(ha_input_number_weekly_consumption).state;
+              # - globals.set:
+              #     id: monthly_counter_pulses
+              #     value: !lambda |-
+              #       return id(ha_input_number_monthly_consumption).state;
+              # - globals.set:
+              #     id: yearly_counter_pulses
+              #     value: !lambda |-
+              #       return id(ha_input_number_yearly_consumption).state;
+              # - globals.set:
+              #     id: main_counter_pulses
+              #     value: !lambda |-
+              #       return id(ha_input_number_total_consumption).state;
 
 switch:
   - platform: template
