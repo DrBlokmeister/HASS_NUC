@@ -96,11 +96,11 @@ automation:
       - platform: state
         entity_id: group.study_motion_sensors
         to: 'on'
-      - platform: state
-        entity_id: sensor.vibration_sensor_attributes
-      - platform: state
-        entity_id: binary_sensor.vibration_sensor
-        to: 'on'
+      # - platform: state
+      #   entity_id: sensor.vibration_sensor_attributes
+      # - platform: state
+      #   entity_id: binary_sensor.vibration_sensor
+      #   to: 'on'
     condition:
       - condition: state
         entity_id: binary_sensor.house_occupied
@@ -127,9 +127,9 @@ automation:
           brightness_pct: 100
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - wait_for_trigger:
-          - platform: state
-            entity_id: group.study_motion_sensors
-            to: 'off'
+          - platform: template
+            value_template: >-
+              {{ is_state('group.study_motion_sensors', 'off') and is_state('binary_sensor.vibration_sensor', 'off') }}
             for:
               minutes: >-
                 {% if is_state('device_tracker.blokmeisterh2o', 'home') or is_state('device_tracker.worklaptop', 'home')%}
@@ -137,6 +137,16 @@ automation:
                 {% else %}
                   {{ states('input_number.study_light_timeout')|int }}
                 {% endif %}
+          # - platform: state
+          #   entity_id: group.study_motion_sensors
+          #   to: 'off'
+          #   for:
+          #     minutes: >-
+          #       {% if is_state('device_tracker.blokmeisterh2o', 'home') or is_state('device_tracker.worklaptop', 'home')%}
+          #         30
+          #       {% else %}
+          #         {{ states('input_number.study_light_timeout')|int }}
+          #       {% endif %}
           - platform: template
             value_template: "{{ is_state('device_tracker.blokmeisterh2o', 'not_home') and is_state('device_tracker.worklaptop', 'not_home') }}"
             for:
