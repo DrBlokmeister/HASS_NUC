@@ -35,7 +35,17 @@ sensor:
   # Uptime sensor.
   - platform: uptime
     name: ${device_name} Uptime
-
+  # Home assistant sensors
+  - platform: homeassistant
+    name: "Bathroom Humidity"
+    entity_id: sensor.humidity_bathroom
+    id: ha_humidity_bathroom
+    device_class: "humidity"
+  - platform: homeassistant
+    name: "Bedroom CO2 Concentration"
+    entity_id: sensor.mh_z19_co2_value_2
+    device_class: "carbon_dioxide"
+    id: ha_co2_bedroom
   # WiFi Signal sensor.
   - platform: wifi_signal
     name: ${device_name} WiFi Signal
@@ -52,3 +62,19 @@ fan:
     output: pwm_output
     speed_count: 100
     name: "Ventilation System"
+    id: ventilationsystem
+
+switch:
+  - platform: template
+    name: "Max Ventilation"
+    id: maxventilationswitch
+    turn_on_action:
+      - fan.turn_on:
+          id: ventilationsystem
+          speed: 100
+      - delay: 600s
+      - switch.turn_off: maxventilationswitch
+    turn_off_action:
+      - fan.turn_on:
+          id: ventilationsystem
+          speed: 20
