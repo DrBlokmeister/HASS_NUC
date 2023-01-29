@@ -49,56 +49,56 @@ media_player:
 sensor:
   - platform: tautulli
     api_key: !secret tautulli_api_key
-    host: 192.168.1.252
+    host: 10.0.0.252
 
-  - platform: command_line
-    name: 'CoreELEC CPU temp'
-    unit_of_measurement: '°C'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.50
-      cputemp | awk '{print $1}'
+  # - platform: command_line
+  #   name: 'CoreELEC CPU temp'
+  #   unit_of_measurement: '°C'
+  #   scan_interval: 60
+  #   command: >-
+  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+  #     root@192.168.1.50
+  #     cputemp | awk '{print $1}'
 
-  - platform: command_line
-    name: 'CoreELEC GPU temp'
-    unit_of_measurement: '°C'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.50
-      gputemp | awk '{print $1}'
+  # - platform: command_line
+  #   name: 'CoreELEC GPU temp'
+  #   unit_of_measurement: '°C'
+  #   scan_interval: 60
+  #   command: >-
+  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+  #     root@192.168.1.50
+  #     gputemp | awk '{print $1}'
 
-  - platform: command_line
-    name: 'LibreELEC CPU temp'
-    unit_of_measurement: '°C'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.51
-      cputemp | awk '{print $1}'
+  # - platform: command_line
+  #   name: 'LibreELEC CPU temp'
+  #   unit_of_measurement: '°C'
+  #   scan_interval: 60
+  #   command: >-
+  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+  #     root@192.168.1.51
+  #     cputemp | awk '{print $1}'
 
-  - platform: command_line
-    name: 'LibreELEC GPU temp'
-    unit_of_measurement: '°C'
-    scan_interval: 60
-    command: >-
-      ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-      root@192.168.1.51
-      gputemp | awk '{print $1}'
+  # - platform: command_line
+  #   name: 'LibreELEC GPU temp'
+  #   unit_of_measurement: '°C'
+  #   scan_interval: 60
+  #   command: >-
+  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
+  #     root@192.168.1.51
+  #     gputemp | awk '{print $1}'
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      mediacenter_on:
-        device_class: power
-        value_template: >-
-          {{
-            states( 'sensor.blitzwolf_mediacenter_energy_power' )|float > 200
-          }}
-        availability_template: "{{ states('sensor.blitzwolf_mediacenter_energy_power')|is_number }}"
+  # - platform: template
+  #   sensors:
+  #     mediacenter_on:
+  #       device_class: power
+  #       value_template: >-
+  #         {{
+  #           states( 'sensor.blitzwolf_mediacenter_energy_power' )|float > 200
+  #         }}
+  #       availability_template: "{{ states('sensor.blitzwolf_mediacenter_energy_power')|is_number }}"
 ##################
 #    SWITCHES    #
 ##################
@@ -108,10 +108,16 @@ switch:
       ambilight:
         value_template: >-
           {{
-            is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and is_state('light.falconlights', 'on') and is_state('light.ssdlights_inner', 'on') and
-            is_state_attr('light.ambilight_left_bulb', 'effect', 'E1.31') and is_state_attr('light.ambilight_right_bulb', 'effect', 'E1.31') and is_state_attr('light.falconlights', 'effect', 'E1.31') and is_state_attr('light.ssdlights_inner', 'effect', 'E1.31') and
-            is_state_attr('light.hyperion_ambilightleft', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_ambilightright', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_falconlights', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_super_star_destroyer_inner', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_super_star_destroyer_outer', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_livingroom_ledstrip', 'effect', 'Platform Capture')
+            is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and
+            is_state_attr('light.ambilight_left_bulb', 'effect', 'E1.31') and is_state_attr('light.ambilight_right_bulb', 'effect', 'E1.31') and
+            is_state_attr('light.hyperion_ambilightleft', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_ambilightright', 'effect', 'Platform Capture')
           }}
+        # value_template: >-  #Old template with SSDlights and falconlights
+        #   {{
+        #     is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and is_state('light.falconlights', 'on') and is_state('light.ssdlights_inner', 'on') and
+        #     is_state_attr('light.ambilight_left_bulb', 'effect', 'E1.31') and is_state_attr('light.ambilight_right_bulb', 'effect', 'E1.31') and is_state_attr('light.falconlights', 'effect', 'E1.31') and is_state_attr('light.ssdlights_inner', 'effect', 'E1.31') and
+        #     is_state_attr('light.hyperion_ambilightleft', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_ambilightright', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_falconlights', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_super_star_destroyer_inner', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_super_star_destroyer_outer', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_livingroom_ledstrip', 'effect', 'Platform Capture')
+        #   }}
         turn_on:
           service: script.turn_on_ambilight
         turn_off:
@@ -131,34 +137,34 @@ automation:
         for:
           seconds: 3
     action:
-      - service: scene.create
-        data:
-          scene_id: livingroom_before
-          snapshot_entities:
-            - light.tvarea_lights
-            - light.livingroom_a_rgb_ledstrip
-            - light.falconlights
-            - light.ssdlights
-            - light.ssdlights_inner
-      - service: light.turn_off
-        data:
-          entity_id:
-            - light.tvarea_lights
-            - light.livingroom_a_rgb_ledstrip
-            - light.led_strip_rgb_livingroom
-            - light.led_strip_white_livingroom
-          transition: 5
+      # - service: scene.create
+      #   data:
+      #     scene_id: livingroom_before
+      #     snapshot_entities:
+      #       - light.tvarea_lights
+      #       - light.livingroom_a_rgb_ledstrip
+      #       - light.falconlights
+      #       - light.ssdlights
+      #       - light.ssdlights_inner
+      # - service: light.turn_off
+      #   data:
+      #     entity_id:
+      #       - light.tvarea_lights
+      #       - light.livingroom_a_rgb_ledstrip
+      #       - light.led_strip_rgb_livingroom
+      #       - light.led_strip_white_livingroom
+      #     transition: 5
       # - service: light.turn_on
       #   data:
       #     entity_id: light.plants
       #     brightness: 30
       #     transition: 5
       - service: switch.turn_on
+        entity_id: switch.ambilight_power
+      - service: switch.turn_on
+        entity_id: switch.amplifier_power
+      - service: switch.turn_on
         entity_id: switch.ambilight
-      # - service: tapo_control.set_day_night_mode
-      #   data:
-      #     entity_id: camera.tapo_camera_d6d4_hd
-      #     day_night_mode: 'off'
       # - service: light.turn_on
       #   data:
       #     entity_id:
@@ -176,10 +182,10 @@ automation:
       #       - light.super_star_destroyer_outer
       #     brightness: 255
       #     effect: GRABBER
-      - service: homeassistant.turn_off
-        entity_id:
-          - group.livingroom_lighting_automations
-          - automation.livingroom_light_automate_falconlights
+      # - service: homeassistant.turn_off
+      #   entity_id:
+      #     - group.livingroom_lighting_automations
+      #     - automation.livingroom_light_automate_falconlights
       - wait_for_trigger:
           - platform: state
             entity_id: media_player.coreelec
@@ -197,66 +203,62 @@ automation:
             to: 'unavailable'
             for:
               minutes: 5
-      - service: scene.turn_on
-        data:
-          entity_id: scene.livingroom_before
-          transition: 10
-      - service: homeassistant.turn_on
-        entity_id:
-          - group.livingroom_lighting_automations
-      - service: automation.trigger
-        data:
-          entity_id:
-            - automation.plants_light_turn_on_coffee_plant_according_to_schedule
-            - automation.plants_light_turn_off_coffee_plant_according_to_schedule
-          skip_condition: false
-      - service: tapo_control.set_day_night_mode
-        data:
-          entity_id: camera.tapo_camera_d6d4_hd
-          day_night_mode: 'auto'
+      - service: switch.turn_off
+        entity_id: switch.ambilight_power
+      - service: switch.turn_off
+        entity_id: switch.amplifier_power
+      - service: switch.turn_off
+        entity_id: switch.ambilight
+      # - service: scene.turn_on
+      #   data:
+      #     entity_id: scene.livingroom_before
+      #     transition: 10
+      # - service: homeassistant.turn_on
+      #   entity_id:
+      #     - group.livingroom_lighting_automations
 
-  - alias: '[mediacenter|ambilight] Turn on ambilight when TV turns on'
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id: device_tracker.samsung_tv
-    action:
-      - choose:
-        - conditions:
-            - condition: state
-              entity_id: device_tracker.samsung_tv
-              state: 'home'
-            - condition: state
-              entity_id: binary_sensor.house_occupied
-              state: 'on'
-          sequence:
-            - service: switch.turn_on
-              entity_id: switch.blitzwolf_ambilight
-        - conditions:
-            - condition: state
-              entity_id: device_tracker.samsung_tv
-              state: 'not_home'
-          sequence:
-            - service: kodi.call_method
-              data:
-                entity_id: media_player.libreelec
-                method: System.Shutdown
-            - wait_for_trigger:
-                - platform: state
-                  entity_id: media_player.libreelec
-                  to: 'off'
-                  for:
-                    seconds: 10
-                - platform: state
-                  entity_id: media_player.libreelec
-                  to: 'unknown'
-                  for:
-                    seconds: 10
-              timeout:
-                minutes: 1
-              continue_on_timeout: true
-            - service: switch.turn_off
-              entity_id: switch.blitzwolf_ambilight
+  # - alias: '[mediacenter|ambilight] Turn on ambilight when TV turns on'
+  #   mode: restart
+  #   trigger:
+  #     - platform: state
+  #       entity_id: device_tracker.samsung_tv
+  #   action:
+  #     - choose:
+  #       - conditions:
+  #           - condition: state
+  #             entity_id: device_tracker.samsung_tv
+  #             state: 'home'
+  #           - condition: state
+  #             entity_id: binary_sensor.house_occupied
+  #             state: 'on'
+  #         sequence:
+  #           - service: switch.turn_on
+  #             entity_id: switch.blitzwolf_ambilight
+  #       - conditions:
+  #           - condition: state
+  #             entity_id: device_tracker.samsung_tv
+  #             state: 'not_home'
+  #         sequence:
+  #           - service: kodi.call_method
+  #             data:
+  #               entity_id: media_player.libreelec
+  #               method: System.Shutdown
+  #           - wait_for_trigger:
+  #               - platform: state
+  #                 entity_id: media_player.libreelec
+  #                 to: 'off'
+  #                 for:
+  #                   seconds: 10
+  #               - platform: state
+  #                 entity_id: media_player.libreelec
+  #                 to: 'unknown'
+  #                 for:
+  #                   seconds: 10
+  #             timeout:
+  #               minutes: 1
+  #             continue_on_timeout: true
+  #           - service: switch.turn_off
+  #             entity_id: switch.blitzwolf_ambilight
 
   # - alias: '[mediacenter|light] Restore lights when mediaplayer stops'
   #   trigger:
@@ -490,9 +492,9 @@ script:
           entity_id:
             - light.ambilight_left_bulb
             - light.ambilight_right_bulb
-            - light.falconlights
-            - light.ssdlights
-            - light.ssdlights_inner
+            #- light.falconlights
+            #- light.ssdlights
+            #- light.ssdlights_inner
             - light.livingroom_a_rgb_ledstrip
       - service: light.turn_on
         data:
@@ -503,10 +505,10 @@ script:
             - light.hyperion_apa102
             - light.hyperion_ambilightleft
             - light.hyperion_ambilightright
-            - light.hyperion_falconlights
-            - light.hyperion_super_star_destroyer_inner
-            - light.hyperion_super_star_destroyer_outer
-            - light.hyperion_livingroom_ledstrip
+            #- light.hyperion_falconlights
+            #- light.hyperion_super_star_destroyer_inner
+            #- light.hyperion_super_star_destroyer_outer
+            #- light.hyperion_livingroom_ledstrip
       - service: switch.turn_on
         entity_id:
           - switch.apa102_component_led_device
@@ -514,14 +516,14 @@ script:
           - switch.ambilightleft_component_platform_capture
           - switch.ambilightright_component_led_device
           - switch.ambilightright_component_platform_capture
-          - switch.falconlights_component_led_device
-          - switch.falconlights_component_platform_capture
-          - switch.super_star_destroyer_inner_component_led_device
-          - switch.super_star_destroyer_inner_component_platform_capture
-          - switch.super_star_destroyer_outer_component_led_device
-          - switch.super_star_destroyer_outer_component_platform_capture
-          - switch.livingroom_ledstrip_component_led_device
-          - switch.livingroom_ledstrip_component_platform_capture
+          #- switch.falconlights_component_led_device
+          #- switch.falconlights_component_platform_capture
+          #- switch.super_star_destroyer_inner_component_led_device
+          #- switch.super_star_destroyer_inner_component_platform_capture
+          #- switch.super_star_destroyer_outer_component_led_device
+          #- switch.super_star_destroyer_outer_component_platform_capture
+          #- switch.livingroom_ledstrip_component_led_device
+          #- switch.livingroom_ledstrip_component_platform_capture
   turn_off_ambilight:
     sequence:
       - service: light.turn_off
@@ -529,16 +531,16 @@ script:
           - light.ambilight_left_bulb
           - light.ambilight_right_bulb
           - light.falconlights
-          - light.ssdlights
-          - light.ssdlights_inner
-          - light.livingroom_a_rgb_ledstrip
+          #- light.ssdlights
+          #- light.ssdlights_inner
+          #- light.livingroom_a_rgb_ledstrip
           - light.hyperion
           - light.hyperion_ambilightleft
           - light.hyperion_ambilightright
-          - light.hyperion_falconlights
-          - light.hyperion_super_star_destroyer_inner
-          - light.hyperion_super_star_destroyer_outer
-          - light.hyperion_livingroom_ledstrip
+          #- light.hyperion_falconlights
+          #- light.hyperion_super_star_destroyer_inner
+          #- light.hyperion_super_star_destroyer_outer
+          #- light.hyperion_livingroom_ledstrip
 ################
 #    LIGHTS    #
 ################
