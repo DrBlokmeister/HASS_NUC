@@ -1,0 +1,217 @@
+substitutions:
+  device_name: "Ventilation Controller ESP32"
+  device_name_short: "Ventilation ESP32"
+
+esphome:
+  name: ventilation-controller-esp32
+
+esp32:
+  board: esp32doit-devkit-v1
+
+wifi:
+  power_save_mode: none
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name_short} Hotspot
+    password: !secret esphome_fallback_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${device_name} IP
+
+time:
+  - platform: sntp
+    # on_time:
+    #   - seconds: /30
+
+
+output:
+  - platform: ledc
+    pin: 22
+    id: pwm_output
+
+fan:
+  - platform: speed
+    output: pwm_output
+    speed_count: 100
+    name: "Ventilation System"
+    id: ventilationsystem
+
+sensor:
+  # Uptime sensor
+  - platform: uptime
+    name: ${device_name} Uptime
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 1
+  # ADC sensors
+  - platform: adc
+    pin: 35
+    name: "Downstairs CO2 Input"
+    update_interval: 1s
+    filters:
+      - multiply: 16.93
+      - or:
+        - throttle_average: 60s
+        - delta: 0.5
+  - platform: adc
+    pin: 34
+    name: "Analog Output Voltage"
+    update_interval: 1s
+    filters:
+      - multiply: 16.16
+      - or:
+        - throttle_average: 60s
+        - delta: 0.5
+  - platform: adc
+    pin: 33
+    name: "Bathroom Button Signal"
+    update_interval: 1s
+    internal: true
+    filters:
+      - multiply: 16.93
+      - or:
+        - throttle_average: 60s
+        - delta: 0.5
+  - platform: adc
+    pin: 32
+    name: "12V Board Supply Voltage"
+    update_interval: 1s
+    filters:
+      - multiply: 16.93
+      - or:
+        - throttle_average: 60s
+        - delta: 0.5
+  # HA sensors
+  - platform: homeassistant
+    name: "Bathroom Humidity"
+    entity_id: sensor.humidity_bathroom
+    id: ha_humidity_bathroom
+    device_class: "humidity"
+  - platform: homeassistant
+    name: "Bathroom Humidity Min"
+    entity_id: sensor.humidity_bathroom_min
+    id: ha_humidity_bathroom_min
+    device_class: "humidity"
+  - platform: homeassistant
+    name: "Bathroom Humidity Max"
+    entity_id: sensor.humidity_bathroom_max
+    id: ha_humidity_bathroom_max
+    device_class: "humidity"
+  - platform: homeassistant
+    name: "Bedroom CO2 Concentration"
+    entity_id: sensor.mh_z19_co2_value_2
+    device_class: "carbon_dioxide"
+    id: ha_co2_bedroom
+  - platform: homeassistant
+    name: "Bedroom CO2 Concentration Min"
+    entity_id: sensor.co2_value_bedroom_min
+    device_class: "carbon_dioxide"
+    id: ha_co2_bedroom_min
+
+  # Template sensors:
+  - platform: template
+    name: "Ventilation Setting Bathroom Humidity"
+    id: fan_setting_bathroom_humidity
+    update_interval: 10s
+    accuracy_decimals: 0
+    unit_of_measurement: "%"
+    lambda: |-
+      // Get the current and minimum humidity values
+      float current_humidity = id(ha_humidity_bathroom).state;
+      float min_humidity = id(ha_humidity_bathroom_min).state;
+
+      // Calculate the difference between the current humidity and the minimum humidity
+      float humidity_diff = current_humidity - min_humidity;
+
+      // Calculate the fan setting based on the difference
+      float fan_setting = 0.0;
+      if (humidity_diff >= 0.0) {
+        fan_setting = humidity_diff / (100.0 - min_humidity) * 100.0;
+      }
+
+      // Set the fan setting to the nearest speed value
+      float rounded_fan_setting = round(fan_setting);
+
+      // Return the fan setting
+      return rounded_fan_setting;
+
+  - platform: template
+    name: "Ventilation Setting CO2 Bedroom"
+    id: fan_setting_co2_bedroom
+    update_interval: 10s
+    accuracy_decimals: 0
+    unit_of_measurement: "%"
+    lambda: |-
+      // Get the current and minimum humidity values
+      float current_co2_concentration = id(ha_co2_bedroom).state;
+      // float min_humidity = id(ha_humidity_bathroom_min).state;
+
+      // Calculate the difference between the current humidity and the minimum humidity
+      // float humidity_diff = current_humidity - min_humidity;
+      // Fan sensitivity in % per PPM
+      float fan_sensitivity = 0.2;
+      // Offset CO2 value
+      float co2_offset = id(ha_co2_bedroom_min).state;
+
+      // Calculate the fan setting based on the difference
+      float fan_setting = 0.0;
+      fan_setting = (current_co2_concentration - co2_offset) * fan_sensitivity;
+
+      // Set the fan setting to the nearest speed value
+      float rounded_fan_setting = round(fan_setting);
+
+      if (rounded_fan_setting > 100) {
+        // If it is, return the limit value
+        return 100;
+      } else {
+        // Otherwise, return the current value
+        return rounded_fan_setting;
+      }
+
+
+      // Return the fan setting
+      // return rounded_fan_setting;
+      // return fan_setting
+
+  - platform: template
+    name: "Fan Speed Setting"
+    id: fan_speed_setting
+    lambda: |-
+      // Get the current values of the input sensors
+      float var_fan_setting_bathroom_humidity = id(fan_setting_bathroom_humidity).state;
+      float var_fan_setting_co2_bedroom = id(fan_setting_co2_bedroom).state;
+
+
+      // Find the maximum value of the three sensors
+      float fan_setting = max(var_fan_setting_bathroom_humidity, var_fan_setting_co2_bedroom);
+
+      // Return the maximum value
+      return fan_setting;
+    update_interval: 10s
+    accuracy_decimals: 0
+    unit_of_measurement: "%"
+    on_value:
+      then:
+        - fan.turn_on:
+            id: ventilationsystem
+            speed: !lambda "return id(fan_speed_setting).state;"
+
