@@ -108,9 +108,9 @@ switch:
       ambilight:
         value_template: >-
           {{
-            is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and
-            is_state_attr('light.ambilight_left_bulb', 'effect', 'E1.31') and is_state_attr('light.ambilight_right_bulb', 'effect', 'E1.31') and
-            is_state_attr('light.hyperion_ambilightleft', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_ambilightright', 'effect', 'Platform Capture')
+            is_state('light.ambilight_left', 'on') and is_state('light.ambilight_right', 'on') and
+            is_state_attr('light.ambilight_left', 'effect', 'E1.31') and is_state_attr('light.ambilight_right', 'effect', 'E1.31') and
+            is_state_attr('light.hyperion_atmoorb_left', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_atmoorb_right', 'effect', 'Platform Capture')
           }}
         # value_template: >-  #Old template with SSDlights and falconlights
         #   {{
@@ -128,14 +128,22 @@ switch:
 automation:
   - alias: '[mediacenter|light] Turn off lights when mediaplayer starts'
     id: mediacenter_light_automation
-    mode: restart
+    mode: single
     trigger:
+      - platform: state
+        entity_id: device_tracker.samsung_tv
+        to: 'home'
+      - platform: state
+        entity_id: media_player.tv_samsung_led55
+        to: 'on'
       - platform: state
         entity_id: media_player.coreelec
         from: 'idle'
         to: 'playing'
-        for:
-          seconds: 3
+      - platform: state
+        entity_id: media_player.plex_plexkodiconnect_kodi_coreelec
+        from: 'idle'
+        to: 'playing'
     action:
       # - service: scene.create
       #   data:
@@ -165,6 +173,13 @@ automation:
         entity_id: switch.amplifier_power
       - service: switch.turn_on
         entity_id: switch.ambilight
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.ambilight_left
+            - light.ambilight_right
+          brightness: 255
+          effect: E1.31
       # - service: light.turn_on
       #   data:
       #     entity_id:
@@ -192,7 +207,7 @@ automation:
             from: 'playing'
             to: 'idle'
             for:
-              seconds: 60
+              seconds: 120
           - platform: state
             entity_id: media_player.coreelec
             to: 'idle'
@@ -203,12 +218,27 @@ automation:
             to: 'unavailable'
             for:
               minutes: 5
+          - platform: state
+            entity_id: device_tracker.samsung_tv
+            to: 'not_home'
+            for:
+              minutes: 2
+          - platform: state
+            entity_id: media_player.tv_samsung_led55
+            to: 'off'
+            for:
+              minutes: 2
       - service: switch.turn_off
         entity_id: switch.ambilight_power
       - service: switch.turn_off
         entity_id: switch.amplifier_power
       - service: switch.turn_off
         entity_id: switch.ambilight
+      - service: light.turn_off
+        entity_id:
+          - light.ambilight_left
+          - light.ambilight_right
+      
       # - service: scene.turn_on
       #   data:
       #     entity_id: scene.livingroom_before
@@ -469,8 +499,8 @@ script:
       - service: light.turn_on
         data:
           entity_id:
-            - light.ambilight_left_bulb
-            - light.ambilight_right_bulb
+            - light.ambilight_left
+            - light.ambilight_right
             - light.falconlights
             - light.ssdlights
             - light.ssdlights_inner
@@ -485,37 +515,54 @@ script:
 
   turn_on_ambilight:
     sequence:
+      - service: switch.turn_on
+        entity_id:
+          - switch.ambilight_power
+          - switch.hyperion_apa102_component_led_device
+          - switch.hyperion_atmoorb_right_component_led_device
+          - switch.hyperion_atmoorb_right_component_led_device
+      - delay:
+          seconds: 0.5
       - service: light.turn_on
         data:
           brightness: 255
           effect: E1.31
           entity_id:
-            - light.ambilight_left_bulb
-            - light.ambilight_right_bulb
+            - light.ambilight_left
+            - light.ambilight_right
             #- light.falconlights
             #- light.ssdlights
             #- light.ssdlights_inner
-            - light.livingroom_a_rgb_ledstrip
+            # - light.livingroom_a_rgb_ledstrip
+      - service: light.turn_on
+        data:
+          entity_id:
+            - light.hyperion_apa102
+            - light.hyperion_atmoorb_left
+            - light.hyperion_atmoorb_right
+          brightness: 255
+          effect: Rainbow swirl fast
+      - delay:
+          seconds: 5
       - service: light.turn_on
         data:
           brightness: 255
           effect: Platform Capture #used to be GRABBER
           entity_id:
-            - light.hyperion
             - light.hyperion_apa102
-            - light.hyperion_ambilightleft
-            - light.hyperion_ambilightright
+            - light.hyperion_atmoorb_left
+            - light.hyperion_atmoorb_right
             #- light.hyperion_falconlights
             #- light.hyperion_super_star_destroyer_inner
             #- light.hyperion_super_star_destroyer_outer
             #- light.hyperion_livingroom_ledstrip
-      - service: switch.turn_on
-        entity_id:
-          - switch.apa102_component_led_device
-          - switch.ambilightleft_component_led_device
-          - switch.ambilightleft_component_platform_capture
-          - switch.ambilightright_component_led_device
-          - switch.ambilightright_component_platform_capture
+      # - service: switch.turn_on
+      #   entity_id:
+      #     - switch.apa102_component_led_device
+      #     - switch.ambilightleft_component_led_device
+      #     - switch.ambilightleft_component_platform_capture
+      #     - switch.ambilightright_component_led_device
+      #     - switch.ambilightright_component_platform_capture
           #- switch.falconlights_component_led_device
           #- switch.falconlights_component_platform_capture
           #- switch.super_star_destroyer_inner_component_led_device
@@ -528,19 +575,27 @@ script:
     sequence:
       - service: light.turn_off
         entity_id:
-          - light.ambilight_left_bulb
-          - light.ambilight_right_bulb
-          - light.falconlights
+          - light.ambilight_left
+          - light.ambilight_right
+          #- light.falconlights
           #- light.ssdlights
           #- light.ssdlights_inner
           #- light.livingroom_a_rgb_ledstrip
-          - light.hyperion
-          - light.hyperion_ambilightleft
-          - light.hyperion_ambilightright
+          - light.hyperion_apa102
+          - light.hyperion_atmoorb_left
+          - light.hyperion_atmoorb_right
           #- light.hyperion_falconlights
           #- light.hyperion_super_star_destroyer_inner
           #- light.hyperion_super_star_destroyer_outer
           #- light.hyperion_livingroom_ledstrip
+      - delay:
+          seconds: 2
+      - service: switch.turn_off
+        entity_id:
+          - switch.ambilight_power
+          - switch.hyperion_apa102_component_led_device
+          - switch.hyperion_atmoorb_right_component_led_device
+          - switch.hyperion_atmoorb_right_component_led_device
 ################
 #    LIGHTS    #
 ################
