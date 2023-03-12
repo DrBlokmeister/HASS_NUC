@@ -47,6 +47,7 @@ switch:
 #####################
 automation:
   - alias: '[kitchen|lights] Turn on lights when motion is detected'
+    id: kitchen_lights_turn_on_lights_when_motion_is_detected
     mode: restart
     trigger:
       - platform: state
@@ -89,6 +90,7 @@ automation:
         entity_id: light.kitchen_lights
 
   - alias: '[kitchen|lights]Toggle kitchen lights through switch press'
+    id: kitchen_lights_toggle_kitchen_lights_through_switch_press
     mode: restart
     trigger:
       - platform: state
@@ -107,16 +109,17 @@ automation:
           entity_id: light.kitchen_lights
           brightness: 255
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-      - service: automation.turn_off
-        entity_id:
-          - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
-      - delay:
-          seconds: 30
-      - service: automation.turn_on
-        entity_id:
-          - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+      # - service: automation.turn_off
+      #   entity_id:
+      #     - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+      # - delay:
+      #     seconds: 30
+      # - service: automation.turn_on
+      #   entity_id:
+      #     - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
 
   - alias: '[kitchen|notify] fridge overtemp warning'
+    id: kitchen_notify_fridge_overtemp_warning
     trigger:
       - platform: numeric_state
         entity_id: sensor.temperature_fridge
@@ -131,8 +134,18 @@ automation:
             tag: fridgetempwarning
             clickAction: '/lovelace/8'
             icon_url: /local/icons/thermometer-alert.png
+      - wait_for_trigger:
+          - platform: numeric_state
+            entity_id: sensor.temperature_fridge
+            below: 15
+      - service: notify.mobile_app_blokmeisters21u
+        data:
+          message: "clear_notification"
+          data:
+            tag: fridgetemperaturewarning
 
   - alias: '[kitchen|light] Update illumination limit'
+    id: kitchen_light_update_illumination_limit
     mode: single
     trigger:
       - platform: state
