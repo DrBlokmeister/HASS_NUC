@@ -24,11 +24,11 @@ binary_sensor:
           }}
         availability_template: >-
           {{
-            states('person.sander_blok') not in ['unavailable', 'unknown', 'none']
-            or states('person.tamara') not in ['unavailable', 'unknown', 'none']
-            or states('device_tracker.phone_kb') not in ['unavailable', 'unknown', 'none']
-            or states('device_tracker.phone_kb_2') not in ['unavailable', 'unknown', 'none']
-            or states('calendar.gasten_in_huis') not in ['unavailable', 'unknown', 'none']
+            states('person.sander_blok') not in ['unavailable', 'unknown', 'none', None]
+            or states('person.tamara') not in ['unavailable', 'unknown', 'none', None]
+            or states('device_tracker.phone_kb') not in ['unavailable', 'unknown', 'none', None]
+            or states('device_tracker.phone_kb_2') not in ['unavailable', 'unknown', 'none', None]
+            or states('calendar.gasten_in_huis') not in ['unavailable', 'unknown', 'none', None]
           }}
 ########################
 #    INPUT BOOLEANS    #
@@ -61,42 +61,6 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  # - alias: '[occupancy|lights]turn_off_lighting_automations'
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.house_occupied
-  #   action:
-  #     - choose:
-  #         - conditions:
-  #             - condition: state
-  #               entity_id: binary_sensor.house_occupied
-  #               state: 'on'
-  #           sequence:
-  #             - service: automation.turn_on
-  #               entity_id:
-  #                 - automation.bathroom_light_turn_on_light_through_motion
-  #                 - automation.bedroom_light_gradual_light_automation
-  #                 - automation.entry_light_turn_on_light_through_motion
-  #                 - automation.livingroom_light_flux_light_through_motion
-  #                 - automation.study_lights_turn_on_lights_when_motion_is_detected
-  #                 - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
-  #         - conditions:
-  #             - condition: state
-  #               entity_id: binary_sensor.house_occupied
-  #               state: 'off'
-  #           sequence:
-  #             - service: automation.turn_off
-  #               data:
-  #                 stop_actions: 'false'
-  #                 entity_id:
-  #                   - automation.bathroom_light_turn_on_light_through_motion
-  #                   - automation.bedroom_light_gradual_light_automation
-  #                   - automation.entry_light_turn_on_light_through_motion
-  #                   - automation.livingroom_light_flux_light_through_motion
-  #                   - automation.study_lights_turn_on_lights_when_motion_is_detected
-  #                   - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
-
-
   - alias: '[occupancy|lights]execute_tamara_mode'
     mode: restart
     trigger:
@@ -172,6 +136,26 @@ automation:
       - service: deconz.configure
         data:
           entity: binary_sensor.motion_sensor_kitchen
+          field: "/config"
+          data: {"duration": 5}
+      - service: deconz.configure
+        data:
+          entity: binary_sensor.hallway_1st_floor_motion_1
+          field: "/config"
+          data: {"duration": 5}
+      - service: deconz.configure
+        data:
+          entity: binary_sensor.hallway_1st_floor_motion_2
+          field: "/config"
+          data: {"duration": 5}
+      - service: deconz.configure
+        data:
+          entity: binary_sensor.hallway_2nd_floor_motion_1
+          field: "/config"
+          data: {"duration": 5}
+      - service: deconz.configure
+        data:
+          entity: binary_sensor.hallway_2nd_floor_motion_2
           field: "/config"
           data: {"duration": 5}
       - delay:
