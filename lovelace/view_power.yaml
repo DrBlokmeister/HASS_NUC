@@ -6,12 +6,13 @@ cards:
   - cards:
     - entities:
         - color: grey
-          entity: sensor.home_power_consumption
+          entity: sensor.total_power_consumption_watt
           name: Total
           show_legend: true
           #show_line: false
           show_points: false
           smoothing: false
+          value_factor: 1000 #Convert kW of sensor to W
         - entity: sensor.blitzwolf_tv_energy_power
           name: TV
           show_points: false
@@ -36,10 +37,10 @@ cards:
           name: NUC
           show_points: false
           color: '#8cd742'
-        - entity: sensor.light_power_estimate
-          name: Lights
-          show_points: false
-          color: '#ab36ba'
+        # - entity: sensor.light_power_estimate
+        #   name: Lights
+        #   show_points: false
+        #   color: '#ab36ba'
       icon: mdi:lightning-bolt
       name: Power
       hours_to_show: 24
@@ -180,7 +181,7 @@ cards:
           - type: gauge
             name: Total Power usage
             unit: 'W'
-            entity: sensor.home_power_consumption
+            entity: sensor.total_power_consumption_watt
             min: 0
             max: 5000
             severity:
@@ -190,7 +191,7 @@ cards:
           - type: gauge
             name: Total Power Production
             unit: 'W'
-            entity: sensor.home_power_production
+            entity: sensor.pv_power
             min: 0
             max: 5000
             severity:
@@ -222,7 +223,7 @@ cards:
         type: horizontal-stack
       - type: custom:mini-graph-card
         entities:
-          - entity: sensor.verbruik_per_dag_2
+          - entity: sensor.daily_energy_use
             aggregate_func: max
             name: Max
         name: Electricity usage daily (last week)
@@ -248,7 +249,7 @@ cards:
 
       - type: custom:mini-graph-card
         entities:
-          - entity: sensor.corrected_waterusage_day
+          - entity: sensor.water_meter_daily_water_consumption
             aggregate_func: max
             name: Max
         name: Water usage daily (last week)

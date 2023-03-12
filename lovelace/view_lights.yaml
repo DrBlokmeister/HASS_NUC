@@ -14,7 +14,7 @@ cards:
       - entity: light.tamaras_room
       - entity: light.entry
       - entity: light.hallway_1st_floor
-      - entity: light.hallway_2nd_floor_lamp
+      - entity: light.hallway_2nd_floor
       - entity: light.shelly_dinner_table
       - entity: light.ambilight_left
       - entity: light.ambilight_right
@@ -56,6 +56,16 @@ cards:
           action: toggle
       - entity: automation.entry_light_turn_on_light_through_motion
         name: Entry
+        icon: mdi:door
+        tap_action:
+          action: toggle
+      - entity: automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
+        name: 2nd Floor
+        icon: mdi:door
+        tap_action:
+          action: toggle
+      - entity: automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
+        name: 1st Floor
         icon: mdi:door
         tap_action:
           action: toggle
@@ -101,6 +111,34 @@ cards:
     show_icon: false
     type: glance
   - entities:
+      - entity: input_number.hallway_2nd_floor_illumination_limit
+        name: 2nd Floor
+      - entity: input_number.hallway_1st_floor_illumination_limit
+        name: 1st Floor
+      - entity: input_number.study_illumination_limit_lightoff
+        name: Study limit
+      - entity: input_number.bedroom_illumination_limit
+        name: Bedroom limit
+      - entity: sensor.average_illumination_hallway_2nd_floor
+        name: Current
+      - entity: sensor.average_illumination_hallway_1st_floor
+        name: Current
+      - entity: sensor.average_illumination_study_2
+        name: Current
+      - entity: sensor.average_illumination_bedroom
+        name: Current
+      - entity: input_number.hallway_2nd_floor_illumination_limit_lightson
+        name: Lights On
+      - entity: input_number.hallway_1st_floor_illumination_limit_lightson
+        name: Lights On
+      - entity: timer.bathroom_lights
+        name: Bathroom timer
+    title: Illumination conditions
+    columns: 4
+    show_state: true
+    show_icon: false
+    type: glance
+  - entities:
       - entity: input_number.livingroom_light_timeout
         name: Livingroom
       - entity: input_number.kitchen_light_timeout
@@ -111,24 +149,78 @@ cards:
         name: Bedroom
       - entity: input_number.bathroom_light_timeout
         name: Bathroom
+      - entity: input_number.hallway_1st_floor_light_timeout
+        name: 1st Floor
+      - entity: input_number.hallway_2nd_floor_light_timeout
+        name: 2nd Floor
     title: Light timeouts
     type: entities
     show_header_toggle: false
 
-  - type: vertical-stack
-    cards:
-      - entities:
-          - entity: sensor.time_until_wakeuplight_time_human_readable
-            icon: mdi:weather-sunset-up
-            name: "Wakeup light starts in:"
-            #type: call-service
-            #action_name: 'Toggle wakup light'
-            tap_action:
-              action: call-service
-              service: homeassistant.toggle
-              service_data:
-                entity_id: automation.bedroom_light_wakeup_light
-          # - entity: automation.bedroom_light_wakeup_light
-          #   name: Wakeup light status
-          #   icon: mdi:weather-sunset-up
-        type: entities
+  - entities:
+      - entity: binary_sensor.motion_sensor_entry
+        name: Entry 1
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_entry2
+        name: Entry 2
+        secondary_info: last-changed
+      - entity: binary_sensor.hallway_1st_floor_motion_1
+        name: 1st Floor 1
+        secondary_info: last-changed
+      - entity: binary_sensor.hallway_1st_floor_motion_2
+        name: 1st Floor 2
+        secondary_info: last-changed
+      - entity: binary_sensor.hallway_2nd_floor_motion_1
+        name: 2nd Floor 1
+        secondary_info: last-changed
+      - entity: binary_sensor.hallway_2nd_floor_motion_2
+        name: 2nd Floor 2
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_livingroom
+        name: Livingroom 1
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_livingroom2
+        name: Livingroom 2
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_livingroom3
+        name: Livingroom 3
+      - entity: binary_sensor.motion_sensor_kitchen
+        name: Kitchen
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_kitchen_2
+        name: Kitchen 2
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_bedroom
+        name: Bedroom
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_bathroom
+        name: Bathroom
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_study
+        name: Study 1
+        secondary_info: last-changed
+      - entity: binary_sensor.motion_sensor_study2
+        name: Study 2
+        secondary_info: last-changed
+    title: Motion Sensors
+    columns: 5
+    show_state: false
+    show_icon: true
+    type: glance
+  # - type: vertical-stack
+  #   cards:
+  #     - entities:
+  #         - entity: sensor.time_until_wakeuplight_time_human_readable
+  #           icon: mdi:weather-sunset-up
+  #           name: "Wakeup light starts in:"
+  #           #type: call-service
+  #           #action_name: 'Toggle wakup light'
+  #           tap_action:
+  #             action: call-service
+  #             service: homeassistant.toggle
+  #             service_data:
+  #               entity_id: automation.bedroom_light_wakeup_light
+  #         # - entity: automation.bedroom_light_wakeup_light
+  #         #   name: Wakeup light status
+  #         #   icon: mdi:weather-sunset-up
+  #       type: entities
