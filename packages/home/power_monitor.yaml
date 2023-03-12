@@ -19,29 +19,60 @@ homeassistant:
 utility_meter:
   hourly_energy_use:
     source: sensor.net_energy_usage
+    delta_values: True
     cycle: hourly
-    unique_id: yaml_tempate_sensor_hourly_energy_use
+    unique_id: yaml_template_sensor_hourly_energy_use
     net_consumption: true
   daily_energy_use:
     source: sensor.net_energy_usage
+    delta_values: True
     cycle: daily
-    unique_id: yaml_tempate_sensor_daily_energy_use
+    unique_id: yaml_template_sensor_daily_energy_use
     net_consumption: true
   weekly_energy_use:
     source: sensor.net_energy_usage
+    delta_values: True
     cycle: weekly
-    unique_id: yaml_tempate_sensor_weekly_energy_use
+    unique_id: yaml_template_sensor_weekly_energy_use
     net_consumption: true
   monthly_energy_use:
     source: sensor.net_energy_usage
+    delta_values: True
     cycle: monthly
-    unique_id: yaml_tempate_sensor_monthly_energy_use
+    unique_id: yaml_template_sensor_monthly_energy_use
     net_consumption: true
   yearly_energy_use:
     source: sensor.net_energy_usage
+    delta_values: True
     cycle: yearly
-    unique_id: yaml_tempate_sensor_yearly_energy_use
+    unique_id: yaml_template_sensor_yearly_energy_use
     net_consumption: true
+  
+  hourly_water_use:
+    source: sensor.water_meter_water_consumption
+    delta_values: True
+    cycle: hourly
+    unique_id: yaml_template_sensor_hourly_water_use
+  daily_water_use:
+    source: sensor.water_meter_water_consumption
+    delta_values: True
+    cycle: daily
+    unique_id: yaml_template_sensor_daily_water_use
+  weekly_water_use:
+    source: sensor.water_meter_water_consumption
+    delta_values: True
+    cycle: weekly
+    unique_id: yaml_template_sensor_weekly_water_use
+  monthly_water_use:
+    source: sensor.water_meter_water_consumption
+    delta_values: True
+    cycle: monthly
+    unique_id: yaml_template_sensor_monthly_water_use
+  yearly_water_use:
+    source: sensor.water_meter_water_consumption
+    delta_values: True
+    cycle: yearly
+    unique_id: yaml_template_sensor_yearly_water_use
 #######################
 #    INPUT NUMBERS    #
 #######################
@@ -98,209 +129,140 @@ sensor:
         value_template: >-
           {{ states( 'sensor.electricity_meter_power_consumption' )|float(0) - states( 'sensor.electricity_meter_power_production' )|float(0) }}
         availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
-      total_power_blitzwolf:
-        unit_of_measurement: 'W'
-        value_template: >-
-          {{
-            (states( 'sensor.blitzwolf_electricblanket_energy_power' )|float(0)
-            + states( 'sensor.blitzwolf_computer_energy_power' )|float(0)
-            + states( 'sensor.blitzwolf_mediacenter_energy_power' )|float(0)
-            + states( 'sensor.blitzwolf_watercooker_energy_power' )|float(0)
-            + states( 'sensor.blitzwolf_router_energy_power' )|float(0)
-            + states( 'sensor.blitzwolf_3dprinter_energy_power' )|float(0)
-            + states( 'sensor.blitzwolf_washingmachine_energy_power' )|float(0)) |round(2)
-          }}
-        availability_template: >-
-          {{
-            states( 'sensor.blitzwolf_electricblanket_energy_power' )|is_number
-            or states( 'sensor.blitzwolf_computer_energy_power' )|is_number
-            or states( 'sensor.blitzwolf_mediacenter_energy_power' )|is_number
-            or states( 'sensor.blitzwolf_watercooker_energy_power' )|is_number
-            or states( 'sensor.blitzwolf_router_energy_power' )|is_number
-            or states( 'sensor.blitzwolf_3dprinter_energy_power' )|is_number
-            or states( 'sensor.blitzwolf_washingmachine_energy_power' )|is_number
-          }}
-      total_blitzwolf_energy_today:
-        unit_of_measurement: 'kWh'
-        value_template: >-
-          {{
-            (
-              states( 'sensor.blitzwolf_electricblanket_energy_today' )|float
-              + states( 'sensor.blitzwolf_computer_energy_today' )|float
-              + states( 'sensor.blitzwolf_mediacenter_energy_today' )|float
-              + states( 'sensor.blitzwolf_watercooker_energy_today' )|float
-              + states( 'sensor.blitzwolf_router_energy_today' )|float
-              + states( 'sensor.blitzwolf_3dprinter_energy_today' )|float
-              + states( 'sensor.blitzwolf_washingmachine_energy_today' )|float
-            )|round(2)
-          }}
-        availability_template: >-
-          {{
-            states( 'sensor.blitzwolf_electricblanket_energy_today' )|is_number
-            or states( 'sensor.blitzwolf_computer_energy_today' )|is_number
-            or states( 'sensor.blitzwolf_mediacenter_energy_today' )|is_number
-            or states( 'sensor.blitzwolf_watercooker_energy_today' )|is_number
-            or states( 'sensor.blitzwolf_router_energy_today' )|is_number
-            or states( 'sensor.blitzwolf_3dprinter_energy_today' )|is_number
-            or states( 'sensor.blitzwolf_washingmachine_energy_today' )|is_number
-          }}
-      electricblanket_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_electricblanket_energy_today')|is_number }}"
-      mediacenter_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_mediacenter_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_mediacenter_energy_today')|is_number }}"
-      watercooker_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_watercooker_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_watercooker_energy_today')|is_number }}"
-      computer_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_computer_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_computer_energy_today')|is_number }}"
-      coffeeplant_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_router_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_router_energy_today')|is_number }}"
-      ender3_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_3dprinter_energy_today')|is_number }}"
-      washingmachine_cost_today:
-        unit_of_measurement: '€'
-        value_template: "{{ (states( 'sensor.blitzwolf_washingmachine_energy_today' )|float * (0.2221|float))|round(2) }}"
-        availability_template: "{{ states('sensor.blitzwolf_washingmachine_energy_today')|is_number }}"
-      unknown_power:
-        unit_of_measurement: 'W'
-        value_template: "{{ ( states( 'sensor.home_power_consumption' )|float - states( 'sensor.total_power_blitzwolf' )|float - states( 'sensor.light_power_estimate' )|float )|round(2) }}"
-        availability_template: "{{ states('sensor.home_power_consumption')|is_number and states('sensor.total_power_blitzwolf')|is_number and states('sensor.light_power_estimate')|is_number }}"
-  - platform: filter
-    name: "filtered unknown power"
-    entity_id: sensor.unknown_power
-    filters:
-      - filter: lowpass
-        time_constant: 10
-
-  # - platform: rest
-  #   resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
-  #   name: Kosten Hoog Tarief
-  #   value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_HIGH | round(2) }}'
-  #   unit_of_measurement: "€"
-
-  # - platform: rest
-  #   resource: http://10.0.30.40/api/v1/financial/day?limit=1&json=object&round=off
-  #   name: Kosten Laag Tarief
-  #   value_template: '{{ value_json.0.CONSUMPTION_COST_ELECTRICITY_LOW | round(2) }}'
-  #   unit_of_measurement: "€"
-
-  # - platform: rest
-  #   resource: http://10.0.30.40/api/v2/watermeter/day?limit=1&json=object&round=off
-  #   name: Waterverbruik_vandaag
-  #   value_template: '{{ value_json.0.WATERMETER_CONSUMPTION_LITER | round(0) }}'
-  #   unit_of_measurement: "l"
-
-  # - platform: rest
-  #   resource: http://10.0.30.40/api/v1/powergas/day?limit=1&json=object&round=off
-  #   name: Verbruik Per Dag
-  #   value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
-  #   unit_of_measurement: "kWh"
-
-  # - platform: rest
-  #   resource: http://10.0.30.40/api/v1/powerproductionsolar/day?limit=1&json=object&round=off
-  #   name: Verbruik Per Dag
-  #   value_template: '{{ value_json.0.CONSUMPTION_DELTA_KWH | round(4) }}'
-  #   unit_of_measurement: "kWh"
-
-  # - platform: mqtt
-  #   name: timestamp_local
-  #   state_topic: "p1monitor/smartmeter/timestamp_local"
-  #   device_class: timestamp
-  # - platform: mqtt
-  #   name: timestamp_utc
-  #   state_topic: "p1monitor/smartmeter/timestamp_utc"
-  #   device_class: timestamp
-  # - platform: mqtt
-  #   name: consumption_gas_m3
-  #   state_topic: "p1monitor/smartmeter/consumption_gas_m3"
-  #   unit_of_measurement: m3
-  #   force_update: true
-  # - platform: mqtt
-  #   name: consumption_kwh_high
-  #   state_topic: "p1monitor/smartmeter/consumption_kwh_high"
-  #   unit_of_measurement: kWh
-  # - platform: mqtt
-  #   name: consumption_kwh_low
-  #   state_topic: "p1monitor/smartmeter/consumption_kwh_low"
-  #   unit_of_measurement: kWh
-  # - platform: mqtt
-  #   name: consumption_kw
-  #   state_topic: "p1monitor/smartmeter/consumption_kw"
-  #   device_class: power
-  #   unit_of_measurement: kW
-  # - platform: mqtt
-  #   name: tarifcode
-  #   state_topic: "p1monitor/smartmeter/tarifcode"
-  # - platform: mqtt
-  #   name: record_is_processed
-  #   state_topic: "p1monitor/smartmeter/record_is_processed"
-  # - platform: mqtt
-  #   name: consumption_l1_w
-  #   state_topic: "p1monitor/phase/consumption_l1_w"
-  #   device_class: power
-  #   unit_of_measurement: W
-  # - platform: mqtt
-  #   name: l1_v
-  #   state_topic: "p1monitor/phase/l1_v"
-  #   unit_of_measurement: V
-  # - platform: mqtt
-  #   name: l1_a
-  #   state_topic: "p1monitor/phase/l1_a"
-  #   unit_of_measurement: A
+      # total_power_blitzwolf:
+      #   unit_of_measurement: 'W'
+      #   value_template: >-
+      #     {{
+      #       (states( 'sensor.blitzwolf_electricblanket_energy_power' )|float(0)
+      #       + states( 'sensor.blitzwolf_computer_energy_power' )|float(0)
+      #       + states( 'sensor.blitzwolf_mediacenter_energy_power' )|float(0)
+      #       + states( 'sensor.blitzwolf_watercooker_energy_power' )|float(0)
+      #       + states( 'sensor.blitzwolf_router_energy_power' )|float(0)
+      #       + states( 'sensor.blitzwolf_3dprinter_energy_power' )|float(0)
+      #       + states( 'sensor.blitzwolf_washingmachine_energy_power' )|float(0)) |round(2)
+      #     }}
+      #   availability_template: >-
+      #     {{
+      #       states( 'sensor.blitzwolf_electricblanket_energy_power' )|is_number
+      #       or states( 'sensor.blitzwolf_computer_energy_power' )|is_number
+      #       or states( 'sensor.blitzwolf_mediacenter_energy_power' )|is_number
+      #       or states( 'sensor.blitzwolf_watercooker_energy_power' )|is_number
+      #       or states( 'sensor.blitzwolf_router_energy_power' )|is_number
+      #       or states( 'sensor.blitzwolf_3dprinter_energy_power' )|is_number
+      #       or states( 'sensor.blitzwolf_washingmachine_energy_power' )|is_number
+      #     }}
+      # total_blitzwolf_energy_today:
+      #   unit_of_measurement: 'kWh'
+      #   value_template: >-
+      #     {{
+      #       (
+      #         states( 'sensor.blitzwolf_electricblanket_energy_today' )|float
+      #         + states( 'sensor.blitzwolf_computer_energy_today' )|float
+      #         + states( 'sensor.blitzwolf_mediacenter_energy_today' )|float
+      #         + states( 'sensor.blitzwolf_watercooker_energy_today' )|float
+      #         + states( 'sensor.blitzwolf_router_energy_today' )|float
+      #         + states( 'sensor.blitzwolf_3dprinter_energy_today' )|float
+      #         + states( 'sensor.blitzwolf_washingmachine_energy_today' )|float
+      #       )|round(2)
+      #     }}
+      #   availability_template: >-
+      #     {{
+      #       states( 'sensor.blitzwolf_electricblanket_energy_today' )|is_number
+      #       or states( 'sensor.blitzwolf_computer_energy_today' )|is_number
+      #       or states( 'sensor.blitzwolf_mediacenter_energy_today' )|is_number
+      #       or states( 'sensor.blitzwolf_watercooker_energy_today' )|is_number
+      #       or states( 'sensor.blitzwolf_router_energy_today' )|is_number
+      #       or states( 'sensor.blitzwolf_3dprinter_energy_today' )|is_number
+      #       or states( 'sensor.blitzwolf_washingmachine_energy_today' )|is_number
+      #     }}
+      # electricblanket_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_electricblanket_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_electricblanket_energy_today')|is_number }}"
+      # mediacenter_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_mediacenter_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_mediacenter_energy_today')|is_number }}"
+      # watercooker_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_watercooker_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_watercooker_energy_today')|is_number }}"
+      # computer_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_computer_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_computer_energy_today')|is_number }}"
+      # coffeeplant_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_router_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_router_energy_today')|is_number }}"
+      # ender3_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_3dprinter_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_3dprinter_energy_today')|is_number }}"
+      # washingmachine_cost_today:
+      #   unit_of_measurement: '€'
+      #   value_template: "{{ (states( 'sensor.blitzwolf_washingmachine_energy_today' )|float * (0.2221|float))|round(2) }}"
+      #   availability_template: "{{ states('sensor.blitzwolf_washingmachine_energy_today')|is_number }}"
+  #     unknown_power:
+  #       unit_of_measurement: 'W'
+  #       value_template: "{{ ( states( 'sensor.home_power_consumption' )|float - states( 'sensor.total_power_blitzwolf' )|float - states( 'sensor.light_power_estimate' )|float )|round(2) }}"
+  #       availability_template: "{{ states('sensor.home_power_consumption')|is_number and states('sensor.total_power_blitzwolf')|is_number and states('sensor.light_power_estimate')|is_number }}"
+  # - platform: filter
+  #   name: "filtered unknown power"
+  #   entity_id: sensor.unknown_power
+  #   filters:
+  #     - filter: lowpass
+  #       time_constant: 10
 
   - platform: template
     sensors:
-      energie_kosten_dag:
-        value_template: "{{ states('sensor.kosten_hoog_tarief') | float + states('sensor.kosten_laag_tarief') | float | round(2) }}"
-        unit_of_measurement: "€"
-      # energie_kosten_maand:
-      #   value_template: "{{ states('sensor.maand_hoog_tarief') | float + states('sensor.maand_laag_tarief') | float | round(2) }}"
-      #   unit_of_measurement: "€"
       total_power_watt:
-        value_template: "{{ states('sensor.electricity_meter_power_consumption') | float * 1000 | float | round(2) }}"
+        value_template: "{{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 | float | round(2) }}"
         unit_of_measurement: "W"
+        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
       current_costs_per_hour:
-        value_template: "{{ ( states('sensor.electricity_meter_power_consumption') | float * ( 0.2221 | float) | float ) | round(2) }}"
+        value_template: "{{ ( states('sensor.electricity_meter_power_consumption') | float(0) * ( 0.2221 | float) | float ) | round(2) }}"
         unit_of_measurement: "€/h"
-      corrected_waterusage_day:
+        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
+      electricity_meter_power_consumption_watt:
+        value_template: "{{ states('sensor.electricity_meter_power_consumption') | float * 1000 }}"
+        unit_of_measurement: "W"
+        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
+      electricity_meter_power_production_watt:
+        value_template: "{{ states('sensor.electricity_meter_power_production') | float * 1000 }}"
+        unit_of_measurement: "W"
+        availability_template: "{{ states('sensor.electricity_meter_power_production')|is_number }}"
+      total_power_consumption_watt:
         value_template: >-
-          {% if states.sensor.waterverbruik_vandaag.last_changed.day < now().day %}
-            0
+          {% if states('sensor.pv_power')|is_number %}
+            {{ (states('sensor.electricity_meter_power_consumption')|float - states('sensor.electricity_meter_power_production')|float + states('sensor.pv_power')|float/1000)*1000 }}
           {% else %}
-            {{ states('sensor.waterverbruik_vandaag') }}
+            {{ (states('sensor.electricity_meter_power_consumption')|float - states('sensor.electricity_meter_power_production')|float)*1000 }}
           {% endif %}
-        unit_of_measurement: "l"
-        availability_template: "{{ states('sensor.waterverbruik_vandaag')|is_number }}"
-      # verbruik_per_dag:
-      #   value_template: "{{ states('sensor.home_energy_consumption_high')|float + states('home_energy_consumption_low')|float | round(2) }}"
-      #   unit_of_measurement: ""
+        unit_of_measurement: "W"
+        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
+      total_power_consumption_kilowatt:
+        value_template: "{{ states('sensor.total_power_consumption_watt')|float/1000 }}"
+        unit_of_measurement: "kW"
+        availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number }}"
 
-  # - platform: derivative
-  #   source: sensor.consumption_gas_m3
-  #   name: Gas consumption per hour
-  #   unit_time: h
-  #   time_window: "00:10:00"
-
-  # - platform: derivative
-  #   source: sensor.gasverbruik_per_dag
-  #   name: Gas consumption per hour REST-API
-  #   unit_time: h
-  #   time_window: "00:10:00"
+  - platform: integration
+    source: sensor.total_power_consumption_watt
+    name: Total Energy Usage
+    unique_id: integration_total_energy_usage
+    unit_time: h
+    unit_prefix: k
+    round: 2
+  - platform: integration
+    source: sensor.water_meter_current_water_consumption
+    name: Total Water Usage
+    unique_id: integration_total_water_usage
+    unit_time: min
+    round: 0
 
   - platform: derivative
     source: sensor.waterverbruik_vandaag
-    name: Water consumption per hour
+    name: Total Water Consumption
     unit_time: h
     time_window: "00:02:00"
 
@@ -340,11 +302,7 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  platform: template
-  sensors:
-    hot_water_on:
-      value_template: >-
-        {{ states('sensor.water_consumption_per_hour')|float|round(2) > 0 and states('sensor.gas_consumption_per_hour')|float|round(2) > 0}}
+
 ########################
 #    INPUT BOOLEANS    #
 ########################
