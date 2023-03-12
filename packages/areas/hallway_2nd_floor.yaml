@@ -1,10 +1,47 @@
 homeassistant:
   customize:
 
+input_number:
+  hallway_2nd_floor_illumination_limit:
+    name: Hallway 2nd Floor illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
+  hallway_2nd_floor_illumination_limit_lightson:
+    name: Hallway 2nd Floor illumination limit
+    step: 1
+    min: 0
+    max: 200
+    mode: box
+  hallway_2nd_floor_light_timeout: #in minutes
+    name: Hallway 2nd Floor light timeout
+    step: 1
+    min: 0
+    max: 30
+    mode: box
+
 #################
 #    SENSORS    #
 #################
 sensor:
+  - platform: template
+    sensors:
+      average_illumination_hallway_2nd_floor:
+        friendly_name: "Average Illumination Hallway 2nd Floor"
+        device_class: illuminance
+        unit_of_measurement: 'lx'
+        value_template: >-
+          {% if states('sensor.hallway_2nd_floor_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list and states('sensor.hallway_2nd_floor_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ ((states('sensor.hallway_2nd_floor_motion_1_illuminance')|float + states('sensor.hallway_2nd_floor_motion_2_illuminance')|float) / 2)|round(1) }}
+          {% elif states('sensor.hallway_2nd_floor_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ states('sensor.hallway_2nd_floor_motion_1_illuminance')|round(1) }}
+          {% elif states('sensor.hallway_2nd_floor_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ states('sensor.hallway_2nd_floor_motion_2_illuminance')|round(1) }}
+          {% else %}
+            unavailable
+          {% endif %}
+        availability_template: "{{ states('sensor.hallway_2nd_floor_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.hallway_2nd_floor_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
 
 ########################
 #    BINARY SENSORS    #
@@ -38,10 +75,52 @@ automation:
     action:
       - service: light.toggle
         data:
-          entity_id: light.hallway_2nd_floor_lamp
-          #brightness: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          #kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          entity_id: light.hallway_2nd_floor
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
+  - alias: '[hallway2ndfloor|lights] Turn on lights when motion is detected'
+    id: hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.hallway_2nd_floor_motion_1
+          - binary_sensor.hallway_2nd_floor_motion_2
+        to: 'on'
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.average_illumination_hallway_2nd_floor')|int < states('input_number.hallway_2nd_floor_illumination_limit')|int }}"
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+    action:
+      - service: light.turn_on
+        data:
+          entity_id: light.hallway_2nd_floor
+          brightness: 255
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      - wait_for_trigger:
+          - platform: state
+            entity_id:
+              - binary_sensor.hallway_2nd_floor_motion_1
+              - binary_sensor.hallway_2nd_floor_motion_2
+            to: 'off'
+            for:
+              minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int }}"
+          - platform: template
+            value_template: "{{ states('sensor.average_illumination_hallway_2nd_floor')|int > states('input_number.hallway_2nd_floor_illumination_limit_lightson')|int }}"
+            for:
+              minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int }}"
+      - service: light.turn_on
+        data:
+          entity_id: light.hallway_2nd_floor
+          brightness_step: -120
+          transition: 0.5
+      - delay:
+          seconds: 15
+      - service: light.turn_off
+        entity_id: light.hallway_2nd_floor
 ################
 #    SCENES    #
 ################
