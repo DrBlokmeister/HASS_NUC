@@ -487,13 +487,13 @@ sensor:
       warmtebron_in_uit_delta:
         friendly_name: Warmtebron in-uit Delta T
         unit_of_measurement: '°C'
-        value_template: "{{ states('luxtronik.temperatuur_warmtebron_uitgang')|float - states('luxtronik.temperatuur_warmtebron_ingang')|float}}"
-        #availability_template: ""
+        value_template: "{{ states('sensor.temperatuur_warmtebron_uitgang')|float - states('sensor.temperatuur_warmtebron_ingang')|float}}"
+        availability_template: "{{ states.sensor.temperatuur_warmtebron_uitgang not in ['unavailable', 'unknown', 'none', None] and states.sensor.temperatuur_warmtebron_ingang not in ['unavailable', 'unknown', 'none', None] }}"
       vloerverwarming_in_uit_delta:
         friendly_name: Vloerverwarming in-uit Delta T
         unit_of_measurement: '°C'
-        value_template: "{{ states('luxtronik.temperatuur_vv_aanvoer')|float - states('luxtronik.temperatuur_vv_retour')|float}}"
-        #availability_template: ""
+        value_template: "{{ states('sensor.temperatuur_vv_aanvoer')|float - states('sensor.temperatuur_vv_retour')|float}}"
+        availability_template: "{{ states.sensor.temperatuur_vv_aanvoer not in ['unavailable', 'unknown', 'none', None] and states.sensor.temperatuur_vv_retour not in ['unavailable', 'unknown', 'none', None] }}"
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -576,14 +576,6 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[climate] Tado off when sleeping'
-    trigger:
-      platform: state
-      entity_id: input_boolean.sleep_tracking_on
-      to: 'on'
-    action:
-      - service: homeassistant.turn_off
-        entity_id: climate.heating
   - alias: '[climate|temperature] Poll Alpha Home Temperatures'
     trigger:
       platform: time_pattern
