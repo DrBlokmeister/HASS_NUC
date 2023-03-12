@@ -25,47 +25,43 @@ homeassistant:
     binary_sensor.plexmediaserver:
       icon: mdi:plex
 
-
-breaking_changes:
-  scan_interval: 3600
-
-monitor_docker:
-  - name: Docker
-    url: tcp://10.0.0.252:2375
-    containers:
-      - addon_core_mariadb
-      - addon_core_deconz
-      - homeassistant
-      - hassio_supervisor
-      - addon_a0d7b954_vscode
-      - addon_a0d7b954_tautulli
-      - addon_a0d7b954_ssh
-      - addon_a0d7b954_influxdb
-      - addon_a0d7b954_portainer
-      - addon_core_mosquitto
-      - hassio_multicast
-      - hassio_dns
-      - hassio_cli
-      - hassio_audio
-    rename:
-      addon_core_mariadb: MariaDB database
-      addon_core_deconz: Deconz Zigbee
-      homeassistant: Home Assistant
-      hassio_supervisor: Supervisor
-      addon_a0d7b954_vscode: VScode
-      addon_a0d7b954_tautulli: Tautulli
-      addon_a0d7b954_ssh: SSH
-      addon_a0d7b954_influxdb: InfluxDB
-      addon_a0d7b954_portainer: Portainer
-      addon_core_mosquitto: Mosquitto
-    monitored_conditions:
-      - version
-      - containers_running
-      - containers_total
-      - containers_cpu_percentage
-      - cpu_percentage
-      - status
-      - memory
+# monitor_docker:
+#   - name: Docker
+#     url: tcp://10.0.0.252:2375
+#     containers:
+#       - addon_core_mariadb
+#       - addon_core_deconz
+#       - homeassistant
+#       - hassio_supervisor
+#       - addon_a0d7b954_vscode
+#       - addon_a0d7b954_tautulli
+#       - addon_a0d7b954_ssh
+#       - addon_a0d7b954_influxdb
+#       - addon_a0d7b954_portainer
+#       - addon_core_mosquitto
+#       - hassio_multicast
+#       - hassio_dns
+#       - hassio_cli
+#       - hassio_audio
+#     rename:
+#       addon_core_mariadb: MariaDB database
+#       addon_core_deconz: Deconz Zigbee
+#       homeassistant: Home Assistant
+#       hassio_supervisor: Supervisor
+#       addon_a0d7b954_vscode: VScode
+#       addon_a0d7b954_tautulli: Tautulli
+#       addon_a0d7b954_ssh: SSH
+#       addon_a0d7b954_influxdb: InfluxDB
+#       addon_a0d7b954_portainer: Portainer
+#       addon_core_mosquitto: Mosquitto
+#     monitored_conditions:
+#       - version
+#       - containers_running
+#       - containers_total
+#       - containers_cpu_percentage
+#       - cpu_percentage
+#       - status
+#       - memory
 
 #################
 #    SENSORS    #
@@ -97,18 +93,18 @@ sensor:
         query: 'SELECT entity_id, COUNT(*) as count FROM states GROUP BY entity_id ORDER BY count DESC LIMIT 10;'
         column: 'entity_id'
 
-  - platform: influxdb
-    username: !secret influxdb_user
-    password: !secret influxdb_pass
-    queries:
-      - name: InfluxDB Size
-        unit_of_measurement: MB
-        value_template: '{{ (value | float / 1024 /1024) | round(1) }}'
-        group_function: sum
-        measurement: '"monitor"."shard"'
-        database: _internal
-        where: 'time > now() - 10s'
-        field: diskBytes
+  # - platform: influxdb
+  #   username: !secret influxdb_user
+  #   password: !secret influxdb_pass
+  #   queries:
+  #     - name: InfluxDB Size
+  #       unit_of_measurement: MB
+  #       value_template: '{{ (value | float / 1024 /1024) | round(1) }}'
+  #       group_function: sum
+  #       measurement: '"monitor"."shard"'
+  #       database: _internal
+  #       where: 'time > now() - 10s'
+  #       field: diskBytes
   # - platform: template
   #   sensors:
   #     hassio_uptime_human_readable:
@@ -216,37 +212,16 @@ automation:
     initial_state: on
     trigger:
       - platform: state
-        entity_id: sensor.latest_version
-      # - platform: numeric_state
-      #   entity_id: sensor.uptime
-      #   above: 1
-    condition:
-      # - condition: numeric_state
-      #   entity_id: sensor.uptime
-      #   above: 1
-      - condition: template
-        value_template: "{{ states('sensor.latest_version') != states('sensor.current_version') }}"
+        entity_id: update.home_assistant_core_update
     action:
       - service: persistent_notification.create
         data:
-          message: "Hass.io version **[{{ states('sensor.latest_version') }}](https://www.home-assistant.io/latest-release-notes/)** is now available!"
+          message: "Hass.io version **[{{ state_attr('sensor.latest_version', 'latest_version') }}](https://www.home-assistant.io/latest-release-notes/)** is now available!"
           title: Upgrade time!
           notification_id: update_available
       - service: hassio.addon_start
         data:
           addon: core_check_config
-
-  - alias: '[System] Breaking changes'
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.potential_breaking_changes
-        above: 0
-    action:
-      - service: persistent_notification.create
-        data:
-          message: "**{{states( 'sensor.potential_breaking_changes' )}}** potential breaking changes detected between version **[{{states( 'sensor.current_version' )}}](https://www.home-assistant.io/latest-release-notes/)** and version **{{states( 'sensor.latest_version' )}}**"
-          title: "Potential breaking changes"
-          notification_id: breaking_changes
 
   - alias: '[system|database] Update MariaDB database size sensor'
     mode: single
