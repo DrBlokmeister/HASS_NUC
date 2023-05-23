@@ -9,12 +9,14 @@ from .altbeacon import parse_altbeacon
 from .amazfit import parse_amazfit
 from .atc import parse_atc
 from .bluemaestro import parse_bluemaestro
+from .blustream import parse_blustream
 from .bparasite import parse_bparasite
 from .const import JAALEE_TYPES, TILT_TYPES
 from .govee import parse_govee
 from .helpers import to_mac, to_unformatted_mac
 from .bthome import parse_bthome
 from .hhcc import parse_hhcc
+from .hormann import parse_hormann
 from .ibeacon import parse_ibeacon
 from .inkbird import parse_inkbird
 from .inode import parse_inode
@@ -23,10 +25,10 @@ from .jinou import parse_jinou
 from .kegtron import parse_kegtron
 from .kkm import parse_kkm
 from .laica import parse_laica
-from .miband import parse_miband
 from .mikrotik import parse_mikrotik
 from .miscale import parse_miscale
 from .moat import parse_moat
+from .oras import parse_oras
 from .oral_b import parse_oral_b
 from .qingping import parse_qingping
 from .relsib import parse_relsib
@@ -244,8 +246,11 @@ class BleParser:
                             break
                     elif uuid16 == 0xFEE0:
                         # UUID16 = Anhui Huami Information Technology Co., Ltd. (Amazfit)
-                        sensor_data = parse_amazfit(self, service_data, mac, rssi)
-                        break
+                        if man_spec_data_list:
+                            man_spec_data = man_spec_data_list[0]
+                        else:
+                            man_spec_data = None
+                        sensor_data = parse_amazfit(self, service_data, man_spec_data, mac, rssi)
                     elif uuid16 == 0xFFF9:
                         # UUID16 = FIDO (used by Cleargrass)
                         sensor_data = parse_qingping(self, service_data, mac, rssi)
@@ -286,9 +291,17 @@ class BleParser:
                         # Oral-b
                         sensor_data = parse_oral_b(self, man_spec_data, mac, rssi)
                         break
+                    elif comp_id == 0x0131:
+                        # Oras
+                        sensor_data = parse_oras(self, man_spec_data, mac, rssi)
+                        break
                     elif comp_id == 0x0157 and data_len == 0x1B:
                         # Miband
-                        sensor_data = parse_miband(self, man_spec_data, mac, rssi)
+                        sensor_data = parse_amazfit(self, None, man_spec_data, mac, rssi)
+                        break
+                    elif comp_id == 0x0194 and data_len == 0x0C:
+                        # Blustream
+                        sensor_data = parse_blustream(self, man_spec_data, mac, rssi)
                         break
                     elif comp_id == 0x0499:
                         # Ruuvitag V3/V5
@@ -299,6 +312,12 @@ class BleParser:
                         if len(man_spec_data_list) == 2:
                             man_spec_data = b"".join(man_spec_data_list)
                         sensor_data = parse_teltonika(self, man_spec_data, local_name, mac, rssi)
+                        break
+                    elif comp_id == 0x07B4:
+                        # Hörmann
+                        if len(man_spec_data_list) == 2:
+                            man_spec_data = b"".join(man_spec_data_list)
+                        sensor_data = parse_hormann(self, man_spec_data, mac, rssi)
                         break
                     elif comp_id == 0x094F and data_len == 0x15:
                         # Mikrotik

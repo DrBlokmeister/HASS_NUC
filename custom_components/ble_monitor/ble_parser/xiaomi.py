@@ -37,6 +37,7 @@ XIAOMI_TYPE_DICT = {
     0x01AA: "LYWSDCGQ",
     0x045B: "LYWSD02",
     0x16e4: "LYWSD02MMC",
+    0x2542: "LYWSD02MMC",
     0x055B: "LYWSD03MMC",
     0x098B: "MCCGQ02HL",
     0x06d3: "MHO-C303",
@@ -45,6 +46,7 @@ XIAOMI_TYPE_DICT = {
     0x04E9: "MJZNMSQ01YD",
     0x2832: "MJWSD05MMC",
     0x00DB: "MMC-T201-1",
+    0x0391: "MMC-W505",
     0x03DD: "MUE4094RT",
     0x0489: "M1S-T500",
     0x0A8D: "RTCGQ02LM",
@@ -219,16 +221,16 @@ def obj0007(xobj):
 
 def obj0008(xobj, device_type):
     """armed away"""
-    returnData = {}
+    return_data = {}
     value = xobj[0] ^ 1
-    returnData.update({'armed away': value})
+    return_data.update({'armed away': value})
     if len(xobj) == 5:
         timestamp = int.from_bytes(xobj[1:], 'little')
         timestamp = datetime.fromtimestamp(timestamp).isoformat()
-        returnData.update({'timestamp': timestamp})
+        return_data.update({'timestamp': timestamp})
     # Lift up door handle outside the door sends this event from DSL-C08.
     if device_type == "DSL-C08":
-        return{
+        return {
             "lock": value,
             "locktype": 'lock',
             "action": 'lock outside the door',
@@ -237,7 +239,7 @@ def obj0008(xobj, device_type):
             "key id": None,
             "timestamp": None,
         }
-    return returnData
+    return return_data
 
 
 def obj0010(xobj):
@@ -252,6 +254,18 @@ def obj0010(xobj):
             return {'toothbrush': 0}
         else:
             return {'toothbrush': 0, 'score': xobj[1]}
+
+
+def obj000a(xobj):
+    """Body temperature"""
+    if len(xobj) == 2:
+        (temp,) = T_STRUCT.unpack(xobj)
+        if temp:
+            return {"temperature": temp / 100}
+        else:
+            return {}
+    else:
+        return {}
 
 
 def obj000b(xobj, device_type):
@@ -567,7 +581,7 @@ def obj1015(xobj):
 
 
 def obj1017(xobj):
-    """Motion"""
+    """No motion"""
     if len(xobj) == 4:
         (no_motion_time,) = M_STRUCT.unpack(xobj)
         # seconds since last motion detected message (not used, we use motion timer in obj000f)
@@ -601,6 +615,17 @@ def obj1019(xobj):
         opening = 0
         status = None
     return {"opening": opening, "status": status}
+
+
+def obj101b(xobj):
+    """Timeout no movement"""
+    if len(xobj) == 4:
+        (no_motion_time,) = M_STRUCT.unpack(xobj)
+        # seconds since last motion detected message (not used, we use motion timer in obj000f)
+        # 0 = motion detected
+        return {"motion": 1 if no_motion_time == 0 else 0, "no motion time": no_motion_time}
+    else:
+        return {}
 
 
 def obj100a(xobj):
@@ -683,7 +708,7 @@ def obj4810(xobj):
     elif sleep_state == 1:
         return {"sleeping": 1}
     elif sleep_state == 2:
-        return{"button switch": "double press"}
+        return {"button switch": "double press"}
     else:
         return None
 
@@ -936,7 +961,7 @@ def obj5010(xobj):
     elif sleep_state == 1:
         return {"sleeping": 1}
     elif sleep_state == 2:
-        return{"button": "double press"}
+        return {"button": "double press"}
     else:
         return None
 
@@ -965,7 +990,7 @@ def obj5a16(xobj):
     elif event == 2:
         return {"bed occupancy": 0}
     elif event == 3:
-        return{"button": "double press"}
+        return {"button": "double press"}
     else:
         return None
 
@@ -978,6 +1003,7 @@ xiaomi_dataobject_dict = {
     0x0007: obj0007,
     0x0008: obj0008,
     0x0010: obj0010,
+    0x000A: obj000a,
     0x000B: obj000b,
     0x000F: obj000f,
     0x1001: obj1001,
@@ -995,6 +1021,7 @@ xiaomi_dataobject_dict = {
     0x1017: obj1017,
     0x1018: obj1018,
     0x1019: obj1019,
+    0x101B: obj101b,
     0x100A: obj100a,
     0x100D: obj100d,
     0x100E: obj100e,

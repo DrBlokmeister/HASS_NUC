@@ -17,7 +17,7 @@ CONF_STREET_NUMBER = 'streetnumber'
 CONF_SUFFIX = 'suffix'
 CONF_ADDRESS_ID = 'addressid'
 CONF_DATE_FORMAT = 'dateformat'
-CONF_TODAY_TOMORROW = 'upcomingsensor'
+CONF_UPCOMING = 'upcomingsensor'
 CONF_DATE_ONLY = 'dateonly'
 CONF_DATE_OBJECT = 'dateobject'
 CONF_NAME = 'name'
@@ -44,7 +44,7 @@ PLATFORM_SCHEMA = vol.Schema(
         vol.Optional(CONF_ADDRESS_ID, default=""): cv.string,
         vol.Optional(CONF_WASTE_COLLECTOR, default="Cure"): cv.string,
         vol.Optional(CONF_DATE_FORMAT, default="%d-%m-%Y"): cv.string,
-        vol.Optional(CONF_TODAY_TOMORROW, default=False): cv.boolean,
+        vol.Optional(CONF_UPCOMING, default=False): cv.boolean,
         vol.Optional(CONF_DATE_ONLY, default=False): cv.boolean,
         vol.Optional(CONF_DATE_OBJECT, default=False): cv.boolean,
         vol.Optional(CONF_NAME, default=""): cv.string,
@@ -63,6 +63,8 @@ PLATFORM_SCHEMA = vol.Schema(
 )
 
 ATTR_WASTE_COLLECTOR = 'Wastecollector'
+ATTR_UPCOMING_DAY = 'Upcoming_day'
+ATTR_UPCOMING_WASTE_TYPES = 'Upcoming_waste_types'
 ATTR_HIDDEN = 'Hidden'
 ATTR_SORT_DATE = 'Sort_date'
 ATTR_DAYS_UNTIL = 'Days_until'
@@ -81,11 +83,11 @@ OPZET_COLLECTOR_URLS = {
     'hvc':                      'https://inzamelkalender.hvcgroep.nl',
     'lingewaard':               'https://afvalwijzer.lingewaard.nl',
     'middelburg-vlissingen':    'https://afvalwijzer.middelburgvlissingen.nl',
+    'mijnafvalzaken':           'https://mijnafvalzaken.nl',
     'montfoort':                'https://afvalkalender.cyclusnv.nl',
     'peelenmaas':               'https://afvalkalender.peelenmaas.nl',
     'prezero':                  'https://inzamelwijzer.prezero.nl',
     'purmerend':                'https://afvalkalender.purmerend.nl',
-    'rmn':                      'https://inzamelschema.rmn.nl',
     'schouwen-duiveland':       'https://afvalkalender.schouwen-duiveland.nl',
     'spaarnelanden':            'https://afvalwijzer.spaarnelanden.nl',
     'sudwestfryslan':           'https://afvalkalender.sudwestfryslan.nl',
@@ -102,7 +104,6 @@ XIMMIO_COLLECTOR_IDS = {
     'areareiniging':    'adc418da-d19b-11e5-ab30-625662870761',
     'avalex':           'f7a74ad1-fdbf-4a43-9f91-44644f4d4222',
     'avri':             '78cd4156-394b-413d-8936-d407e334559a',
-    'bar':              'bb58e633-de14-4b2a-9941-5bc419f1c4b0',
     'hellendoorn':      '24434f5b-7244-412b-9306-3a2bd1e22bc1',
     'meerlanden':       '800bf8d7-6dd1-4490-ba9d-b419d6dc8a45',
     'ximmio':           '800bf8d7-6dd1-4490-ba9d-b419d6dc8a45',
@@ -112,6 +113,11 @@ XIMMIO_COLLECTOR_IDS = {
     'waardlanden':      '942abcf6-3775-400d-ae5d-7380d728b23c',
     'westland':         '6fc75608-126a-4a50-9241-a002ce8c8a6c',
     'reinis':           '9dc25c8a-175a-4a41-b7a1-83f237a80b77',
+}
+
+BURGERPORTAAL_COLLECTOR_IDS = {
+    'rmn':              '138204213564933597',
+    'bar':              '138204213564933497',
 }
 
 DEPRECATED_AND_NEW_WASTECOLLECTORS = {
@@ -134,6 +140,7 @@ WASTE_TYPE_KCA = 'chemisch'
 WASTE_TYPE_KCA_LOCATION = 'chemisch-brengen'
 WASTE_TYPE_MILIEUB = 'milieuboer'
 WASTE_TYPE_PAPER_PMD = 'papier-pmd'
+WASTE_TYPE_PMD_GREY = 'pmd-restafval'
 WASTE_TYPE_PACKAGES = 'pmd'
 WASTE_TYPE_PAPER = 'papier'
 WASTE_TYPE_PLASTIC = 'plastic'
@@ -193,31 +200,31 @@ DUTCH_TRANSLATION_DAYS_SHORT = {
 }
 
 DUTCH_TRANSLATION_MONTHS = {
-    'January':      'Januari',
-    'February':     'Februari',
-    'March':        'Maart',
-    'April':        'April',
-    'May':          'Mei',
-    'June':         'Juni',
-    'July':         'Juli',
-    'August':       'Augustus',
-    'September':    'September',
-    'October':      'Oktober',
-    'November':     'November',
-    'December':     'December'
+    'January':      'januari',
+    'February':     'februari',
+    'March':        'maart',
+    'April':        'april',
+    'May':          'mei',
+    'June':         'juni',
+    'July':         'juli',
+    'August':       'augustus',
+    'September':    'september',
+    'October':      'oktober',
+    'November':     'november',
+    'December':     'december'
 }
 
 DUTCH_TRANSLATION_MONTHS_SHORT = {
-    'Jan':  'Jan',
-    'Feb':  'Feb',
-    'Mar':  'Mrt',
-    'Apr':  'Apr',
-    'May':  'Mei',
-    'Jun':  'Jun',
-    'Jul':  'Jul',
-    'Aug':  'Aug',
-    'Sept': 'Sep',
-    'Oct':  'Okt',
-    'Nov':  'Nov',
-    'Dec':  'Dec',
+    'Jan':  'jan',
+    'Feb':  'feb',
+    'Mar':  'mrt',
+    'Apr':  'apr',
+    'May':  'mei',
+    'Jun':  'jun',
+    'Jul':  'jul',
+    'Aug':  'aug',
+    'Sept': 'sep',
+    'Oct':  'okt',
+    'Nov':  'nov',
+    'Dec':  'dec',
 }

@@ -1,4 +1,4 @@
-import abc
+from abc import ABC, abstractmethod
 import logging
 from datetime import datetime
 from datetime import timedelta
@@ -41,6 +41,15 @@ class WasteCollectionRepository(object):
     def get_sorted(self):
         return sorted(self.collections, key=lambda x: x.date)
 
+    def get_upcoming(self):
+        today = datetime.now()
+        return list(filter(lambda x: x.date.date() >= today.date(), self.get_sorted()))
+    
+    def get_first_upcoming(self):
+        upcoming = self.get_upcoming()
+        first_item = upcoming[0] if upcoming else None
+        return list(filter(lambda x: x.date.date() == first_item.date.date(), upcoming))
+    
     def get_upcoming_by_type(self, waste_type):
         today = datetime.now()
         return list(filter(lambda x: x.date.date() >= today.date() and x.waste_type == waste_type, self.get_sorted()))
@@ -56,7 +65,6 @@ class WasteCollectionRepository(object):
             return list(filter(lambda x: x.date.date() == date.date(), self.get_sorted()))
     
     def get_available_waste_types(self):
-        today = datetime.now()
         possible_waste_types = []
         for collection in self.collections:
             if collection.waste_type not in possible_waste_types:
@@ -100,7 +108,7 @@ class WasteData(object):
     def __select_collector(self):
         if self.waste_collector in XIMMIO_COLLECTOR_IDS.keys():
             self.collector = XimmioCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix, self.address_id, self.customer_id)
-        elif self.waste_collector in ["mijnafvalwijzer", "afvalstoffendienstkalender"] or self.waste_collector == "rova":
+        elif self.waste_collector in ["mijnafvalwijzer", "afvalstoffendienstkalender", "rova"]:
             self.collector = AfvalwijzerCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector == "afvalalert":
             self.collector = AfvalAlertCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
@@ -116,6 +124,8 @@ class WasteData(object):
             self.collector = RecycleApp(self.hass, self.waste_collector, self.postcode, self.street_name, self.street_number, self.suffix)
         elif self.waste_collector == "rd4":
             self.collector = RD4Collector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
+        elif self.waste_collector in BURGERPORTAAL_COLLECTOR_IDS.keys():
+            self.collector = BurgerportaalCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector in OPZET_COLLECTOR_URLS.keys():
             self.collector = OpzetCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         else:
@@ -148,7 +158,7 @@ class WasteData(object):
         return self.collector.collections
 
 
-class WasteCollector(metaclass=abc.ABCMeta):
+class WasteCollector(ABC):
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
         self.hass = hass
@@ -158,7 +168,7 @@ class WasteCollector(metaclass=abc.ABCMeta):
         self.suffix = suffix
         self.collections = WasteCollectionRepository()
 
-    @abc.abstractmethod
+    @abstractmethod
     async def update(self):
         pass
 
@@ -187,7 +197,7 @@ class AfvalAlertCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(AfvalAlertCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = "https://www.afvalalert.nl/kalender"
 
     def __get_data(self):
@@ -250,7 +260,7 @@ class AfvalwijzerCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(AfvalwijzerCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.apikey = '5ef443e778f41c4f75c69459eea6e6ae0c2d92de729aa0fc61653815fbd6a8ca'
         if self.waste_collector == "rova":
             self.waste_collector_url = "inzamelkalender." + self.waste_collector
@@ -271,7 +281,14 @@ class AfvalwijzerCollector(WasteCollector):
             r = await self.hass.async_add_executor_job(self.__get_data)
             response = r.json()
 
-            data = (response['ophaaldagen']['data'] + response['ophaaldagenNext']['data'])
+            data = []
+            
+            if 'ophaaldagen' in response:
+                data = data + response['ophaaldagen']['data']
+            
+            if 'ophaaldagenNext' in response:
+                data = data + response['ophaaldagenNext']['data']
+            
             if not data:
                 _LOGGER.error('No Waste data found!')
                 return
@@ -286,6 +303,113 @@ class AfvalwijzerCollector(WasteCollector):
 
                 collection = WasteCollection.create(
                     date=datetime.strptime(item['date'], '%Y-%m-%d'),
+                    waste_type=waste_type
+                )
+                self.collections.add(collection)
+
+        except requests.exceptions.RequestException as exc:
+            _LOGGER.error('Error occurred while fetching data: %r', exc)
+            return False
+
+
+class BurgerportaalCollector(WasteCollector):
+    WASTE_TYPE_MAPPING = {
+        'gft': WASTE_TYPE_GREEN,
+        'opk': WASTE_TYPE_PAPER,
+        'pmdrest': WASTE_TYPE_PMD_GREY,
+        'rest': WASTE_TYPE_GREY,
+    }
+
+    def __init__(self, hass, waste_collector, postcode, street_number, suffix):
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
+        self.company_code = BURGERPORTAAL_COLLECTOR_IDS[self.waste_collector]
+        self.apikey = 'AIzaSyA6NkRqJypTfP-cjWzrZNFJzPUbBaGjOdk'
+        self.refresh_token = ''
+        self.id_token = ''
+        self.address_id = ''
+
+    def __fetch_refresh_token(self):
+        response = requests.post("https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key={}".format(self.apikey)).json()
+        if not response:
+            _LOGGER.error('Unable to fetch refresh token!')
+            return
+        self.refresh_token = response['refreshToken']
+        self.id_token = response['idToken']
+        
+    def __fetch_id_token(self):
+        headers = { 
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        
+        data = {
+            'grant_type' : 'refresh_token',
+            'refresh_token' : self.refresh_token
+        }
+        
+        response = requests.post("https://securetoken.googleapis.com/v1/token?key={}".format(self.apikey), headers=headers, data=data).json()
+        if not response:
+            _LOGGER.error('Unable to fetch refresh token!')
+            return
+        self.id_token = response['id_token']
+        
+    def __fetch_address_id(self):
+        headers = { 
+            'authorization': self.id_token
+        }
+        
+        response = requests.get("https://europe-west3-burgerportaal-production.cloudfunctions.net/exposed/organisations/{}/address?zipcode={}&housenumber={}".format(
+            self.company_code, self.postcode, self.street_number), headers=headers).json()
+        if not response:
+            _LOGGER.error('Unable to fetch refresh token!')
+            return
+        
+        if self.suffix:
+            for address in response:
+                if 'addition' in address and address['addition'] == self.suffix.upper():
+                    self.address_id = address['addressId']
+        
+        if not self.address_id:
+            self.address_id = response[0]['addressId']
+
+    def __get_data(self):
+        headers = { 
+            'authorization': self.id_token
+        }
+        
+        response = requests.get("https://europe-west3-burgerportaal-production.cloudfunctions.net/exposed/organisations/{}/address/{}/calendar".format(
+            self.company_code, self.address_id), headers=headers).json()
+        return response
+
+    async def update(self):
+        _LOGGER.debug('Updating Waste collection dates using Rest API')
+
+        self.collections.remove_all()
+
+        try:
+            if not self.refresh_token:
+                await self.hass.async_add_executor_job(self.__fetch_refresh_token)
+            else:
+                await self.hass.async_add_executor_job(self.__fetch_id_token)
+                
+            if not self.address_id:
+                await self.hass.async_add_executor_job(self.__fetch_address_id)
+                
+            response = await self.hass.async_add_executor_job(self.__get_data)
+            
+            if not response:
+                _LOGGER.error('No Waste data found!')
+                return
+
+            for item in response:
+                if not item['collectionDate']:
+                    continue
+
+                waste_type = self.map_waste_type(item['fraction'].lower())
+                if not waste_type:
+                    continue
+
+                collection = WasteCollection.create(
+                    date=datetime.strptime(item['collectionDate'].split("T")[0], '%Y-%m-%d'),
                     waste_type=waste_type
                 )
                 self.collections.add(collection)
@@ -313,7 +437,7 @@ class CirculusCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(CirculusCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = "https://mijn.circulus.nl"
 
     def __get_data(self):
@@ -377,7 +501,7 @@ class CirculusCollector(WasteCollector):
             r = await self.hass.async_add_executor_job(self.__get_data)
             response = r.json()
 
-            if not 'customData' in response or not response['customData']['response']['garbage']:
+            if not response or 'customData' not in response or not response['customData']['response']['garbage']:
                 _LOGGER.error('No Waste data found!')
                 return
 
@@ -408,7 +532,7 @@ class DeAfvalAppCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(DeAfvalAppCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = "http://dataservice.deafvalapp.nl"
 
     def __get_data(self):
@@ -469,7 +593,7 @@ class LimburgNetCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, city_name, postcode, street_name, street_number, suffix):
-        super(LimburgNetCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.city_name = city_name
         self.street_name = street_name.replace(" ", "+")
         self.main_url = "https://limburg.net/api-proxy/public"
@@ -567,7 +691,7 @@ class OmrinCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(OmrinCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = "https://api-omrin.freed.nl/Account"
         self.appId = uuid.uuid1().__str__()
         self.publicKey = None
@@ -595,6 +719,11 @@ class OmrinCollector(WasteCollector):
 
             response = await self.hass.async_add_executor_job(self.__get_data)
             self.collections.remove_all()
+            
+            if not response:
+                _LOGGER.error('No Waste data found!')
+                return
+            
             for item in response:
                 if not item['Datum']:
                     continue
@@ -640,7 +769,7 @@ class OpzetCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(OpzetCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = OPZET_COLLECTOR_URLS[self.waste_collector]
         self.bag_id = None
         if waste_collector == "suez":
@@ -725,7 +854,7 @@ class RD4Collector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix):
-        super(RD4Collector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.main_url = 'https://data.rd4.nl/api/v1/waste-calendar'
         self.postcode_split = re.search(r"(\d\d\d\d) ?([A-z][A-z])", self.postcode)
         self.postcode = self.postcode_split.group(1) + '+' + self.postcode_split.group(2).upper()
@@ -802,7 +931,7 @@ class RecycleApp(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_name, street_number, suffix):
-        super(RecycleApp, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.street_name = street_name
         self.main_url = 'https://api.recycleapp.be/api/app/v1/'
         self.xsecret = '8eTFgy3AQH0mzAcj3xMwaKnNyNnijEFIEegjgNpBHifqtQ4IEyWqmJGFz3ggKQ7B4vwUYS8xz8KwACZihCmboGb6brtVB3rpne2Ww5uUM2n3i4SKNUg6Vp7lhAS8INDUNH8Ll7WPhWRsQOXBCjVz5H8fr0q6fqZCosXdndbNeiNy73FqJBn794qKuUAPTFj8CuAbwI6Wom98g72Px1MPRYHwyrlHUbCijmDmA2zoWikn34LNTUZPd7kS0uuFkibkLxCc1PeOVYVHeh1xVxxwGBsMINWJEUiIBqZt9VybcHpUJTYzureqfund1aeJvmsUjwyOMhLSxj9MLQ07iTbvzQa6vbJdC0hTsqTlndccBRm9lkxzNpzJBPw8VpYSyS3AhaR2U1n4COZaJyFfUQ3LUBzdj5gV8QGVGCHMlvGJM0ThnRKENSWZLVZoHHeCBOkfgzp0xl0qnDtR8eJF0vLkFiKwjX7DImGoA8IjqOYygV3W9i9rIOfK'
@@ -863,8 +992,7 @@ class RecycleApp(WasteCollector):
         _LOGGER.debug('Updating Waste collection dates using Rest API')
 
         try:
-            if (not self.accessToken):
-                await self.hass.async_add_executor_job(self.__get_access_token)
+            await self.hass.async_add_executor_job(self.__get_access_token)
 
             if (not self.postcode_id or not self.street_id) and self.accessToken:
                 await self.hass.async_add_executor_job(self.__get_location_ids)
@@ -932,7 +1060,7 @@ class XimmioCollector(WasteCollector):
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix, address_id, customer_id):
-        super(XimmioCollector, self).__init__(hass, waste_collector, postcode, street_number, suffix)
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
         if self.waste_collector in self.XIMMIO_URLS.keys():
             self.main_url = self.XIMMIO_URLS[self.waste_collector]
         else:
@@ -997,7 +1125,7 @@ class XimmioCollector(WasteCollector):
             r = await self.hass.async_add_executor_job(self.__get_data)
             response = r.json()
 
-            if not response['dataList']:
+            if not response or not response['dataList']:
                 _LOGGER.error('No Waste data found!')
                 return
 
@@ -1018,7 +1146,7 @@ class XimmioCollector(WasteCollector):
             return False
 
 
-def Get_WasteData_From_Config(hass, config):
+def get_wastedata_from_config(hass, config):
     _LOGGER.debug("Get Rest API retriever")
     city_name = config.get(CONF_CITY_NAME)
     postcode = config.get(CONF_POSTCODE)
@@ -1027,12 +1155,9 @@ def Get_WasteData_From_Config(hass, config):
     suffix = config.get(CONF_SUFFIX)
     address_id = config.get(CONF_ADDRESS_ID)
     waste_collector = config.get(CONF_WASTE_COLLECTOR).lower()
-
     print_waste_type = config.get(CONF_PRINT_AVAILABLE_WASTE_TYPES)
-
     update_interval = config.get(CONF_UPDATE_INTERVAL)
     customer_id = config.get(CONF_CUSTOMER_ID)
-
     config["id"] = _format_id(waste_collector, postcode, street_number)
 
     if waste_collector in DEPRECATED_AND_NEW_WASTECOLLECTORS:
