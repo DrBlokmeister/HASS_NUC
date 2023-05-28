@@ -47,9 +47,9 @@ media_player:
 #    SENSORS    #
 #################
 sensor:
-  - platform: tautulli
-    api_key: !secret tautulli_api_key
-    host: 10.0.0.252
+  # - platform: tautulli
+  #   api_key: !secret tautulli_api_key
+  #   host: 10.0.0.252
 
   # - platform: command_line
   #   name: 'CoreELEC CPU temp'
@@ -379,6 +379,19 @@ automation:
           params:
             command: standby
 
+  - alias: "[mediacenter|amplifier] Toggle amplifier through switch press"
+    id: toggle_amplifier_through_switch_press
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: "vacuum_smart_switch"
+          event: 1002
+    action:
+      - service: switch.toggle
+        data:
+          entity_id: switch.amplifier_power
 ################
 #    SCENES    #
 ################
@@ -530,10 +543,6 @@ script:
           entity_id:
             - light.ambilight_left
             - light.ambilight_right
-            #- light.falconlights
-            #- light.ssdlights
-            #- light.ssdlights_inner
-            # - light.livingroom_a_rgb_ledstrip
       - service: light.turn_on
         data:
           entity_id:
@@ -552,10 +561,18 @@ script:
             - light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
-            #- light.hyperion_falconlights
-            #- light.hyperion_super_star_destroyer_inner
-            #- light.hyperion_super_star_destroyer_outer
-            #- light.hyperion_livingroom_ledstrip
+      - delay:
+          seconds: 0.5
+      - service: light.turn_on
+        data:
+          brightness: 255
+          effect: Platform Capture #used to be GRABBER
+          entity_id:
+            - light.hyperion_apa102
+            - light.hyperion_atmoorb_left
+            - light.hyperion_atmoorb_right
+
+
       # - service: switch.turn_on
       #   entity_id:
       #     - switch.apa102_component_led_device
