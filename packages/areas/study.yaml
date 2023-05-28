@@ -108,7 +108,7 @@ automation:
       - condition: template
         #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
         value_template: >-
-          {% if is_state('light.study', 'on') %}
+          {% if is_state('light.study_lights', 'on') %}
             {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lighton')|int }}
           {% else %}
             {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}
@@ -117,14 +117,8 @@ automation:
       - service: light.turn_on
         data:
           entity_id:
-            - light.study
+            - light.study_lights
           brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-      - service: light.turn_on
-        data:
-          entity_id:
-            - light.study_desk_a_rgb_ledstrip
-          brightness_pct: 100
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - wait_for_trigger:
           - platform: template
@@ -137,16 +131,6 @@ automation:
                 {% else %}
                   {{ states('input_number.study_light_timeout')|int }}
                 {% endif %}
-          # - platform: state
-          #   entity_id: group.study_motion_sensors
-          #   to: 'off'
-          #   for:
-          #     minutes: >-
-          #       {% if is_state('device_tracker.blokmeisterh2o', 'home') or is_state('device_tracker.worklaptop', 'home')%}
-          #         30
-          #       {% else %}
-          #         {{ states('input_number.study_light_timeout')|int }}
-          #       {% endif %}
           - platform: template
             value_template: "{{ is_state('device_tracker.blokmeisterh2o', 'not_home') and is_state('device_tracker.worklaptop', 'not_home') }}"
             for:
@@ -158,14 +142,14 @@ automation:
       - service: light.turn_on
         data:
           entity_id:
-            - light.study
+            - light.study_lights
           brightness_step: -110
           transition: 0.5
       - delay:
           seconds: 15
       - service: light.turn_off
         entity_id:
-          - light.study
+          - light.study_lights
 
   #Turn off study lights if no motion has been detected for 1 hour
   # - alias: study_nomotion_pc_turn_off
@@ -236,7 +220,7 @@ automation:
             sequence:
               - service: light.toggle
                 data:
-                  entity_id: light.study
+                  entity_id: light.study_lights
                   brightness: 255
                   kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
               # - service: switch.flux_study_update
@@ -440,11 +424,8 @@ group:
 #    LIGHTS    #
 ################
 light:
-  # - platform: group
-  #   name: Study Lights
-  #   entities:
-  #     - light.study_1
-  #     - light.study_2
-  #     - light.study_3
-  #     - light.study_candle
-  #     - light.study_desk_a_rgb_ledstrip
+  - platform: group
+    name: Study Lights
+    entities:
+      - light.study
+      - light.study_desk_a_rgb_ledstrip
