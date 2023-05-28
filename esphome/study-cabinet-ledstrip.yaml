@@ -1,0 +1,69 @@
+substitutions:
+  device_name: "Study Cabinet Ledstrip"
+
+esphome:
+  name: "study-cabinet-ledstrip"
+
+esp32:
+  board: nodemcu-32s
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Hotspot
+    password: !secret esphome_fallback_pass
+
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${device_name} IP
+
+e131:
+  method: unicast
+
+status_led:
+  pin: GPIO2
+
+sensor:
+  # Uptime sensor
+  - platform: uptime
+    name: ${device_name} Uptime
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 1
+
+light:
+  - platform: neopixelbus
+    type: GRBW
+    variant: SK6812
+    pin: GPIO27
+    num_leds: 154
+    gamma_correct: 2.0
+    name: "Study Cabinet A-RGB LEDstrip"
+    effects:
+      - e131:
+          universe: 1
+          channels: RGB
+      - addressable_rainbow:
+          name: Rainbow Swirl
+          speed: 10
+          width: 154

@@ -1,0 +1,76 @@
+substitutions:
+  device_name: "Study Desk Ledstrip"
+
+esphome:
+  name: study-desk-ledstrip
+
+esp32:
+  board: nodemcu-32s
+
+# esphome:
+#   name: study_desk_ledstrip_controller
+#   platform: ESP32
+#   board: nodemcu-32s
+#   platformio_options:
+#     lib_deps: NeoPixelBus@2.6.1
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Hotspot
+    password: !secret esphome_fallback_pass
+
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${device_name} IP
+
+e131:
+  method: unicast
+
+status_led:
+  pin: GPIO2
+
+sensor:
+  # Uptime sensor
+  - platform: uptime
+    name: ${device_name} Uptime
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 1
+
+light:
+  - platform: neopixelbus
+    type: GRBW
+    variant: SK6812
+    pin: GPIO26
+    num_leds: 122 #48 + 4
+    gamma_correct: 2.0
+    name: "Study Desk A-RGB LEDstrip"
+    effects:
+      - e131:
+          universe: 1
+          channels: RGB
+      - addressable_rainbow:
+          name: Rainbow Swirl
+          speed: 10
+          width: 122
