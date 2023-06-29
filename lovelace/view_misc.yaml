@@ -91,36 +91,79 @@ cards:
   #         - entity: input_number.bedscale4_sensitivity
   #           type: custom:slider-entity-row
   #   type: vertical-stack
-  # - type: custom:mini-graph-card
-  #   entities:
-  #     - entity: sensor.mh_z19_co2_value_2
-  #       name: Bedroom CO2
-  #       color: '#33ff61'
-  #       show_fill: false
-  #     - entity: sensor.co2
-  #       name: Study CO2
-  #       color: '#ff9c33'
-  #       show_fill: false
-  #   hours_to_show: 24
-  #   points_per_hour: 30
-  #   hour24: true
-  #   font_size: 70
-  #   height: 250
-  #   line_width: 4
-  #   lower_bound: 350
-  #   show:
-  #     labels_secondary: false
-  - type: custom:mini-graph-card
+  - type: glance
+    name: CO2 Concentrations
     entities:
-      - entity: sensor.pm_1_concentration
+      - entity: sensor.mh_z19_co2_value
+        name: Bedroom
+      - entity: sensor.study_co2
+        name: Study
+      - entity: sensor.livingroom_co2
+        name: Living Room
+  - type: horizontal-stack
+    name: CO2 Calibration
+    cards:
+      - type: button
+        entity: button.calibrate_mh_z19_2
+        name: Bedroom
+        tap_action:
+          action: call-service
+          service: button.press
+          data:
+            entity_id: button.calibrate_mh_z19_2
+      - type: button
+        entity: button.study_calibrate_mh_z19
+        name: Study
+        tap_action:
+          action: call-service
+          service: button.press
+          data:
+            entity_id: button.study_calibrate_mh_z19
+      - type: button
+        entity: button.livingroom_calibrate_mh_z19
+        name: Living Room
+        tap_action:
+          action: call-service
+          service: button.press
+          data:
+            entity_id: button.calibrate_mh_z19
+  - type: custom:mini-graph-card
+    name: CO2 Concentrations
+    entities:
+      - entity: sensor.mh_z19_co2_value
+        name: Bedroom CO2
+        color: '#33ff61'
+        show_fill: false
+      - entity: sensor.study_co2
+        name: Study CO2
+        color: '#ff9c33'
+        show_fill: false
+      - entity: sensor.livingroom_co2
+        name: Livingroom CO2
+        color: '#337aff'
+        show_fill: false
+    hours_to_show: 24
+    points_per_hour: 30
+    hour24: true
+    font_size: 70
+    height: 250
+    line_width: 4
+    lower_bound: 350
+    min_bound_range: 600
+    show:
+      labels_secondary: false
+  - type: custom:mini-graph-card
+    name: Study Air Quality
+    entities:
+      - entity: sensor.study_pm_1_concentration
         name: PM 1
         color: '#33ff61'
         show_fill: false
-      - entity: sensor.pm_2_5_concentration
+      - entity: sensor.study_pm_2_5_concentration
         name: PM 2.5
         color: '#ff9c33'
         show_fill: false
-      - entity: sensor.pm_10_concentration
+      - entity: sensor.study_pm_10_concentration
         name: PM 10
         color: '#337aff'
         show_fill: false
@@ -130,7 +173,83 @@ cards:
     font_size: 70
     height: 250
     line_width: 3
-    # lower_bound: 350
+    lower_bound: 0
+    min_bound_range: 100
+    show:
+      labels_secondary: false
+  - type: custom:mini-graph-card
+    name: Livingroom Air Quality
+    entities:
+      - entity: sensor.livingroom_pm_1_concentration
+        name: PM 1
+        color: '#33ff61'
+        show_fill: false
+      - entity: sensor.livingroom_pm_2_5_concentration
+        name: PM 2.5
+        color: '#ff9c33'
+        show_fill: false
+      - entity: sensor.livingroom_pm_10_concentration
+        name: PM 10
+        color: '#337aff'
+        show_fill: false
+    hours_to_show: 24
+    points_per_hour: 30
+    hour24: true
+    font_size: 70
+    height: 250
+    line_width: 3
+    lower_bound: 0
+    min_bound_range: 100
+    show:
+      labels_secondary: false
+  - type: custom:mini-graph-card
+    name: Shed Air Quality
+    entities:
+      - entity: sensor.shed_pm_1_concentration
+        name: PM 1
+        color: '#33ff61'
+        show_fill: false
+      - entity: sensor.shed_pm_2_5_concentration
+        name: PM 2.5
+        color: '#ff9c33'
+        show_fill: false
+      - entity: sensor.shed_pm_10_concentration
+        name: PM 10
+        color: '#337aff'
+        show_fill: false
+    hours_to_show: 24
+    points_per_hour: 30
+    hour24: true
+    font_size: 70
+    height: 250
+    line_width: 3
+    lower_bound: 0
+    min_bound_range: 100
+    show:
+      labels_secondary: false
+  - type: custom:mini-graph-card
+    name: PM 2.5 Concentration
+    entities:
+      - entity: sensor.study_pm_2_5_concentration
+        name: Study
+        color: '#33ff61'
+        show_fill: false
+      - entity: sensor.livingroom_pm_2_5_concentration
+        name: Living Room
+        color: '#ff9c33'
+        show_fill: false
+      - entity: sensor.shed_pm_2_5_concentration
+        name: Shed
+        color: '#337aff'
+        show_fill: false
+    hours_to_show: 24
+    points_per_hour: 30
+    hour24: true
+    font_size: 70
+    height: 250
+    line_width: 3
+    lower_bound: 0
+    min_bound_range: 100
     show:
       labels_secondary: false
   # - type: vertical-stack
@@ -158,15 +277,15 @@ cards:
   #         - entity: group.battery_view
   #       title: Battery Alert View
   #       show_header_toggle: false
-  - type: logbook
-    name: Motion lights
-    entities:
-      - automation.bathroom_light_turn_on_light_through_motion
-      - automation.bedroom_light_gradual_light_automation
-      - automation.entry_light_turn_on_light_through_motion
-      - automation.livingroom_light_flux_light_through_motion
-      - automation.study_lights_turn_on_lights_when_motion_is_detected
-      - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+  # - type: logbook
+  #   name: Motion lights
+  #   entities:
+  #     - automation.bathroom_light_turn_on_light_through_motion
+  #     - automation.bedroom_light_gradual_light_automation
+  #     - automation.entry_light_turn_on_light_through_motion
+  #     - automation.livingroom_light_flux_light_through_motion
+  #     - automation.study_lights_turn_on_lights_when_motion_is_detected
+  #     - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
   - type: logbook
     name: Lights
     entities:
