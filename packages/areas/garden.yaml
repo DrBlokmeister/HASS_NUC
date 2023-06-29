@@ -1,0 +1,128 @@
+homeassistant:
+  customize:
+
+
+input_number:
+  requested_irrigation_amount:
+    name: Requested Irrigation Amount
+    min: 0
+    max: 150
+    step: 5
+    unit_of_measurement: l
+  irrigation_amount_start_helper:
+    name: Irrigation Amount Start
+    min: 0
+    max: 100000000
+    step: 1
+    unit_of_measurement: l
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: template
+    sensors:
+      total_irrigation_amount:
+        unit_of_measurement: 'l'
+        value_template: "{{ states('sensor.water_meter_main_water_consumption')|int - states('input_number.irrigation_amount_start_helper')|int }}"
+        availability_template: "{{ states('sensor.water_meter_main_water_consumption')|is_number and states('input_number.irrigation_amount_start_helper')|is_number }}"
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  # - alias: '[garden|irrigation]Irrigate garden'
+  #   id: garden_irrigation_irrigate_garden
+  #   mode: single
+  #   trigger:
+  #     - platform: numeric_state
+  #       entity_id: vacuum.alfred
+  #       attribute: battery_level
+  #       above: 99
+  #     - platform: state
+  #       entity_id: binary_sensor.house_occupied
+  #       to: 'on'
+  #     - platform: time
+  #       at: "9:00:00"
+  #   condition:
+  #     - condition: numeric_state
+  #       entity_id: sensor.alfred_area_cleaned_since_last_empty_bin
+  #       above: 100
+  #     - condition: state
+  #       entity_id: binary_sensor.house_occupied
+  #       state: 'on'
+  #     - condition: numeric_state
+  #       entity_id: vacuum.alfred
+  #       attribute: battery_level
+  #       above: 99
+  #     - condition: time
+  #       after: "9:00:00"
+  #       before: "21:00:00"
+  #   action:
+  #     - service: script.alfred_goto_hallway
+  #     - wait_for_trigger:
+  #         - platform: state
+  #           entity_id: vacuum.alfred
+  #           to: 'returning'
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.alfred_area_cleaned_at_last_empty_bin
+  #         value: "{{ states('sensor.alfred_total_clean_area') }}"
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  garden_irrigation_irrigate_garden:
+    alias: '[garden|irrigation]Irrigate garden'
+    #id: garden_irrigation_irrigate_garden
+    sequence:
+      - service: input_number.set_value
+        data:
+          value: "{{ states('sensor.water_meter_main_water_consumption')|int }}"
+          entity_id: input_number.irrigation_amount_start_helper
+      - service: switch.turn_on
+        data:
+          entity_id: switch.irrigation
+      - wait_for_trigger:
+          - platform: template
+            value_template: "{{ states('sensor.total_irrigation_amount')|int > states('input_number.requested_irrigation_amount')|int }}"
+          - platform: state
+            entity_id:
+              - sensor.water_meter_main_water_consumption
+              - input_number.irrigation_amount_start_helper
+              - input_number.requested_irrigation_amount
+              - sensor.water_meter_current_water_consumption
+            to:
+              - "unavailable"
+              - "error"
+              - "unknown"
+        timeout:
+          minutes: 30
+        continue_on_timeout: true
+      - service: switch.turn_off
+        data:
+          entity_id: switch.irrigation
