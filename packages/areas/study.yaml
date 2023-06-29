@@ -201,13 +201,6 @@ automation:
         event_data:
           device_name: "Shelly Study"
     condition:
-      # - condition: state
-      #   entity_id: switch.shelly_study
-      #   state:
-      #     - 'on'
-      #     - 'off'
-      #   for:
-      #     seconds: 5
     action:
       - choose:
           - conditions:
@@ -223,15 +216,6 @@ automation:
                   entity_id: light.study_lights
                   brightness: 255
                   kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-              # - service: switch.flux_study_update
-              # - service: automation.turn_off
-              #   entity_id:
-              #     - automation.study_lights_turn_on_lights_when_motion_is_detected
-              # - delay:
-              #     seconds: 30
-              # - service: automation.turn_on
-              #   entity_id:
-              #     - automation.study_lights_turn_on_lights_when_motion_is_detected
           - conditions:
               - condition: or
                 conditions:
@@ -323,33 +307,6 @@ automation:
   #     - service: light.turn_off
   #       entity_id: light.study_candle
 
-  # - alias: '[study|lights] Start timer when presence is detected'
-  #   mode: restart
-  #   trigger:
-  #     - platform: state
-  #       entity_id: group.study_motion_sensors
-  #       to: 'on'
-  #     - platform: state
-  #       entity_id: sensor.vibration_sensor_attributes
-  #     - platform: state
-  #       entity_id: binary_sensor.vibration_sensor
-  #       to: 'on'
-  #   action:
-  #     - service: timer.start
-  #       data:
-  #         entity_id: timer.study_lights_timeout
-  #         duration: 120
-  #     - wait_for_trigger:
-  #         - platform: state
-  #           entity_id: binary_sensor.study_motion_combined
-  #           to: 'on'
-  #         - platform: state
-  #           entity_id: sensor.vibration_sensor_attributes
-  #         - platform: state
-  #           entity_id: binary_sensor.vibration_sensor
-  #           to: 'on'
-  #       timeout:
-  #         seconds: 120
 
   - alias: '[study|light] Update illumination limit'
     mode: single
@@ -382,6 +339,31 @@ automation:
             sequence:
               - service: input_number.decrement
                 entity_id: input_number.study_illumination_limit_lightoff
+
+  - alias: "[study|light] Powercycle study3 when unavailable"
+    id: study_light_powercycle_study3_when_unavailable
+    trigger:
+      - platform: state
+        entity_id: light.study_3
+        to: "unavailable"
+        for:
+          minutes: 5
+    condition:
+      - condition: state
+        entity_id: switch.shelly_study
+        state: "on"
+    action:
+      - service: switch.turn_off
+        entity_id: switch.shelly_study
+      - delay:
+          seconds: 2
+      - service: switch.turn_on
+        entity_id: switch.shelly_study
+      - delay:
+          seconds: 10
+      - service: light.turn_off
+        entity_id: light.study_lights
+
 ################
 #    SCENES    #
 ################
