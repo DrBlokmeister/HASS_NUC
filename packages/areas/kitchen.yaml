@@ -120,10 +120,20 @@ automation:
 
   - alias: '[kitchen|notify] fridge overtemp warning'
     id: kitchen_notify_fridge_overtemp_warning
+    mode: restart
     trigger:
       - platform: numeric_state
         entity_id: sensor.temperature_fridge
-        above: 15
+        #above: 15
+    condition:
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: sensor.temperature_fridge
+            above: 15
+          - condition: numeric_state
+            entity_id: sensor.fridge_temperature_change_per_minute
+            above: 0.2
     action:
       - service: notify.mobile_app_blokmeisters21u
         data_template:
@@ -137,7 +147,10 @@ automation:
       - wait_for_trigger:
           - platform: numeric_state
             entity_id: sensor.temperature_fridge
-            below: 15
+            below: 13
+          - platform: numeric_state
+            entity_id: sensor.fridge_temperature_change_per_minute
+            below: 0
       - service: notify.mobile_app_blokmeisters21u
         data:
           message: "clear_notification"
