@@ -71,6 +71,22 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: '[bathroom|lights]Toggle lights through switch press'
+    id: bathroom_lights_toggle_lights_through_switch_press
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: "Shelly Bathroom"
+    condition:
+    action:
+      - service: light.toggle
+        data:
+          entity_id: light.bathroom
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
   # - alias: '[bathroom|light] turn on light through motion'
   #   mode: restart
   #   trigger:

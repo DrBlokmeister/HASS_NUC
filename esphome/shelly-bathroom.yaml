@@ -1,0 +1,299 @@
+substitutions:
+  shelly_id: "Bathroom"
+  device_name: "Shelly ${shelly_id}"
+  channel_1: Light 1
+  channel_2: Light 2
+  max_power: "2000.0" # watt
+  max_temp: "80.0" # °C
+
+esphome:
+  name: shelly-bathroom
+  platform: ESP8266
+  board: esp01_1m
+  on_boot:
+    priority: 100
+    then:
+      - binary_sensor.template.publish:
+          id: switch_clicker_1
+          state: OFF
+      - binary_sensor.template.publish:
+          id: switch_clicker_2
+          state: OFF
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Hotspot
+    password: !secret esphome_fallback_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+# Enable OTA updates
+ota:
+
+# Enable Web server (optional).
+web_server:
+  port: 80
+
+# Text sensors with general information.
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${device_name} IP
+
+i2c:
+  sda: GPIO12
+  scl: GPIO14
+
+# Sensors with general information.
+sensor:
+  # Uptime sensor.
+  - platform: uptime
+    name: ${device_name} Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
+
+  # Home assistant adaptive lighting
+  - platform: homeassistant
+    id: colortemperature
+    entity_id: switch.adaptive_lighting_adaptive_lighting
+    attribute: color_temp_kelvin
+  - platform: homeassistant
+    id: brightness
+    entity_id: switch.adaptive_lighting_adaptive_lighting
+    attribute: brightness_pct
+
+  - platform: ade7953
+    voltage:
+      name: ${device_name} voltage
+    current_a:
+      name: ${channel_2} current
+      internal: true
+    current_b:
+      name: ${channel_1} current
+      internal: true
+    active_power_a:
+      name: ${channel_2} power
+      id: power_channel_2
+      filters:
+        - multiply: 1
+      on_value_range:
+        - above: ${max_power}
+          then:
+            - switch.turn_off: shelly_relay_2
+            - homeassistant.service:
+                service: persistent_notification.create
+                data:
+                  title: Message from ${device_name}
+                data_template:
+                  message: Switch turned off because power exceeded ${max_power}W
+    active_power_b:
+      name: ${channel_1} power
+      id: power_channel_1
+      filters:
+        - multiply: -1
+      on_value_range:
+        - above: ${max_power}
+          then:
+            - switch.turn_off: shelly_relay_1
+            - homeassistant.service:
+                service: persistent_notification.create
+                data:
+                  title: Message from ${device_name}
+                data_template:
+                  message: Switch turned off because power exceeded ${max_power}W
+    update_interval: 30s
+
+  # NTC Temperature
+  - platform: ntc
+    sensor: temp_resistance_reading
+    name: ${device_name} temperature
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer"
+    calibration:
+      b_constant: 3350
+      reference_resistance: 10kOhm
+      reference_temperature: 298.15K
+    on_value_range:
+      - above: ${max_temp}
+        then:
+          - switch.turn_off: shelly_relay_1
+          - switch.turn_off: shelly_relay_2
+          - homeassistant.service:
+              service: persistent_notification.create
+              data:
+                title: Message from ${device_name}
+              data_template:
+                message: Switch turned off because temperature exceeded ${max_temp}°C
+  - platform: resistance
+    id: temp_resistance_reading
+    sensor: temp_analog_reading
+    configuration: DOWNSTREAM
+    resistor: 32kOhm
+  - platform: adc
+    id: temp_analog_reading
+    pin: A0
+
+status_led:
+  pin:
+    number: GPIO0
+    inverted: yes
+
+switch:
+  - platform: gpio
+    name: ${device_name} Relay 1
+    pin: GPIO4
+    id: shelly_relay_1
+    # after reboot, keep the relay off. this prevents light turning on after a power outage
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: gpio
+    name: ${device_name} Relay 2
+    pin: GPIO15
+    id: shelly_relay_2
+
+
+binary_sensor:
+  - platform: gpio
+    name: ${device_name} Input 1
+    pin:
+      number: GPIO13
+    # small delay to prevent debouncing
+    filters:
+      - delayed_on_off: 50ms
+    # config for state change of input button
+    on_state:
+        then:
+          - binary_sensor.template.publish:
+              id: switch_clicker_1
+              state: ON
+          - delay: 100ms
+          - binary_sensor.template.publish:
+              id: switch_clicker_1
+              state: OFF
+    id: button_1
+  - platform: template
+    name: ${device_name} Momentary Switch 1
+    id: switch_clicker_1
+    on_multi_click:
+      # double click
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 1s
+          - ON for at most 1s
+          - OFF for at least 0.2s
+        then:
+          - if:
+              condition:
+                and:
+                  - wifi.connected:
+                  - api.connected:
+                  - switch.is_on: shelly_relay_1
+              then:
+                - homeassistant.event:
+                    event: esphome.button_pressed
+                    data:
+                      title: ${device_name} double click
+                      device_name: ${device_name}
+                      channel: ${channel_1}
+                      click_type: double
+      - timing:
+          - ON for at most 1s
+          - OFF for at least 0.5s
+        then:
+          - if:
+              condition:
+                and:
+                  - wifi.connected:
+                  - api.connected:
+                  - switch.is_on: shelly_relay_1
+              # send single click event in case wifi and api are conncected
+              then:
+                - homeassistant.event:
+                    event: esphome.button_pressed
+                    data:
+                      title: ${device_name} short click
+                      device_name: ${device_name}
+                      channel: ${channel_1}
+                      click_type: single
+              # toggle relay in case either wifi or api are not connected
+              else:
+                - switch.toggle: shelly_relay_1
+
+  - platform: gpio
+    name: ${device_name} Input 2
+    pin:
+      number: GPIO5
+    # small delay to prevent debouncing
+    filters:
+      - delayed_on_off: 50ms
+    # config for state change of input button
+    on_state:
+        then:
+          - binary_sensor.template.publish:
+              id: switch_clicker_2
+              state: ON
+          - delay: 100ms
+          - binary_sensor.template.publish:
+              id: switch_clicker_2
+              state: OFF
+    id: button_2
+  - platform: template
+    name: ${device_name} Momentary Switch 2
+    id: switch_clicker_2
+    on_multi_click:
+      # double click
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 1s
+          - ON for at most 1s
+          - OFF for at least 0.2s
+        then:
+          - if:
+              condition:
+                and:
+                  - wifi.connected:
+                  - api.connected:
+                  - switch.is_on: shelly_relay_2
+              then:
+                - homeassistant.event:
+                    event: esphome.button_pressed
+                    data:
+                      title: ${device_name} double click
+                      device_name: ${device_name}
+                      channel: ${channel_2}
+                      click_type: double
+      - timing:
+          - ON for at most 1s
+          - OFF for at least 0.5s
+        then:
+          - if:
+              condition:
+                and:
+                  - wifi.connected:
+                  - api.connected:
+                  - switch.is_on: shelly_relay_2
+              # send single click event in case wifi and api are conncected
+              then:
+                - homeassistant.event:
+                    event: esphome.button_pressed
+                    data:
+                      title: ${device_name} short click
+                      device_name: ${device_name}
+                      channel: ${channel_2}
+                      click_type: single
+              # toggle relay in case either wifi or api are not connected
+              else:
+                - switch.toggle: shelly_relay_2
