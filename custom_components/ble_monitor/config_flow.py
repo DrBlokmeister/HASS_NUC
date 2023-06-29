@@ -1,82 +1,38 @@
 """Config flow for BLE Monitor."""
 import copy
 import logging
+
 import voluptuous as vol
-
+from homeassistant import config_entries, data_entry_flow
+from homeassistant.const import (CONF_DEVICES, CONF_DISCOVERY, CONF_MAC,
+                                 CONF_NAME, CONF_TEMPERATURE_UNIT,
+                                 TEMP_CELSIUS, TEMP_FAHRENHEIT)
 from homeassistant.core import callback
-from homeassistant import data_entry_flow
-from homeassistant.helpers import device_registry, config_validation as cv
-from homeassistant import config_entries
-from homeassistant.const import (
-    CONF_DEVICES,
-    CONF_DISCOVERY,
-    CONF_MAC,
-    CONF_NAME,
-    CONF_TEMPERATURE_UNIT,
-    TEMP_CELSIUS,
-    TEMP_FAHRENHEIT,
-)
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry
 
-from .helper import (
-    detect_conf_type,
-    dict_get_key_or,
-    dict_get_or,
-    validate_mac,
-    validate_uuid,
-    validate_key,
-)
-
-from .const import (
-    CONF_ACTIVE_SCAN,
-    CONF_BT_AUTO_RESTART,
-    CONF_BT_INTERFACE,
-    CONF_DECIMALS,
-    CONF_DEVICE_ENCRYPTION_KEY,
-    CONF_DEVICE_DECIMALS,
-    CONF_DEVICE_USE_MEDIAN,
-    CONF_DEVICE_REPORT_UNKNOWN,
-    CONF_DEVICE_RESTORE_STATE,
-    CONF_DEVICE_RESET_TIMER,
-    CONF_DEVICE_TRACK,
-    CONF_DEVICE_TRACKER_SCAN_INTERVAL,
-    CONF_DEVICE_TRACKER_CONSIDER_HOME,
-    CONF_DEVICE_DELETE_DEVICE,
-    CONF_LOG_SPIKES,
-    CONF_PERIOD,
-    CONF_REPORT_UNKNOWN,
-    CONF_RESTORE_STATE,
-    CONF_USE_MEDIAN,
-    CONF_UUID,
-    CONFIG_IS_FLOW,
-    DEFAULT_ACTIVE_SCAN,
-    DEFAULT_BT_AUTO_RESTART,
-    DEFAULT_DECIMALS,
-    DEFAULT_DEVICE_DECIMALS,
-    DEFAULT_DEVICE_ENCRYPTION_KEY,
-    DEFAULT_DEVICE_MAC,
-    DEFAULT_DEVICE_UUID,
-    DEFAULT_DEVICE_USE_MEDIAN,
-    DEFAULT_DEVICE_REPORT_UNKNOWN,
-    DEFAULT_DEVICE_RESTORE_STATE,
-    DEFAULT_DEVICE_RESET_TIMER,
-    DEFAULT_DEVICE_TRACK,
-    DEFAULT_DEVICE_TRACKER_SCAN_INTERVAL,
-    DEFAULT_DEVICE_TRACKER_CONSIDER_HOME,
-    DEFAULT_DEVICE_DELETE_DEVICE,
-    DEFAULT_DISCOVERY,
-    DEFAULT_LOG_SPIKES,
-    DEFAULT_PERIOD,
-    DEFAULT_REPORT_UNKNOWN,
-    DEFAULT_RESTORE_STATE,
-    DEFAULT_USE_MEDIAN,
-    DOMAIN,
-    REPORT_UNKNOWN_LIST,
-)
-
-from . import (
-    DEFAULT_BT_INTERFACE,
-    BT_MULTI_SELECT,
-)
+from . import BT_MULTI_SELECT, DEFAULT_BT_INTERFACE
+from .const import (CONF_ACTIVE_SCAN, CONF_BT_AUTO_RESTART, CONF_BT_INTERFACE,
+                    CONF_DEVICE_DELETE_DEVICE, CONF_DEVICE_ENCRYPTION_KEY,
+                    CONF_DEVICE_REPORT_UNKNOWN, CONF_DEVICE_RESET_TIMER,
+                    CONF_DEVICE_RESTORE_STATE, CONF_DEVICE_TRACK,
+                    CONF_DEVICE_TRACKER_CONSIDER_HOME,
+                    CONF_DEVICE_TRACKER_SCAN_INTERVAL, CONF_DEVICE_USE_MEDIAN,
+                    CONF_LOG_SPIKES, CONF_PERIOD, CONF_REPORT_UNKNOWN,
+                    CONF_RESTORE_STATE, CONF_USE_MEDIAN, CONF_UUID,
+                    CONFIG_IS_FLOW, DEFAULT_ACTIVE_SCAN,
+                    DEFAULT_BT_AUTO_RESTART, DEFAULT_DEVICE_DELETE_DEVICE,
+                    DEFAULT_DEVICE_ENCRYPTION_KEY, DEFAULT_DEVICE_MAC,
+                    DEFAULT_DEVICE_REPORT_UNKNOWN, DEFAULT_DEVICE_RESET_TIMER,
+                    DEFAULT_DEVICE_RESTORE_STATE, DEFAULT_DEVICE_TRACK,
+                    DEFAULT_DEVICE_TRACKER_CONSIDER_HOME,
+                    DEFAULT_DEVICE_TRACKER_SCAN_INTERVAL,
+                    DEFAULT_DEVICE_USE_MEDIAN, DEFAULT_DEVICE_UUID,
+                    DEFAULT_DISCOVERY, DEFAULT_LOG_SPIKES, DEFAULT_PERIOD,
+                    DEFAULT_REPORT_UNKNOWN, DEFAULT_RESTORE_STATE,
+                    DEFAULT_USE_MEDIAN, DOMAIN, REPORT_UNKNOWN_LIST)
+from .helper import (detect_conf_type, dict_get_key_or, dict_get_or,
+                     validate_key, validate_mac, validate_uuid)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -92,9 +48,6 @@ DEVICE_SCHEMA = vol.Schema(
         vol.Optional(CONF_DEVICE_ENCRYPTION_KEY, default=DEFAULT_DEVICE_ENCRYPTION_KEY): cv.string,
         vol.Optional(CONF_TEMPERATURE_UNIT, default=TEMP_CELSIUS): vol.In(
             [TEMP_CELSIUS, TEMP_FAHRENHEIT]
-        ),
-        vol.Optional(CONF_DEVICE_DECIMALS, default=DEFAULT_DEVICE_DECIMALS): vol.In(
-            [DEFAULT_DEVICE_DECIMALS, 0, 1, 2, 3]
         ),
         vol.Optional(CONF_DEVICE_USE_MEDIAN, default=DEFAULT_DEVICE_USE_MEDIAN): vol.In(
             [DEFAULT_DEVICE_USE_MEDIAN, True, False]
@@ -134,7 +87,6 @@ DOMAIN_SCHEMA = vol.Schema(
         vol.Optional(CONF_DISCOVERY, default=DEFAULT_DISCOVERY): cv.boolean,
         vol.Optional(CONF_USE_MEDIAN, default=DEFAULT_USE_MEDIAN): cv.boolean,
         vol.Optional(CONF_PERIOD, default=DEFAULT_PERIOD): cv.positive_int,
-        vol.Optional(CONF_DECIMALS, default=DEFAULT_DECIMALS): cv.positive_int,
         vol.Optional(CONF_LOG_SPIKES, default=DEFAULT_LOG_SPIKES): cv.boolean,
         vol.Optional(CONF_RESTORE_STATE, default=DEFAULT_RESTORE_STATE): cv.boolean,
         vol.Optional(CONF_REPORT_UNKNOWN, default=DEFAULT_REPORT_UNKNOWN): vol.In(
@@ -215,7 +167,7 @@ class BLEMonitorFlow(data_entry_flow.FlowHandler):
                     and user_input[key].upper()
                     != self._sel_device.get(key).upper()
                 ):
-                    errors[key] = "cannot_change_{}".format(key)
+                    errors[key] = f"cannot_change_{key}"
                     user_input[key] = self._sel_device.get(key)
                 else:
                     self._validate(user_input[key], key, errors)
@@ -245,10 +197,6 @@ class BLEMonitorFlow(data_entry_flow.FlowHandler):
                             CONF_TEMPERATURE_UNIT,
                             default=user_input[CONF_TEMPERATURE_UNIT],
                         ): vol.In([TEMP_CELSIUS, TEMP_FAHRENHEIT]),
-                        vol.Optional(
-                            CONF_DEVICE_DECIMALS,
-                            default=user_input[CONF_DEVICE_DECIMALS],
-                        ): vol.In([DEFAULT_DEVICE_DECIMALS, 0, 1, 2, 3]),
                         vol.Optional(
                             CONF_DEVICE_USE_MEDIAN,
                             default=user_input[CONF_DEVICE_USE_MEDIAN],
@@ -300,7 +248,7 @@ class BLEMonitorFlow(data_entry_flow.FlowHandler):
                 else:
                     _LOGGER.error("Removing BLE monitor device %s from device registry", key)
                     device_registry.async_remove_device(device.id)
-                _LOGGER.error("Removing BLE monitor device %s from configuration {}".format(device), key)
+                _LOGGER.error(f"Removing BLE monitor device %s from configuration {device}", key)
                 del self._devices[key]
             return self._show_main_form(errors)
         device_option_schema = vol.Schema(
@@ -329,12 +277,6 @@ class BLEMonitorFlow(data_entry_flow.FlowHandler):
                         CONF_TEMPERATURE_UNIT, TEMP_CELSIUS
                     ),
                 ): vol.In([TEMP_CELSIUS, TEMP_FAHRENHEIT]),
-                vol.Optional(
-                    CONF_DEVICE_DECIMALS,
-                    default=self._sel_device.get(
-                        CONF_DEVICE_DECIMALS, DEFAULT_DEVICE_DECIMALS
-                    ),
-                ): vol.In([DEFAULT_DEVICE_DECIMALS, 0, 1, 2, 3]),
                 vol.Optional(
                     CONF_DEVICE_USE_MEDIAN,
                     default=self._sel_device.get(
@@ -488,12 +430,6 @@ class BLEMonitorOptionsFlow(BLEMonitorFlow, config_entries.OptionsFlow):
                         CONF_USE_MEDIAN, DEFAULT_USE_MEDIAN
                     ),
                 ): cv.boolean,
-                vol.Optional(
-                    CONF_DECIMALS,
-                    default=self.config_entry.options.get(
-                        CONF_DECIMALS, DEFAULT_DECIMALS
-                    ),
-                ): cv.positive_int,
                 vol.Optional(
                     CONF_LOG_SPIKES,
                     default=self.config_entry.options.get(
