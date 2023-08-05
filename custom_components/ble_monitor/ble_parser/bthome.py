@@ -89,7 +89,10 @@ def parse_bthome_v1(self, data):
         except (ValueError, TypeError):
             return None
 
-        self.packet_id = parse_uint(count_id)
+        if count_id:
+            self.packet_id = parse_uint(count_id)
+        else:
+            return None
     else:
         return None
 
@@ -127,7 +130,10 @@ def parse_bthome_v2(self, data):
         except (ValueError, TypeError):
             return None
 
-        self.packet_id = parse_uint(count_id)
+        if count_id:
+            self.packet_id = parse_uint(count_id)
+        else:
+            return None
 
     return parse_payload(self, payload, sw_version)
 
@@ -311,7 +317,9 @@ def decrypt_data(self, data: bytes, sw_version: int):
             return None, None
     except KeyError:
         # no encryption key found
-        _LOGGER.error("No encryption key found for device with MAC %s", to_mac(self.bthome_mac))
+        if self.bthome_mac not in self.no_key_message:
+            _LOGGER.error("No encryption key found for device with MAC %s", to_mac(self.bthome_mac))
+            self.no_key_message.append(self.bthome_mac)
         return None, None
 
     # prepare the data for decryption
