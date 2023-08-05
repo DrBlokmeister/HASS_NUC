@@ -57,6 +57,20 @@ input_number:
     max: 100000
     mode: box
     unit_of_measurement: m2
+  moeke_area_cleaned_at_start_of_day: #in m2
+    name: Alfred area cleaned at the start of the day
+    step: 1
+    min: 0
+    max: 100000
+    mode: box
+    unit_of_measurement: m2
+  moeke_area_cleaned_at_last_empty_bin: #in m2
+    name: Alfred area cleaned after last time empty bin
+    step: 1
+    min: 0
+    max: 100000
+    mode: box
+    unit_of_measurement: m2
 
 
 camera:
@@ -154,6 +168,16 @@ sensor:
         #value_template: "{{ states('sensor.alfred_total_clean_area')|int(states('input_number.alfred_area_cleaned_at_start_of_day')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
         value_template: "{{ states('sensor.alfred_total_clean_area')|int - states('input_number.alfred_area_cleaned_at_last_empty_bin')|int }}"
         availability_template: "{{ states('sensor.alfred_total_clean_area')|is_number }}"
+      moeke_area_cleaned_today:
+        unit_of_measurement: 'm2'
+        #value_template: "{{ states('sensor.moeke_total_cleaned_area')|int(states('input_number.moeke_area_cleaned_at_start_of_day')|int) - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+        value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_start_of_day')|int }}"
+        availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
+      moeke_area_cleaned_since_last_empty_bin:
+        unit_of_measurement: 'm2'
+        #value_template: "{{ states('sensor.moeke_total_cleaned_area')|int(states('input_number.moeke_area_cleaned_at_last_empty_bin')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+        value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_last_empty_bin')|int }}"
+        availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
 
       consuela_battery:
         friendly_name: "Consuela Battery"
@@ -259,6 +283,23 @@ automation:
                   fan_speed: Medium
               - service: vacuum.start
                 entity_id: vacuum.consuela
+      - choose:
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.moeke_area_cleaned_today
+                below: 20
+            sequence:
+              - service: vacuum.set_fan_speed
+                entity_id: vacuum.moeke
+                data:
+                  fan_speed: Strong
+              - service: vacuum.start
+                entity_id: vacuum.moeke
+              - service: select.select_option
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: "sweeping_and_mopping"
       - service: notify.mobile_app_blokmeisters21u
         data:
           message: "Started scheduled cleanup"
@@ -507,6 +548,10 @@ automation:
         entity_id: vacuum.alfred
         to: "error"
         id: "Alfred"
+      - platform: state
+        entity_id: vacuum.moeke
+        to: "error"
+        id: "Moeke"
       # - platform: state
       #   entity_id:
       #     - vacuum.xiaomi_vacuum_cleaner
