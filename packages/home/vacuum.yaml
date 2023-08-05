@@ -15,20 +15,20 @@ homeassistant:
       icon: mdi:robot-vacuum
 
 input_number:
-  consuela_area_cleaned_at_start_of_day: #in m2
-    name: Consuela area cleaned at the start of the day
-    step: 1
-    min: 0
-    max: 100000
-    mode: box
-    unit_of_measurement: m2
-  consuela_area_cleaned_at_last_empty_bin: #in m2
-    name: Consuela area cleaned after last time empty bin
-    step: 1
-    min: 0
-    max: 100000
-    mode: box
-    unit_of_measurement: m2
+  # consuela_area_cleaned_at_start_of_day: #in m2
+  #   name: Consuela area cleaned at the start of the day
+  #   step: 1
+  #   min: 0
+  #   max: 100000
+  #   mode: box
+  #   unit_of_measurement: m2
+  # consuela_area_cleaned_at_last_empty_bin: #in m2
+  #   name: Consuela area cleaned after last time empty bin
+  #   step: 1
+  #   min: 0
+  #   max: 100000
+  #   mode: box
+  #   unit_of_measurement: m2
   argus_area_cleaned_at_start_of_day: #in m2
     name: Argus area cleaned at the start of the day
     step: 1
@@ -93,25 +93,25 @@ camera:
         right: 25
     colors:
       color_path: [10, 10, 10]
-  - platform: xiaomi_cloud_map_extractor
-    name: "Consuela Map"
-    host: !secret consuela_IP
-    token: !secret consuela_token
-    username: !secret xiaomi_cloud_user
-    password: !secret xiaomi_cloud_pass
-    draw: ['all']
-    scan_interval: 10
-    attributes:
-      - calibration_points
-    map_transformation:
-      scale: 2
-      trim:
-        top: 28
-        bottom: 25
-        left: 20
-        right: 15
-    colors:
-      color_path: [10, 10, 10]
+  # - platform: xiaomi_cloud_map_extractor
+  #   name: "Consuela Map"
+  #   host: !secret consuela_IP
+  #   token: !secret consuela_token
+  #   username: !secret xiaomi_cloud_user
+  #   password: !secret xiaomi_cloud_pass
+  #   draw: ['all']
+  #   scan_interval: 10
+  #   attributes:
+  #     - calibration_points
+  #   map_transformation:
+  #     scale: 2
+  #     trim:
+  #       top: 28
+  #       bottom: 25
+  #       left: 20
+  #       right: 15
+  #   colors:
+  #     color_path: [10, 10, 10]
   - platform: xiaomi_cloud_map_extractor
     name: "Alfred Map"
     host: !secret alfred_IP
@@ -138,16 +138,16 @@ camera:
 sensor:
   - platform: template
     sensors:
-      consuela_area_cleaned_today:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int) - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
-        availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
-      consuela_area_cleaned_since_last_empty_bin:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int)  - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
-        value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
-        availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
+      # consuela_area_cleaned_today:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int) - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
+      #   availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
+      # consuela_area_cleaned_since_last_empty_bin:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int)  - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
+      #   value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
+      #   availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
       argus_area_cleaned_today:
         unit_of_measurement: 'm2'
         #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int) - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
@@ -179,13 +179,13 @@ sensor:
         value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_last_empty_bin')|int }}"
         availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
 
-      consuela_battery:
-        friendly_name: "Consuela Battery"
-        unit_of_measurement: "%"
-        device_class: "battery"
-        #icon: mdi:battery
-        value_template: "{{ state_attr('vacuum.consuela', 'battery_level') }}"
-        availability_template: "{{ states('vacuum.consuela') not in ['None', 'Unavailable', 'unknown', None] }}"
+      # consuela_battery:
+      #   friendly_name: "Consuela Battery"
+      #   unit_of_measurement: "%"
+      #   device_class: "battery"
+      #   #icon: mdi:battery
+      #   value_template: "{{ state_attr('vacuum.consuela', 'battery_level') }}"
+      #   availability_template: "{{ states('vacuum.consuela') not in ['None', 'Unavailable', 'unknown', None] }}"
       alfred_battery:
         friendly_name: "Alfred Battery"
         unit_of_measurement: "%"
@@ -271,18 +271,18 @@ automation:
                   fan_speed: Medium
               - service: vacuum.start
                 entity_id: vacuum.argus
-      - choose:
-          - conditions:
-              - condition: numeric_state
-                entity_id: sensor.consuela_area_cleaned_today
-                below: 20
-            sequence:
-              - service: vacuum.set_fan_speed
-                entity_id: vacuum.consuela
-                data:
-                  fan_speed: Medium
-              - service: vacuum.start
-                entity_id: vacuum.consuela
+      # - choose:
+      #     - conditions:
+      #         - condition: numeric_state
+      #           entity_id: sensor.consuela_area_cleaned_today
+      #           below: 20
+      #       sequence:
+      #         - service: vacuum.set_fan_speed
+      #           entity_id: vacuum.consuela
+      #           data:
+      #             fan_speed: Medium
+      #         - service: vacuum.start
+      #           entity_id: vacuum.consuela
       - choose:
           - conditions:
               - condition: numeric_state
@@ -325,7 +325,7 @@ automation:
         after: '15:00:00'
         before: '22:00:00'
       - condition: numeric_state
-        entity_id: sensor.argus_area_cleaned_today
+        entity_id: sensor.moeke_area_cleaned_today
         below: 20
       - condition: state
         entity_id: binary_sensor.tamara_or_sander_downstairs
@@ -334,48 +334,53 @@ automation:
           minutes: 15
     action:
       - service: vacuum.set_fan_speed
-        entity_id: vacuum.argus
+        entity_id: vacuum.moeke
         data:
-          fan_speed: Medium
+          fan_speed: Strong
       - service: vacuum.start
-        entity_id: vacuum.argus
-
-  - alias: '[home|vacuum]Drive Consuela to Hallway when Dust Bin is full'
-    mode: single
-    trigger:
-      - platform: numeric_state
-        entity_id: vacuum.consuela
-        attribute: battery_level
-        above: 99
-      - platform: state
-        entity_id: binary_sensor.house_occupied
-        to: 'on'
-      - platform: time
-        at: "9:00:00"
-    condition:
-      - condition: numeric_state
-        entity_id: sensor.consuela_area_cleaned_since_last_empty_bin
-        above: 100
-      - condition: state
-        entity_id: binary_sensor.house_occupied
-        state: 'on'
-      - condition: numeric_state
-        entity_id: vacuum.consuela
-        attribute: battery_level
-        above: 99
-      - condition: time
-        after: "9:00:00"
-        before: "21:00:00"
-    action:
-      - service: script.consuela_goto_hallway
-      - wait_for_trigger:
-          - platform: state
-            entity_id: vacuum.consuela
-            to: 'returning'
-      - service: input_number.set_value
+        entity_id: vacuum.moeke
+      - service: select.select_option
+        target:
+          entity_id: select.moeke_cleaning_mode
         data:
-          entity_id: input_number.consuela_area_cleaned_at_last_empty_bin
-          value: "{{ states('sensor.consuela_total_clean_area') }}"
+          option: "sweeping_and_mopping"
+
+  # - alias: '[home|vacuum]Drive Consuela to Hallway when Dust Bin is full'
+  #   mode: single
+  #   trigger:
+  #     - platform: numeric_state
+  #       entity_id: vacuum.consuela
+  #       attribute: battery_level
+  #       above: 99
+  #     - platform: state
+  #       entity_id: binary_sensor.house_occupied
+  #       to: 'on'
+  #     - platform: time
+  #       at: "9:00:00"
+  #   condition:
+  #     - condition: numeric_state
+  #       entity_id: sensor.consuela_area_cleaned_since_last_empty_bin
+  #       above: 100
+  #     - condition: state
+  #       entity_id: binary_sensor.house_occupied
+  #       state: 'on'
+  #     - condition: numeric_state
+  #       entity_id: vacuum.consuela
+  #       attribute: battery_level
+  #       above: 99
+  #     - condition: time
+  #       after: "9:00:00"
+  #       before: "21:00:00"
+  #   action:
+  #     - service: script.consuela_goto_hallway
+  #     - wait_for_trigger:
+  #         - platform: state
+  #           entity_id: vacuum.consuela
+  #           to: 'returning'
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.consuela_area_cleaned_at_last_empty_bin
+  #         value: "{{ states('sensor.consuela_total_clean_area') }}"
 
   - alias: '[home|vacuum]Drive Alfred to Hallway when Dust Bin is full'
     mode: single
@@ -451,69 +456,69 @@ automation:
           entity_id: input_number.argus_area_cleaned_at_last_empty_bin
           value: "{{ states('sensor.argus_total_clean_area') }}"
 
-  - alias: '[home|vacuum] Button control vacuum'
-    mode: restart
-    trigger:
-      - platform: event
-        event_type: deconz_event
-        event_data:
-          id: vacuum_smart_switch
-    action:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.event == 1002 }}" #single
-              - condition: template
-                value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
-            sequence:
-              - service: vacuum.start
-                entity_id: vacuum.xiaomi_vacuum_cleaner
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.event == 1002 }}" #single
-              - condition: state
-                entity_id: vacuum.xiaomi_vacuum_cleaner
-                state: cleaning
-            sequence:
-              - service: vacuum.pause
-                entity_id: vacuum.xiaomi_vacuum_cleaner
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.event == 1004 }}" #double
-              - condition: state
-                entity_id: vacuum.xiaomi_vacuum_cleaner
-                state: docked
-            sequence:
-              - service: automation.trigger
-                data:
-                  entity_id: automation.home_vacuum_counter_drive_to_trashbin
-                  skip_condition: true
-              - wait_for_trigger:
-                  platform: state
-                  entity_id: vacuum.xiaomi_vacuum_cleaner
-                  to: 'Docked'
-              - service: input_number.set_value
-                data:
-                  entity_id: input_number.area_cleaned_at_last_empty_bin
-                  value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.event == 1004 }}" #double
-              - condition: template
-                value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
-            sequence:
-              - service: vacuum.return_to_base
-                entity_id: vacuum.xiaomi_vacuum_cleaner
+  # - alias: '[home|vacuum] Button control vacuum'
+  #   mode: restart
+  #   trigger:
+  #     - platform: event
+  #       event_type: deconz_event
+  #       event_data:
+  #         id: vacuum_smart_switch
+  #   action:
+  #     - choose:
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ trigger.event.data.event == 1002 }}" #single
+  #             - condition: template
+  #               value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'cleaning') }}"
+  #           sequence:
+  #             - service: vacuum.start
+  #               entity_id: vacuum.xiaomi_vacuum_cleaner
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ trigger.event.data.event == 1002 }}" #single
+  #             - condition: state
+  #               entity_id: vacuum.xiaomi_vacuum_cleaner
+  #               state: cleaning
+  #           sequence:
+  #             - service: vacuum.pause
+  #               entity_id: vacuum.xiaomi_vacuum_cleaner
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ trigger.event.data.event == 1004 }}" #double
+  #             - condition: state
+  #               entity_id: vacuum.xiaomi_vacuum_cleaner
+  #               state: docked
+  #           sequence:
+  #             - service: automation.trigger
+  #               data:
+  #                 entity_id: automation.home_vacuum_counter_drive_to_trashbin
+  #                 skip_condition: true
+  #             - wait_for_trigger:
+  #                 platform: state
+  #                 entity_id: vacuum.xiaomi_vacuum_cleaner
+  #                 to: 'Docked'
+  #             - service: input_number.set_value
+  #               data:
+  #                 entity_id: input_number.area_cleaned_at_last_empty_bin
+  #                 value: "{{ state_attr('vacuum.xiaomi_vacuum_cleaner','total_cleaned_area') }}"
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ trigger.event.data.event == 1004 }}" #double
+  #             - condition: template
+  #               value_template: "{{ not is_state('vacuum.xiaomi_vacuum_cleaner', 'docked') }}"
+  #           sequence:
+  #             - service: vacuum.return_to_base
+  #               entity_id: vacuum.xiaomi_vacuum_cleaner
 
   - alias: '[home|vacuum]reset_area_cleaned_input_number'
     trigger:
       platform: time
       at: '00:00:01'
     action:
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.consuela_area_cleaned_at_start_of_day
-          value: "{{ states('sensor.consuela_total_clean_area') }}"
+      # - service: input_number.set_value
+      #   data:
+      #     entity_id: input_number.consuela_area_cleaned_at_start_of_day
+      #     value: "{{ states('sensor.consuela_total_clean_area') }}"
       - service: input_number.set_value
         data:
           entity_id: input_number.argus_area_cleaned_at_start_of_day
@@ -524,22 +529,22 @@ automation:
           value: "{{ states('sensor.alfred_total_clean_area') }}"
 ########## NOTIFICATIONS ##########
 #Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
-  - alias: '[home|vacuum]notify_phone'
-    trigger:
-      platform: state
-      entity_id: vacuum.xiaomi_vacuum_cleaner
-      to: 'charging'
-    action:
-      service: script.vacuum_message_done_cleaning
+  # - alias: '[home|vacuum]notify_phone'
+  #   trigger:
+  #     platform: state
+  #     entity_id: vacuum.xiaomi_vacuum_cleaner
+  #     to: 'charging'
+  #   action:
+  #     service: script.vacuum_message_done_cleaning
 
   - alias: '[home|vacuum]Notify Phone if Vacuum is in Error'
     id: notifyvacuumerror
     mode: parallel
     trigger:
-      - platform: state
-        entity_id: vacuum.xiaomi_vacuum_cleaner
-        to: "error"
-        id: "Consuela"
+      # - platform: state
+      #   entity_id: vacuum.xiaomi_vacuum_cleaner
+      #   to: "error"
+      #   id: "Consuela"
       - platform: state
         entity_id: vacuum.argus
         to: "error"
@@ -666,22 +671,22 @@ script:
         entity_id: vacuum.alfred
         repeats: 2
         zone: [[27565,28133,29848,30439]]
-  vacuum_bedroom_twice:
-    alias: "Clean bedroom"
-    sequence:
-    - service: xiaomi_miio.vacuum_clean_zone
-      data:
-        entity_id: vacuum.consuela
-        repeats: 2
-        zone: [[26952,24836,30911,30071]]
-  vacuum_bathroom_twice:
-    alias: "Clean bathroom"
-    sequence:
-    - service: xiaomi_miio.vacuum_clean_zone
-      data:
-        entity_id: vacuum.consuela
-        repeats: 2
-        zone: [[21388,27120,23885,30072]]
+  # vacuum_bedroom_twice:
+  #   alias: "Clean bedroom"
+  #   sequence:
+  #   - service: xiaomi_miio.vacuum_clean_zone
+  #     data:
+  #       entity_id: vacuum.consuela
+  #       repeats: 2
+  #       zone: [[26952,24836,30911,30071]]
+  # vacuum_bathroom_twice:
+  #   alias: "Clean bathroom"
+  #   sequence:
+  #   - service: xiaomi_miio.vacuum_clean_zone
+  #     data:
+  #       entity_id: vacuum.consuela
+  #       repeats: 2
+  #       zone: [[21388,27120,23885,30072]]
   vacuum_livingroom_twice:
     alias: "Clean Living Room"
     sequence:
@@ -699,14 +704,14 @@ script:
         entity_id: vacuum.alfred
         x_coord: 28391
         y_coord: 26350
-  consuela_goto_hallway:
-    alias: "Consuela go to Kitchen"
-    sequence:
-    - service: xiaomi_miio.vacuum_goto
-      data:
-        entity_id: vacuum.consuela
-        x_coord: 25226
-        y_coord: 28459
+  # consuela_goto_hallway:
+  #   alias: "Consuela go to Kitchen"
+  #   sequence:
+  #   - service: xiaomi_miio.vacuum_goto
+  #     data:
+  #       entity_id: vacuum.consuela
+  #       x_coord: 25226
+  #       y_coord: 28459
   argus_goto_kitchen:
     alias: "Argus go to Kitchen"
     sequence:
