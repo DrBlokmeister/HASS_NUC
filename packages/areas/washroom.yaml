@@ -1,0 +1,59 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[washroom|light]Automate light based on door'
+    id: washroom_light_automate_light_based_on_door
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.washroom_door_sensor
+        to: 'on'
+    action:
+      - service: switch.turn_on
+        data:
+          entity_id: switch.shelly_washroom
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.washroom_door_sensor
+            to: 'off'
+      - service: switch.turn_off
+        data:
+          entity_id: switch.shelly_washroom
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:

@@ -1,0 +1,62 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[porch|light]Automate light based on sunset'
+    id: porch_light_automate_light_based_on_sunset
+    mode: single
+    trigger:
+      platform: sun
+      event: sunset
+    action:
+      - service: light.turn_on
+        data:
+          entity_id: light.shelly_porch_light
+      - delay:
+          minutes: 90
+      - wait_for_trigger:
+          - platform: template
+            value_template: >-
+              {{ now() > today_at("23:00") }}
+        timeout:
+          minutes: 180
+      - service: light.turn_off
+        data:
+          entity_id: light.shelly_porch_light
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
