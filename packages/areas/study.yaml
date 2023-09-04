@@ -91,6 +91,7 @@ switch:
 #####################
 automation:
   - alias: '[study|lights] Turn on lights when motion is detected'
+    id: 'study_lights_turn_on_lights_when_motion_is_detected'
     mode: restart
     trigger:
       - platform: state
@@ -308,37 +309,37 @@ automation:
   #       entity_id: light.study_candle
 
 
-  - alias: '[study|light] Update illumination limit'
-    mode: single
-    trigger:
-      - platform: state
-        entity_id: switch.shelly_study
-    condition:
-      - condition: state
-        entity_id: switch.shelly_study
-        state:
-          - 'on'
-          - 'off'
-        for:
-          seconds: 5
-    action:
-      - delay:
-          seconds: 1
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: light.study_lights
-                state: 'on'
-            sequence:
-              - service: input_number.increment
-                entity_id: input_number.study_illumination_limit_lightoff
-          - conditions:
-              - condition: state
-                entity_id: light.tvarea_and_ledstrips
-                state: 'off'
-            sequence:
-              - service: input_number.decrement
-                entity_id: input_number.study_illumination_limit_lightoff
+  # - alias: '[study|light] Update illumination limit'
+  #   mode: single
+  #   trigger:
+  #     - platform: state
+  #       entity_id: switch.shelly_study
+  #   condition:
+  #     - condition: state
+  #       entity_id: switch.shelly_study
+  #       state:
+  #         - 'on'
+  #         - 'off'
+  #       for:
+  #         seconds: 5
+  #   action:
+  #     - delay:
+  #         seconds: 1
+  #     - choose:
+  #         - conditions:
+  #             - condition: state
+  #               entity_id: light.study_lights
+  #               state: 'on'
+  #           sequence:
+  #             - service: input_number.increment
+  #               entity_id: input_number.study_illumination_limit_lightoff
+  #         - conditions:
+  #             - condition: state
+  #               entity_id: light.tvarea_and_ledstrips
+  #               state: 'off'
+  #           sequence:
+  #             - service: input_number.decrement
+  #               entity_id: input_number.study_illumination_limit_lightoff
 
   - alias: "[study|light] Powercycle study3 when unavailable"
     id: study_light_powercycle_study3_when_unavailable
