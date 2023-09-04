@@ -36,10 +36,20 @@ sensor:
   - platform: template
     sensors:
       average_illumination_livingroom:
+        friendly_name: "Average Illumination Livingroom"
         device_class: illuminance
         unit_of_measurement: 'lx'
-        value_template: "{{ (states('sensor.illumination_livingroom')|round(1)+states('sensor.illumination_livingroom2')|round(1))/2 }}"
-        availability_template: "{{ states('sensor.illumination_livingroom')|is_number and states('sensor.illumination_livingroom2')|is_number }}"
+        value_template: >-
+          {% if states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list and states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ ((states('sensor.livingroom_motion_1_illuminance')|float + states('sensor.livingroom_motion_2_illuminance')|float) / 2)|round(1) }}
+          {% elif states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ states('sensor.livingroom_motion_1_illuminance')|round(1) }}
+          {% elif states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ states('sensor.livingroom_motion_2_illuminance')|round(1) }}
+          {% else %}
+            unavailable
+          {% endif %}
+        availability_template: "{{ states('sensor.livingroom_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.livingroom_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
   # - platform: statistics
   #   name: average_illumination_livingroom_stats
   #   entity_id: sensor.average_illumination_livingroom
@@ -55,11 +65,11 @@ binary_sensor:
         device_class: motion
         value_template: >-
           {{
-            is_state('binary_sensor.motion_sensor_livingroom', 'on') or
-            is_state('binary_sensor.motion_sensor_livingroom2', 'on') or
-            is_state('binary_sensor.motion_sensor_livingroom3', 'on')
+            is_state('binary_sensor.livingroom_motion_1', 'on') or
+            is_state('binary_sensor.livingroom_motion_2', 'on') or
+            is_state('binary_sensor.livingroom_motion_3', 'on')
           }}
-        availability_template: "{{ (states('binary_sensor.motion_sensor_livingroom') in ['on', 'off']) and (states('binary_sensor.motion_sensor_livingroom2') in ['on', 'off'] and (states('binary_sensor.motion_sensor_livingroom3') in ['on', 'off'])) }}"
+        availability_template: "{{ (states('binary_sensor.livingroom_motion_1') in ['on', 'off']) and (states('binary_sensor.livingroom_motion_2') in ['on', 'off'] and (states('binary_sensor.livingroom_motion_3') in ['on', 'off'])) }}"
 
 ########################
 #    INPUT BOOLEANS    #
@@ -75,6 +85,46 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: '[livingroom|lights] Turn on lights when motion is detected'
+    id: livingroom_lights_turn_on_lights_when_motion_is_detected
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.livingroom_motion_combined
+        to: 'on'
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.average_illumination_livingroom')|int < states('input_number.livingroom_illumination_limit')|int }}"
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+    action:
+      - service: light.turn_on
+        data:
+          entity_id: light.living_room
+          brightness: 255
+          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      - wait_for_trigger:
+          - platform: state
+            entity_id:
+              - binary_sensor.livingroom_motion_combined
+            to: 'off'
+            for:
+              minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
+          - platform: template
+            value_template: "{{ states('sensor.average_illumination_livingroom')|int > states('input_number.livingroom_illumination_limit')|int }}"
+            for:
+              minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
+      - service: light.turn_on
+        data:
+          entity_id: light.living_room
+          brightness_step: -120
+          transition: 0.5
+      - delay:
+          seconds: 15
+      - service: light.turn_off
+        entity_id: light.living_room
   # - alias: '[livingroom|light] Flux light through motion'
   #   mode: restart
   #   trigger:

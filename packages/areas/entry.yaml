@@ -8,6 +8,12 @@ input_number:
     min: 0
     max: 200
     mode: box
+  entry_light_timeout: #in minutes
+    name: Hallway 1st Floor light timeout
+    step: 1
+    min: 0
+    max: 30
+    mode: box
 #################
 #    SENSORS    #
 #################
@@ -17,16 +23,16 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  # - platform: template
-  #   sensors:
-  #     entry_motion_combined:
-  #       device_class: motion
-  #       value_template: >-
-  #         {{
-  #           is_state('binary_sensor.motion_sensor_entry', 'on') or
-  #           is_state('binary_sensor.motion_sensor_entry2', 'on')
-  #         }}
-  #       availability_template: "{{ (states('binary_sensor.motion_sensor_entry') in ['on', 'off']) and (states('binary_sensor.motion_sensor_entry2') in ['on', 'off']) }}"
+  - platform: template
+    sensors:
+      entry_motion_combined:
+        device_class: motion
+        value_template: >-
+          {{
+            is_state('binary_sensor.entry_motion_1', 'on') or
+            is_state('binary_sensor.entry_motion_2', 'on')
+          }}
+        availability_template: "{{ (states('binary_sensor.entry_motion_1') in ['on', 'off']) and (states('binary_sensor.entry_motion_2') in ['on', 'off']) }}"
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -93,8 +99,8 @@ automation:
       - delay:
           seconds: 2
 
-  - alias: '[entry|light] Turn on light through motion'
-    id: entry_light_through_motion
+  - alias: '[entry|lights] Turn on lights when motion is detected'
+    id: entry_lights_turn_on_lights_when_motion_is_detected
     mode: restart
     trigger:
       - platform: state
@@ -102,14 +108,14 @@ automation:
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ states('sensor.illumination_entry')|int < states('input_number.entry_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.entry_motion_2_illuminance')|int < states('input_number.entry_illumination_limit')|int }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
     action:
       - service: light.turn_on
         data:
-          entity_id: light.entry_lights
+          entity_id: light.entry
           brightness: 255
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - wait_for_trigger:
@@ -117,13 +123,27 @@ automation:
             entity_id: binary_sensor.entry_motion_combined
             to: 'off'
             for:
-              minutes: 3
+      #         minutes: 3
+      #     - platform: template
+      #       value_template: "{{ states('sensor.entry_motion_2_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
+      #       for:
+      #         minutes: 10
+      # - service: light.turn_off
+      #   entity_id: light.entry
+              minutes: "{{ states('input_number.entry_light_timeout')|int }}"
           - platform: template
-            value_template: "{{ states('sensor.illumination_entry')|int > states('input_number.entry_illumination_limit')|int }}"
+            value_template: "{{ states('sensor.entry_motion_2_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
             for:
-              minutes: 10
+              minutes: "{{ states('input_number.entry_light_timeout')|int }}"
+      - service: light.turn_on
+        data:
+          entity_id: light.entry
+          brightness_step: -120
+          transition: 0.5
+      - delay:
+          seconds: 15
       - service: light.turn_off
-        entity_id: light.entry_lights
+        entity_id: light.entry
 
   - alias: '[entry|alarm]Alarm when front door is open too long'
     trigger:
@@ -182,31 +202,31 @@ scene:
 #    LIGHTS    #
 ################
 light:
-  - platform: template
-    lights:
-      shelly_entry_light:
-        # entity_id: switch.shelly_entry
-        value_template: "{{ states('switch.shelly_entry') }}"
-        turn_on:
-          service: switch.turn_on
-          entity_id: switch.shelly_entry
-        turn_off:
-          service: switch.turn_off
-          entity_id: switch.shelly_entry
-  - platform: group
-    name: Entry Lights
-    entities:
-      - light.shelly_entry_light
-      - light.entry_1
+  # - platform: template
+  #   lights:
+  #     shelly_entry_light:
+  #       # entity_id: switch.shelly_entry
+  #       value_template: "{{ states('switch.shelly_entry') }}"
+  #       turn_on:
+  #         service: switch.turn_on
+  #         entity_id: switch.shelly_entry
+  #       turn_off:
+  #         service: switch.turn_off
+  #         entity_id: switch.shelly_entry
+  # - platform: group
+  #   name: Entry Lights
+  #   entities:
+  #     - light.shelly_entry_light
+  #     - light.entry_1
 
 ################
 #    GROUPS    #
 ################
 group:
-  entry_motion_sensors:
-    entities:
-      - binary_sensor.motion_sensor_entry
-      - binary_sensor.motion_sensor_entry2
+  # entry_motion_sensors:
+  #   entities:
+  #     - binary_sensor.motion_sensor_entry
+  #     - binary_sensor.motion_sensor_entry2
 #################
 #    SCRIPTS    #
 #################

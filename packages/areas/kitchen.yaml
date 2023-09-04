@@ -32,6 +32,24 @@ sensor:
     name: Fridge Temperature Change per Minute
     unit_time: min
     time_window: "00:10:00"
+
+  - platform: template
+    sensors:
+      average_illumination_kitchen:
+        friendly_name: "Average Illumination Kitchen"
+        device_class: illuminance
+        unit_of_measurement: 'lx'
+        value_template: >-
+          {% if states('sensor.kitchen_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list and states('sensor.kitchen_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ ((states('sensor.kitchen_motion_1_illuminance')|float + states('sensor.kitchen_motion_2_illuminance')|float) / 2)|round(1) }}
+          {% elif states('sensor.kitchen_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ states('sensor.kitchen_motion_1_illuminance')|round(1) }}
+          {% elif states('sensor.kitchen_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+            {{ states('sensor.kitchen_motion_2_illuminance')|round(1) }}
+          {% else %}
+            unavailable
+          {% endif %}
+        availability_template: "{{ states('sensor.kitchen_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.kitchen_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -52,12 +70,12 @@ automation:
     trigger:
       - platform: state
         entity_id:
-          - binary_sensor.motion_sensor_kitchen
-          - binary_sensor.motion_sensor_kitchen_2
+          - binary_sensor.kitchen_motion_1
+          - binary_sensor.kitchen_motion_2
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ states('sensor.illumination_kitchen')|int < states('input_number.kitchen_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.average_illumination_kitchen')|int < states('input_number.kitchen_illumination_limit')|int }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -70,13 +88,13 @@ automation:
       - wait_for_trigger:
           - platform: state
             entity_id:
-              - binary_sensor.motion_sensor_kitchen
-              - binary_sensor.motion_sensor_kitchen_2
+              - binary_sensor.kitchen_motion_1
+              - binary_sensor.kitchen_motion_2
             to: 'off'
             for:
               minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
           - platform: template
-            value_template: "{{ states('sensor.illumination_kitchen')|int > states('input_number.kitchen_illumination_limit_lightson')|int }}"
+            value_template: "{{ states('sensor.average_illumination_kitchen')|int > states('input_number.kitchen_illumination_limit_lightson')|int }}"
             for:
               minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
       - service: light.turn_on
