@@ -1,0 +1,272 @@
+homeassistant:
+  customize:
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[misc|epaperlink]Timed update epaper displays'
+    id: misc_epaperlink_timed_update_epapr_displays
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - service: open_epaper_link.lines4
+        target:
+          entity_id: open_epaper_link.00000218a8933b1a
+        data:
+          line1: " Update: {{ states('sensor.time') | string }} "
+          line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
+          line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
+          line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
+          border: b
+          format1: lwwb
+          format2: lwwb
+          format3: lwwb
+          format4: lwwb
+      - delay:
+          seconds: 2
+      - service: open_epaper_link.lines5
+        target:
+          entity_id: open_epaper_link.0000039223703418
+        data:
+          line1: " Update: {{ states('sensor.time') | string }} "
+          line2: " Total Energy: {{ states('sensor.daily_energy_use') | string }} kWh"
+          line3: "Total Water: {{ states('sensor.water_meter_daily_water_consumption') | int | string }} l "
+          line4: " NAS Power: {{ states('sensor.blitzwolf_nas_energy_power') | round(2) | string }} W "
+          line5: " Computer Power: {{ states('sensor.blitzwolf_computer_energy_power') | round(2) | string }} W "
+          border: b
+          format1: lwwb
+          format2: lwwb
+          format3: lwwb
+          format4: lwwb
+          format5: lwwb
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.00000219A2923B10
+        data:
+          background: white
+          rotate: 0
+          payload:
+            - type: line
+              fill: red
+              width: 3
+              x_start: 5
+              y_start: 64
+              x_end: 121
+              y_end: 64
+            - type: line
+              fill: red
+              width: 3
+              x_start: 168
+              y_start: 64
+              x_end: 290
+              y_end: 64
+            - type: line
+              fill: red
+              width: 3
+              x_start: 148
+              y_start: 5
+              x_end: 148
+              y_end: 34
+            - type: line
+              fill: red
+              width: 3
+              x_start: 148
+              y_start: 89
+              x_end: 148
+              y_end: 123
+            - type: rectangle
+              outline: white
+              fill: >-
+                {{'white' if states('sensor.days_to_restafval') == 'unknown' or
+                states('sensor.days_to_restafval') | int > 1 else 'red' }}
+              width: 1
+              x_start: 5
+              y_start: 5
+              x_end: 123
+              y_end: 60
+            - type: text
+              value: Restafval
+              font: ppb.ttf
+              x: 35
+              "y": 10
+              size: 18
+              color: >-
+                {{'black' if states('sensor.days_to_restafval') == 'unknown' or
+                states('sensor.days_to_restafval') | int > 1 else 'white' }}
+            - type: text
+              value: >-
+                {% if states('sensor.days_to_restafval') == 'unknown' %}Unknown{%
+                elif states('sensor.days_to_restafval') | int == 0 %}Today{% elif
+                states('sensor.days_to_restafval') | int == 1 %}Tonight{% else
+                %}{{states('sensor.days_to_restafval')}} days{% endif %}
+              font: ppb.ttf
+              x: 35
+              "y": 33
+              size: 18
+              color: >-
+                {{'black' if states('sensor.days_to_restafval') == 'unknown' or
+                states('sensor.days_to_restafval') | int > 1 else 'white' }}
+
+            - type: rectangle
+              outline: white
+              fill: >-
+                {{'white' if states('sensor.days_to_papier') == 'unknown' or
+                states('sensor.days_to_papier') | int > 1 else 'red' }}
+              width: 1
+              x_start: 168
+              y_start: 5
+              x_end: 290
+              y_end: 60
+            - type: text
+              value: Papier
+              font: ppb.ttf
+              x: 190
+              "y": 10
+              size: 18
+              color: >-
+                {{'black' if states('sensor.days_to_papier') == 'unknown' or
+                states('sensor.days_to_papier') | int > 1 else 'white' }}
+            - type: text
+              value: >-
+                {% if states('sensor.days_to_papier') == 'unknown' %}Unknown{%
+                elif states('sensor.days_to_papier') | int == 0 %}Today{% elif
+                states('sensor.days_to_papier') | int == 1 %}Tonight{% else
+                %}{{states('sensor.days_to_papier')}} days{% endif %}
+              font: ppb.ttf
+              x: 190
+              "y": 33
+              size: 18
+              color: >-
+                {{'black' if states('sensor.days_to_papier') == 'unknown' or
+                states('sensor.days_to_papier') | int > 1 else 'white' }}
+
+            - type: rectangle
+              outline: white
+              fill: >-
+                {{'white' if states('sensor.days_to_gft') == 'unknown' or
+                states('sensor.days_to_gft') | int > 1 else 'red' }}
+              width: 1
+              x_start: 5
+              y_start: 70
+              x_end: 123
+              y_end: 123
+            - type: text
+              value: GFT
+              font: ppb.ttf
+              x: 35
+              "y": 80
+              size: 18
+              color: >-
+                {{'black' if states('sensor.days_to_gft') == 'unknown' or
+                states('sensor.days_to_gft') | int > 1 else 'white' }}
+            - type: text
+              value: >-
+                {% if states('sensor.days_to_gft') == 'unknown' %}Unknown{%
+                elif states('sensor.days_to_gft') | int == 0 %}Today{% elif
+                states('sensor.days_to_gft') | int == 1 %}Tonight{% else
+                %}{{states('sensor.days_to_gft')}} days{% endif %}
+              font: ppb.ttf
+              x: 35
+              "y": 103
+              size: 18
+              color: >-
+                {{'black' if states('sensor.days_to_gft') == 'unknown' or
+                states('sensor.days_to_gft') | int > 1 else 'white' }}
+
+            - type: rectangle
+              outline: white
+              fill: white
+              width: 1
+              x_start: 0
+              y_start: 119
+              x_end: 100
+              y_end: 128
+            - type: text
+              value: " {{ states('sensor.date_time') | string }} "
+              font: ppb.ttf
+              x: 0
+              "y": 119
+              size: 9
+              color: black
+            # - type: rectangle
+            #   outline: white
+            #   fill: >-
+            #     {{'white' if states('sensor.green_bin_schedule') == 'unknown' or
+            #     states('sensor.green_bin_schedule') | int > 1 else 'red' }}
+            #   width: 1
+            #   x_start: 178
+            #   y_start: 70
+            #   x_end: 290
+            #   y_end: 123
+            # - type: text
+            #   value: Green
+            #   font: ppb.ttf
+            #   x: 190
+            #   "y": 80
+            #   size: 18
+            #   color: >-
+            #     {{'black' if states('sensor.green_bin_schedule') == 'unknown' or
+            #     states('sensor.green_bin_schedule') | int > 1 else 'white' }}
+            # - type: text
+            #   value: >-
+            #     {% if states('sensor.green_bin_schedule') == 'unknown' %}Unknown{%
+            #     elif states('sensor.green_bin_schedule') | int == 0 %}Today{% elif
+            #     states('sensor.green_bin_schedule') | int == 1 %}Tonight{% else
+            #     %}{{states('sensor.green_bin_schedule')}} days{% endif %}
+            #   font: ppb.ttf
+            #   x: 190
+            #   "y": 103
+            #   size: 18
+            #   color: >-
+            #     {{'black' if states('sensor.green_bin_schedule') == 'unknown' or
+            #     states('sensor.green_bin_schedule') | int > 1 else 'white' }}
+            - type: icon
+              value: trash-can
+              x: 123
+              "y": 39
+              size: 50
+              color: >-
+                {{ 'red' if (([(14 if states('sensor.days_to_restafval') ==
+                  'unknown' else states('sensor.days_to_restafval')),(14 if
+                  states('sensor.days_to_papier') == 'unknown' else
+                  states('sensor.days_to_papier')),(14 if
+                  states('sensor.days_to_gft') == 'unknown' else
+                  states('sensor.days_to_gft')) ]) | min ) | int < 2 else
+                'black' }}
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
