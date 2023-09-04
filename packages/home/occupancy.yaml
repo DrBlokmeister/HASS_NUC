@@ -5,7 +5,19 @@ homeassistant:
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: template
+    sensors:
+      guest_wifi_clients:
+        value_template: >-
+          {% set ns = namespace(counter=0) %}
+          {% for entity in states.device_tracker %}
+            {% if 'essid' in entity['attributes'].keys() %}
+              {% if 'BlokmeisterWIFI_Guest' in entity['attributes'].values() %}
+                {%- set ns.counter = ns.counter + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.counter }}
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -20,7 +32,8 @@ binary_sensor:
             is_state('person.tamara','home') or
             is_state('device_tracker.phone_kb', 'home') or
             is_state('device_tracker.phone_kb_2', 'home') or
-            is_state('calendar.gasten_in_huis','on')
+            is_state('calendar.gasten_in_huis', 'on') or
+            states('sensor.guest_wifi_clients')|int > 0
           }}
         availability_template: >-
           {{
@@ -107,14 +120,14 @@ automation:
       # set hacked motion sensor timout duration to 5 seconds
       - service: deconz.configure
         data:
-          entity: binary_sensor.motion_sensor_bedroom
+          entity: binary_sensor.bedroom_motion_1
           field: "/config"
           data: {"duration": 5}
       - delay:
           seconds: 1
       - service: deconz.configure
         data:
-          entity: binary_sensor.motion_sensor_study
+          entity: binary_sensor.study_motion_1
           field: "/config"
           data: {"duration": 5}
       - delay:
@@ -142,12 +155,12 @@ automation:
         data:
           entity: binary_sensor.hallway_1st_floor_motion_1
           field: "/config"
-          data: {"duration": 5}
+          data: {"duration": 60}
       - service: deconz.configure
         data:
           entity: binary_sensor.hallway_1st_floor_motion_2
           field: "/config"
-          data: {"duration": 5}
+          data: {"duration": 60}
       - service: deconz.configure
         data:
           entity: binary_sensor.hallway_2nd_floor_motion_1
