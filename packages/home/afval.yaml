@@ -15,7 +15,7 @@ afvalbeheer:
       - papier
     postcode: !secret postal_code
     streetnumber: !secret street_number_nosuffix
-    suffix: !secret street_number_suffix
+    #suffix: !secret street_number_suffix
     upcomingsensor: 1
     dateformat: '%d-%m-%Y'
     dateonly: 1
@@ -40,6 +40,26 @@ afvalbeheer:
 #    SENSORS    #
 #################
 sensor:
+  - platform: template
+    sensors:
+      days_to_gft:
+        friendly_name: "Days to GFT"
+        unit_of_measurement: 'days'
+        value_template: >-
+          {{ (strptime( states('sensor.mijnafvalwijzer_afval_achter_gft'), '%d-%m-%Y', today_at() ) | as_local - today_at()).days }}
+        availability_template: "{{ states('sensor.mijnafvalwijzer_afval_achter_gft') not in ['unknown', 'unavailable', 'none'] }}"
+      days_to_papier:
+        friendly_name: "Days to Papier"
+        unit_of_measurement: 'days'
+        value_template: >-
+          {{ (strptime( states('sensor.mijnafvalwijzer_afval_achter_papier'), '%d-%m-%Y', today_at() ) | as_local - today_at()).days }}
+        availability_template: "{{ states('sensor.mijnafvalwijzer_afval_achter_papier') not in ['unknown', 'unavailable', 'none'] }}"
+      days_to_restafval:
+        friendly_name: "Days to Restafval"
+        unit_of_measurement: 'days'
+        value_template: >-
+          {{ (strptime( states('sensor.mijnafvalwijzer_afval_achter_restafval'), '%d-%m-%Y', today_at() ) | as_local - today_at()).days }}
+        availability_template: "{{ states('sensor.mijnafvalwijzer_afval_achter_restafval') not in ['unknown', 'unavailable', 'none'] }}"
 # - platform: afvalbeheer
 #   name: 'Afval Voor'
 #   wastecollector: MijnAfvalwijzer
