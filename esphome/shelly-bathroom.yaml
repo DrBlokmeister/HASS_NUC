@@ -1,8 +1,8 @@
 substitutions:
   shelly_id: "Bathroom"
   device_name: "Shelly ${shelly_id}"
-  channel_1: Light 1
-  channel_2: Light 2
+  channel_1: Mirror Light
+  channel_2: Spotlights
   max_power: "2000.0" # watt
   max_temp: "80.0" # °C
 
@@ -153,13 +153,13 @@ status_led:
     inverted: yes
 
 switch:
-  - platform: gpio
+  - platform: gpio # Mirror Light
     name: ${device_name} Relay 1
     pin: GPIO4
     id: shelly_relay_1
     # After reboot, restore to ON
     restore_mode: ALWAYS_ON
-  - platform: gpio
+  - platform: gpio # Spotlights
     name: ${device_name} Relay 2
     pin: GPIO15
     id: shelly_relay_2
@@ -189,50 +189,8 @@ binary_sensor:
   - platform: template
     name: ${device_name} Momentary Switch 1
     id: switch_clicker_1
-    on_multi_click:
-      # double click
-      - timing:
-          - ON for at most 1s
-          - OFF for at most 1s
-          - ON for at most 1s
-          - OFF for at least 0.2s
-        then:
-          - if:
-              condition:
-                and:
-                  - wifi.connected:
-                  - api.connected:
-                  - switch.is_on: shelly_relay_1
-              then:
-                - homeassistant.event:
-                    event: esphome.button_pressed
-                    data:
-                      title: ${device_name} double click
-                      device_name: ${device_name}
-                      channel: ${channel_1}
-                      click_type: double
-      - timing:
-          - ON for at most 1s
-          - OFF for at least 0.5s
-        then:
-          - if:
-              condition:
-                and:
-                  - wifi.connected:
-                  - api.connected:
-                  - switch.is_on: shelly_relay_1
-              # send single click event in case wifi and api are conncected
-              then:
-                - homeassistant.event:
-                    event: esphome.button_pressed
-                    data:
-                      title: ${device_name} short click
-                      device_name: ${device_name}
-                      channel: ${channel_1}
-                      click_type: single
-              # toggle relay in case either wifi or api are not connected
-              else:
-                - switch.toggle: shelly_relay_1
+    on_click:
+      - switch.toggle: shelly_relay_1
 
   - platform: gpio
     name: ${device_name} Input 2
