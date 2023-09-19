@@ -189,8 +189,8 @@ automation:
   #           clickAction: '/lovelace/6'
   #           icon_url: /local/icons/desktop-tower-monitor.png
 
-  - alias: '[study|lights]Toggle lights through switch press'
-    id: studylightsswitchpress
+  - alias: '[study|lights]Toggle lights when switch is pressed'
+    id: study_lights_toggle_lights_when_switch_is_pressed
     mode: restart
     trigger:
       - platform: event
@@ -364,6 +364,50 @@ automation:
           seconds: 10
       - service: light.turn_off
         entity_id: light.study_lights
+
+  - alias: '[study|desk] Toggle desk powerstrip sockets'
+    id: study_desk_toggle_desk_powerstrip_sockets
+    mode: restart
+    trigger:
+      platform: event
+      event_type: deconz_event
+      event_data:
+        id: study_desk_multiswitch
+    action:
+      - choose:
+          - conditions: ################## CONDITIONS BELOW ARE FOR LONG PRESS RELEASE ##################
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1003 }}" #Shut off H2O2 socket
+              - condition: state
+                entity_id: device_tracker.blokmeisterh2o2_localdomain
+                state: 'away'
+                for:
+                  seconds: 5
+              - condition: numeric_state
+                entity_id: sensor.blitzwolf_computer_energy_power
+                below: 300
+            sequence:
+              - choose:
+              - service: switch.toggle
+                entity_id: switch.study_shp9_powerstrip_socket_pc
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2003 }}" #Laptop Dock
+            sequence:
+              - service: switch.toggle
+                entity_id: switch.study_shp9_powerstrip_socket_dock
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3003 }}" #Peripherals
+            sequence:
+              - service: switch.toggle
+                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4003 }}" # USB
+            sequence:
+              - service: switch.toggle
+                entity_id: switch.study_shp9_powerstrip_usb_socket
 
 ################
 #    SCENES    #
