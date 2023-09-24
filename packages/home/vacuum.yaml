@@ -231,6 +231,7 @@ counter:
 automation:
 #Auto clean whole house when I'm not home on mon, wed, fri
   - alias: '[home|vacuum]scheduled_cleanup'
+    id: home_vacuum_scheduled_cleanup
     mode: single
     trigger:
       - platform: state
@@ -286,20 +287,22 @@ automation:
       - choose:
           - conditions:
               - condition: numeric_state
-                entity_id: sensor.moeke_area_cleaned_today
+                entity_id: sensor.moeke_cleaned_area
                 below: 20
             sequence:
               - service: vacuum.set_fan_speed
                 entity_id: vacuum.moeke
                 data:
                   fan_speed: Strong
-              - service: vacuum.start
-                entity_id: vacuum.moeke
               - service: select.select_option
                 target:
                   entity_id: select.moeke_cleaning_mode
                 data:
                   option: "sweeping_and_mopping"
+              - delay:
+                  seconds: 3
+              - service: vacuum.start
+                entity_id: vacuum.moeke
       - service: notify.mobile_app_blokmeisters21u
         data:
           message: "Started scheduled cleanup"
@@ -513,12 +516,16 @@ automation:
   - alias: '[home|vacuum]reset_area_cleaned_input_number'
     trigger:
       platform: time
-      at: '00:00:01'
+      at: '03:00:00'
     action:
       # - service: input_number.set_value
       #   data:
       #     entity_id: input_number.consuela_area_cleaned_at_start_of_day
       #     value: "{{ states('sensor.consuela_total_clean_area') }}"
+      # - service: input_number.set_value
+      #   data:
+      #     entity_id: input_number.moeke_area_cleaned_at_start_of_day
+      #     value: "{{ states('sensor.moeke_total_clean_area') }}"
       - service: input_number.set_value
         data:
           entity_id: input_number.argus_area_cleaned_at_start_of_day
