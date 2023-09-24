@@ -59,7 +59,14 @@ sensor:
   #   entity_id: sensor.average_illumination_study
   #   max_age:
   #     minutes: 30
-
+  - platform: group
+    type: mean
+    name: "Study Average Illuminance"
+    entities:
+      - sensor.study_motion_1_illuminance
+      - sensor.study_motion_2_illuminace
+      - sensor.study_light
+      - sensor.study_light
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -110,9 +117,9 @@ automation:
         #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
         value_template: >-
           {% if is_state('light.study_lights', 'on') %}
-            {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lighton')|int }}
+            {{ states('sensor.study_average_illuminance')|int < states('input_number.study_illumination_limit_lighton')|int }}
           {% else %}
-            {{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}
+            {{ states('sensor.study_average_illuminance')|int < states('input_number.study_illumination_limit_lightoff')|int }}
           {% endif %}
     action:
       - service: light.turn_on
@@ -137,7 +144,7 @@ automation:
             for:
               minutes: 5
           - platform: template
-            value_template: "{{ states('sensor.average_illumination_study_2')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
+            value_template: "{{ states('sensor.study_average_illuminance')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
             for:
               minutes: 5
       - service: light.turn_on
@@ -375,25 +382,93 @@ automation:
         id: study_desk_multiswitch
     action:
       - choose:
+          - conditions: ################## CONDITIONS BELOW ARE FOR SHORT PRESS ##################
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1001 }}" #H2O2 socket
+              - condition: state
+                entity_id: switch.study_shp9_powerstrip_socket_pc
+                state: 'off'
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.study_shp9_powerstrip_socket_pc
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2001 }}" #Laptop Dock
+              - condition: state
+                entity_id: switch.study_shp9_powerstrip_socket_dock
+                state: 'off'
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.study_shp9_powerstrip_socket_dock
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3001 }}" #Peripherals
+              - condition: state
+                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+                state: 'off'
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4001 }}" #USB
+              - condition: state
+                entity_id: switch.study_shp9_powerstrip_usb_socket
+                state: 'off'
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.study_shp9_powerstrip_usb_socket
           - conditions: ################## CONDITIONS BELOW ARE FOR LONG PRESS RELEASE ##################
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1003 }}" #Shut off H2O2 socket
-              - condition: state
-                entity_id: device_tracker.blokmeisterh2o2_localdomain
-                state: 'away'
-                for:
-                  seconds: 5
-              - condition: numeric_state
-                entity_id: sensor.blitzwolf_computer_energy_power
-                below: 300
+                value_template: "{{ trigger.event.data.event == 1003 }}" #H2O2 socket
             sequence:
               - choose:
-              - service: switch.toggle
-                entity_id: switch.study_shp9_powerstrip_socket_pc
+                  - conditions:
+                      - condition: state
+                        entity_id: switch.study_shp9_powerstrip_socket_pc
+                        state: 'off'
+                    sequence:
+                      - service: switch.turn_on
+                        entity_id: switch.study_shp9_powerstrip_socket_pc
+                  - conditions:
+                      - condition: state
+                        entity_id: switch.study_shp9_powerstrip_socket_pc
+                        state: 'on'
+                    sequence:
+                      # - condition: state
+                      #   entity_id: device_tracker.blokmeisterh2o2_localdomain
+                      #   state: 'off'
+                      #   for:
+                      #     seconds: 5
+                      - condition: numeric_state
+                        entity_id: sensor.blitzwolf_computer_energy_power
+                        below: 250
+                      - service: switch.toggle
+                        entity_id: switch.study_shp9_powerstrip_socket_pc
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 2003 }}" #Laptop Dock
             sequence:
+              - service: light.turn_off
+                entity_id:
+                  - light.study_candle
+                  - light.study_desk_a_rgb_ledstrip
+              - repeat:
+                  sequence:
+                    - delay:
+                        milliseconds: 200
+                  until:
+                    - condition: state
+                      entity_id:
+                        - light.study_candle
+                        - light.study_desk_a_rgb_ledstrip
+                      state: 'off'
+                      for:
+                        seconds: 2
+              # - wait_for_trigger:
+              #     - platform: template
+              #       value_template: >-
+              #         {{ is_state('light.study_candle', 'off') and is_state('light.study_desk_a_rgb_ledstrip', 'off') }}
               - service: switch.toggle
                 entity_id: switch.study_shp9_powerstrip_socket_dock
           - conditions:
@@ -408,6 +483,68 @@ automation:
             sequence:
               - service: switch.toggle
                 entity_id: switch.study_shp9_powerstrip_usb_socket
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  turn_off_all_study_desk_devices:
+    alias: "Turn off all study desk devices"
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+                state: 'on'
+            sequence:
+              - service: light.turn_off
+                entity_id:
+                  - light.study_candle
+                  - light.study_desk_a_rgb_ledstrip
+              - repeat:
+                  sequence:
+                    - delay:
+                        milliseconds: 200
+                  until:
+                    - condition: state
+                      entity_id:
+                        - light.study_candle
+                        - light.study_desk_a_rgb_ledstrip
+                      state: 'off'
+                      for:
+                        seconds: 2
+              - service: switch.turn_off
+                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+              - delay:
+                  seconds: 3
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: switch.study_shp9_powerstrip_socket_dock
+                state: 'on'
+            sequence:
+              - service: switch.turn_off
+                entity_id: switch.study_shp9_powerstrip_socket_dock
+              - delay:
+                  seconds: 3
+      - choose:
+        - conditions:
+            - condition: state
+              entity_id: switch.study_shp9_powerstrip_socket_pc
+              state: 'on'
+          sequence:
+            - repeat:
+                sequence:
+                  - delay:
+                      milliseconds: 200
+                until:
+                  - condition: state
+                    entity_id: device_tracker.blokmeisterh2o2_localdomain
+                    state: 'away'
+                    for:
+                      seconds: 5
+            - service: switch.turn_off
+              entity_id: switch.study_shp9_powerstrip_socket_pc
 
 ################
 #    SCENES    #
@@ -456,3 +593,4 @@ light:
     entities:
       - light.study
       - light.study_desk_a_rgb_ledstrip
+      - light.study_cabinet_a_rgb_ledstrip
