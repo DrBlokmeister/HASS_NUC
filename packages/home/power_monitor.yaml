@@ -73,6 +73,85 @@ utility_meter:
     delta_values: True
     cycle: yearly
     unique_id: yaml_template_sensor_yearly_water_use
+
+  #Warmtepomp monitor:
+  heatpump_tapwater_hourly_energy_use:
+    source: sensor.tapwater
+    delta_values: false
+    cycle: hourly
+    unique_id: yaml_utilitymeter_heatpump_tapwater_hourly_energy_use
+  heatpump_tapwater_daily_energy_use:
+    source: sensor.tapwater
+    delta_values: false
+    cycle: daily
+    unique_id: yaml_utilitymeter_heatpump_tapwater_daily_energy_use
+  heatpump_tapwater_weekly_energy_use:
+    source: sensor.tapwater
+    delta_values: false
+    cycle: weekly
+    unique_id: yaml_utilitymeter_heatpump_tapwater_weekly_energy_use
+  heatpump_tapwater_monthly_energy_use:
+    source: sensor.tapwater
+    delta_values: false
+    cycle: monthly
+    unique_id: yaml_utilitymeter_heatpump_tapwater_monthly_energy_use
+  heatpump_tapwater_yearly_energy_use:
+    source: sensor.tapwater
+    delta_values: false
+    cycle: yearly
+    unique_id: yaml_utilitymeter_heatpump_tapwater_yearly_energy_use
+
+  heatpump_verwarming_hourly_energy_use:
+    source: sensor.verwarming
+    delta_values: false
+    cycle: hourly
+    unique_id: yaml_utilitymeter_heatpump_verwarming_hourly_energy_use
+  heatpump_verwarming_daily_energy_use:
+    source: sensor.verwarming
+    delta_values: false
+    cycle: daily
+    unique_id: yaml_utilitymeter_heatpump_verwarming_daily_energy_use
+  heatpump_verwarming_weekly_energy_use:
+    source: sensor.verwarming
+    delta_values: false
+    cycle: weekly
+    unique_id: yaml_utilitymeter_heatpump_verwarming_weekly_energy_use
+  heatpump_verwarming_monthly_energy_use:
+    source: sensor.verwarming
+    delta_values: false
+    cycle: monthly
+    unique_id: yaml_utilitymeter_heatpump_verwarming_monthly_energy_use
+  heatpump_verwarming_yearly_energy_use:
+    source: sensor.verwarming
+    delta_values: false
+    cycle: yearly
+    unique_id: yaml_utilitymeter_heatpump_verwarming_yearly_energy_use
+
+  heatpump_circulation_hourly_energy_use:
+    source: sensor.blitzwolf_heatpump_consumption
+    delta_values: false
+    cycle: hourly
+    unique_id: yaml_utilitymeter_heatpump_circulation_hourly_energy_use
+  heatpump_circulation_daily_energy_use:
+    source: sensor.blitzwolf_heatpump_consumption
+    delta_values: false
+    cycle: daily
+    unique_id: yaml_utilitymeter_heatpump_circulation_daily_energy_use
+  heatpump_circulation_weekly_energy_use:
+    source: sensor.blitzwolf_heatpump_consumption
+    delta_values: false
+    cycle: weekly
+    unique_id: yaml_utilitymeter_heatpump_circulation_weekly_energy_use
+  heatpump_circulation_monthly_energy_use:
+    source: sensor.blitzwolf_heatpump_consumption
+    delta_values: false
+    cycle: monthly
+    unique_id: yaml_utilitymeter_heatpump_circulation_monthly_energy_use
+  heatpump_circulation_yearly_energy_use:
+    source: sensor.blitzwolf_heatpump_consumption
+    delta_values: false
+    cycle: yearly
+    unique_id: yaml_utilitymeter_heatpump_circulation_yearly_energy_use
 #######################
 #    INPUT NUMBERS    #
 #######################
@@ -122,6 +201,10 @@ input_number:
 #    SENSORS    #
 #################
 sensor:
+  - platform: integration
+    source: sensor.water_meter_water_consumption
+    unit_time: min
+    
   - platform: template
     sensors:
       net_energy_usage:
@@ -244,7 +327,18 @@ sensor:
         unit_of_measurement: "kW"
         availability_template: "{{ states('sensor.electricity_meter_energy_consumption_tarif_1')|is_number and states('sensor.electricity_meter_energy_consumption_tarif_2')|is_number }}"
 
-  
+      known_power:
+        friendly_name: "Known Power"
+        unit_of_measurement: 'W'
+        value_template: >-
+          {{ expand('group.power_entities') |rejectattr('domain','eq','group')
+                                            |rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|map(attribute='state')|map('float')|sum}}
+      unknown_power:
+        friendly_name: "Unknown Power"
+        unit_of_measurement: 'W'
+        value_template: "{{ states('sensor.total_power_consumption_watt')|float - states('sensor.known_power')|float }}"
+        availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.known_power')|is_number }}"
+
   - platform: integration
     source: sensor.total_power_consumption_watt
     name: Total Energy Usage
@@ -269,6 +363,24 @@ sensor:
     name: Total Water Consumption
     unit_time: h
     time_window: "00:02:00"
+
+  # - platform: template
+  #   sensors:
+  #     known_power:
+  #       friendly_name: "Known Power"
+  #       unit_of_measurement: 'W'
+  #       value_template: >-
+  #         {{ expand('group.power_entities') |rejectattr('domain','eq','group')
+  #                                           |rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|map(attribute='state')|map('float')|sum}}
+
+  # - platform: template
+  #   sensors:
+  #     unknown power:
+  #       friendly_name: "Unknown Power"
+  #       unit_of_measurement: 'W'
+  #       value_template: "{{ states('sensor.total_power_consumption_watt')|float - states('sensor.known_power')|float }}"
+  #       availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.known_power')|is_number }}"
+
 
   # - platform: template
   #   sensors:
@@ -573,6 +685,22 @@ group:
       - sensor.consumption_l1_w
       - sensor.l1_v
       - sensor.l1_a
+
+  power_entities:
+    name: Power Entities
+    entities:
+      - sensor.blitzwolf_10gb_switch_energy_power
+      - sensor.blitzwolf_3dprinter_energy_power
+      - sensor.blitzwolf_ambilight_amplifier_power
+      - sensor.blitzwolf_computer_energy_reactivepower
+      - sensor.blitzwolf_dishwasher_energy_power
+      - sensor.blitzwolf_nas_energy_power
+      - sensor.blitzwolf_nuc_energy_power
+      - sensor.blitzwolf_poe_switch_energy_power
+      - sensor.blitzwolf_router_energy_power
+      - sensor.blitzwolf_washingmachine_energy_power
+      - sensor.blitzwolf_watercooker_energy_power
+
 #################
 #    SCRIPTS    #
 #################
