@@ -18,7 +18,13 @@ input_number:
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: group
+    type: mean
+    name: "Entry Average Illuminance"
+    entities:
+      - sensor.motion_motion_2_illuminance
+      - sensor.entry_light
+      - sensor.entry_light
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -73,7 +79,7 @@ automation:
     mode: queued
     trigger:
       platform: state
-      entity_id: binary_sensor.kitchen_door_window_sensor
+      entity_id: binary_sensor.meterkast_door_sensor
       to: 'on'
     action:
       - service: scene.create
@@ -89,7 +95,7 @@ automation:
           transition: 0.5
       - delay:
           seconds: 1
-      - wait_template: "{{ is_state('binary_sensor.kitchen_door_window_sensor', 'off')}}"
+      - wait_template: "{{ is_state('binary_sensor.meterkast_door_sensor', 'off')}}"
         timeout: '00:10:00'
         continue_on_timeout: false   #prevent restoring old light state if the closet remains open for a long time
       - service: scene.turn_on
@@ -108,7 +114,7 @@ automation:
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ states('sensor.entry_motion_2_illuminance')|int < states('input_number.entry_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.entry_average_illuminance')|int < states('input_number.entry_illumination_limit')|int }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -125,14 +131,14 @@ automation:
             for:
       #         minutes: 3
       #     - platform: template
-      #       value_template: "{{ states('sensor.entry_motion_2_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
+      #       value_template: "{{ states('sensor.entry_average_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
       #       for:
       #         minutes: 10
       # - service: light.turn_off
       #   entity_id: light.entry
               minutes: "{{ states('input_number.entry_light_timeout')|int }}"
           - platform: template
-            value_template: "{{ states('sensor.entry_motion_2_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
+            value_template: "{{ states('sensor.entry_average_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
             for:
               minutes: "{{ states('input_number.entry_light_timeout')|int }}"
       - service: light.turn_on

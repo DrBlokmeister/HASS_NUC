@@ -42,7 +42,14 @@ sensor:
             unavailable
           {% endif %}
         availability_template: "{{ states('sensor.hallway_2nd_floor_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.hallway_2nd_floor_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
-
+  - platform: group
+    type: mean
+    name: "Hallway 2nd Floor Average Illuminance"
+    entities:
+      - sensor.hallway_2nd_floor_motion_1_illuminance
+      - sensor.hallway_2nd_floor_motion_2_illuminance
+      - sensor.hallway_2nd_floor_light
+      - sensor.hallway_2nd_floor_light
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -89,7 +96,7 @@ automation:
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ states('sensor.average_illumination_hallway_2nd_floor')|int < states('input_number.hallway_2nd_floor_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.hallway_2nd_floor_average_illuminance')|int < states('input_number.hallway_2nd_floor_illumination_limit')|int }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -108,7 +115,7 @@ automation:
             for:
               minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int }}"
           - platform: template
-            value_template: "{{ states('sensor.average_illumination_hallway_2nd_floor')|int > states('input_number.hallway_2nd_floor_illumination_limit_lightson')|int }}"
+            value_template: "{{ states('sensor.hallway_2nd_floor_average_illuminance')|int > states('input_number.hallway_2nd_floor_illumination_limit_lightson')|int }}"
             for:
               minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int }}"
       - service: light.turn_on
