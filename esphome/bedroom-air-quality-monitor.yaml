@@ -190,6 +190,10 @@ sensor:
           - delta: 10.0
     temperature:
       name: "${location} MH-Z19 Temperature"
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 1
     update_interval: 10s
     automatic_baseline_calibration: false
     uart_id: mh
@@ -202,14 +206,25 @@ sensor:
       id: temp
       filters:
         - offset: -1.5
+        - or:
+          - throttle_average: 60s
+          - delta: 1.0
     pressure:
       name: "${location}  AQM Pressure"
       oversampling: 1x
       id: press
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 10
     humidity:
       name: "${location} AQM Humidity"
       oversampling: 1x
       id: hum
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 5
     address: 0x76
     update_interval: 10s
 
@@ -218,10 +233,18 @@ sensor:
       name: "${location} eCO2"
       accuracy_decimals: 1
       id: eco2
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 20
     tvoc:
       name: "${location} TVOC"
       accuracy_decimals: 1
       id: tvoc
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 20
     update_interval: 1s
     address: 0x58
     # https://esphome.io/components/sensor/sgp30.html#calibrating-baseline
