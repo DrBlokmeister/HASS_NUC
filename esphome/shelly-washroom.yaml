@@ -7,18 +7,18 @@ esphome:
   name: shelly-washroom
   platformio_options:
     board_build.f_cpu: 160000000L
-  on_boot:
-    priority: 100
-    then:
-      - binary_sensor.template.publish:
-          id: switch_clicker
-          state: OFF
+  # on_boot:
+  #   priority: 100
+  #   then:
+  #     - binary_sensor.template.publish:
+  #         id: switch_clicker
+  #         state: OFF
 
 esp32:
   board: esp32doit-devkit-v1
   framework:
     type: esp-idf
-    version: latest
+    # version: latest
     sdkconfig_options:
       CONFIG_FREERTOS_UNICORE: y
       CONFIG_ESP32_DEFAULT_CPU_FREQ_160: y
@@ -116,7 +116,7 @@ switch:
     pin: GPIO26
     id: shelly_relay
     # after reboot, keep the relay off. this prevents light turning on after a power outage
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: RESTORE_DEFAULT_OFF
 
 binary_sensor:
   - platform: gpio
@@ -129,56 +129,57 @@ binary_sensor:
     # config for state change of input button
     on_state:
         then:
-          - binary_sensor.template.publish:
-              id: switch_clicker
-              state: ON
-          - delay: 100ms
-          - binary_sensor.template.publish:
-              id: switch_clicker
-              state: OFF
-    id: button
-  - platform: template
-    name: ${device_name} Momentary Switch
-    id: switch_clicker
-    on_multi_click:
-      # double click
-      - timing:
-          - ON for at most 1s
-          - OFF for at most 1s
-          - ON for at most 1s
-          - OFF for at least 0.2s
-        then:
-          - if:
-              condition:
-                and:
-                  - wifi.connected:
-                  - api.connected:
-                  - switch.is_on: shelly_relay
-              then:
-                - homeassistant.event:
-                    event: esphome.button_pressed
-                    data:
-                      title: ${device_name} double click
-                      device_name: ${device_name}
-                      click_count: "2"
-      - timing:
-          - ON for at most 1s
-          - OFF for at least 0.5s
-        then:
-          - if:
-              condition:
-                and:
-                  - wifi.connected:
-                  - api.connected:
-                  - switch.is_on: shelly_relay
-              # send single click event in case wifi and api are conncected
-              then:
-                - homeassistant.event:
-                    event: esphome.button_pressed
-                    data:
-                      title: ${device_name} short click
-                      device_name: ${device_name}
-                      click_count: "1"
-              # toggle relay in case either wifi or api are not connected
-              else:
-                - switch.toggle: shelly_relay
+          - switch.toggle: shelly_relay
+  #         - binary_sensor.template.publish:
+  #             id: switch_clicker
+  #             state: ON
+  #         - delay: 100ms
+  #         - binary_sensor.template.publish:
+  #             id: switch_clicker
+  #             state: OFF
+  #   id: button
+  # - platform: template
+  #   name: ${device_name} Momentary Switch
+  #   id: switch_clicker
+  #   on_multi_click:
+  #     # double click
+  #     - timing:
+  #         - ON for at most 1s
+  #         - OFF for at most 1s
+  #         - ON for at most 1s
+  #         - OFF for at least 0.2s
+  #       then:
+  #         - if:
+  #             condition:
+  #               and:
+  #                 - wifi.connected:
+  #                 - api.connected:
+  #                 - switch.is_on: shelly_relay
+  #             then:
+  #               - homeassistant.event:
+  #                   event: esphome.button_pressed
+  #                   data:
+  #                     title: ${device_name} double click
+  #                     device_name: ${device_name}
+  #                     click_count: "2"
+  #     - timing:
+  #         - ON for at most 1s
+  #         - OFF for at least 0.5s
+  #       then:
+  #         - if:
+  #             condition:
+  #               and:
+  #                 - wifi.connected:
+  #                 - api.connected:
+  #                 - switch.is_on: shelly_relay
+  #             # send single click event in case wifi and api are conncected
+  #             then:
+  #               - homeassistant.event:
+  #                   event: esphome.button_pressed
+  #                   data:
+  #                     title: ${device_name} short click
+  #                     device_name: ${device_name}
+  #                     click_count: "1"
+  #             # toggle relay in case either wifi or api are not connected
+  #             else:
+  #               - switch.toggle: shelly_relay
