@@ -1,0 +1,73 @@
+# packages:
+#   standing_desk: github://tjhorner/esphome-standing-desk/configs/template.yaml
+#   desk_config: github://tjhorner/esphome-standing-desk/configs/desks/uplift_v2.yaml
+
+substitutions:
+#   # Required (replace these with your own values!)
+#   standing_desk_uart_rx_pin: GPIO14 #D1
+#   standing_desk_up_pin: GPIO11 #D3
+#   standing_desk_down_pin: GPIO12 #D4
+#   standing_desk_min_height: "65"
+#   standing_desk_max_height: "110"
+#   # button_bit1_pin: GPIO7 #D7
+#   # button_bit2_pin: GPIO12 #D8
+#   # button_bit4_pin: GPIO9 #D6
+#   # button_m_pin: GPIO33 #D1
+
+  # Optional (defaults shown)
+  desk_height_name: "Desk Height"
+  target_desk_height_name: "Target Desk Height"
+  standing_desk_height_units: "cm"
+  standing_desk_variant: "auto" # jarvis, uplift, or omnidesk
+
+  device_name: "Standing Desk"
+  short_device_name: "Standing Desk"
+
+esphome:
+  name: "standing-desk"
+  platformio_options:
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: VERBOSE
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+captive_portal:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  output_power: 15dB
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${short_device_name} Hotspot
+    password: !secret esphome_fallback_pass
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${device_name} IP Address"
+    ssid:
+      name: "${device_name} SSID"
+    bssid:
+      name: "${device_name} BSSID"
+  - platform: version
+    name: "${device_name} ESPHome Version"
+
+sensor:
+    # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
