@@ -126,6 +126,16 @@ sensor:
     entity_id: sensor.co2_value_bedroom_min
     device_class: "carbon_dioxide"
     id: ha_co2_bedroom_min
+  - platform: homeassistant
+    name: "Study CO2 Concentration"
+    entity_id: sensor.study_co2
+    device_class: "carbon_dioxide"
+    id: ha_co2_study
+  - platform: homeassistant
+    name: "Livingroom CO2 Concentration"
+    entity_id: sensor.livingroom_co2
+    device_class: "carbon_dioxide"
+    id: ha_co2_livingroom
 
   # Template sensors:
   - platform: template
@@ -187,10 +197,72 @@ sensor:
         return rounded_fan_setting;
       }
 
+  - platform: template
+    name: "Ventilation Setting CO2 Study"
+    id: fan_setting_co2_study
+    update_interval: 10s
+    accuracy_decimals: 0
+    unit_of_measurement: "%"
+    lambda: |-
+      // Get the current and minimum humidity values
+      float current_co2_concentration = id(ha_co2_study).state;
+      // float min_humidity = id(ha_humidity_bathroom_min).state;
 
-      // Return the fan setting
-      // return rounded_fan_setting;
-      // return fan_setting
+      // Calculate the difference between the current humidity and the minimum humidity
+      // float humidity_diff = current_humidity - min_humidity;
+      // Fan sensitivity in % per PPM
+      float fan_sensitivity = 0.1;
+      // Offset CO2 value
+      float co2_offset = id(ha_co2_bedroom_min).state;
+
+      // Calculate the fan setting based on the difference
+      float fan_setting = 0.0;
+      fan_setting = (current_co2_concentration - co2_offset) * fan_sensitivity;
+
+      // Set the fan setting to the nearest speed value
+      float rounded_fan_setting = round(fan_setting);
+
+      if (rounded_fan_setting > 100) {
+        // If it is, return the limit value
+        return 100;
+      } else {
+        // Otherwise, return the current value
+        return rounded_fan_setting;
+      }
+
+  - platform: template
+    name: "Ventilation Setting CO2 Livingroom"
+    id: fan_setting_co2_livingroom
+    update_interval: 10s
+    accuracy_decimals: 0
+    unit_of_measurement: "%"
+    lambda: |-
+      // Get the current and minimum humidity values
+      float current_co2_concentration = id(ha_co2_livingroom).state;
+      // float min_humidity = id(ha_humidity_bathroom_min).state;
+
+      // Calculate the difference between the current humidity and the minimum humidity
+      // float humidity_diff = current_humidity - min_humidity;
+      // Fan sensitivity in % per PPM
+      float fan_sensitivity = 0.1;
+      // Offset CO2 value
+      float co2_offset = id(ha_co2_bedroom_min).state;
+
+      // Calculate the fan setting based on the difference
+      float fan_setting = 0.0;
+      fan_setting = (current_co2_concentration - co2_offset) * fan_sensitivity;
+
+      // Set the fan setting to the nearest speed value
+      float rounded_fan_setting = round(fan_setting);
+
+
+      if (rounded_fan_setting > 100) {
+        // If it is, return the limit value
+        return 100;
+      } else {
+        // Otherwise, return the current value
+        return rounded_fan_setting;
+      }
 
   - platform: template
     name: "Fan Speed Setting"
@@ -199,13 +271,21 @@ sensor:
       // Get the current values of the input sensors
       float var_fan_setting_bathroom_humidity = id(fan_setting_bathroom_humidity).state;
       float var_fan_setting_co2_bedroom = id(fan_setting_co2_bedroom).state;
-
-
+      float var_fan_setting_co2_study = id(fan_setting_co2_study).state;
+      float var_fan_setting_co2_livingroom = id(fan_setting_co2_livingroom).state;
       // Find the maximum value of the three sensors
-      float fan_setting = max(var_fan_setting_bathroom_humidity, var_fan_setting_co2_bedroom);
+      float fan_setting = 0;
+      float fan_setting_1 = max(var_fan_setting_bathroom_humidity, var_fan_setting_co2_bedroom);
+      float fan_setting_2 = max(fan_setting_1, var_fan_setting_co2_study);
+      fan_setting = max(fan_setting_2, var_fan_setting_co2_livingroom);
+      //float fan_setting = max(max(max(var_fan_setting_bathroom_humidity, var_fan_setting_co2_bedroom), fan_setting_co2_study), fan_setting_co2_livingroom);
 
       // Return the maximum value
-      return fan_setting;
+      if (id(fan_speed_override).state) {
+        return id(override_fan_speed).state;
+      } else {
+        return fan_setting;
+      }
     update_interval: 10s
     accuracy_decimals: 0
     unit_of_measurement: "%"
@@ -215,3 +295,31 @@ sensor:
             id: ventilationsystem
             speed: !lambda "return id(fan_speed_setting).state;"
 
+number:
+  - platform: template
+    name: Override Fan Speed
+    icon: mdi:fan
+    min_value: 0
+    step: 1
+    max_value: 100
+    optimistic: true
+    id: override_fan_speed
+
+  - platform: template
+    name: Override Fan Duration
+    icon: mdi:clock
+    unit_of_measurement: min
+    min_value: 15
+    step: 5
+    max_value: 600
+    optimistic: true
+    id: override_fan_duration
+
+switch:
+  - platform: template
+    name: "Fan Speed Override"
+    optimistic: true
+    id: fan_speed_override
+    on_turn_on:
+      - delay: !lambda "return (id(override_fan_duration).state) * 60 * 1000;"
+      - switch.turn_off: fan_speed_override
