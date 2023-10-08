@@ -81,7 +81,7 @@ camera:
     username: !secret xiaomi_cloud_user
     password: !secret xiaomi_cloud_pass
     draw: ['all']
-    scan_interval: 10
+    scan_interval: 3600
     attributes:
       - calibration_points
     map_transformation:
@@ -119,7 +119,7 @@ camera:
     username: !secret xiaomi_cloud_user
     password: !secret xiaomi_cloud_pass
     draw: ['all']
-    scan_interval: 10
+    scan_interval: 3600
     attributes:
       - calibration_points
     map_transformation:
@@ -545,7 +545,7 @@ automation:
   #     service: script.vacuum_message_done_cleaning
 
   - alias: '[home|vacuum]Notify Phone if Vacuum is in Error'
-    id: notifyvacuumerror
+    id: home_vacuum_notify_phone_if_vacuum_is_in_error
     mode: parallel
     trigger:
       # - platform: state
@@ -588,11 +588,29 @@ automation:
             tag: vacuumerror
             icon_url: local/icons/robot-vacuum.png
             image: "/local/tmp/snapshot_vacuum_error.jpg"
+      - service: scene.create
+        data:
+          scene_id: atmoorb_bulbs_before
+          snapshot_entities:
+            - light.ambilight_left
+            - light.ambilight_right
+      - service: light.turn_on
+        target:
+          entity_id:
+            - light.ambilight_left
+            - light.ambilight_right
+        data:
+          rgb_color: [255,0,0]
+          effect: Fast Pulse
       - wait_template: "{{ not is_state( vacuumentityid, 'error' ) }}"
       # - wait_for_trigger:
       #     - platform: state
       #       entity_id: "{{ vacuumentityid }}"
       #       to: "error"
+      - service: scene.turn_on
+        data:
+          entity_id: scene.atmoorb_bulbs_before
+          transition: 1
       - service: notify.mobile_app_blokmeisters21u
         data:
           message: "clear_notification"
