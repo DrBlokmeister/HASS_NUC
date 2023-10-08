@@ -419,6 +419,16 @@ sensor:
             window_size: 30
             send_every: 30
             send_first_at: 15
+
+    - platform: pulse_counter
+      name: "${location} Fan Speed"
+      pin:
+        number: GPIO17 #D3
+        mode: INPUT_PULLUP
+      unit_of_measurement: 'RPM'
+      id: fanspeed
+      filters:
+        - multiply: 0.5
 switch:
   # - platform: gpio
   #   name: "PMS7003_SET"
@@ -553,3 +563,23 @@ display:
       } else if (id(min_max_zero)) {
           it.print(0, 20, id(arial), "MIN-MAX reset!");
       }
+
+output:
+  # Wire this pin (15) into the PWM pin of your 12v fan                                                                                                                                                                                  
+  # ledc is the name of the pwm output system on an esp32                                                                                                                                                                                
+  - platform: ledc
+    id: shedfan
+    pin: GPIO5 #D8
+
+    # 25KHz is standard PC fan frequency, minimises buzzing                                                                                                                                                                              
+    frequency: "25000 Hz"
+
+    # my fans stop working below 13% powerful.                                                                                                                                                                                           
+    # also they're  powerful and loud, cap their max speed to 80%                                                                                                                                                                        
+    min_power: 1%
+    max_power: 100%
+
+fan:
+  - platform: speed
+    output: shedfan
+    name: "${location} Fan"
