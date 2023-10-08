@@ -1,0 +1,124 @@
+substitutions:
+  device_name: "Livingroom Light String"
+
+
+esphome:
+  name: "livingroom-lightstring"
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: esp-idf
+    # version: 2.0.3
+    # platform_version: 5.0.0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  #use_address: 10.0.30.25
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Hotspot
+    password: !secret esphome_fallback_pass
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${device_name} IP Address"
+    ssid:
+      name: "${device_name} SSID"
+    bssid:
+      name: "${device_name} BSSID"
+  - platform: version
+    name: "${device_name} ESPHome Version"
+
+# status_led:
+#   pin:
+#     number: GPIO15
+
+# Sensors with general information.
+sensor:
+  # Uptime sensor.
+  - platform: uptime
+    name: ${device_name} Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
+
+output:
+  - platform: ledc
+    pin:
+      number: GPIO12
+      mode:
+        output: true
+        pulldown: true
+    frequency: "1000Hz"
+    max_power: 0.5
+    id: pwm_output
+
+light:
+  - platform: monochromatic
+    name: ${device_name}
+    output: pwm_output
+    gamma_correct: 2
+    id: lightstrip
+    effects:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+      - pulse:
+          name: "Slow Pulse"
+          transition_length: 2.5s      # defaults to 1s
+          update_interval: 3s
+
+binary_sensor:
+  - platform: gpio
+    name: ${device_name} Button
+    pin:
+      number: GPIO16
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 10ms
+    on_click:
+      - min_length: 50ms
+        max_length: 350ms
+        then:
+          - light.toggle: lightstrip
+      - min_length: 500ms
+        max_length: 10s
+        then:
+          - light.turn_on:
+              id: lightstrip
+              brightness: 50%
+      # - min_length: 50ms
+      #   max_length: 350ms
+      #   then:
+      #     - light.toggle:
+      #         id: lightstrip
+      # - min_length: 500ms
+      #   #max_length: 1000ms
+      #   then:
+      #     - light.turn_on:
+      #         id: lightstrip
+      #         brightness: 50%
