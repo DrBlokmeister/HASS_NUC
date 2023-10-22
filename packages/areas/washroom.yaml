@@ -31,18 +31,22 @@ automation:
     trigger:
       - platform: state
         entity_id: binary_sensor.washroom_door_sensor
-        to: 'on'
     action:
-      - service: switch.turn_on
-        data:
-          entity_id: switch.shelly_washroom
-      - wait_for_trigger:
-          - platform: state
-            entity_id: binary_sensor.washroom_door_sensor
-            to: 'off'
-      - service: switch.turn_off
-        data:
-          entity_id: switch.shelly_washroom
+      - choose: #If door is opened, turn on light, if it is closed, turn off
+        - conditions:
+            - condition: template
+              value_template: "{{ trigger.to_state.state == 'on' }}"
+          sequence:
+            - service: switch.turn_on
+              data:
+                entity_id: switch.shelly_washroom
+        - conditions:
+            - condition: template
+              value_template: "{{ trigger.to_state.state == 'off' }}"
+          sequence:
+            - service: switch.turn_off
+              data:
+                entity_id: switch.shelly_washroom
 ################
 #    SCENES    #
 ################
