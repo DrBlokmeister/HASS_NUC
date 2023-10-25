@@ -18,14 +18,14 @@ cards:
             suffix: '%'
         camera_image: camera.buienradar
       - entities:
-          - entity: sensor.illumination_bedroom
-            name: Bedroom
-          - entity: sensor.average_illumination_livingroom
-            name: Living room
-          - entity: sensor.illumination_kitchen
-            name: Kitchen
-          - entity: sensor.average_illumination_study
-            name: Study 2
+          - entity: sensor.entry_average_illuminance
+            name: Entry
+          - entity: sensor.hallway_1st_floor_average_illuminance
+            name: Hallway 1st Floor
+          - entity: sensor.hallway_2nd_floor_average_illuminance
+            name: Hallway 2nd Floor
+          - entity: sensor.study_average_illuminance
+            name: Study
           - entity: sun.sun
             name: Night
             color: gray
@@ -53,9 +53,45 @@ cards:
         type: custom:mini-graph-card
     type: vertical-stack
   - cards:
-      # - entity:  climate.heating
-      #   type: thermostat
-      #   name: Tado
+      - type: glance
+        name: CO2
+        entities:
+          - entity: sensor.mh_z19_co2_value
+            name: Bedroom
+            icon: mdi:bed
+          - entity: sensor.study_co2
+            name: Study
+            icon: mdi:desktop-tower-monitor
+          - entity: sensor.livingroom_co2
+            name: Living Room
+            icon: mdi:sofa
+          - entity: sensor.shed_co2
+            name: Shed
+            icon: mdi:greenhouse
+      - type: glance
+        entities:
+          - entity: switch.fan_speed_override
+            name: Fan Override
+            icon: mdi:fan-alert
+            tap_action:
+              action: toggle
+          - entity: number.override_fan_speed
+            name: Speed
+            icon: mdi:fan
+          - entity: number.override_fan_duration
+            name: Duration
+            icon: mdi:fan-clock
+      - type: custom:mini-graph-card
+        name: Ventilation
+        entities:
+          - entity: fan.ventilation_system_2
+            name: Current Speed
+            icon: mdi:fan
+            attribute: percentage
+        hours_to_show: 24
+        points_per_hour: 10
+        line_width: 4
+        hour24: true
       - type: glance
         entities:
           - entity: sensor.temperature_outside
@@ -63,7 +99,6 @@ cards:
           - entity: sensor.woonkamer_temperatuur
             name: Living room
           - entity: sensor.slaapkamer3_temperatuur
-            name: Study
       - type: custom:mini-graph-card
         entities:
           - entity: sensor.temperature_outside
