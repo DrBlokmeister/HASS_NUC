@@ -81,37 +81,19 @@ camera:
     username: !secret xiaomi_cloud_user
     password: !secret xiaomi_cloud_pass
     draw: ['all']
-    scan_interval: 3600
+    scan_interval: 36000 # 10 hours to see if this works
     attributes:
       - calibration_points
     map_transformation:
       scale: 2
+      rotate: 90
       trim:
-        top: 35
-        bottom: 19
-        left: 10
+        top: 15
+        bottom: 15
+        left: 25
         right: 25
     colors:
       color_path: [10, 10, 10]
-  # - platform: xiaomi_cloud_map_extractor
-  #   name: "Consuela Map"
-  #   host: !secret consuela_IP
-  #   token: !secret consuela_token
-  #   username: !secret xiaomi_cloud_user
-  #   password: !secret xiaomi_cloud_pass
-  #   draw: ['all']
-  #   scan_interval: 10
-  #   attributes:
-  #     - calibration_points
-  #   map_transformation:
-  #     scale: 2
-  #     trim:
-  #       top: 28
-  #       bottom: 25
-  #       left: 20
-  #       right: 15
-  #   colors:
-  #     color_path: [10, 10, 10]
   - platform: xiaomi_cloud_map_extractor
     name: "Alfred Map"
     host: !secret alfred_IP
@@ -119,7 +101,7 @@ camera:
     username: !secret xiaomi_cloud_user
     password: !secret xiaomi_cloud_pass
     draw: ['all']
-    scan_interval: 3600
+    scan_interval: 36000 # 10 hours to see if this works
     attributes:
       - calibration_points
     map_transformation:
@@ -138,16 +120,6 @@ camera:
 sensor:
   - platform: template
     sensors:
-      # consuela_area_cleaned_today:
-      #   unit_of_measurement: 'm2'
-      #   #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int) - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
-      #   value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_start_of_day')|int }}"
-      #   availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
-      # consuela_area_cleaned_since_last_empty_bin:
-      #   unit_of_measurement: 'm2'
-      #   #value_template: "{{ states('sensor.consuela_total_clean_area')|int(states('input_number.consuela_area_cleaned_at_start_of_day')|int)  - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
-      #   value_template: "{{ states('sensor.consuela_total_clean_area')|int - states('input_number.consuela_area_cleaned_at_last_empty_bin')|int }}"
-      #   availability_template: "{{ states('sensor.consuela_total_clean_area')|is_number }}"
       argus_area_cleaned_today:
         unit_of_measurement: 'm2'
         #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int) - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
@@ -179,13 +151,6 @@ sensor:
         value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_last_empty_bin')|int }}"
         availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
 
-      # consuela_battery:
-      #   friendly_name: "Consuela Battery"
-      #   unit_of_measurement: "%"
-      #   device_class: "battery"
-      #   #icon: mdi:battery
-      #   value_template: "{{ state_attr('vacuum.consuela', 'battery_level') }}"
-      #   availability_template: "{{ states('vacuum.consuela') not in ['None', 'Unavailable', 'unknown', None] }}"
       alfred_battery:
         friendly_name: "Alfred Battery"
         unit_of_measurement: "%"
@@ -272,18 +237,6 @@ automation:
                   fan_speed: Medium
               - service: vacuum.start
                 entity_id: vacuum.argus
-      # - choose:
-      #     - conditions:
-      #         - condition: numeric_state
-      #           entity_id: sensor.consuela_area_cleaned_today
-      #           below: 20
-      #       sequence:
-      #         - service: vacuum.set_fan_speed
-      #           entity_id: vacuum.consuela
-      #           data:
-      #             fan_speed: Medium
-      #         - service: vacuum.start
-      #           entity_id: vacuum.consuela
       - choose:
           - conditions:
               - condition: numeric_state
@@ -314,6 +267,7 @@ automation:
             timeout: 1800
 
   - alias: '[home|vacuum]backup cleanup' #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
+    id: home_vacuum_backup_cleanup
     mode: single
     trigger:
       - platform: state
@@ -348,44 +302,8 @@ automation:
         data:
           option: "sweeping_and_mopping"
 
-  # - alias: '[home|vacuum]Drive Consuela to Hallway when Dust Bin is full'
-  #   mode: single
-  #   trigger:
-  #     - platform: numeric_state
-  #       entity_id: vacuum.consuela
-  #       attribute: battery_level
-  #       above: 99
-  #     - platform: state
-  #       entity_id: binary_sensor.house_occupied
-  #       to: 'on'
-  #     - platform: time
-  #       at: "9:00:00"
-  #   condition:
-  #     - condition: numeric_state
-  #       entity_id: sensor.consuela_area_cleaned_since_last_empty_bin
-  #       above: 100
-  #     - condition: state
-  #       entity_id: binary_sensor.house_occupied
-  #       state: 'on'
-  #     - condition: numeric_state
-  #       entity_id: vacuum.consuela
-  #       attribute: battery_level
-  #       above: 99
-  #     - condition: time
-  #       after: "9:00:00"
-  #       before: "21:00:00"
-  #   action:
-  #     - service: script.consuela_goto_hallway
-  #     - wait_for_trigger:
-  #         - platform: state
-  #           entity_id: vacuum.consuela
-  #           to: 'returning'
-  #     - service: input_number.set_value
-  #       data:
-  #         entity_id: input_number.consuela_area_cleaned_at_last_empty_bin
-  #         value: "{{ states('sensor.consuela_total_clean_area') }}"
-
   - alias: '[home|vacuum]Drive Alfred to Hallway when Dust Bin is full'
+    id: home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
     mode: single
     trigger:
       - platform: numeric_state
@@ -423,6 +341,7 @@ automation:
           value: "{{ states('sensor.alfred_total_clean_area') }}"
 
   - alias: '[home|vacuum]Drive Argus to Hallway when Dust Bin is full'
+    id: home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
     mode: single
     trigger:
       - platform: numeric_state
@@ -449,7 +368,7 @@ automation:
         after: "9:00:00"
         before: "21:00:00"
     action:
-      - service: script.argus_goto_kitchen
+      - service: script.argus_goto_hallway
       - wait_for_trigger:
           - platform: state
             entity_id: vacuum.argus
@@ -535,23 +454,10 @@ automation:
           entity_id: input_number.alfred_area_cleaned_at_start_of_day
           value: "{{ states('sensor.alfred_total_clean_area') }}"
 ########## NOTIFICATIONS ##########
-#Send a notification to Ariela when Consuela is done cleaning. Uses state of vacuum.xiaomi_vacuum_cleaner
-  # - alias: '[home|vacuum]notify_phone'
-  #   trigger:
-  #     platform: state
-  #     entity_id: vacuum.xiaomi_vacuum_cleaner
-  #     to: 'charging'
-  #   action:
-  #     service: script.vacuum_message_done_cleaning
-
   - alias: '[home|vacuum]Notify Phone if Vacuum is in Error'
     id: home_vacuum_notify_phone_if_vacuum_is_in_error
     mode: parallel
     trigger:
-      # - platform: state
-      #   entity_id: vacuum.xiaomi_vacuum_cleaner
-      #   to: "error"
-      #   id: "Consuela"
       - platform: state
         entity_id: vacuum.argus
         to: "error"
@@ -564,22 +470,18 @@ automation:
         entity_id: vacuum.moeke
         to: "error"
         id: "Moeke"
-      # - platform: state
-      #   entity_id:
-      #     - vacuum.xiaomi_vacuum_cleaner
-      #     - vacuum.argus
-      #     - vacuum.alfred
-      #   to: 'error'
     action:
       - variables:
           vacuumentityid: "{{ trigger.entity_id }}"
       - service: camera.snapshot
+        continue_on_error: true
         data:
           entity_id: "camera.{{ vacuumentityid[7:] }}_map"
           filename: "/config/www/tmp/snapshot_vacuum_error.jpg"
       - delay:
           seconds: 5
       - service: notify.mobile_app_blokmeisters21u
+        continue_on_error: true
         data:
           title: "Error with {{ trigger.id }}"
           message: "Vacuum {{ trigger.id }} has state {{ trigger.to_state.state }}!"
@@ -603,13 +505,57 @@ automation:
           rgb_color: [255,0,0]
           effect: Fast Pulse
       - wait_template: "{{ not is_state( vacuumentityid, 'error' ) }}"
-      # - wait_for_trigger:
-      #     - platform: state
-      #       entity_id: "{{ vacuumentityid }}"
-      #       to: "error"
       - service: scene.turn_on
         data:
           entity_id: scene.atmoorb_bulbs_before
+          transition: 1
+      - service: notify.mobile_app_blokmeisters21u
+        data:
+          message: "clear_notification"
+          data:
+            tag: vacuumerror
+
+  - alias: '[home|vacuum]Notify if Moeke Clean Water Reservoir is Empty'
+    id: home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty
+    mode: parallel
+    trigger:
+      - platform: state
+        entity_id: sensor.moeke_low_water_warning
+        not_to:
+          - "No warning"
+          - no_warning
+    action:
+      - service: notify.mobile_app_blokmeisters21u
+        continue_on_error: true
+        data:
+          title: "Moeke water reservoir empty"
+          message: "Please refill Moeke reservoir."
+          data:
+            group: vacuum
+            tag: vacuumerror
+            icon_url: local/icons/robot-vacuum.png
+      - service: scene.create
+        data:
+          scene_id: atmoorb_right_bulb_before
+          snapshot_entities:
+            - light.ambilight_right
+      - service: light.turn_on
+        target:
+          entity_id:
+            - light.ambilight_right
+        data:
+          rgb_color: [70,70,255]
+          effect: Fast Pulse
+      #- wait_template: "{{ not is_state(sensor.moeke_low_water_warning , 'No warning') }}"
+      - wait_for_trigger:
+          - platform: state
+            entity_id: sensor.moeke_low_water_warning
+            to:
+              - "No warning"
+              - no_warning
+      - service: scene.turn_on
+        data:
+          entity_id: scene.atmoorb_right_bulb_before
           transition: 1
       - service: notify.mobile_app_blokmeisters21u
         data:
@@ -727,8 +673,8 @@ script:
     - service: xiaomi_miio.vacuum_goto
       data:
         entity_id: vacuum.alfred
-        x_coord: 28391
-        y_coord: 26350
+        x_coord: 22504
+        y_coord: 28944
   # consuela_goto_hallway:
   #   alias: "Consuela go to Kitchen"
   #   sequence:
@@ -737,14 +683,14 @@ script:
   #       entity_id: vacuum.consuela
   #       x_coord: 25226
   #       y_coord: 28459
-  argus_goto_kitchen:
-    alias: "Argus go to Kitchen"
+  argus_goto_hallway:
+    alias: "Argus go to Hallway"
     sequence:
     - service: xiaomi_miio.vacuum_goto
       data:
         entity_id: vacuum.argus
-        x_coord: 21407
-        y_coord: 27458
+        x_coord: 28946
+        y_coord: 26144
 
   call_cleaning_loop:
     alias: "Calls the cleaning loop"
