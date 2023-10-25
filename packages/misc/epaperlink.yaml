@@ -26,42 +26,42 @@ switch:
 #####################
 automation:
   - alias: '[misc|epaperlink]Timed update epaper displays'
-    id: misc_epaperlink_timed_update_epapr_displays
+    id: misc_epaperlink_timed_update_epaper_displays
     mode: single
     trigger:
       - platform: time_pattern
-        minutes: "/5"
+        minutes: "/30"
     action:
-      - service: open_epaper_link.lines4
-        target:
-          entity_id: open_epaper_link.00000218a8933b1a
-        data:
-          line1: " Update: {{ states('sensor.time') | string }} "
-          line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
-          line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
-          line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
-          border: b
-          format1: lwwb
-          format2: lwwb
-          format3: lwwb
-          format4: lwwb
-      - delay:
-          seconds: 2
-      - service: open_epaper_link.lines5
-        target:
-          entity_id: open_epaper_link.0000039223703418
-        data:
-          line1: " Update: {{ states('sensor.time') | string }} "
-          line2: " Total Energy: {{ states('sensor.daily_energy_use') | string }} kWh"
-          line3: "Total Water: {{ states('sensor.water_meter_daily_water_consumption') | int | string }} l "
-          line4: " NAS Power: {{ states('sensor.blitzwolf_nas_energy_power') | round(2) | string }} W "
-          line5: " Computer Power: {{ states('sensor.blitzwolf_computer_energy_power') | round(2) | string }} W "
-          border: b
-          format1: lwwb
-          format2: lwwb
-          format3: lwwb
-          format4: lwwb
-          format5: lwwb
+      # - service: open_epaper_link.lines4
+      #   target:
+      #     entity_id: open_epaper_link.00000218736E3B1E
+      #   data:
+      #     line1: " Update: {{ states('sensor.time') | string }} "
+      #     line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
+      #     line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
+      #     line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
+      #     border: b
+      #     format1: lwwb
+      #     format2: lwwb
+      #     format3: lwwb
+      #     format4: lwwb
+      # - delay:
+      #     seconds: 2
+      # - service: open_epaper_link.lines5
+      #   target:
+      #     entity_id: open_epaper_link.0000039223703418
+      #   data:
+      #     line1: " Update: {{ states('sensor.time') | string }} "
+      #     line2: " Total Energy: {{ states('sensor.daily_energy_use') | string }} kWh"
+      #     line3: "Total Water: {{ states('sensor.water_meter_daily_water_consumption') | int | string }} l "
+      #     line4: " NAS Power: {{ states('sensor.blitzwolf_nas_energy_power') | round(2) | string }} W "
+      #     line5: " Computer Power: {{ states('sensor.blitzwolf_computer_energy_power') | round(2) | string }} W "
+      #     border: b
+      #     format1: lwwb
+      #     format2: lwwb
+      #     format3: lwwb
+      #     format4: lwwb
+      #     format5: lwwb
       - service: open_epaper_link.drawcustom
         target:
           entity_id: open_epaper_link.00000219A2923B10
@@ -205,7 +205,7 @@ automation:
               x_end: 100
               y_end: 128
             - type: text
-              value: " {{ states('sensor.date_time') | string }} "
+              value: " {{ states('sensor.date') | string }} "
               font: ppb.ttf
               x: 0
               "y": 119
@@ -256,6 +256,150 @@ automation:
                   states('sensor.days_to_gft') == 'unknown' else
                   states('sensor.days_to_gft')) ]) | min ) | int < 2 else
                 'black' }}
+
+      # - service: open_epaper_link.drawcustom
+      #   target:
+      #     entity_id: open_epaper_link.0000021C3BC6341B
+      #   data:
+      #     background: white
+      #     rotate: 0
+      #     payload:
+      #       - type: text
+      #         value: "Energy today:"
+      #         font: ppb.ttf
+      #         x: 10
+      #         "y": 10
+      #         size: 18
+      #         color: 'black'
+      #       - type: text
+      #         value: "{{ states('sensor.blitzwolf_washingmachine_energy_today') | string }}"
+      #         font: ppb.ttf
+      #         x: 10
+      #         "y": 50
+      #         size: 45
+      #         color: 'red'
+      #       - type: text
+      #         value: "kWh"
+      #         font: ppb.ttf
+      #         x: 50
+      #         "y": 110
+      #         size: 18
+      #         color: black
+
+  - alias: '[misc|epaperlink]Update washing machine energy display'
+    id: misc_epaperlink_update_washing_machine_energy_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    condition:
+      # - condition: numeric_state
+      #   entity_id: sensor.blitzwolf_washingmachine_energy_today
+      #   above: 0.003
+      - condition: not
+        conditions:
+          - condition: template
+            value_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|int < 5 }}"
+            # for:
+            #   minutes: 15
+          # - condition: numeric_state
+          #   entity_id: sensor.blitzwolf_washingmachine_energy_power
+          #   below: 5
+          #   # for:
+          #   #   minutes: 15
+      - condition: time
+        after: "6:00:00"
+        before: "23:30:00"
+    action:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.0000021C3BC6341B
+        data:
+          background: white
+          rotate: 0
+          payload:
+            - type: text
+              value: "Energy today:"
+              font: ppb.ttf
+              x: 10
+              "y": 10
+              size: 18
+              color: 'black'
+            - type: text
+              value: "{{ states('sensor.blitzwolf_washingmachine_energy_today') | string }}"
+              font: ppb.ttf
+              x: 10
+              "y": 38
+              size: 45
+              color: 'red'
+            - type: text
+              value: "kWh"
+              font: ppb.ttf
+              x: 50
+              "y": 85
+              size: 18
+              color: black
+            - type: text
+              value: "Energy yesterday:"
+              font: ppb.ttf
+              x: 10
+              "y": 102
+              size: 14
+              color: black
+            - type: text
+              value: "{{ states('sensor.blitzwolf_washingmachine_energy_yesterday') | string }}"
+              font: ppb.ttf
+              x: 10
+              "y": 118
+              size: 18
+              color: red
+            - type: text
+              value: "kWh"
+              font: ppb.ttf
+              x: 50
+              "y": 138
+              size: 15
+              color: black
+
+  - alias: '[misc|epaperlink]Update study displays'
+    id: misc_epaperlink_update_study_displays
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+        for:
+          minutes: 5
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.study_motion_combined
+            state: 'off'
+            for:
+              minutes: 15
+      - condition: time
+        after: "6:00:00"
+        before: "23:30:00"
+    action:
+      - service: open_epaper_link.lines4
+        target:
+          entity_id: open_epaper_link.00000218736E3B1E
+        data:
+          line1: " Update: {{ states('sensor.time') | string }} "
+          line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
+          line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
+          line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
+          border: b
+          format1: lwwb
+          format2: lwwb
+          format3: lwwb
+          format4: lwwb
+      - delay:
+          seconds: 2
+      - service: script.update_study_energy_display
 ################
 #    SCENES    #
 ################
@@ -270,3 +414,122 @@ group:
 #    SCRIPTS    #
 #################
 script:
+  update_study_energy_display:
+    alias: "Update Study Energy Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.0000039223703418
+        data:
+          background: white
+          rotate: 0
+          payload:
+      # Desk
+            - type: text
+              value: "Desk:"
+              font: ppb.ttf
+              x: 3
+              "y": 23
+              size: 14
+              color: 'black'
+              anchor: lb
+            - type: text
+              value: "{{ states('sensor.blitzwolf_computer_energy_power') | string }}"
+              font: ppb.ttf
+              x: 119
+              "y": 23
+              size: 30
+              color: 'red'
+              anchor: rb
+            - type: text
+              value: "w"
+              font: ppb.ttf
+              x: 141
+              "y": 23
+              size: 14
+              color: 'black'
+              anchor: rb
+    # NAS
+            - type: text
+              value: "NAS:"
+              font: ppb.ttf
+              x: 3
+              "y": 57
+              size: 14
+              color: 'black'
+              anchor: lb
+            - type: text
+              value: "{{ states('sensor.blitzwolf_nas_energy_power') | string }}"
+              font: ppb.ttf
+              x: 119
+              "y": 57
+              size: 30
+              color: 'red'
+              anchor: rb
+            - type: text
+              value: "w"
+              font: ppb.ttf
+              x: 141
+              "y": 57
+              size: 14
+              color: 'black'
+              anchor: rb
+    # Total energy
+            - type: text
+              value: "Total:"
+              font: ppb.ttf
+              x: 1
+              "y": 90
+              size: 14
+              color: 'black'
+              anchor: lb
+            - type: text
+              value: "{{ states('sensor.daily_energy_use') | string }}"
+              font: ppb.ttf
+              x: 118
+              "y": 90
+              size: 30
+              color: 'red'
+              anchor: rb
+            - type: text
+              value: "kWh"
+              font: ppb.ttf
+              x: 150
+              "y": 90
+              size: 14
+              color: 'black'
+              anchor: rb
+    # Water
+            - type: text
+              value: "Water:"
+              font: ppb.ttf
+              x: 3
+              "y": 128
+              size: 14
+              color: 'black'
+              anchor: lb
+            - type: text
+              value: "{{ states('sensor.water_meter_daily_water_consumption') | string }}"
+              font: ppb.ttf
+              x: 119
+              "y": 128
+              size: 30
+              color: 'red'
+              anchor: rb
+            - type: text
+              value: "L"
+              font: ppb.ttf
+              x: 141
+              "y": 128
+              size: 14
+              color: 'black'
+              anchor: rb
+      # Update
+            - type: text
+              value: " Update: {{ states('sensor.time') | string }} "
+              font: ppb.ttf
+              x: 150
+              "y": 150
+              size: 14
+              color: 'black'
+              anchor: rb
