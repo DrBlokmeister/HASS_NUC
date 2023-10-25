@@ -109,9 +109,13 @@ switch:
         value_template: >-
           {{
             is_state('light.ambilight_left', 'on') and is_state('light.ambilight_right', 'on') and
-            is_state_attr('light.ambilight_left', 'effect', 'E1.31') and is_state_attr('light.ambilight_right', 'effect', 'E1.31') and
-            is_state_attr('light.hyperion_atmoorb_left', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_atmoorb_right', 'effect', 'Platform Capture')
+            is_state_attr('light.ambilight_left', 'effect', 'E1.31') and is_state_attr('light.ambilight_right', 'effect', 'E1.31')
           }}
+        # {{
+        #   is_state('light.ambilight_left', 'on') and is_state('light.ambilight_right', 'on') and
+        #   is_state_attr('light.ambilight_left', 'effect', 'E1.31') and is_state_attr('light.ambilight_right', 'effect', 'E1.31') and
+        #   is_state_attr('light.hyperion_atmoorb_left', 'effect', 'Platform Capture') and is_state_attr('light.hyperion_atmoorb_right', 'effect', 'Platform Capture')
+        # }}
         # value_template: >-  #Old template with SSDlights and falconlights
         #   {{
         #     is_state('light.ambilight_left_bulb', 'on') and is_state('light.ambilight_right_bulb', 'on') and is_state('light.falconlights', 'on') and is_state('light.ssdlights_inner', 'on') and
@@ -171,6 +175,8 @@ automation:
         entity_id: switch.ambilight_power
       - service: switch.turn_on
         entity_id: switch.amplifier_power
+      - delay:
+          seconds: 1
       - service: switch.turn_on
         entity_id: switch.ambilight
       - service: light.turn_on
@@ -202,22 +208,22 @@ automation:
       #     - group.livingroom_lighting_automations
       #     - automation.livingroom_light_automate_falconlights
       - wait_for_trigger:
-          - platform: state
-            entity_id: media_player.coreelec
-            from: 'playing'
-            to: 'idle'
-            for:
-              minutes: 15
-          - platform: state
-            entity_id: media_player.coreelec
-            to: 'idle'
-            for:
-              minutes: 15
-          - platform: state
-            entity_id: media_player.coreelec
-            to: 'unavailable'
-            for:
-              minutes: 15
+          # - platform: state
+          #   entity_id: media_player.coreelec
+          #   from: 'playing'
+          #   to: 'idle'
+          #   for:
+          #     minutes: 15
+          # - platform: state
+          #   entity_id: media_player.coreelec
+          #   to: 'idle'
+          #   for:
+          #     minutes: 15
+          # - platform: state
+          #   entity_id: media_player.coreelec
+          #   to: 'unavailable'
+          #   for:
+          #     minutes: 15
           - platform: state
             entity_id: device_tracker.samsung_tv
             to: 'not_home'
@@ -229,15 +235,17 @@ automation:
             for:
               minutes: 2
       - service: switch.turn_off
-        entity_id: switch.ambilight_power
-      - service: switch.turn_off
-        entity_id: switch.amplifier_power
-      - service: switch.turn_off
         entity_id: switch.ambilight
       - service: light.turn_off
         entity_id:
           - light.ambilight_left
           - light.ambilight_right
+      - delay:
+          seconds: 2
+      - service: switch.turn_off
+        entity_id: switch.ambilight_power
+      - service: switch.turn_off
+        entity_id: switch.amplifier_power
       
       # - service: scene.turn_on
       #   data:
@@ -553,24 +561,24 @@ script:
           effect: Rainbow swirl fast
       - delay:
           seconds: 5
-      - service: light.turn_on
+      - service: light.turn_off
         data:
-          brightness: 255
-          effect: Platform Capture #used to be GRABBER
+          # brightness: 255
+          # effect: Platform Capture #used to be GRABBER
           entity_id:
             - light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
-      - delay:
-          seconds: 0.5
-      - service: light.turn_on
-        data:
-          brightness: 255
-          effect: Platform Capture #used to be GRABBER
-          entity_id:
-            - light.hyperion_apa102
-            - light.hyperion_atmoorb_left
-            - light.hyperion_atmoorb_right
+      # - delay:
+      #     seconds: 0.5
+      # - service: light.turn_on
+      #   data:
+      #     brightness: 255
+      #     effect: Platform Capture #used to be GRABBER
+      #     entity_id:
+      #       - light.hyperion_apa102
+      #       - light.hyperion_atmoorb_left
+      #       - light.hyperion_atmoorb_right
 
 
       # - service: switch.turn_on
@@ -609,10 +617,13 @@ script:
           seconds: 2
       - service: switch.turn_off
         entity_id:
-          - switch.ambilight_power
           - switch.hyperion_apa102_component_led_device
           - switch.hyperion_atmoorb_right_component_led_device
           - switch.hyperion_atmoorb_right_component_led_device
+      - delay:
+          seconds: 2
+      - service: switch.turn_off
+        entity_id: switch.ambilight_power
 ################
 #    LIGHTS    #
 ################
