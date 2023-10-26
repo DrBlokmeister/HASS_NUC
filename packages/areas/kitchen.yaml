@@ -82,7 +82,7 @@ automation:
     action:
       - service: light.turn_on
         data:
-          entity_id: light.kitchen_lights
+          entity_id: light.kitchen
           brightness: 255
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       - wait_for_trigger:
@@ -99,13 +99,13 @@ automation:
               minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
       - service: light.turn_on
         data:
-          entity_id: light.kitchen_lights
+          entity_id: light.kitchen
           brightness_step: -120
           transition: 0.5
       - delay:
           seconds: 15
       - service: light.turn_off
-        entity_id: light.kitchen_lights
+        entity_id: light.kitchen
 
   - alias: '[kitchen|lights]Toggle lights when switch is pressed'
     id: kitchen_lights_toggle_lights_when_switch_is_pressed
@@ -124,7 +124,7 @@ automation:
     action:
       - service: light.toggle
         data:
-          entity_id: light.kitchen_lights
+          entity_id: light.kitchen
           brightness: 255
           kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
       # - service: automation.turn_off
@@ -195,14 +195,14 @@ automation:
       - choose:
           - conditions:
               - condition: state
-                entity_id: light.kitchen_lights
+                entity_id: light.kitchen
                 state: 'on'
             sequence:
               - service: input_number.increment
                 entity_id: input_number.kitchen_illumination_limit
           - conditions:
               - condition: state
-                entity_id: light.kitchen_lights
+                entity_id: light.kitchen
                 state: 'off'
             sequence:
               - service: input_number.decrement
@@ -213,14 +213,14 @@ automation:
 scene:
   - name: kitchen_bright_cool
     entities:
-      light.kitchen_lights:
+      light.kitchen:
         state: 'on'
         brightness: 254
         color_temp: 320
         transition: 2
   - name: kitchen_bright_warm
     entities:
-      light.kitchen_lights:
+      light.kitchen:
         state: 'on'
         brightness: 254
         color_temp: 454
@@ -238,9 +238,9 @@ group:
 #    LIGHTS    #
 ################
 light:
-  - platform: group
-    name: Kitchen Lights
-    entities:
-      - light.kitchen_1
-      - light.kitchen_2
-      - light.kitchen_3
+  # - platform: group
+  #   name: Kitchen Lights
+  #   entities:
+  #     - light.kitchen_1
+  #     - light.kitchen_2
+  #     - light.kitchen_3
