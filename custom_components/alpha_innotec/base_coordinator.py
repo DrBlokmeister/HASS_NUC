@@ -42,10 +42,12 @@ class BaseCoordinator:
                         if module_details["type"] == MODULE_TYPE_SENSOR:
                             current_temperature = module_details["currentTemperature"]
                             battery_percentage = module_details["battery"]
+                            #_LOGGER.info("Current temp: {}, battery: {}".format(current_temperature, battery_percentage))
 
                     thermostat = Thermostat(
                         identifier=room_id,
                         name=room['name'],
+                        #current_temperature=room.get('currentTemperature'),
                         current_temperature=current_temperature,
                         desired_temperature=room.get('desiredTemperature'),
                         minimum_temperature=room.get('minTemperature'),
@@ -54,7 +56,7 @@ class BaseCoordinator:
                         cooling_enabled=room.get('coolingEnabled'),
                         battery_percentage=battery_percentage
                     )
-
+                    #_LOGGER.info(str(thermostat.identifier) + str(thermostat.name) + str(thermostat.current_temperature) + str(thermostat.desired_temperature) + str(thermostat.minimum_temperature) + str(thermostat.maximum_temperature) + str(thermostat.cooling) + str(thermostat.cooling_enabled) + str(thermostat.battery_percentage))
                     thermostats.append(thermostat)
             except Exception as exception:
                 _LOGGER.exception("There is an exception: %s", exception)

@@ -123,7 +123,7 @@ class ControllerAPI(BaseAPI):
                         identifier=room['id'],
                         module="Test",
                         name=room['name'],
-                        current_temperature=room.get('actualTemperature'),
+                        current_temperature=room.get('currentTemperature'),
                         desired_temperature=room.get('desiredTemperature'),
                         minimum_temperature=room.get('minTemperature'),
                         maximum_temperature=room.get('minTemperature'),

@@ -10,7 +10,7 @@ PLATFORMS = [
 ]
 
 MODULE_TYPE_FLOOR = "floor"
-MODULE_TYPE_SENSOR = "sensor"
+MODULE_TYPE_SENSOR = "sense_control"
 
 MODULE_TYPES = [
     MODULE_TYPE_FLOOR,

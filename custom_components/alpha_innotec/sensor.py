@@ -96,3 +96,7 @@ class AlphaHomeBatterySensor(CoordinatorEntity, SensorEntity):
     def unique_id(self) -> str:
         """Return unique ID for this device."""
         return self.thermostat.identifier
+
+    # @property
+    # def state(self):
+    #     return self._attr_native_value
