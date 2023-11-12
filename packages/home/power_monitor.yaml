@@ -76,53 +76,53 @@ utility_meter:
 
   #Warmtepomp monitor:
   heatpump_tapwater_hourly_energy_use:
-    source: sensor.tapwater
+    source: sensor.heatpump_tapwater_heat_amount
     delta_values: false
     cycle: hourly
     unique_id: yaml_utilitymeter_heatpump_tapwater_hourly_energy_use
   heatpump_tapwater_daily_energy_use:
-    source: sensor.tapwater
+    source: sensor.heatpump_tapwater_heat_amount
     delta_values: false
     cycle: daily
     unique_id: yaml_utilitymeter_heatpump_tapwater_daily_energy_use
   heatpump_tapwater_weekly_energy_use:
-    source: sensor.tapwater
+    source: sensor.heatpump_tapwater_heat_amount
     delta_values: false
     cycle: weekly
     unique_id: yaml_utilitymeter_heatpump_tapwater_weekly_energy_use
   heatpump_tapwater_monthly_energy_use:
-    source: sensor.tapwater
+    source: sensor.heatpump_tapwater_heat_amount
     delta_values: false
     cycle: monthly
     unique_id: yaml_utilitymeter_heatpump_tapwater_monthly_energy_use
   heatpump_tapwater_yearly_energy_use:
-    source: sensor.tapwater
+    source: sensor.heatpump_tapwater_heat_amount
     delta_values: false
     cycle: yearly
     unique_id: yaml_utilitymeter_heatpump_tapwater_yearly_energy_use
 
   heatpump_verwarming_hourly_energy_use:
-    source: sensor.verwarming
+    source: sensor.heatpump_heat_amount_heating
     delta_values: false
     cycle: hourly
     unique_id: yaml_utilitymeter_heatpump_verwarming_hourly_energy_use
   heatpump_verwarming_daily_energy_use:
-    source: sensor.verwarming
+    source: sensor.heatpump_heat_amount_heating
     delta_values: false
     cycle: daily
     unique_id: yaml_utilitymeter_heatpump_verwarming_daily_energy_use
   heatpump_verwarming_weekly_energy_use:
-    source: sensor.verwarming
+    source: sensor.heatpump_heat_amount_heating
     delta_values: false
     cycle: weekly
     unique_id: yaml_utilitymeter_heatpump_verwarming_weekly_energy_use
   heatpump_verwarming_monthly_energy_use:
-    source: sensor.verwarming
+    source: sensor.heatpump_heat_amount_heating
     delta_values: false
     cycle: monthly
     unique_id: yaml_utilitymeter_heatpump_verwarming_monthly_energy_use
   heatpump_verwarming_yearly_energy_use:
-    source: sensor.verwarming
+    source: sensor.heatpump_heat_amount_heating
     delta_values: false
     cycle: yearly
     unique_id: yaml_utilitymeter_heatpump_verwarming_yearly_energy_use
@@ -152,6 +152,27 @@ utility_meter:
     delta_values: false
     cycle: yearly
     unique_id: yaml_utilitymeter_heatpump_circulation_yearly_energy_use
+
+
+template:
+  - trigger:
+      - platform: time_pattern
+        seconds: /1
+    sensor:
+      - name: "Known Power"
+        unit_of_measurement: 'W'
+        state: >-
+          {{ expand('group.power_entities') |rejectattr('domain','eq','group')
+                                            |rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|map(attribute='state')|map('float')|sum}}
+  - trigger:
+      - platform: time_pattern
+        seconds: /1
+    sensor:
+      - name: "Unknown Power"
+        unit_of_measurement: 'W'
+        state: >-
+          {{ states('sensor.total_power_consumption_watt')|float - states('sensor.known_power')|float }}
+        #availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.known_power')|is_number }}"
 #######################
 #    INPUT NUMBERS    #
 #######################
@@ -327,18 +348,6 @@ sensor:
         unit_of_measurement: "kW"
         availability_template: "{{ states('sensor.electricity_meter_energy_consumption_tarif_1')|is_number and states('sensor.electricity_meter_energy_consumption_tarif_2')|is_number }}"
 
-      known_power:
-        friendly_name: "Known Power"
-        unit_of_measurement: 'W'
-        value_template: >-
-          {{ expand('group.power_entities') |rejectattr('domain','eq','group')
-                                            |rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|map(attribute='state')|map('float')|sum}}
-      unknown_power:
-        friendly_name: "Unknown Power"
-        unit_of_measurement: 'W'
-        value_template: "{{ states('sensor.total_power_consumption_watt')|float - states('sensor.known_power')|float }}"
-        availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.known_power')|is_number }}"
-
   - platform: integration
     source: sensor.total_power_consumption_watt
     name: Total Energy Usage
@@ -359,11 +368,29 @@ sensor:
     round: 0
 
   - platform: derivative
-    source: sensor.waterverbruik_vandaag
-    name: Total Water Consumption
-    unit_time: h
-    time_window: "00:02:00"
+    source: sensor.water_meter_main_water_consumption
+    name: Current Water Consumption
+    unit_time: min
+    time_window: "00:01:00"
 
+  - platform: statistics
+    entity_id: sensor.water_meter_water_consumption
+    name: Statistics Water per Ten Minutes
+    state_characteristic: sum
+    max_age:
+      minutes: 10
+
+# Heat pump:
+  - platform: derivative
+    source: sensor.heatpump_heat_amount_heating
+    name: Heat Pump Heating Power Production
+    unit_time: min
+    time_window: "00:01:00"
+  - platform: derivative
+    source: sensor.heatpump_tapwater_heat_amount
+    name: Heat Pump Tapwater Power Production
+    unit_time: min
+    time_window: "00:01:00"
   # - platform: template
   #   sensors:
   #     known_power:
@@ -499,33 +526,33 @@ automation:
             ledColor: "orange"
             channel: warning
 
-  - alias: "[power|watermeter] Save watermeter states to HA"
-    trigger:
-      - platform: state
-        entity_id: sensor.water_meter_main_water_consumption
-    condition:
-      - "{{ ( now() - states('sensor.uptime_10')|as_datetime ).seconds > 60 }}"
-    action:
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.water_meter_daily_consumption
-          value: "{{ states('sensor.water_meter_daily_water_consumption')|int }}"
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.water_meter_weekly_consumption
-          value: "{{ states('sensor.water_meter_weekly_water_consumption')|int }}"
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.water_meter_monthly_consumption
-          value: "{{ states('sensor.water_meter_monthly_water_consumption')|int }}"
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.water_meter_yearly_consumption
-          value: "{{ states('sensor.water_meter_yearly_water_consumption')|int }}"
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.water_meter_total_consumption
-          value: "{{ states('sensor.water_meter_main_water_consumption')|int }}"
+  # - alias: "[power|watermeter] Save watermeter states to HA"
+  #   trigger:
+  #     - platform: state
+  #       entity_id: sensor.water_meter_main_water_consumption
+  #   condition:
+  #     - "{{ ( now() - states('sensor.uptime_10')|as_datetime ).seconds > 60 }}"
+  #   action:
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.water_meter_daily_consumption
+  #         value: "{{ states('sensor.water_meter_daily_water_consumption')|int }}"
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.water_meter_weekly_consumption
+  #         value: "{{ states('sensor.water_meter_weekly_water_consumption')|int }}"
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.water_meter_monthly_consumption
+  #         value: "{{ states('sensor.water_meter_monthly_water_consumption')|int }}"
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.water_meter_yearly_consumption
+  #         value: "{{ states('sensor.water_meter_yearly_water_consumption')|int }}"
+  #     - service: input_number.set_value
+  #       data:
+  #         entity_id: input_number.water_meter_total_consumption
+  #         value: "{{ states('sensor.water_meter_main_water_consumption')|int }}"
 
 
 ################
