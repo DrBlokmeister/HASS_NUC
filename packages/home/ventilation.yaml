@@ -25,6 +25,32 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: "[home|ventilation] Max ventilation when shower is on"
+    id: home_ventilation_max_ventilation_when_shower_is_on
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.shower_occupied
+        not_from:
+          - "unknown"
+          - "unavailable"
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: input_number.set_value
+                data:
+                  entity_id: number.override_fan_speed
+                  value: 100
+              - delay:
+                  seconds: 1
+              - service: switch.turn_on
+                entity_id: switch.fan_speed_override
+          - conditions: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - service: switch.turn_off
+                entity_id: switch.fan_speed_override
+
   # - alias: '[ventilation|regulation] Regulate ventilation speed based on sensors'
   #   id: ventilation_regulation_regulate_ventilation_speed_based_on_sensors
   #   mode: restart
