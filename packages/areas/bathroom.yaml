@@ -56,6 +56,47 @@ binary_sensor:
         value_template: "{{ states('sensor.humidity_bathroom')|int(0) < states('sensor.humidity_bathroom_max')|int(0) - 15 }}"
         device_class: occupancy
         availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_max', 'unavailable') }}"
+      bathroom_bayesian_test_humidity_contition:
+        value_template: "{{ (states('sensor.humidity_bathroom')|int - states('sensor.humidity_bathroom_min')|int) > 15 }}"
+      bathroom_bayesian_test_light_contition:
+        value_template: "{{ is_state('light.bathroom', 'on') }}"
+      bathroom_bayesian_test_water_usage_contition:
+        value_template: "{{ states('sensor.water_meter_current_water_consumption')|int > 20 }}"
+
+  - platform: bayesian
+    name: Shower Occupied
+    device_class: occupancy
+    prior: 0.02 #Shower should be on around 30 min each day. So 0.5/24
+    observations:
+      - platform: state
+        entity_id: light.bathroom
+        prob_given_true: 0.8 #80% of the time we shower, the light is on
+        prob_given_false: 0.05 #5% of the time we don't shower, the light is on
+        to_state: "on"
+      - platform: template
+        value_template: >  # Bathroom humidity is at least 15% above minimum humidity
+          {{ (states('sensor.humidity_bathroom')|int - states('sensor.humidity_bathroom_min')|int) > 15 }}
+        prob_given_true: 0.5
+        prob_given_false: 0.05
+      - platform: numeric_state
+        entity_id: sensor.water_meter_current_water_consumption
+        prob_given_true: 0.80
+        prob_given_false: 0.02
+        above: 20
+        # I should also use the current water usage. I created these, but should first test if they work. Added in power_monitor.yaml
+                # - platform: derivative
+                #   source: sensor.water_meter_main_water_consumption
+                #   name: Current Water Consumption
+                #   unit_time: min
+                #   time_window: "00:01:00"
+
+                # - platform: statistics
+                #   entity_id: sensor.water_meter_water_consumption
+                #   name: Statistics Water per Minute
+                #   state_characteristic: sum
+                #   max_age:
+                #     minutes: 1
+
 ########################
 #    INPUT BOOLEANS    #
 ########################
