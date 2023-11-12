@@ -83,6 +83,7 @@ class LuxtronikEntityDescription(EntityDescription):
     extra_attributes: list[LuxtronikEntityAttributeDescription] = field(
         default_factory=list
     )
+    state_class: str | None = None
 
 
 @dataclass
@@ -95,6 +96,16 @@ class LuxtronikSensorDescription(
     platform = Platform.SENSOR
     factor: float | None = None
     native_precision: int | None = None
+
+
+@dataclass
+class LuxtronikIndexSensorDescription(
+    LuxtronikSensorDescription,
+    SensorEntityDescription,
+):
+    """Class describing Luxtronik index sensor entities."""
+
+    luxtronik_key_timestamp: LuxParameter | LuxCalculation = LuxParameter.UNSET
 
 
 @dataclass

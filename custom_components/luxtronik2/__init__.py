@@ -11,6 +11,8 @@ from homeassistant.helpers.entity_registry import (
 )
 
 from .const import (
+    ATTR_PARAMETER,
+    ATTR_VALUE,
     CONF_COORDINATOR,
     CONF_HA_SENSOR_PREFIX,
     CONF_MAX_DATA_LENGTH,
@@ -19,6 +21,8 @@ from .const import (
     DOMAIN,
     LOGGER,
     PLATFORMS,
+    SERVICE_WRITE,
+    SERVICE_WRITE_SCHEMA,
     SensorKey as SK,
 )
 from .coordinator import LuxtronikCoordinator
@@ -48,7 +52,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
+    await hass.async_add_executor_job(setup_hass_services, hass, entry)
+
     return True
+
+
+def setup_hass_services(hass: HomeAssistant, entry: ConfigEntry):
+    """Home Assistant services."""
+
+    def write_parameter(service):
+        """Write a parameter to the Luxtronik heatpump."""
+        parameter = service.data.get(ATTR_PARAMETER)
+        value = service.data.get(ATTR_VALUE)
+        coordinator = LuxtronikCoordinator.connect(hass, entry)
+        coordinator.write(parameter, value)
+
+    hass.services.register(
+        DOMAIN, SERVICE_WRITE, write_parameter, schema=SERVICE_WRITE_SCHEMA
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -106,11 +127,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     prefix = None
     ent_reg = None
 
-    def _prepare_up() -> None:
-        prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
-        ent_reg = async_get(hass)
-
     def _up(ident: str, new_id: SK, platform: P = P.SENSOR) -> None:
+        nonlocal prefix, ent_reg
+        if prefix is None or ent_reg is None:
+            prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
+            ent_reg = async_get(hass)
         entity_id = f"{platform}.{prefix}_{ident}"
         new_ident = f"{platform}.{prefix}_{new_id}"
         try:
@@ -139,7 +160,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         hass.config_entries.async_update_entry(config_entry, data=new_data)
 
     if config_entry.version == 5:
-        _prepare_up()
         _up("heat_amount_domestic_water", SK.DHW_HEAT_AMOUNT)
         _up("domestic_water_energy_input", SK.DHW_ENERGY_INPUT)
         _up("domestic_water_temperature", SK.DHW_TEMPERATURE)
@@ -261,7 +281,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         hass.config_entries.async_update_entry(config_entry, data=new_data)
 
     if config_entry.version == 6:
-        _prepare_up()
         _up(
             "cooling_threshold_temperature", SK.COOLING_OUTDOOR_TEMP_THRESHOLD, P.NUMBER
         )

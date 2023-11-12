@@ -25,6 +25,7 @@ from .const import (
     LuxParameter as LP,
     LuxStatus1Option,
     LuxStatus3Option,
+    LuxSwitchoffReason,
     LuxVisibility as LV,
     SensorAttrFormat,
     SensorAttrKey as SA,
@@ -34,6 +35,7 @@ from .const import (
 from .model import (
     LuxtronikEntityAttributeDescription as attr,
     LuxtronikSensorDescription as descr,
+    LuxtronikIndexSensorDescription as descr_index,
 )
 
 # endregion Imports
@@ -52,6 +54,18 @@ SENSORS_STATUS: list[descr] = [
         ],
         options=[e.value for e in LuxOperationMode],
         update_interval=UPDATE_INTERVAL_NORMAL,
+    ),
+]
+
+SENSORS_INDEX: list[descr] = [
+    descr_index(
+        key=SensorKey.SWITCHOFF_REASON,
+        luxtronik_key=LP.P0716_0720_SWITCHOFF_REASON,
+        luxtronik_key_timestamp=LP.P0721_0725_SWITCHOFF_TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:electric-switch",
+        device_class=SensorDeviceClass.ENUM,
+        options=[e.value for e in LuxSwitchoffReason],
     ),
 ]
 
@@ -429,22 +443,6 @@ SENSORS: list[descr] = [
             attr(SA.REMEDY, LC.C0100_ERROR_REASON),
         ],
     ),
-    # TODO:
-    # LuxtronikIndexStatusSensor(
-    #     key_index=None,
-    #     key_timestamp_template=None,
-    #     luxtronik=luxtronik,
-    #     device_info=device_info,
-    #     sensor_key="Switchoff",
-    #     unique_id="switchoff_reason",
-    #     name="Switchoff Reason",
-    #     icon="mdi:electric-switch",
-    #     translation_key="switchoff_reason",
-    #     unit_of_measurement=None,
-    #     state_class=None,
-    #     device_class=None,
-    #     extra_value_attributes=["code"],
-    # ),
     # endregion Main heatpump
     # region Heating
     descr(

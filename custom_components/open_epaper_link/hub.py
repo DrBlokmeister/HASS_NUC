@@ -9,6 +9,7 @@ import backoff
 import time
 import json
 import logging
+import os
 from threading import Thread
 from typing import Any
 from homeassistant.core import HomeAssistant
@@ -92,27 +93,30 @@ class Hub:
             ch = tag.get('ch')
             ver = tag.get('ver')
             #required for automations
-           
             hwmap = {
                 0: ["ST‐GR16000 1.54\"", 152, 152],
                 1: ["ST‐GR29000 2.9\"",  296, 128],
                 2: ["ST‐GR420B3N2 4.2\"",  400, 300],
                 5: ["ST‐GR750BN 7.4\"",  640, 384],
                 17: ["ST-GR2900L 2.9\" (UC8151)", 296, 128],
+                49: ["EL022GSWRN 2.2\"",  296, 160],
                 51: ["EL029GSWRN 2.9\"",  384, 168],
                 224: ["TFT 320x170",  320, 170],
                 240: ["SLT‐EM007 Segmented",  0, 0]
             }
-
-            self._hass.states.set(DOMAIN + "." + tagmac, hwType,{
-                "icon": "mdi:fullscreen",
-                "friendly_name": tagmac,
-                "should_poll": False,
-                "hwtype": hwType,
-                "hwstring": hwmap[hwType][0],
-                "width": hwmap[hwType][1],
-                "height": hwmap[hwType][2],
+            if hwType in hwmap:
+                self._hass.states.set(DOMAIN + "." + tagmac, hwType,{
+                    "icon": "mdi:fullscreen",
+                    "friendly_name": tagmac,
+                    "should_poll": False,
+                    "hwtype": hwType,
+                    "hwstring": hwmap[hwType][0],
+                    "width": hwmap[hwType][1],
+                    "height": hwmap[hwType][2],
                 })
+            else:
+                _LOGGER.warning("Id not in hwmap, pleas open an issue on github about this." +str(hwType))
+                
             self.data[tagmac] = dict()
             self.data[tagmac]["temperature"] = temperature
             self.data[tagmac]["rssi"] = RSSI
@@ -154,28 +158,29 @@ class Hub:
         elif 'apitem' in data:
             logmsg = data.get('apitem');
         else:
-            _LOGGER.warning("Unknown msg")
-            _LOGGER.warning(data)
+            _LOGGER.debug("Unknown msg")
+            _LOGGER.debug(data)
     #log websocket errors
     def on_error(self,ws, error) -> None:
-        _LOGGER.warning("Websocket error, most likely on_message crashed")
-        _LOGGER.warning(error)
+        _LOGGER.debug("Websocket error, most likely on_message crashed")
+        _LOGGER.debug(error)
     #try to reconnect after 5 munutes
     def on_close(self,ws, error, a) -> None:
-        _LOGGER.warning("Websocket connection lost")
-        print("Connection lost")
-        print("Waiting 300 seconds")
-        time.sleep(300)
+        _LOGGER.warning("Websocket connection lost, trying to reconnect every 30 seconds")
+        ip = self._hass.states.get(DOMAIN + ".ip").state 
+        while os.system("ping -c 1 " + ip) != 0:
+            time.sleep(30)
+        _LOGGER.debug("reconnecting")
         self.establish_connection()
     #we could do something here
     def on_open(self,ws) -> None:
-        time.sleep(1)
+        _LOGGER.debug("WS started")
     #starts the websocket
     def establish_connection(self) -> None:
         ws_url = "ws://" + self._host + "/ws"
         ws = websocket.WebSocketApp(ws_url,on_message=self.on_message,on_error=self.on_error,on_close=self.on_close,on_open=self.on_open)
         ws.run_forever()
-        _LOGGER.warning("This should not happen")
+        _LOGGER.error("Integration crashed, this should never happen. It will not reconnect")
     #we should do more here
     async def test_connection(self) -> bool:
         return True
