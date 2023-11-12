@@ -114,42 +114,71 @@ camera:
         right: 0
     colors:
       color_path: [10, 10, 10]
+
+utility_meter:
+  moeke_area_cleaned_today:
+    name: Moeke Area Cleaned Today
+    source: sensor.moeke_cleaned_area
+    cycle: daily
+    offset:
+      hours: 3
+  argus_area_cleaned_today:
+    name: Argus Area Cleaned Today
+    source: sensor.argus_current_clean_area
+    cycle: daily
+    offset:
+      hours: 3
+    periodically_resetting: true
+  alfred_area_cleaned_today:
+    name: Alfred Area Cleaned Today
+    source: sensor.alfred_current_clean_area
+    cycle: daily
+    offset:
+      hours: 3
+    periodically_resetting: true
+
+  argus_area_cleaned_since_last_empty_bin:
+    name: Argus Area Cleaned Since Last Empty Bin
+    source: sensor.argus_total_clean_area
+  alfred_area_cleaned_since_last_empty_bin:
+    name: Alfred Area Cleaned Since Last Empty Bin
+    source: sensor.alfred_total_clean_area
 #################
 #    SENSORS    #
 #################
 sensor:
   - platform: template
     sensors:
-      argus_area_cleaned_today:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int) - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.argus_total_clean_area')|int - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
-        availability_template: "{{ states('sensor.argus_total_clean_area')|is_number }}"
-      argus_area_cleaned_since_last_empty_bin:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int)  - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.argus_total_clean_area')|int - states('input_number.argus_area_cleaned_at_last_empty_bin')|int }}"
-        availability_template: "{{ states('sensor.argus_total_clean_area')|is_number }}"
-      alfred_area_cleaned_today:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.alfred_total_clean_area')|int(states('input_number.alfred_area_cleaned_at_start_of_day')|int) - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.alfred_total_clean_area')|int - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
-        availability_template: "{{ states('sensor.alfred_total_clean_area')|is_number }}"
-      alfred_area_cleaned_since_last_empty_bin:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.alfred_total_clean_area')|int(states('input_number.alfred_area_cleaned_at_start_of_day')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.alfred_total_clean_area')|int - states('input_number.alfred_area_cleaned_at_last_empty_bin')|int }}"
-        availability_template: "{{ states('sensor.alfred_total_clean_area')|is_number }}"
-      moeke_area_cleaned_today:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.moeke_total_cleaned_area')|int(states('input_number.moeke_area_cleaned_at_start_of_day')|int) - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_start_of_day')|int }}"
-        availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
-      moeke_area_cleaned_since_last_empty_bin:
-        unit_of_measurement: 'm2'
-        #value_template: "{{ states('sensor.moeke_total_cleaned_area')|int(states('input_number.moeke_area_cleaned_at_last_empty_bin')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
-        value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_last_empty_bin')|int }}"
-        availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
+      # argus_area_cleaned_today:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int) - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.argus_total_clean_area')|int - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
+      #   availability_template: "{{ states('sensor.argus_total_clean_area')|is_number }}"
+      # argus_area_cleaned_since_last_empty_bin:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.argus_total_clean_area')|int(states('input_number.argus_area_cleaned_at_start_of_day')|int)  - states('input_number.argus_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.argus_total_clean_area')|int - states('input_number.argus_area_cleaned_at_last_empty_bin')|int }}"
+      #   availability_template: "{{ states('sensor.argus_total_clean_area')|is_number }}"
+      # alfred_area_cleaned_today:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.alfred_total_clean_area')|int(states('input_number.alfred_area_cleaned_at_start_of_day')|int) - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.alfred_total_clean_area')|int - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+      #   availability_template: "{{ states('sensor.alfred_total_clean_area')|is_number }}"
+      # alfred_area_cleaned_since_last_empty_bin:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.alfred_total_clean_area')|int(states('input_number.alfred_area_cleaned_at_start_of_day')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.alfred_total_clean_area')|int - states('input_number.alfred_area_cleaned_at_last_empty_bin')|int }}"
+      #   availability_template: "{{ states('sensor.alfred_total_clean_area')|is_number }}"
+      # moeke_area_cleaned_today:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.moeke_total_cleaned_area')|int(states('input_number.moeke_area_cleaned_at_start_of_day')|int) - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_start_of_day')|int }}"
+      #   availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
+      # moeke_area_cleaned_since_last_empty_bin:
+      #   unit_of_measurement: 'm2'
+      #   #value_template: "{{ states('sensor.moeke_total_cleaned_area')|int(states('input_number.moeke_area_cleaned_at_last_empty_bin')|int)  - states('input_number.alfred_area_cleaned_at_start_of_day')|int }}"
+      #   value_template: "{{ states('sensor.moeke_total_cleaned_area')|int - states('input_number.moeke_area_cleaned_at_last_empty_bin')|int }}"
+      #   availability_template: "{{ states('sensor.moeke_total_cleaned_area')|is_number }}"
 
       alfred_battery:
         friendly_name: "Alfred Battery"
@@ -213,58 +242,73 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'off'
     action:
-      - choose:
-          - conditions:
-              - condition: numeric_state
-                entity_id: sensor.alfred_area_cleaned_today
-                below: 20
-            sequence:
-              - service: vacuum.set_fan_speed
-                entity_id: vacuum.alfred
-                data:
-                  fan_speed: Medium
-              - service: vacuum.start
-                entity_id: vacuum.alfred
-      - choose:
-          - conditions:
-              - condition: numeric_state
-                entity_id: sensor.argus_area_cleaned_today
-                below: 20
-            sequence:
-              - service: vacuum.set_fan_speed
-                entity_id: vacuum.argus
-                data:
-                  fan_speed: Medium
-              - service: vacuum.start
-                entity_id: vacuum.argus
-      - choose:
-          - conditions:
-              - condition: numeric_state
-                entity_id: sensor.moeke_cleaned_area
-                below: 20
-            sequence:
-              - service: vacuum.set_fan_speed
-                entity_id: vacuum.moeke
-                data:
-                  fan_speed: Strong
-              - service: select.select_option
-                target:
-                  entity_id: select.moeke_cleaning_mode
-                data:
-                  option: "sweeping_and_mopping"
-              - delay:
-                  seconds: 3
-              - service: vacuum.start
-                entity_id: vacuum.moeke
-      - service: notify.mobile_app_blokmeisters21u
-        data:
-          message: "Started scheduled cleanup"
-          title: "Home Assistant - Vacuum"
-          data:
-            group: info
-            tag: vacuum
-            icon_url: local/icons/robot-vacuum.png
-            timeout: 1800
+      - if:
+          - condition: numeric_state
+            entity_id: sensor.alfred_area_cleaned_today
+            below: 20
+        then:
+          - service: vacuum.set_fan_speed
+            entity_id: vacuum.alfred
+            continue_on_error: true
+            data:
+              fan_speed: Medium
+          - service: vacuum.start
+            entity_id: vacuum.alfred
+            continue_on_error: true
+      - if:
+          - condition: numeric_state
+            entity_id: sensor.argus_area_cleaned_today
+            below: 20
+        then:
+          - service: vacuum.set_fan_speed
+            entity_id: vacuum.argus
+            continue_on_error: true
+            data:
+              fan_speed: Medium
+          - service: vacuum.start
+            entity_id: vacuum.argus
+            continue_on_error: true
+      - if:
+          - condition: numeric_state
+            entity_id: sensor.moeke_area_cleaned_today
+            below: 20
+        then:
+          - service: vacuum.set_fan_speed
+            entity_id: vacuum.moeke
+            continue_on_error: true
+            data:
+              fan_speed: Strong
+          - service: select.select_option
+            continue_on_error: true
+            target:
+              entity_id: select.moeke_cleaning_mode
+            data:
+              option: "sweeping_and_mopping"
+          - delay:
+              seconds: 3
+          - service: vacuum.start
+            continue_on_error: true
+            entity_id: vacuum.moeke
+      - delay:
+          seconds: 10
+      - if:
+          - condition: state
+            entity_id:
+              - vacuum.moeke
+              - vacuum.argus
+              - vacuum.alfred
+            match: any
+            state: 'cleaning'
+        then:
+          - service: notify.mobile_app_blokmeisters21u
+            data:
+              message: "Started scheduled cleanup"
+              title: "Home Assistant - Vacuum"
+              data:
+                group: info
+                tag: vacuum
+                icon_url: local/icons/robot-vacuum.png
+                timeout: 1800
 
   - alias: '[home|vacuum]backup cleanup' #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
     id: home_vacuum_backup_cleanup
@@ -294,13 +338,15 @@ automation:
         entity_id: vacuum.moeke
         data:
           fan_speed: Strong
-      - service: vacuum.start
-        entity_id: vacuum.moeke
       - service: select.select_option
         target:
           entity_id: select.moeke_cleaning_mode
         data:
           option: "sweeping_and_mopping"
+      - delay:
+          seconds: 2
+      - service: vacuum.start
+        entity_id: vacuum.moeke
 
   - alias: '[home|vacuum]Drive Alfred to Hallway when Dust Bin is full'
     id: home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
@@ -334,11 +380,21 @@ automation:
       - wait_for_trigger:
           - platform: state
             entity_id: vacuum.alfred
-            to: 'returning'
-      - service: input_number.set_value
+            to:
+              - 'returning'
+              - 'Returning to dock'
+              - 'docked'
+      - service: utility_meter.calibrate
         data:
-          entity_id: input_number.alfred_area_cleaned_at_last_empty_bin
-          value: "{{ states('sensor.alfred_total_clean_area') }}"
+          value: 0
+        target:
+          entity_id: sensor.alfred_area_cleaned_since_last_empty_bin
+      # - service: utility_meter.reset
+      #   entity_id: sensor.alfred_area_cleaned_at_last_empty_bin
+      # - service: input_number.set_value
+      #   data:
+      #     entity_id: input_number.alfred_area_cleaned_at_last_empty_bin
+      #     value: "{{ states('sensor.alfred_total_clean_area') }}"
 
   - alias: '[home|vacuum]Drive Argus to Hallway when Dust Bin is full'
     id: home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
@@ -368,15 +424,30 @@ automation:
         after: "9:00:00"
         before: "21:00:00"
     action:
-      - service: script.argus_goto_hallway
+      - service: xiaomi_miio.vacuum_goto
+        data:
+          entity_id: vacuum.argus
+          x_coord: 28946
+          y_coord: 26144
+      #- service: script.argus_goto_hallway
       - wait_for_trigger:
           - platform: state
             entity_id: vacuum.argus
-            to: 'returning'
-      - service: input_number.set_value
+            to:
+              - 'returning'
+              - 'Returning to dock'
+              - 'docked'
+      # - service: utility_meter.reset
+      #   entity_id: sensor.argus_area_cleaned_since_last_empty_bin
+      - service: utility_meter.calibrate
         data:
-          entity_id: input_number.argus_area_cleaned_at_last_empty_bin
-          value: "{{ states('sensor.argus_total_clean_area') }}"
+          value: 0
+        target:
+          entity_id: sensor.argus_area_cleaned_since_last_empty_bin
+      # - service: input_number.set_value
+      #   data:
+      #     entity_id: input_number.argus_area_cleaned_at_last_empty_bin
+      #     value: "{{ states('sensor.argus_total_clean_area') }}"
 
   # - alias: '[home|vacuum] Button control vacuum'
   #   mode: restart
@@ -432,11 +503,11 @@ automation:
   #             - service: vacuum.return_to_base
   #               entity_id: vacuum.xiaomi_vacuum_cleaner
 
-  - alias: '[home|vacuum]reset_area_cleaned_input_number'
-    trigger:
-      platform: time
-      at: '03:00:00'
-    action:
+  # - alias: '[home|vacuum]reset_area_cleaned_input_number'
+  #   trigger:
+  #     platform: time
+  #     at: '03:00:00'
+  #   action:
       # - service: input_number.set_value
       #   data:
       #     entity_id: input_number.consuela_area_cleaned_at_start_of_day
@@ -445,14 +516,14 @@ automation:
       #   data:
       #     entity_id: input_number.moeke_area_cleaned_at_start_of_day
       #     value: "{{ states('sensor.moeke_total_clean_area') }}"
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.argus_area_cleaned_at_start_of_day
-          value: "{{ states('sensor.argus_total_clean_area') }}"
-      - service: input_number.set_value
-        data:
-          entity_id: input_number.alfred_area_cleaned_at_start_of_day
-          value: "{{ states('sensor.alfred_total_clean_area') }}"
+      # - service: input_number.set_value
+      #   data:
+      #     entity_id: input_number.argus_area_cleaned_at_start_of_day
+      #     value: "{{ states('sensor.argus_total_clean_area') }}"
+      # - service: input_number.set_value
+      #   data:
+      #     entity_id: input_number.alfred_area_cleaned_at_start_of_day
+      #     value: "{{ states('sensor.alfred_total_clean_area') }}"
 ########## NOTIFICATIONS ##########
   - alias: '[home|vacuum]Notify Phone if Vacuum is in Error'
     id: home_vacuum_notify_phone_if_vacuum_is_in_error
