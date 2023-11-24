@@ -400,6 +400,33 @@ automation:
       - service: switch.toggle
         data:
           entity_id: switch.amplifier_power
+
+  - alias: "[areas|mediacenter]Update Plex library if torrent completed"
+    id: areas_mediacenter_update_plex_library_if_torrent_completed
+    mode: restart
+    trigger:
+      platform: event
+      event_type: transmission_downloaded_torrent
+    action:
+      - choose:
+          - conditions: >
+              {{ "Series" in trigger.event.data.path }}
+            sequence:
+              - delay:
+                  minutes: 5
+              - service: plex.refresh_library
+                data:
+                  #server_name: "Tower"
+                  library_name: "TV Shows"
+          - conditions: >
+              {{ "Movies" in trigger.event.data.path }}
+            sequence:
+              - delay:
+                  minutes: 5
+              - service: plex.refresh_library
+                data:
+                  #server_name: "Tower"
+                  library_name: "Movies"
 ################
 #    SCENES    #
 ################
@@ -537,6 +564,7 @@ script:
   turn_on_ambilight:
     sequence:
       - service: switch.turn_on
+        continue_on_error: true
         entity_id:
           - switch.ambilight_power
           - switch.hyperion_apa102_component_led_device
@@ -545,6 +573,7 @@ script:
       - delay:
           seconds: 0.5
       - service: light.turn_on
+        continue_on_error: true
         data:
           brightness: 255
           effect: E1.31
@@ -552,6 +581,7 @@ script:
             - light.ambilight_left
             - light.ambilight_right
       - service: light.turn_on
+        continue_on_error: true
         data:
           entity_id:
             - light.hyperion_apa102
@@ -562,6 +592,7 @@ script:
       - delay:
           seconds: 5
       - service: light.turn_off
+        continue_on_error: true
         data:
           # brightness: 255
           # effect: Platform Capture #used to be GRABBER
@@ -624,6 +655,7 @@ script:
           seconds: 2
       - service: switch.turn_off
         entity_id: switch.ambilight_power
+
 ################
 #    LIGHTS    #
 ################
