@@ -195,6 +195,47 @@ sensor:
         value_template: "{{ state_attr('vacuum.argus', 'battery_level') }}"
         availability_template: "{{ states('vacuum.argus') not in ['None', 'Unavailable', 'unknown', None] }}"
 
+      argus_power_estimate:
+        value_template: >-
+          {% if is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int < 100 %}
+            20
+          {% elif is_state('vacuum.argus', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int == 100 %}
+            3
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W"
+        device_class: 'power'
+        availability_template: "{{ states('vacuum.argus') not in ['unavailable', 'unknown', 'none'] }}"
+      alfred_power_estimate:
+        value_template: >-
+          {% if is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int < 100 %}
+            20
+          {% elif is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int == 100 %}
+            3
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W"
+        device_class: 'power'
+        availability_template: "{{ states('vacuum.alfred') not in ['unavailable', 'unknown', 'none'] }}"
+
+  - platform: integration
+    source: sensor.argus_power_estimate
+    name: Argus Energy
+    unique_id: integration_argus_energy
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.alfred_power_estimate
+    name: Alfred Energy
+    unique_id: integration_alfred_energy
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -744,8 +785,8 @@ script:
     - service: xiaomi_miio.vacuum_goto
       data:
         entity_id: vacuum.alfred
-        x_coord: 22504
-        y_coord: 28944
+        x_coord: 25119
+        y_coord: 28904
   # consuela_goto_hallway:
   #   alias: "Consuela go to Kitchen"
   #   sequence:

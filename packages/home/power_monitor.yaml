@@ -382,27 +382,6 @@ sensor:
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.heatpump_tapwater_temperature')|is_number }}" #Should also include recirculation pump being available
 
-      argus_power_estimate:
-        value_template: >-
-          {% if is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int < 100 %}
-            20
-          {% else %}
-            0
-          {% endif %}
-        unit_of_measurement: "W"
-        device_class: 'power'
-        availability_template: "{{ states('vacuum.argus') not in ['unavailable', 'unknown', 'none'] }}"
-      alfred_power_estimate:
-        value_template: >-
-          {% if is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int < 100 %}
-            20
-          {% else %}
-            0
-          {% endif %}
-        unit_of_measurement: "W"
-        device_class: 'power'
-        availability_template: "{{ states('vacuum.alfred') not in ['unavailable', 'unknown', 'none'] }}"
-
   - platform: integration
     source: sensor.total_power_consumption_watt
     name: Total Energy Usage
