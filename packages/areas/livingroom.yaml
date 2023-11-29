@@ -204,6 +204,33 @@ automation:
                 data:
                   entity_id: scene.livingroom_{{ states('input_select.livingroom_scenes') }}
 
+  - alias: '[livingroom|light]Automate light string based on sunset'
+    id: livingroom_light_automate_light_string_based_on_sunset
+    mode: single
+    trigger:
+      - platform: sun
+        event: sunset
+        id: "turn_on"
+      - platform: time
+        at: "22:45"
+        id: "turn_off"
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_on' }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.livingroom_light_string
+                  brightness: 255
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_off' }}"
+            sequence:
+              - service: light.turn_off
+                data:
+                  entity_id: light.livingroom_light_string
   # - alias: '[livingroom|light] Update illumination limit'
   #   mode: single
   #   trigger:

@@ -29,25 +29,41 @@ automation:
     id: porch_light_automate_light_based_on_sunset
     mode: single
     trigger:
-      platform: sun
-      event: sunset
+      - platform: sun
+        event: sunset
+        id: "turn_on"
+      - platform: time
+        at: "22:45"
+        id: "turn_off"
     action:
-      - service: light.turn_on
-        data:
-          entity_id: light.shelly_porch_light
-      - delay:
-          minutes: 90
-      - wait_for_trigger:
-          - platform: template
-            value_template: >-
-              {{ now() > today_at("23:00") }}
-          - platform: time
-            at: "23:59:00"
-        timeout:
-          minutes: 180
-      - service: light.turn_off
-        data:
-          entity_id: light.shelly_porch_light
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_on' }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.shelly_porch_light
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_off' }}"
+            sequence:
+              - service: light.turn_off
+                data:
+                  entity_id: light.shelly_porch_light
+      # - delay:
+      #     minutes: 90
+      # - wait_for_trigger:
+      #     - platform: template
+      #       value_template: >-
+      #         {{ now() > today_at("23:00") }}
+      #     - platform: time
+      #       at: "23:59:00"
+      #   timeout:
+      #     minutes: 180
+      # - service: light.turn_off
+      #   data:
+      #     entity_id: light.shelly_porch_light
 ################
 #    SCENES    #
 ################
