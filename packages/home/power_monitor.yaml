@@ -16,6 +16,8 @@ homeassistant:
     sensor.water_consumption_per_hour:
       icon: mdi:water
 
+powercalc:
+
 utility_meter:
   hourly_energy_use:
     source: sensor.total_energy_usage
@@ -47,7 +49,14 @@ utility_meter:
     cycle: yearly
     unique_id: yaml_template_sensor_yearly_energy_use
     net_consumption: true
-  
+
+  daily_unknown_energy:
+    source: sensor.unknown_energy
+    delta_values: False
+    cycle: daily
+    unique_id: yaml_template_sensor_daily_unknown_energy
+    net_consumption: true
+
   hourly_water_use:
     source: sensor.water_meter_water_consumption
     delta_values: True
@@ -100,6 +109,17 @@ utility_meter:
     delta_values: false
     cycle: yearly
     unique_id: yaml_utilitymeter_heatpump_tapwater_yearly_energy_use
+
+  heatpump_tapwater_daily_energy_consumption:
+    source: sensor.tapwater_energy
+    delta_values: false
+    cycle: daily
+    unique_id: yaml_utilitymeter_heatpump_tapwater_daily_energy_consumption
+  heatpump_tapwater_weekly_energy_consumption:
+    source: sensor.tapwater_energy
+    delta_values: false
+    cycle: weekly
+    unique_id: yaml_utilitymeter_heatpump_tapwater_weekly_energy_consumption
 
   heatpump_verwarming_hourly_energy_use:
     source: sensor.heatpump_heat_amount_heating
@@ -348,17 +368,70 @@ sensor:
         unit_of_measurement: "kW"
         availability_template: "{{ states('sensor.electricity_meter_energy_consumption_tarif_1')|is_number and states('sensor.electricity_meter_energy_consumption_tarif_2')|is_number }}"
 
+      heatpump_tapwater_power_estimate:
+        value_template: >-
+          {% if is_state('binary_sensor.heatpump_tapwater_recirculation_pump', 'on')%}
+            {% if (255.5 + (states('sensor.heatpump_tapwater_temperature')|float * 16.66)) > (states('sensor.electricity_meter_power_consumption_phase_l2')|float * 1000) %}
+              {{ states('sensor.electricity_meter_power_consumption_phase_l2')*1000 }}
+            {% else %}
+              {{ 255.5 + (states('sensor.heatpump_tapwater_temperature')|float * 16.66) }}
+            {% endif %}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W"
+        availability_template: "{{ states('sensor.heatpump_tapwater_temperature')|is_number }}" #Should also include recirculation pump being available
+
+      argus_power_estimate:
+        value_template: >-
+          {% if is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int < 100 %}
+            20
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W"
+        device_class: 'power'
+        availability_template: "{{ states('vacuum.argus') not in ['unavailable', 'unknown', 'none'] }}"
+      alfred_power_estimate:
+        value_template: >-
+          {% if is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int < 100 %}
+            20
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "W"
+        device_class: 'power'
+        availability_template: "{{ states('vacuum.alfred') not in ['unavailable', 'unknown', 'none'] }}"
+
   - platform: integration
     source: sensor.total_power_consumption_watt
     name: Total Energy Usage
     unique_id: integration_total_energy_usage
     unit_time: h
     unit_prefix: k
+    method: left
     round: 2
   - platform: integration
     source: sensor.total_energy_consumption_kilowatt
     name: Total Energy Consumption
     unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.heatpump_tapwater_power_estimate
+    name: Tapwater Energy
+    unique_id: sensor_integration_heatpump_energy_usage
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.unknown_power
+    name: Unknown Energy
+    unique_id: integration_unknown_energy_usage
+    unit_time: h
+    unit_prefix: k
+    method: left
     round: 2
   - platform: integration
     source: sensor.water_meter_current_water_consumption
@@ -391,6 +464,15 @@ sensor:
     name: Heat Pump Tapwater Power Production
     unit_time: min
     time_window: "00:01:00"
+
+  - platform: filter
+    entity_id: sensor.blitzwolf_computer_energy_power
+    name: Averaged Computer Power
+    unique_id: filter_sensor_averaged_computer_power
+    filters:
+      - filter: time_simple_moving_average
+        window_size: '00:15'
+        precision: 0
   # - platform: template
   #   sensors:
   #     known_power:
@@ -719,7 +801,7 @@ group:
       - sensor.blitzwolf_10gb_switch_energy_power
       - sensor.blitzwolf_3dprinter_energy_power
       - sensor.blitzwolf_ambilight_amplifier_power
-      - sensor.blitzwolf_computer_energy_reactivepower
+      - sensor.blitzwolf_computer_energy_power
       - sensor.blitzwolf_dishwasher_energy_power
       - sensor.blitzwolf_nas_energy_power
       - sensor.blitzwolf_nuc_energy_power
@@ -727,6 +809,10 @@ group:
       - sensor.blitzwolf_router_energy_power
       - sensor.blitzwolf_washingmachine_energy_power
       - sensor.blitzwolf_watercooker_energy_power
+
+      - sensor.blitzwolf_heatpump_power
+      - sensor.heatpump_tapwater_power_estimate
+      - sensor.all_lights_power_estimate_power
 
 #################
 #    SCRIPTS    #
