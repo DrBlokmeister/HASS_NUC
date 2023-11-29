@@ -7387,11 +7387,11 @@ class DreameVacuumMapRenderer:
     ):
         new_layer = Image.new("RGBA", layer_size, (255, 255, 255, 0))
         if self.icon_set == 3:
-            icon_size = int(icon_size * 1.2)
+            icon_size = int(size * 1.2)
         elif self.icon_set == 2:
-            icon_size = int(icon_size * 1.5)
+            icon_size = int(size * 1.5)
         elif self._robot_type == RobotType.VSLAM:
-            icon_size = int(icon_size * 1.5)
+            icon_size = int(size * 1.5)
         else:
             icon_size = int(size * scale)
 
@@ -8742,6 +8742,13 @@ class DreameVacuumMapRenderer:
                         int(math.ceil((carpet.y0 - top) / dimensions.grid_size)),
                         int(math.ceil((carpet.y2 - top) / dimensions.grid_size)),
                     ):
+                        if (
+                            y < 0
+                            or y >= dimensions.height
+                            or x < 0
+                            or x >= dimensions.width
+                        ):
+                            continue
                         value = int(pixel_type[x, y])
                         if value > 0 and value != 255:
                             if value != 254 and carpet.segments:
