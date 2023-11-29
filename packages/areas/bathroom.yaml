@@ -70,12 +70,12 @@ binary_sensor:
     observations:
       - platform: state
         entity_id: light.bathroom
-        prob_given_true: 0.8 #80% of the time we shower, the light is on
-        prob_given_false: 0.05 #5% of the time we don't shower, the light is on
+        prob_given_true: 0.8 #70% of the time we shower, the light is on
+        prob_given_false: 0.08 #5% of the time we don't shower, the light is on
         to_state: "on"
       - platform: template
         value_template: >  # Bathroom humidity is at least 15% above minimum humidity
-          {{ (states('sensor.humidity_bathroom')|int - states('sensor.humidity_bathroom_min')|int) > 15 }}
+          {{ (states('sensor.humidity_bathroom')|int(0) - states('sensor.humidity_bathroom_min')|int(0)) > 15 }}
         prob_given_true: 0.5
         prob_given_false: 0.05
       - platform: numeric_state
@@ -83,6 +83,12 @@ binary_sensor:
         prob_given_true: 0.80
         prob_given_false: 0.02
         above: 20
+      - platform: numeric_state
+        entity_id: sensor.tapwater_temperature_change
+        prob_given_true: 0.80
+        prob_given_false: 0.01
+        below: -10
+
         # I should also use the current water usage. I created these, but should first test if they work. Added in power_monitor.yaml
                 # - platform: derivative
                 #   source: sensor.water_meter_main_water_consumption
