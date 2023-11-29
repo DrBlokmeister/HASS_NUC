@@ -14,6 +14,13 @@ input_number:
     min: 0
     max: 30
     mode: box
+
+utility_meter:
+  energy:
+    unique_id: utility_meter_sensor_litterbox_counts_today_total
+    name: Litterbox Total Counts
+    source: sensor.litterbox_counts_today
+    periodically_resetting: true
 #################
 #    SENSORS    #
 #################
@@ -25,6 +32,13 @@ sensor:
       - sensor.motion_motion_2_illuminance
       - sensor.entry_light
       - sensor.entry_light
+  - platform: history_stats
+    name: Litterbox Counts Today
+    entity_id: binary_sensor.litterbox_vibration
+    state: "on"
+    type: count
+    start: "{{ today_at('00:00') }}"
+    end: "{{ now() }}"
 ########################
 #    BINARY SENSORS    #
 ########################
