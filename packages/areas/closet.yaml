@@ -40,19 +40,19 @@ automation:
             sequence:
               - service: light.turn_on
                 data:
-                  entity_id: light.shelly_closet
+                  entity_id: light.closet
                   brightness_pct: "{% if is_state('input_boolean.sleep_tracking_on', 'on') %}20{% else %}{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}{% endif %}"
           - conditions: "{{ trigger.to_state.state == 'off' }}"
             sequence:
               - service: light.turn_off
-                entity_id: light.shelly_closet
+                entity_id: light.closet
 
   - alias: "[closet|light] Containment turn off light when door is closed"
     id: 'closet_light_containment_turn_off_light_when_door_is_closed'
     mode: restart
     trigger:
       - platform: state
-        entity_id: light.shelly_closet
+        entity_id: light.closet
         to: "on"
     condition:
       - condition: state
@@ -65,7 +65,7 @@ automation:
           minutes: 5
     action:
       - service: light.turn_off
-        entity_id: light.shelly_closet
+        entity_id: light.closet
 
   # - alias: turn on closet light when door opens
   #   trigger:

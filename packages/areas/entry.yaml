@@ -71,16 +71,18 @@ automation:
     id: entry_light_toggle_lights_when_switch_is_pressed
     mode: queued
     trigger:
-      platform: state
-      entity_id: switch.shelly_entry
-    condition:
-      - condition: state
-        entity_id: switch.shelly_entry
-        state:
-          - 'on'
-          - 'off'
-        for:
-          seconds: 5
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: "Shelly Entry"
+    # condition:
+    #   - condition: state
+    #     entity_id: switch.shelly_entry
+    #     state:
+    #       - 'on'
+    #       - 'off'
+    #     for:
+    #       seconds: 5
     action:
       service: light.toggle
       data:
