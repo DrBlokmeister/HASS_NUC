@@ -1,0 +1,24 @@
+sensor:
+  - platform: template
+    name: "Apparent Power"
+    lambda: |-
+      return id(voltage).state * id(current).state;
+    update_interval: 60s
+    id: apparent_power
+  - platform: template
+    name: "Theta"
+    lambda: |-
+      return acos( id(power).state / id(apparent_power).state);
+    update_interval: 60s
+    id: theta
+  - platform: template
+    name: "Power Factor"
+    lambda: |-
+      return id(power).state / id(voltage).state / id(current).state;
+    update_interval: 60s
+    id: power_factor
+  - platform: template
+    name: "Reactive Power"
+    lambda: |-
+      return sqrt(pow(id(voltage).state * id(current).state, 2) - pow(id(power).state, 2));
+    id: reactive_power
