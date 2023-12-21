@@ -111,74 +111,81 @@ automation:
                   language: en-IE
 
   - alias: '[occupancy|sensors]Deconz Xiaomi Aqara Motion attributes fix'
+    id: occupancy_sensors_deconz_xiaomi_aqara_motion_attributes_fix
     trigger:
       - platform: homeassistant
         event: start
     action:
       - delay:
-          minutes: 2
+          minutes: 1
       # set hacked motion sensor timout duration to 5 seconds
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.bedroom_motion_1
-          field: "/config"
-          data: {"duration": 5}
-      - delay:
-          seconds: 1
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.study_motion_1
-          field: "/config"
-          data: {"duration": 5}
-      - delay:
-          seconds: 1
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.motion_sensor_livingroom3
-          field: "/config"
-          data: {"duration": 5}
-      - delay:
-          seconds: 1
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.motion_sensor_livingroom2
-          field: "/config"
-          data: {"duration": 5}
-      - delay:
-          seconds: 1
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.motion_sensor_kitchen
-          field: "/config"
-          data: {"duration": 5}
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.hallway_1st_floor_motion_1
-          field: "/config"
-          data: {"duration": 60}
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.hallway_1st_floor_motion_2
-          field: "/config"
-          data: {"duration": 60}
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.hallway_2nd_floor_motion_1
-          field: "/config"
-          data: {"duration": 5}
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.hallway_2nd_floor_motion_2
-          field: "/config"
-          data: {"duration": 5}
-      - delay:
-          seconds: 1
-      # Set study chair vibration sensitivity to 1 (highest)
-      - service: deconz.configure
-        data:
-          entity: binary_sensor.vibration_sensor
-          data: {"sensitivity": 2}
-          field: "/config"
+      - parallel:
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.bedroom_motion_1
+              field: "/config"
+              data: {"duration": 5}
+          - delay:
+              seconds: 1
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.study_motion_1
+              field: "/config"
+              data: {"duration": 5}
+          - delay:
+              seconds: 1
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.motion_sensor_livingroom3
+              field: "/config"
+              data: {"duration": 5}
+          - delay:
+              seconds: 1
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.motion_sensor_livingroom2
+              field: "/config"
+              data: {"duration": 5}
+          - delay:
+              seconds: 1
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.motion_sensor_kitchen
+              field: "/config"
+              data: {"duration": 5}
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.hallway_1st_floor_motion_1
+              field: "/config"
+              data: {"duration": 60}
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.hallway_1st_floor_motion_2
+              field: "/config"
+              data: {"duration": 60}
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.hallway_2nd_floor_motion_1
+              field: "/config"
+              data: {"duration": 5}
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.hallway_2nd_floor_motion_2
+              field: "/config"
+              data: {"duration": 5}
+          - delay:
+              seconds: 1
+          # Set study chair vibration sensitivity to 1 (highest)
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.vibration_sensor
+              data: {"sensitivity": 3}
+              field: "/config"
+          - service: deconz.configure
+            data:
+              entity: binary_sensor.vibration_sensor_new_desk_chair
+              data: {"sensitivity": 3}
+              field: "/config"
 
 ################
 #    SCENES    #
