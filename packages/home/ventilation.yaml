@@ -1,11 +1,57 @@
 homeassistant:
   customize:
 
+
+utility_meter:
+  ventilation_hourly_energy_use:
+    source: sensor.ventilation_energy_usage
+    delta_values: False
+    cycle: hourly
+    unique_id: yaml_template_sensor_hourly_ventilation_energy_use
+    net_consumption: true
+  ventilation_daily_energy_use:
+    source: sensor.ventilation_energy_usage
+    delta_values: False
+    cycle: daily
+    unique_id: yaml_template_sensor_daily_ventilation_energy_use
+    net_consumption: true
+  ventilation_weekly_energy_use:
+    source: sensor.ventilation_energy_usage
+    delta_values: False
+    cycle: weekly
+    unique_id: yaml_template_sensor_weekly_ventilation_energy_use
+    net_consumption: true
+  ventilation_monthly_energy_use:
+    source: sensor.ventilation_energy_usage
+    delta_values: False
+    cycle: monthly
+    unique_id: yaml_template_sensor_monthly_ventilation_energy_use
+    net_consumption: true
+  ventilation_yearly_energy_use:
+    source: sensor.ventilation_energy_usage
+    delta_values: False
+    cycle: yearly
+    unique_id: yaml_template_sensor_yearly_ventilation_energy_use
+    net_consumption: true
 #################
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: template
+    sensors:
+      ventilation_power_estimate:
+        value_template: >-
+          {{ (28.4 + 0.069*(states('sensor.fan_speed_setting')|float) + 0.0062*(states('sensor.fan_speed_setting')|float)**2)|round }}
+        unit_of_measurement: "W"
+        availability_template: "{{ states('sensor.fan_speed_setting')|is_number }}" #Should also include recirculation pump being available
+  - platform: integration
+    source: sensor.ventilation_power_estimate
+    name: Ventilation Energy Usage
+    unique_id: integration_ventilation_energy_usage
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
 ########################
 #    BINARY SENSORS    #
 ########################
