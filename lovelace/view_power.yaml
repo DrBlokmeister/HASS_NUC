@@ -6,6 +6,20 @@ cards:
   - cards:
     - type: custom:apexcharts-card
       graph_span: 24h
+      update_interval: 1m
+      apex_config:
+        plotOptions:
+          pie:
+            donut:
+              labels:
+                show: true
+                total:
+                  show: true
+                  label: Total
+                  formatter: |
+                    EVAL:function(w) {
+                      return (w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2);
+                      }
       chart_type: donut
       series:
         - entity: sensor.blitzwolf_computer_energy_today
@@ -22,10 +36,99 @@ cards:
           name: Washing Machine
         - entity: sensor.blitzwolf_dishwasher_energy_today
           name: Dishwasher
+        - entity: sensor.heatpump_verwarming_daily_energy_use
+          name: Heating
+        - entity: sensor.heatpump_tapwater_daily_energy_use
+          name: Tapwater
+        - entity: sensor.ventilation_daily_energy_use
+          name: Ventilation
         - entity: sensor.daily_unknown_energy
           name: Unknown
         - entity: sensor.all_lights_power_estimate_energy_daily
           name: Lights
+    - type: custom:apexcharts-card
+      graph_span: 24h
+      update_interval: 1m
+      apex_config:
+        plotOptions:
+          pie:
+            donut:
+              labels:
+                show: true
+                total:
+                  show: true
+                  label: Total
+                  formatter: |
+                    EVAL:function(w) {
+                      return Math.round(w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0))
+                      }
+      chart_type: donut
+      series:
+        - entity: sensor.blitzwolf_computer_energy_power
+          name: Computer
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_nas_energy_power
+          name: NAS
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_poe_switch_energy_power
+          name: PoE
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_nuc_energy_power
+          name: NUC
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_heatpump_power
+          name: Circulation
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_washingmachine_energy_power
+          name: Washing Machine
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_dishwasher_energy_power
+          name: Dishwasher
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.heatpump_heating_power
+          name: Heating
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.heatpump_tapwater_power
+          name: Tapwater
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.ventilation_power_estimate
+          name: Ventilation
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.all_lights_power_estimate_power
+          name: Lights
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.vacuums_power_estimate
+          name: Vacuums
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.unknown_power
+          name: Unknown
+          group_by:
+            func: avg
+            duration: 10min
     - entities:
         - color: grey
           entity: sensor.total_power_consumption_watt
@@ -77,6 +180,84 @@ cards:
         labels: true
         average: false
       type: custom:mini-graph-card
+    - type: custom:apexcharts-card
+      graph_span: 12h
+      update_interval: 1m
+      #chart_type: donut
+      yaxis: # only 1 yaxis, no need for id or yaxis_id
+        - min: 0
+          # if the sensor doesn't go above 50, the max of the axis will be 50
+          # else the max will be the maximum value of the sensor
+          max: ~500
+          decimals: 0
+          apex_config:
+            tickAmount: 4
+      series:
+        - entity: sensor.blitzwolf_computer_energy_power
+          name: Computer
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_nas_energy_power
+          name: NAS
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_poe_switch_energy_power
+          name: PoE
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_nuc_energy_power
+          name: NUC
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_heatpump_power
+          name: Circulation
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_washingmachine_energy_power
+          name: Washing Machine
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.blitzwolf_dishwasher_energy_power
+          name: Dishwasher
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.heatpump_heating_power
+          name: Heating
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.heatpump_tapwater_power
+          name: Tapwater
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.ventilation_power_estimate
+          name: Ventilation
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.all_lights_power_estimate_power
+          name: Lights
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.vacuums_power_estimate
+          name: Vacuums
+          group_by:
+            func: avg
+            duration: 10min
+        - entity: sensor.unknown_power
+          name: Unknown
+          group_by:
+            func: avg
+            duration: 10min
     - type: horizontal-stack
       cards:
       - type: custom:mini-graph-card
