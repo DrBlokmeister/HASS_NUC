@@ -44,6 +44,36 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: '[garden|light]Automate light based on sunset'
+    id: garden_light_automate_light_based_on_sunset
+    mode: single
+    trigger:
+      - platform: sun
+        event: sunset
+        offset: "00:15:00"
+        id: "turn_on"
+      - platform: time
+        at: "22:45"
+        id: "turn_off"
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: sun.sun
+                state: "below_horizon"
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_on' }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.back_garden
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_off' }}"
+            sequence:
+              - service: light.turn_off
+                data:
+                  entity_id: light.back_garden
   # - alias: '[garden|irrigation]Irrigate garden'
   #   id: garden_irrigation_irrigate_garden
   #   mode: single
