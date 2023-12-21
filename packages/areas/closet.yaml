@@ -38,14 +38,12 @@ automation:
       - choose:
           - conditions: "{{ trigger.to_state.state == 'on' }}"
             sequence:
-              - service: light.turn_on
-                data:
-                  entity_id: light.closet
-                  brightness_pct: "{% if is_state('input_boolean.sleep_tracking_on', 'on') %}20{% else %}{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}{% endif %}"
+              - service: switch.turn_on
+                entity_id: switch.shelly_closet_2
           - conditions: "{{ trigger.to_state.state == 'off' }}"
             sequence:
-              - service: light.turn_off
-                entity_id: light.closet
+              - service: switch.turn_off
+                entity_id: switch.shelly_closet_2
 
   - alias: "[closet|light] Containment turn off light when door is closed"
     id: 'closet_light_containment_turn_off_light_when_door_is_closed'
