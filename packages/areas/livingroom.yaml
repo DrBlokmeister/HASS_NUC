@@ -33,28 +33,36 @@ input_select:
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      average_illumination_livingroom:
-        friendly_name: "Average Illumination Livingroom"
-        device_class: illuminance
-        unit_of_measurement: 'lx'
-        value_template: >-
-          {% if states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list and states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
-            {{ ((states('sensor.livingroom_motion_1_illuminance')|float + states('sensor.livingroom_motion_2_illuminance')|float) / 2)|round(1) }}
-          {% elif states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list %}
-            {{ states('sensor.livingroom_motion_1_illuminance')|round(1) }}
-          {% elif states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
-            {{ states('sensor.livingroom_motion_2_illuminance')|round(1) }}
-          {% else %}
-            unavailable
-          {% endif %}
-        availability_template: "{{ states('sensor.livingroom_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.livingroom_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
+  # - platform: template
+  #   sensors:
+  #     average_illumination_livingroom:
+  #       friendly_name: "Average Illumination Livingroom"
+  #       device_class: illuminance
+  #       unit_of_measurement: 'lx'
+  #       value_template: >-
+  #         {% if states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list and states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+  #           {{ ((states('sensor.livingroom_motion_1_illuminance')|float + states('sensor.livingroom_motion_2_illuminance')|float) / 2)|round(1) }}
+  #         {% elif states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+  #           {{ states('sensor.livingroom_motion_1_illuminance')|round(1) }}
+  #         {% elif states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
+  #           {{ states('sensor.livingroom_motion_2_illuminance')|round(1) }}
+  #         {% else %}
+  #           unavailable
+  #         {% endif %}
+  #       availability_template: "{{ states('sensor.livingroom_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.livingroom_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
   # - platform: statistics
   #   name: average_illumination_livingroom_stats
   #   entity_id: sensor.average_illumination_livingroom
   #   max_age:
   #     minutes: 30
+  - platform: group
+    type: mean
+    name: "Livingroom Average Illuminance"
+    entities:
+      - sensor.livingroom_motion_1_illuminance
+      - sensor.livingroom_motion_2_illuminance
+      - sensor.lvingroom_light_sensor_1
+      - sensor.lvingroom_light_sensor_1
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -95,7 +103,7 @@ automation:
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ states('sensor.average_illumination_livingroom')|int < states('input_number.livingroom_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.livingroom_average_illuminance')|int < states('input_number.livingroom_illumination_limit')|int }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -113,7 +121,7 @@ automation:
             for:
               minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
           - platform: template
-            value_template: "{{ states('sensor.average_illumination_livingroom')|int > states('input_number.livingroom_illumination_limit')|int }}"
+            value_template: "{{ states('sensor.livingroom_average_illuminance')|int > states('input_number.livingroom_illumination_limit')|int }}"
             for:
               minutes: "{{ states('input_number.livingroom_light_timeout')|int }}"
       - service: light.turn_on
