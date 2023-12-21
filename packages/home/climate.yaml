@@ -33,26 +33,31 @@ sensor:
   - platform: min_max
     type: sum
     name: Total Heat Production Power
+    round_digits: 3
     entity_ids:
       - sensor.tapwater_heat_production_power
       - sensor.heating_heat_production_power
 
   - platform: derivative
-    source: sensor.heatpump_tapwater_heat_amount
+    source: sensor.tapwater_heat_amount_updating
     name: Tapwater Heat Production Power
+    round : 3
     unit_time: h
     unit: kW
+    time_window: "00:10:00"
 
   - platform: derivative
-    source: sensor.heatpump_heat_amount_heating
+    source: sensor.heating_heat_amount_updating
     name: Heating Heat Production Power
+    round : 3
     unit_time: h
     unit: kW
+    time_window: "00:10:00"
 
   - platform: derivative
     source: sensor.heatpump_tapwater_temperature
     name: Tapwater Temperature Change
-    time_window: "00:02:00"
+    time_window: "00:05:00"
     unit_time: h
     unit: °C
 
@@ -71,7 +76,36 @@ sensor:
 
       - sensor.study_multi_sensor_humidity
       - sensor.study_aqm_humidity
+  - platform: min_max
+    type: median
+    name: Home Median Humidity
+    unique_id: sensor_home_median_humidity
+    entity_ids:
+      - sensor.humidity_livingroom
+      - sensor.livingroom_aqm_humidity
 
+      - sensor.humidity_bathroom
+
+      - sensor.humidity_bedroom
+      - sensor.bedroom_aqm_humidity
+
+      - sensor.study_multi_sensor_humidity
+      - sensor.study_aqm_humidity
+  - platform: min_max
+    type: max
+    name: Home Max Humidity
+    unique_id: sensor_home_max_humidity
+    entity_ids:
+      - sensor.humidity_livingroom
+      - sensor.livingroom_aqm_humidity
+
+      - sensor.humidity_bathroom
+
+      - sensor.humidity_bedroom
+      - sensor.bedroom_aqm_humidity
+
+      - sensor.study_multi_sensor_humidity
+      - sensor.study_aqm_humidity
   - platform: min_max
     type: mean
     name: Home Mean Humidity Without Bathroom
@@ -86,6 +120,31 @@ sensor:
       - sensor.study_multi_sensor_humidity
       - sensor.study_aqm_humidity
 
+  - platform: min_max
+    type: mean
+    name: Home Mean CO2
+    unique_id: sensor_home_mean_co2
+    entity_ids:
+      - sensor.livingroom_co2
+      - sensor.mh_z19_co2_value
+      - sensor.study_co2
+  - platform: min_max
+    type: median
+    name: Home Median CO2
+    unique_id: sensor_home_median_co2
+    entity_ids:
+      - sensor.livingroom_co2
+      - sensor.mh_z19_co2_value
+      - sensor.study_co2
+  - platform: min_max
+    type: max
+    name: Home Max CO2
+    unique_id: sensor_home_max_co2
+    entity_ids:
+      - sensor.livingroom_co2
+      - sensor.mh_z19_co2_value
+      - sensor.study_co2
+
   - platform: template
     sensors:
       warmtebron_in_uit_delta:
@@ -98,6 +157,31 @@ sensor:
         unit_of_measurement: '°C'
         value_template: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
         availability_template: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
+      vloerverwarming_in_uit_delta:
+        friendly_name: Vloerverwarming in-uit Delta T
+        unit_of_measurement: '°C'
+        value_template: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
+        availability_template: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
+      tapwater_heat_amount_updating:
+        friendly_name: Tapwater Heat Amount Updating
+        unit_of_measurement: "kWh"
+        value_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
+        attribute_templates:
+          update_minute: "{{ now().minute }}"
+        availability_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|is_number() }}"
+      heating_heat_amount_updating:
+        friendly_name: Heating Heat Amount Updating
+        unit_of_measurement: "kWh"
+        value_template: "{{ states('sensor.heatpump_heat_amount_heating')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
+        attribute_templates:
+          update_minute: "{{ now().minute }}"
+        availability_template: "{{ states('sensor.heatpump_heat_amount_heating')|is_number() }}"
+      heatpump_efficiency:
+        friendly_name: Heatpump Efficiency
+        unit_of_measurement: '%'
+        value_template: "{{ (100 * (states('sensor.heatpump_current_heat_output')|float(0)) / states('sensor.tasmota_energy_power')|float(1))|round(0) }}"
+        availability_template: "{{ states.sensor.heatpump_current_heat_output not in ['unavailable', 'unknown', 'none', None] and states.sensor.tasmota_energy_power not in ['unavailable', 'unknown', 'none', None] }}"
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -117,6 +201,52 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: "[home|climate] Heat up tapwater in the morning"
+    id: home_climate_heat_up_tapwater_in_the_morning
+    mode: single
+    trigger:
+      - platform: time
+        at: "5:00"
+        id: "heat_up"
+      - platform: time
+        at: "10:00"
+        id: "cool_down"
+    condition:
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'heat_up' }}"
+              - condition: state
+                entity_id: binary_sensor.house_occupied
+                state: 'on'
+            sequence:
+              - service: number.set_value
+                data:
+                  value: "52"
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: "1"
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'cool_down' }}"
+            sequence:
+              - service: number.set_value
+                data:
+                  value: "50"
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: "5"
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
   # - alias: '[climate|temperature] Poll Alpha Home Temperatures'
   #   trigger:
   #     platform: time_pattern
