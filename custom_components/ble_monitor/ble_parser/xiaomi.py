@@ -73,6 +73,7 @@ XIAOMI_TYPE_DICT = {
     0x0DE7: "SU001-T",
     0x20DB: "MJZNZ018H",
     0x18E3: "ZX1",
+    0x11C2: "SV40",
 }
 
 # Structured objects for data conversions
@@ -846,8 +847,8 @@ def obj4c14(xobj):
 
 def obj4e0c(xobj, device_type):
     """Click"""
-    click = xobj[0]
     if device_type == "XMWXKG01YL":
+        click = xobj[0]
         if click == 1:
             result = {
                 "two btn switch left": "toggle",
@@ -865,6 +866,7 @@ def obj4e0c(xobj, device_type):
                 "button switch": "single press",
             }
     elif device_type == "K9BB-1BTN":
+        click = xobj[0]
         if click == 1:
             result = {
                 "one btn switch": "toggle",
@@ -892,8 +894,8 @@ def obj4e0c(xobj, device_type):
 
 def obj4e0d(xobj, device_type):
     """Double Click"""
-    click = xobj[0]
     if device_type == "XMWXKG01YL":
+        click = xobj[0]
         if click == 1:
             result = {
                 "two btn switch left": "toggle",
@@ -922,8 +924,8 @@ def obj4e0d(xobj, device_type):
 
 def obj4e0e(xobj, device_type):
     """Long Press"""
-    click = xobj[0]
     if device_type == "XMWXKG01YL":
+        click = xobj[0]
         if click == 1:
             result = {
                 "two btn switch left": "toggle",
@@ -1266,7 +1268,7 @@ def parse_xiaomi(self, data, source_mac, rssi):
                 _LOGGER.debug("Invalid payload data length, payload: %s", payload.hex())
                 break
             dobject = payload[payload_start + 3:next_start]
-            if dobject and obj_length != 0:
+            if dobject and obj_length != 0 or hex(obj_typecode) in ["0x4e0c", "0x4e0d", "0x4e0e"]:
                 resfunc = xiaomi_dataobject_dict.get(obj_typecode, None)
                 if resfunc:
                     if hex(obj_typecode) in ["0x8", "0x100e", "0x1001", "0xf", "0xb", "0x4e0c", "0x4e0d", "0x4e0e"]:
