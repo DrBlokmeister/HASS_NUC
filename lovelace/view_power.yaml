@@ -129,6 +129,113 @@ cards:
           group_by:
             func: avg
             duration: 10min
+    - type: custom:apexcharts-card
+      graph_span: 24h
+      update_interval: 1m
+      apex_config:
+        plotOptions:
+          pie:
+            donut:
+              labels:
+                show: true
+                total:
+                  show: true
+                  label: Total
+                  formatter: |
+                    EVAL:function(w) {
+                      return (w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2);
+                      }
+      chart_type: donut
+      series:
+        - entity: sensor.electricity_meter_power_consumption_phase_l1
+          name: Phase 1
+          float_precision: 0
+          transform: "return Math.round(x * 1000);"
+          unit: W
+          group_by:
+            func: avg
+            duration: 1min
+        - entity: sensor.electricity_meter_power_consumption_phase_l2
+          name: Phase 2
+          float_precision: 0
+          transform: "return Math.round(x * 1000);"
+          unit: W
+          group_by:
+            func: avg
+            duration: 1min
+        - entity: sensor.electricity_meter_power_consumption_phase_l3
+          name: Phase 3
+          float_precision: 0
+          transform: "return Math.round(x * 1000);"
+          unit: W
+          group_by:
+            func: avg
+            duration: 1min
+    - type: custom:apexcharts-card
+      graph_span: 24h
+      update_interval: 1m
+      stacked: true
+      yaxis:
+        - min: 0
+          max: ~500
+          decimals: 0
+          apex_config:
+            tickAmount: 4
+      all_series_config:
+        stroke_width: 2
+        float_precision: 0
+        transform: "return Math.round(x * 1000);"
+        unit: W
+        group_by:
+          func: avg
+          duration: 1min
+      # apex_config:
+      #   plotOptions:
+      #     pie:
+      #       donut:
+      #         labels:
+      #           show: true
+      #           total:
+      #             show: true
+      #             label: Total
+      #             formatter: |
+      #               EVAL:function(w) {
+      #                 return (w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2);
+      #                 }
+      chart_type: line
+      brush:
+        selection_span: 10m
+      series:
+        - entity: sensor.electricity_meter_power_consumption_phase_l1
+          name: Phase 1
+          # float_precision: 0
+          # transform: "return Math.round(x * 1000);"
+          # unit: W
+          # group_by:
+          #   func: avg
+          #   duration: 1min
+        - entity: sensor.electricity_meter_power_consumption_phase_l2
+          name: Phase 2
+          # float_precision: 0
+          # transform: "return Math.round(x * 1000);"
+          # unit: W
+          # group_by:
+          #   func: avg
+          #   duration: 1min
+        - entity: sensor.electricity_meter_power_consumption_phase_l3
+          name: Phase 3
+          # float_precision: 0
+          # transform: "return Math.round(x * 1000);"
+          # unit: W
+          # group_by:
+          #   func: avg
+          #   duration: 1min
+        - entity: sensor.total_power_consumption_watt
+          name: Total
+          transform: "return Math.round(x * 1);"
+          show:
+            in_brush: true
+            in_chart: false
     - entities:
         - color: grey
           entity: sensor.total_power_consumption_watt
@@ -258,6 +365,136 @@ cards:
           group_by:
             func: avg
             duration: 10min
+    - type: 'custom:apexcharts-card'
+      graph_span: 24h
+      yaxis:
+        - min: ~0
+          max: ~0.40
+          decimals: 2
+          apex_config:
+            tickAmount: 8
+            forceNiceScale: True
+      header:
+        title: Energy price today (€/kWh)
+        show: true
+      span:
+        start: day
+      now:
+        show: true
+        label: Now
+      experimental:
+        color_threshold: true
+      series:
+        - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+          float_precision: 2
+          color_threshold:
+              # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
+              # default is: the default color of the serie
+              # Used this gradient generator: https://colordesigner.io/gradient-generator
+            - value: -1
+              color: '#5963c0'
+            - value: -0.66
+              color: '#2681cb'
+            - value: -0.33
+              color: '#2599c8'
+            - value: 0.0
+              color: '#59adc0'
+            - value: 0.033
+              color: '#39afb4'
+            - value: 0.066
+              color: '#2bb09e'
+            - value: 0.1
+              color: '#3faf81'
+            - value: 0.133
+              color: '#5eab5f'
+            - value: 0.166
+              color: '#7ea53b'
+            - value: 0.2
+              color: '#9f9b13'
+            - value: 0.233
+              color: '#c18c00'
+            - value: 0.266
+              color: '#e27609'
+            - value: 0.3
+              color: '#ff5833'
+            - value: 0.333
+              color: '#ed4323'
+            - value: 0.366
+              color: '#db2b12'
+            - value: 0.4
+              color: '#c90000'
+          type: column
+          data_generator: |
+            return entity.attributes.raw_today.map((start, index) => {
+              return [new Date(start["start"]).getTime(), entity.attributes.raw_today[index]["value"]];
+            });
+    - type: conditional
+      conditions:
+        - condition: state
+          entity: binary_sensor.after_15_00
+          state: "on"
+      card:
+        - type: custom:apexcharts-card
+          graph_span: 1d
+          yaxis:
+            - min: ~0
+              max: ~0.40
+              decimals: 2
+              apex_config:
+                tickAmount: 8
+                forceNiceScale: True
+          header:
+            title: Energy price tomorrow (€/kWh)
+            show: true
+          span:
+            start: day
+            offset: +1d
+          experimental:
+            color_threshold: true
+          series:
+            - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+              float_precision: 2
+              type: column
+              color_threshold:
+                  # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
+                  # default is: the default color of the serie
+                  # Used this gradient generator: https://colordesigner.io/gradient-generator
+                - value: -1
+                  color: '#5963c0'
+                - value: -0.66
+                  color: '#2681cb'
+                - value: -0.33
+                  color: '#2599c8'
+                - value: 0.0
+                  color: '#59adc0'
+                - value: 0.033
+                  color: '#39afb4'
+                - value: 0.066
+                  color: '#2bb09e'
+                - value: 0.1
+                  color: '#3faf81'
+                - value: 0.133
+                  color: '#5eab5f'
+                - value: 0.166
+                  color: '#7ea53b'
+                - value: 0.2
+                  color: '#9f9b13'
+                - value: 0.233
+                  color: '#c18c00'
+                - value: 0.266
+                  color: '#e27609'
+                - value: 0.3
+                  color: '#ff5833'
+                - value: 0.333
+                  color: '#ed4323'
+                - value: 0.366
+                  color: '#db2b12'
+                - value: 0.4
+                  color: '#c90000'
+              data_generator: |
+                return entity.attributes.raw_tomorrow.map((start, index) => {
+                  return [new Date(start["start"]).getTime(), entity.attributes.raw_tomorrow[index]["value"]];
+                });
     - type: horizontal-stack
       cards:
       - type: custom:mini-graph-card
