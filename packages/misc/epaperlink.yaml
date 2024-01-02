@@ -32,36 +32,6 @@ automation:
       - platform: time_pattern
         minutes: "/30"
     action:
-      # - service: open_epaper_link.lines4
-      #   target:
-      #     entity_id: open_epaper_link.00000218736E3B1E
-      #   data:
-      #     line1: " Update: {{ states('sensor.time') | string }} "
-      #     line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
-      #     line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
-      #     line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
-      #     border: b
-      #     format1: lwwb
-      #     format2: lwwb
-      #     format3: lwwb
-      #     format4: lwwb
-      # - delay:
-      #     seconds: 2
-      # - service: open_epaper_link.lines5
-      #   target:
-      #     entity_id: open_epaper_link.0000039223703418
-      #   data:
-      #     line1: " Update: {{ states('sensor.time') | string }} "
-      #     line2: " Total Energy: {{ states('sensor.daily_energy_use') | string }} kWh"
-      #     line3: "Total Water: {{ states('sensor.water_meter_daily_water_consumption') | int | string }} l "
-      #     line4: " NAS Power: {{ states('sensor.blitzwolf_nas_energy_power') | round(2) | string }} W "
-      #     line5: " Computer Power: {{ states('sensor.blitzwolf_computer_energy_power') | round(2) | string }} W "
-      #     border: b
-      #     format1: lwwb
-      #     format2: lwwb
-      #     format3: lwwb
-      #     format4: lwwb
-      #     format5: lwwb
       - service: open_epaper_link.drawcustom
         target:
           entity_id: open_epaper_link.00000219A2923B10
@@ -97,10 +67,11 @@ automation:
               y_start: 89
               x_end: 148
               y_end: 123
+
             - type: rectangle
               outline: white
               fill: >-
-                {{'white' if states('sensor.days_to_restafval') == 'unknown' or
+                {{'white' if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_restafval') | int > 1 else 'red' }}
               width: 1
               x_start: 5
@@ -114,26 +85,31 @@ automation:
               "y": 10
               size: 18
               color: >-
-                {{'black' if states('sensor.days_to_restafval') == 'unknown' or
+                {{'black' if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_restafval') | int > 1 else 'white' }}
             - type: text
               value: >-
-                {% if states('sensor.days_to_restafval') == 'unknown' %}Unknown{%
-                elif states('sensor.days_to_restafval') | int == 0 %}Today{% elif
-                states('sensor.days_to_restafval') | int == 1 %}Tonight{% else
-                %}{{states('sensor.days_to_restafval')}} days{% endif %}
+                {% if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] %}
+                  Unknown
+                {% elif states('sensor.days_to_restafval') | int == 0 %}
+                  Today
+                {% elif states('sensor.days_to_restafval') | int == 1 %}
+                  Tonight
+                {% else %}
+                  {{states('sensor.days_to_restafval')}} days
+                {% endif %}
               font: ppb.ttf
               x: 35
               "y": 33
               size: 18
               color: >-
-                {{'black' if states('sensor.days_to_restafval') == 'unknown' or
+                {{'black' if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_restafval') | int > 1 else 'white' }}
 
             - type: rectangle
               outline: white
               fill: >-
-                {{'white' if states('sensor.days_to_papier') == 'unknown' or
+                {{'white' if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_papier') | int > 1 else 'red' }}
               width: 1
               x_start: 168
@@ -147,26 +123,31 @@ automation:
               "y": 10
               size: 18
               color: >-
-                {{'black' if states('sensor.days_to_papier') == 'unknown' or
+                {{'black' if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_papier') | int > 1 else 'white' }}
             - type: text
               value: >-
-                {% if states('sensor.days_to_papier') == 'unknown' %}Unknown{%
-                elif states('sensor.days_to_papier') | int == 0 %}Today{% elif
-                states('sensor.days_to_papier') | int == 1 %}Tonight{% else
-                %}{{states('sensor.days_to_papier')}} days{% endif %}
+                {% if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] %}
+                  Unknown
+                {% elif states('sensor.days_to_papier') | int == 0 %}
+                  Today
+                {% elif states('sensor.days_to_papier') | int == 1 %}
+                  Tonight
+                {% else %}
+                  {{states('sensor.days_to_papier')}} days
+                {% endif %}
               font: ppb.ttf
               x: 190
               "y": 33
               size: 18
               color: >-
-                {{'black' if states('sensor.days_to_papier') == 'unknown' or
+                {{'black' if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_papier') | int > 1 else 'white' }}
 
             - type: rectangle
               outline: white
               fill: >-
-                {{'white' if states('sensor.days_to_gft') == 'unknown' or
+                {{'white' if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_gft') | int > 1 else 'red' }}
               width: 1
               x_start: 5
@@ -180,20 +161,25 @@ automation:
               "y": 80
               size: 18
               color: >-
-                {{'black' if states('sensor.days_to_gft') == 'unknown' or
+                {{'black' if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_gft') | int > 1 else 'white' }}
             - type: text
               value: >-
-                {% if states('sensor.days_to_gft') == 'unknown' %}Unknown{%
-                elif states('sensor.days_to_gft') | int == 0 %}Today{% elif
-                states('sensor.days_to_gft') | int == 1 %}Tonight{% else
-                %}{{states('sensor.days_to_gft')}} days{% endif %}
+                {% if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] %}
+                  Unknown
+                {% elif states('sensor.days_to_gft') | int == 0 %}
+                  Today
+                {% elif states('sensor.days_to_gft') | int == 1 %}
+                  Tonight
+                {% else %}
+                  {{states('sensor.days_to_gft')}} days
+                {% endif %}
               font: ppb.ttf
               x: 35
               "y": 103
               size: 18
               color: >-
-                {{'black' if states('sensor.days_to_gft') == 'unknown' or
+                {{'black' if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] or
                 states('sensor.days_to_gft') | int > 1 else 'white' }}
 
             - type: rectangle
@@ -214,7 +200,7 @@ automation:
             # - type: rectangle
             #   outline: white
             #   fill: >-
-            #     {{'white' if states('sensor.green_bin_schedule') == 'unknown' or
+            #     {{'white' if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] or
             #     states('sensor.green_bin_schedule') | int > 1 else 'red' }}
             #   width: 1
             #   x_start: 178
@@ -228,11 +214,11 @@ automation:
             #   "y": 80
             #   size: 18
             #   color: >-
-            #     {{'black' if states('sensor.green_bin_schedule') == 'unknown' or
+            #     {{'black' if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] or
             #     states('sensor.green_bin_schedule') | int > 1 else 'white' }}
             # - type: text
             #   value: >-
-            #     {% if states('sensor.green_bin_schedule') == 'unknown' %}Unknown{%
+            #     {% if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] %}Unknown{%
             #     elif states('sensor.green_bin_schedule') | int == 0 %}Today{% elif
             #     states('sensor.green_bin_schedule') | int == 1 %}Tonight{% else
             #     %}{{states('sensor.green_bin_schedule')}} days{% endif %}
@@ -241,7 +227,7 @@ automation:
             #   "y": 103
             #   size: 18
             #   color: >-
-            #     {{'black' if states('sensor.green_bin_schedule') == 'unknown' or
+            #     {{'black' if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] or
             #     states('sensor.green_bin_schedule') | int > 1 else 'white' }}
             - type: icon
               value: trash-can
@@ -251,9 +237,9 @@ automation:
               color: >-
                 {{ 'red' if (([(14 if states('sensor.days_to_restafval') ==
                   'unknown' else states('sensor.days_to_restafval')),(14 if
-                  states('sensor.days_to_papier') == 'unknown' else
+                  states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] else
                   states('sensor.days_to_papier')),(14 if
-                  states('sensor.days_to_gft') == 'unknown' else
+                  states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] else
                   states('sensor.days_to_gft')) ]) | min ) | int < 2 else
                 'black' }}
 
