@@ -39,18 +39,18 @@ automation:
           - conditions: "{{ trigger.to_state.state == 'on' }}"
             sequence:
               - service: switch.turn_on
-                entity_id: switch.shelly_closet_2
+                entity_id: switch.shelly_closet
           - conditions: "{{ trigger.to_state.state == 'off' }}"
             sequence:
               - service: switch.turn_off
-                entity_id: switch.shelly_closet_2
+                entity_id: switch.shelly_closet
 
   - alias: "[closet|light] Containment turn off light when door is closed"
     id: 'closet_light_containment_turn_off_light_when_door_is_closed'
     mode: restart
     trigger:
       - platform: state
-        entity_id: light.closet
+        entity_id: switch.shelly_closet
         to: "on"
     condition:
       - condition: state
@@ -62,8 +62,8 @@ automation:
         for:
           minutes: 5
     action:
-      - service: light.turn_off
-        entity_id: light.closet
+      - service: switch.turn_off
+        entity_id: switch.shelly_closet
 
   # - alias: turn on closet light when door opens
   #   trigger:
