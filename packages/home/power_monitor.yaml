@@ -216,6 +216,32 @@ utility_meter:
     cycle: yearly
     unique_id: yaml_utilitymeter_heatpump_circulation_yearly_energy_use
 
+  vacuums_hourly_energy_use:
+    source: sensor.vacuums_energy_estimate
+    delta_values: false
+    cycle: hourly
+    unique_id: yaml_utilitymeter_vacuums_hourly_energy_use
+  vacuums_daily_energy_use:
+    source: sensor.vacuums_energy_estimate
+    delta_values: false
+    cycle: daily
+    unique_id: yaml_utilitymeter_vacuums_daily_energy_use
+  vacuums_weekly_energy_use:
+    source: sensor.vacuums_energy_estimate
+    delta_values: false
+    cycle: weekly
+    unique_id: yaml_utilitymeter_vacuums_weekly_energy_use
+  vacuums_monthly_energy_use:
+    source: sensor.vacuums_energy_estimate
+    delta_values: false
+    cycle: monthly
+    unique_id: yaml_utilitymeter_vacuums_monthly_energy_use
+  vacuums_yearly_energy_use:
+    source: sensor.vacuums_energy_estimate
+    delta_values: false
+    cycle: yearly
+    unique_id: yaml_utilitymeter_vacuums_yearly_energy_use
+
 template:
   - trigger:
       - platform: time_pattern
@@ -606,12 +632,55 @@ sensor:
   #         {%- endfor -%}
   #         {{ ns.power|round(1) }}
 
+  - platform: min_max
+    name: Phase 1 Known Power
+    unique_id: yaml_minmax_phase_1_known_power
+    round_digits: 0
+    type: sum
+    entity_ids:
+      - sensor.blitzwolf_10gb_switch_energy_power #in W
+      - sensor.blitzwolf_3dprinter_energy_power #in W
+      - sensor.blitzwolf_computer_energy_power #in W
+      - sensor.blitzwolf_nas_energy_power #in W
+      - sensor.blitzwolf_washingmachine_energy_power #in W
+      - sensor.blitzwolf_watercooker_energy_power #in W
+      - sensor.moeke_power_estimate
+      - sensor.alfred_power_estimate
+      - sensor.argus_power_estimate
+
+      # - sensor.blitzwolf_ambilight_amplifier_power Should be included, but this is in kW
+
+  - platform: min_max
+    name: Phase 2 Known Power
+    unique_id: yaml_minmax_phase_2_known_power
+    round_digits: 0
+    type: sum
+    entity_ids:
+      - sensor.blitzwolf_dishwasher_energy_power
+      - sensor.tasmota_energy_power #Heatpump
+
+  - platform: min_max
+    name: Phase 3 Known Power
+    unique_id: yaml_minmax_phase_3_known_power
+    round_digits: 0
+    type: sum
+    entity_ids:
+      - sensor.blitzwolf_poe_switch_energy_power
+      - sensor.blitzwolf_router_energy_power
+      - sensor.blitzwolf_nuc_energy_power
+      - sensor.ventilation_power_estimate
+      - sensor.blitzwolf_heatpump_power
 
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-
+  # Time of day helper. I use this to check if it's after 15:00 to display tomorrow's energy prices on the dashboard
+  - platform: tod
+    name: "After 15:00"
+    after: "15:00"
+    before: "23:59"
+    unique_id: yaml_tod_binary_sensor_after_1500
 ########################
 #    INPUT BOOLEANS    #
 ########################
