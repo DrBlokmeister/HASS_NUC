@@ -1,8 +1,9 @@
 import datetime
-import os
-import shutil
+import hashlib
+import logging
+import asyncio
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.ffmpeg import CONF_EXTRA_ARGUMENTS
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -11,12 +12,19 @@ from homeassistant.const import (
     CONF_PASSWORD,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import (
+    ConfigEntryNotReady,
+    ConfigEntryAuthFailed,
+    DependencyError,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt
+from homeassistant.components.media_source.error import Unresolvable
+import homeassistant.helpers.entity_registry
 
 from .const import (
     CONF_RTSP_TRANSPORT,
+    ENABLE_MEDIA_SYNC,
     ENABLE_SOUND_DETECTION,
     CONF_CUSTOM_STREAM,
     ENABLE_WEBHOOKS,
@@ -27,14 +35,20 @@ from .const import (
     ENABLE_STREAM,
     ENABLE_TIME_SYNC,
     MEDIA_CLEANUP_PERIOD,
+    MEDIA_SYNC_COLD_STORAGE_PATH,
+    MEDIA_SYNC_HOURS,
+    MEDIA_VIEW_DAYS_ORDER,
+    MEDIA_VIEW_RECORDINGS_ORDER,
     RTSP_TRANS_PROTOCOLS,
     SOUND_DETECTION_DURATION,
     SOUND_DETECTION_PEAK,
     SOUND_DETECTION_RESET,
     TIME_SYNC_PERIOD,
     UPDATE_CHECK_PERIOD,
+    PYTAPO_REQUIRED_VERSION,
 )
 from .utils import (
+    convert_to_timestamp,
     deleteDir,
     getColdDirPathForEntry,
     getHotDirPathForEntry,
@@ -48,7 +62,16 @@ from .utils import (
     initOnvifEvents,
     syncTime,
     getLatestFirmwareVersion,
+    findMedia,
+    getRecordings,
 )
+from pytapo import Tapo
+from pytapo.version import PYTAPO_VERSION
+
+from homeassistant.helpers.event import async_track_time_interval
+from datetime import timedelta
+
+from .utils import getRecording
 
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -96,7 +119,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 5:
         new = {**config_entry.data}
         new[ENABLE_SOUND_DETECTION] = False
-        new[SOUND_DETECTION_PEAK] = -50
+        new[SOUND_DETECTION_PEAK] = -30
         new[SOUND_DETECTION_DURATION] = 1
         new[SOUND_DETECTION_RESET] = 10
 
@@ -136,13 +159,97 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 
         config_entry.version = 10
 
+    if config_entry.version == 10:
+        new = {**config_entry.data}
+        new[ENABLE_MEDIA_SYNC] = False
+
+        config_entry.data = {**new}
+
+        config_entry.version = 11
+
+    if config_entry.version == 11:
+        new = {**config_entry.data}
+        new[MEDIA_SYNC_HOURS] = ""
+
+        config_entry.data = {**new}
+
+        config_entry.version = 12
+
+    if config_entry.version == 12:
+        new = {**config_entry.data}
+        new[MEDIA_SYNC_COLD_STORAGE_PATH] = ""
+
+        config_entry.data = {**new}
+
+        config_entry.version = 13
+
+    if config_entry.version == 13:
+        new = {**config_entry.data}
+        new[MEDIA_VIEW_DAYS_ORDER] = "Ascending"
+        new[MEDIA_VIEW_RECORDINGS_ORDER] = "Ascending"
+
+        config_entry.data = {**new}
+
+        config_entry.version = 14
+
+    if config_entry.version == 14:
+        host = config_entry.data.get(CONF_IP_ADDRESS)
+        username = config_entry.data.get(CONF_USERNAME)
+        password = config_entry.data.get(CONF_PASSWORD)
+        cloud_password = config_entry.data.get(CLOUD_PASSWORD)
+
+        try:
+            if cloud_password != "":
+                tapoController = await hass.async_add_executor_job(
+                    registerController, host, "admin", cloud_password, cloud_password
+                )
+            else:
+                tapoController = await hass.async_add_executor_job(
+                    registerController, host, username, password
+                )
+            camData = await getCamData(hass, tapoController)
+            macAddress = camData["basic_info"]["mac"].lower()
+
+            @callback
+            def update_unique_id(entity_entry):
+                if (
+                    macAddress not in entity_entry.unique_id
+                    and macAddress.replace("-", "_") not in entity_entry.unique_id
+                ):
+                    return {
+                        "new_unique_id": "{}-{}".format(
+                            macAddress, entity_entry.unique_id
+                        ).lower()
+                    }
+
+            await homeassistant.helpers.entity_registry.async_migrate_entries(
+                hass, config_entry.entry_id, update_unique_id
+            )
+        except Exception as e:
+            LOGGER.error(
+                "Unable to connect to Tapo: Cameras Control controller: %s", str(e)
+            )
+            if "Invalid authentication data" in str(e):
+                raise ConfigEntryAuthFailed(e)
+            elif "Temporary Suspension:" in str(
+                e
+            ):  # keep retrying to authenticate eventually, or throw
+                # ConfigEntryAuthFailed on invalid auth eventually
+                raise ConfigEntryNotReady
+            # Retry for anything else
+            raise ConfigEntryNotReady
+
+        config_entry.version = 15
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    LOGGER.debug("Unloading tapo_control...")
     await hass.config_entries.async_forward_entry_unload(entry, "binary_sensor")
+    await hass.config_entries.async_forward_entry_unload(entry, "sensor")
     await hass.config_entries.async_forward_entry_unload(entry, "button")
     await hass.config_entries.async_forward_entry_unload(entry, "camera")
     await hass.config_entries.async_forward_entry_unload(entry, "light")
@@ -153,15 +260,22 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_unload(entry, "update")
 
     if hass.data[DOMAIN][entry.entry_id]["events"]:
-        await hass.data[DOMAIN][entry.entry_id]["events"].async_stop()
+        LOGGER.debug("Stopping events...")
+        try:
+            async with asyncio.timeout(3):
+                await hass.data[DOMAIN][entry.entry_id]["events"].async_stop()
+        except TimeoutError:
+            LOGGER.warn("Timed out waiting for onvif connection to close, proceeding.")
+        LOGGER.debug("Events stopped.")
+
     return True
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     LOGGER.debug("async_remove_entry")
     entry_id = entry.entry_id
-    coldDirPath = getColdDirPathForEntry(entry_id)
-    hotDirPath = getHotDirPathForEntry(entry_id)
+    coldDirPath = getColdDirPathForEntry(hass, entry_id)
+    hotDirPath = getHotDirPathForEntry(hass, entry_id)
 
     # Delete all media stored in cold storage for entity
     LOGGER.debug("Deleting cold storage files for entity " + entry_id + "...")
@@ -173,6 +287,13 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    if PYTAPO_REQUIRED_VERSION != PYTAPO_VERSION:
+        raise DependencyError(
+            [
+                f"Incorrect pytapo version installed: {PYTAPO_VERSION}. Required: {PYTAPO_REQUIRED_VERSION}."
+            ]
+        )
+
     """Set up the Tapo: Cameras Control component from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
@@ -182,6 +303,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     motionSensor = entry.data.get(ENABLE_MOTION_SENSOR)
     cloud_password = entry.data.get(CLOUD_PASSWORD)
     enableTimeSync = entry.data.get(ENABLE_TIME_SYNC)
+
+    if entry.entry_id not in hass.data[DOMAIN]:
+        hass.data[DOMAIN][entry.entry_id] = {}
+        if "setup_retries" not in hass.data[DOMAIN][entry.entry_id]:
+            hass.data[DOMAIN][entry.entry_id]["setup_retries"] = 0
 
     if isUsingHTTPS(hass):
         LOGGER.warn(
@@ -210,11 +336,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
         async def async_update_data():
             LOGGER.debug("async_update_data - entry")
+            tapoController = hass.data[DOMAIN][entry.entry_id]["controller"]
             host = entry.data.get(CONF_IP_ADDRESS)
             username = entry.data.get(CONF_USERNAME)
             password = entry.data.get(CONF_PASSWORD)
             motionSensor = entry.data.get(ENABLE_MOTION_SENSOR)
             enableTimeSync = entry.data.get(ENABLE_TIME_SYNC)
+            ts = datetime.datetime.utcnow().timestamp()
 
             # motion detection retries
             if motionSensor or enableTimeSync:
@@ -265,7 +393,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         "Not updating motion sensor because device is child or parent."
                     )
 
-                ts = datetime.datetime.utcnow().timestamp()
                 if (
                     hass.data[DOMAIN][entry.entry_id]["onvifManagement"]
                     and enableTimeSync
@@ -275,11 +402,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         > TIME_SYNC_PERIOD
                     ):
                         await syncTime(hass, entry.entry_id)
-                if (
-                    ts - hass.data[DOMAIN][entry.entry_id]["lastMediaCleanup"]
-                    > MEDIA_CLEANUP_PERIOD
-                ):
-                    mediaCleanup(hass, entry.entry_id)
                 ts = datetime.datetime.utcnow().timestamp()
                 if (
                     ts - hass.data[DOMAIN][entry.entry_id]["lastFirmwareCheck"]
@@ -291,7 +413,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         hass,
                         entry,
                         hass.data[DOMAIN][entry.entry_id],
-                        hass.data[DOMAIN][entry.entry_id]["controller"],
+                        tapoController,
                     )
                     for childDevice in hass.data[DOMAIN][entry.entry_id][
                         "childDevices"
@@ -306,17 +428,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         )
 
             # cameras state
-            LOGGER.debug("async_update_data - before someCameraEnabled check")
-            someCameraEnabled = False
+            LOGGER.debug("async_update_data - before someEntityEnabled check")
+            someEntityEnabled = False
             allEntities = getAllEntities(hass.data[DOMAIN][entry.entry_id])
             for entity in allEntities:
                 LOGGER.debug(entity["entity"])
                 if entity["entity"]._enabled:
-                    LOGGER.debug("async_update_data - enabling someCameraEnabled check")
-                    someCameraEnabled = True
+                    LOGGER.debug("async_update_data - enabling someEntityEnabled check")
+                    someEntityEnabled = True
                     break
 
-            if someCameraEnabled:
+            if (
+                someEntityEnabled
+                and hass.data[DOMAIN][entry.entry_id]["refreshEnabled"]
+            ):
                 # Update data for all controllers
                 updateDataForAllControllers = {}
                 for controller in hass.data[DOMAIN][entry.entry_id]["allControllers"]:
@@ -324,8 +449,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         updateDataForAllControllers[controller] = await getCamData(
                             hass, controller
                         )
+                        hass.data[DOMAIN][entry.entry_id]["reauth_retries"] = 0
                     except Exception as e:
                         updateDataForAllControllers[controller] = False
+                        if str(e) == "Invalid authentication data":
+                            if hass.data[DOMAIN][entry.entry_id]["reauth_retries"] < 3:
+                                hass.data[DOMAIN][entry.entry_id]["reauth_retries"] += 1
+                                raise e
+                            else:
+                                hass.data[DOMAIN][entry.entry_id][
+                                    "refreshEnabled"
+                                ] = False
+                                raise ConfigEntryAuthFailed(e)
                         LOGGER.error(e)
 
                 hass.data[DOMAIN][entry.entry_id][
@@ -366,6 +501,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                         "updateEntity"
                     ].async_schedule_update_ha_state(True)
 
+            if (
+                ts - hass.data[DOMAIN][entry.entry_id]["lastMediaCleanup"]
+                > MEDIA_CLEANUP_PERIOD
+            ):
+                await mediaCleanup(hass, entry)
+
+            if (
+                hass.is_running
+                and hass.data[DOMAIN][entry.entry_id]["mediaSyncAvailable"]
+            ):
+                if (
+                    hass.data[DOMAIN][entry.entry_id]["initialMediaScanDone"] is True
+                    and hass.data[DOMAIN][entry.entry_id]["mediaSyncScheduled"] is False
+                ):
+                    hass.data[DOMAIN][entry.entry_id]["mediaSyncScheduled"] = True
+                    async_track_time_interval(
+                        hass,
+                        mediaSync,
+                        timedelta(seconds=60),
+                    )
+                elif (
+                    hass.data[DOMAIN][entry.entry_id]["initialMediaScanRunning"]
+                    is False
+                ):
+                    hass.data[DOMAIN][entry.entry_id]["initialMediaScanRunning"] = True
+                    try:
+                        await hass.async_add_executor_job(
+                            tapoController.getRecordingsList
+                        )
+                        hass.async_create_background_task(
+                            findMedia(hass, entry), "findMedia"
+                        )
+                    except Exception as err:
+                        hass.data[DOMAIN][entry.entry_id]["initialMediaScanDone"] = True
+                        hass.data[DOMAIN][entry.entry_id]["mediaSyncAvailable"] = False
+                        enableMediaSync = entry.data.get(ENABLE_MEDIA_SYNC)
+                        errMsg = "Disabling media sync as there was error returned from getRecordingsList. Do you have SD card inserted?"
+                        if enableMediaSync:
+                            LOGGER.warn(errMsg)
+                            LOGGER.warn(err)
+                        else:
+                            LOGGER.info(errMsg)
+                            LOGGER.info(err)
+
         tapoCoordinator = DataUpdateCoordinator(
             hass,
             LOGGER,
@@ -379,7 +558,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         currentTS = dt.as_timestamp(dt.now())
 
         hass.data[DOMAIN][entry.entry_id] = {
+            "setup_retries": 0,
+            "reauth_retries": 0,
+            "runningMediaSync": False,
             "controller": tapoController,
+            "entry": entry,
             "usingCloudPassword": cloud_password != "",
             "allControllers": [tapoController],
             "update_listener": entry.add_update_listener(update_listener),
@@ -389,6 +572,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "lastMediaCleanup": 0,
             "lastFirmwareCheck": 0,
             "latestFirmwareVersion": False,
+            "mediaSyncColdDir": False,
+            "mediaSyncHotDir": False,
             "motionSensorCreated": False,
             "eventsDevice": False,
             "onvifManagement": False,
@@ -400,9 +585,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "name": camData["basic_info"]["device_alias"],
             "childDevices": [],
             "isChild": False,
+            "uuid": hashlib.md5(
+                (
+                    str(host) + str(username) + str(password) + str(cloud_password)
+                ).encode()
+            ).hexdigest(),
             "isParent": False,
             "isDownloadingStream": False,
+            "downloadedStreams": {},  # keeps track of all videos downloaded
+            "downloadProgress": False,
+            "initialMediaScanDone": False,
+            "mediaSyncScheduled": False,
+            "mediaSyncAvailable": True,
+            "initialMediaScanRunning": False,
+            "mediaScanResult": {},  # keeps track of all videos currently on camera
             "timezoneOffset": cameraTS - currentTS,
+            "refreshEnabled": True,
         }
 
         if camData["childDevices"] is False or camData["childDevices"] is None:
@@ -484,6 +682,98 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             if enableTimeSync:
                 await syncTime(hass, entry.entry_id)
 
+        # Media sync
+
+        timeCorrection = await hass.async_add_executor_job(
+            tapoController.getTimeCorrection
+        )
+
+        # todo move to utils
+        async def mediaSync(time=None):
+            LOGGER.debug("mediaSync")
+            enableMediaSync = entry.data.get(ENABLE_MEDIA_SYNC)
+            mediaSyncHours = entry.data.get(MEDIA_SYNC_HOURS)
+
+            if mediaSyncHours == "":
+                mediaSyncTime = False
+            else:
+                mediaSyncTime = (int(mediaSyncHours) * 60 * 60) + timeCorrection
+            if (
+                enableMediaSync
+                and entry.entry_id in hass.data[DOMAIN]
+                and "controller" in hass.data[DOMAIN][entry.entry_id]
+                and hass.data[DOMAIN][entry.entry_id]["runningMediaSync"] is False
+                and hass.data[DOMAIN][entry.entry_id]["isDownloadingStream"]
+                is False  # prevent breaking user manual upload
+            ):
+                hass.data[DOMAIN][entry.entry_id]["runningMediaSync"] = True
+                try:
+                    tapoController: Tapo = hass.data[DOMAIN][entry.entry_id][
+                        "controller"
+                    ]
+                    LOGGER.debug("getRecordingsList -1")
+                    recordingsList = await hass.async_add_executor_job(
+                        tapoController.getRecordingsList
+                    )
+                    LOGGER.debug("getRecordingsList -2")
+
+                    ts = datetime.datetime.utcnow().timestamp()
+                    for searchResult in recordingsList:
+                        for key in searchResult:
+                            if (mediaSyncTime is False) or (
+                                (
+                                    mediaSyncTime is not False
+                                    and (
+                                        (int(ts) - (int(mediaSyncTime) + 86400))
+                                        < convert_to_timestamp(
+                                            searchResult[key]["date"]
+                                        )
+                                    )
+                                )
+                            ):
+                                LOGGER.debug("getRecordings -1")
+                                recordingsForDay = await getRecordings(
+                                    hass, entry.entry_id, searchResult[key]["date"]
+                                )
+                                LOGGER.debug("getRecordings -2")
+                                totalRecordingsToDownload = 0
+                                for recording in recordingsForDay:
+                                    for recordingKey in recording:
+                                        if recording[recordingKey]["endTime"] > int(
+                                            ts
+                                        ) - (int(mediaSyncTime)):
+                                            totalRecordingsToDownload += 1
+                                recordingCount = 0
+                                for recording in recordingsForDay:
+                                    for recordingKey in recording:
+                                        if recording[recordingKey]["endTime"] > (
+                                            int(ts) - (int(mediaSyncTime))
+                                        ):
+                                            recordingCount += 1
+                                            try:
+                                                LOGGER.debug("getRecording -1")
+                                                await getRecording(
+                                                    hass,
+                                                    tapoController,
+                                                    entry.entry_id,
+                                                    searchResult[key]["date"],
+                                                    recording[recordingKey][
+                                                        "startTime"
+                                                    ],
+                                                    recording[recordingKey]["endTime"],
+                                                    recordingCount,
+                                                    totalRecordingsToDownload,
+                                                )
+                                                LOGGER.debug("getRecording -2")
+                                            except Unresolvable as err:
+                                                LOGGER.warn(err)
+                                            except Exception as err:
+                                                LOGGER.error(err)
+                except Exception as err:
+                    LOGGER.error(err)
+                LOGGER.debug("runningMediaSync -false")
+                hass.data[DOMAIN][entry.entry_id]["runningMediaSync"] = False
+
         async def unsubscribe(event):
             if hass.data[DOMAIN][entry.entry_id]["events"]:
                 await hass.data[DOMAIN][entry.entry_id]["events"].async_stop()
@@ -491,9 +781,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, unsubscribe)
 
     except Exception as e:
-        LOGGER.error(
-            "Unable to connect to Tapo: Cameras Control controller: %s", str(e)
-        )
-        raise ConfigEntryNotReady
+        if "Invalid authentication data" in str(e):
+            if hass.data[DOMAIN][entry.entry_id]["setup_retries"] < 3:
+                hass.data[DOMAIN][entry.entry_id]["setup_retries"] += 1
+                raise ConfigEntryNotReady(e)
+            raise ConfigEntryAuthFailed(e)
+        else:
+            if "Temporary Suspension:" in str(
+                e
+            ):  # keep retrying to authenticate eventually, or throw
+                # ConfigEntryAuthFailed on invalid auth eventually
+                raise ConfigEntryNotReady(e)
+            # Retry for anything else
+            LOGGER.error(
+                "Unable to connect to Tapo: Cameras Control controller: %s", str(e)
+            )
+            raise ConfigEntryNotReady(e)
 
     return True

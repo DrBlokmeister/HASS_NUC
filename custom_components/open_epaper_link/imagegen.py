@@ -3,19 +3,51 @@ import io
 import logging
 import os
 import pprint
+import math
 import json
 import requests
 import qrcode
 import shutil
+from datetime import datetime
+import time
+from .const import DOMAIN
 from PIL import Image, ImageDraw, ImageFont
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.components.recorder.history import get_significant_states
+from homeassistant.util import dt
+from datetime import timedelta, datetime
 
 _LOGGER = logging.getLogger(__name__)
 
 white =  (255, 255, 255,255)
 black = (0, 0, 0,255)
 red = (255, 0, 0,255)
+
+queue = []
+notsetup = True;
+running = False;
+
+def setup(hass,notsetup):
+    if notsetup:
+        hass.bus.listen(DOMAIN + "_event", handle_event)
+        notsetup = False
+    return True
+
+def handle_event(self):
+    handlequeue()
+
+def is_decimal(string):
+    if string.startswith("-"):
+        string = string[1:]
+    return len(string.split(".")) <= 2 and string.replace(".", "").isdecimal()
+
+def min_max(data):
+    mi, ma = data[0], data[0]
+    for d in data[1:]:
+        mi = min(mi, d)
+        ma = max(ma, d)
+    return mi, ma
 
 # img downloader
 def downloadimg(entity_id, service, hass):
@@ -52,6 +84,9 @@ def get_wrapped_text(text: str, font: ImageFont.ImageFont,
 
 # converts a color name to the corresponding color index for the palette
 def getIndexColor(color):
+    if color is None:
+        return None
+
     color_str = str(color)
     if color_str == "black" or color_str == "b":
         return black
@@ -59,6 +94,9 @@ def getIndexColor(color):
         return red
     else:
         return white
+
+def should_show_element(element):
+    return element['visible'] if 'visible' in element else True
 
 # custom image generator
 def customimage(entity_id, service, hass):
@@ -92,14 +130,15 @@ def customimage(entity_id, service, hass):
 
     for element in payload:
         _LOGGER.info("type: " + element["type"])
+        
+        if not should_show_element(element):
+            continue
+          
         #line
         if element["type"] == "line":
             img_line = ImageDraw.Draw(img)  
             if not "y_start" in element:
-                if "y_padding" in element:
-                    y_start = pos_y + element["y_padding"]
-                else:
-                    y_start = pos_y
+                y_start = pos_y + element.get("y_padding", 0)
                 y_end = y_start
             else:
                 y_start = element["y_start"]
@@ -114,39 +153,18 @@ def customimage(entity_id, service, hass):
         if element["type"] == "text":
             d = ImageDraw.Draw(img)
             d.fontmode = "1"
-            if not "size" in element:
-                size = 20
-            else: 
-                size = element['size']  
-            if not "font" in element:
-                font = "ppb.ttf"
-            else: 
-                font = element['font']
+            size = element.get('size', 20)
+            font = element.get('font', "ppb.ttf")
             font_file = os.path.join(os.path.dirname(__file__), font)
             font = ImageFont.truetype(font_file, size)
             if not "y" in element:
-                if not "y_padding" in element:
-                    akt_pos_y = pos_y + 10
-                else: 
-                    akt_pos_y = pos_y + element['y_padding']
+                akt_pos_y = pos_y + element.get('y_padding', 10)
             else:
                 akt_pos_y = element['y']
-            if not "color" in element:
-                color = "black"
-            else: 
-                color = element['color']
-            if not "anchor" in element:
-                anchor = "lt"
-            else: 
-                anchor = element['anchor']
-            if not "align" in element:
-                align = "left"
-            else: 
-                align = element['align']
-            if not "spacing" in element:
-                spacing = 5
-            else: 
-                spacing = element['spacing']
+            color = element.get('color', "black")
+            anchor = element.get('anchor', "lt")
+            align = element.get('align', "left")
+            spacing = element.get('spacing', 5)
             if "max_width" in element:
                 text = get_wrapped_text(str(element['value']), font, line_length=element['max_width'])
                 anchor = None
@@ -162,10 +180,7 @@ def customimage(entity_id, service, hass):
             font = ImageFont.truetype(font_file, element['size'])
             _LOGGER.debug("Got Multiline string: %s with delimiter: %s" % (element['value'],element["delimiter"]))
             lst = element['value'].replace("\n","").split(element["delimiter"])
-            if not "start_y" in element:
-                pos = pos_y + + element['y_padding']
-            else:
-                pos = element['start_y']
+            pos = element.get('start_y', pos_y + element['y_padding'])
             for elem in lst:
                 _LOGGER.debug("String: %s" % (elem))
                 d.text((element['x'], pos ), str(elem), fill=getIndexColor(element['color']), font=font)
@@ -181,14 +196,20 @@ def customimage(entity_id, service, hass):
             f = open(meta_file) 
             data = json.load(f)
             chr_hex = ""
+
+            value = element['value']
+            if value.startswith("mdi:"):
+                value = value[4:]
+
             for icon in data:
-                if icon['name'] == element['value']:
+                if icon['name'] == value or value in icon['aliases']:
                     chr_hex = icon['codepoint']
                     break
             if chr_hex == "":
                 raise HomeAssistantError("Non valid icon used")
             font = ImageFont.truetype(font_file, element['size'])
-            d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=getIndexColor(element['color']), font=font)
+            anchor = element['anchor'] if 'anchor' in element else "la"
+            d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=getIndexColor(element['color']), font=font, anchor=anchor)
        #dlimg
         if element["type"] == "dlimg":
             url = element['url']
@@ -237,44 +258,26 @@ def customimage(entity_id, service, hass):
             img_draw = ImageDraw.Draw(img)
             d = ImageDraw.Draw(img)
             d.fontmode = "1"
-            if not "font" in element:
-                font = "ppb.ttf"
-            else:
-                font = element['font']
+            font = element.get('font', "ppb.ttf")
             pos_x = element['x']
             pos_y = element['y']
-            if not "width" in element:
-                width = canvas_width
-            else:
-                width = element['width']
+            width = element.get('width', canvas_width)
             height = element['height']
-            if not "margin" in element:
-                offset_lines = 20
-            else:
-                offset_lines = element["margin"]
+            offset_lines = element.get('margin', 20)
             # x axis line
             img_draw.line([(pos_x+offset_lines, pos_y+height-offset_lines),(pos_x+width,pos_y+height-offset_lines)],fill = getIndexColor('black'), width = 1)
             # y axis line
             img_draw.line([(pos_x+offset_lines, pos_y),(pos_x+offset_lines,pos_y+height-offset_lines)],fill = getIndexColor('black'), width = 1)
             if "bars" in element:
-                if not "margin" in element["bars"]:
-                    bar_margin = 10
-                else:
-                    bar_margin = element["bars"]["margin"]
+                bar_margin = element["bars"].get('margin', 10)
                 bars = element["bars"]["values"].split(";")
                 barcount = len(bars)
                 bar_width = math.floor((width - offset_lines - ((barcount + 1) * bar_margin)) / barcount)
                 _LOGGER.info("Found %i in bars width: %i" % (barcount,bar_width))
-                if not "legend_size" in element["bars"]:
-                    size = 10
-                else:
-                    size = element["bars"]["legend_size"]
+                size = element["bars"].get('legend_size', 10)
                 font_file = os.path.join(os.path.dirname(__file__), font)
                 font = ImageFont.truetype(font_file, size)
-                if not "legend_color" in element["bars"]:
-                    legend_color = "black"
-                else:
-                    legend_color = element["bars"]["legend_color"]
+                legend_color = element["bars"].get('legend_color', "black")
                 max_val = 0
                 for bar in bars:
                     name, value  = bar.split(",",1)
@@ -289,6 +292,149 @@ def customimage(entity_id, service, hass):
                     d.text((x_pos + (bar_width/2),  pos_y + height - offset_lines /2), str(name), fill=getIndexColor(legend_color), font=font, anchor="mm")
                     img_draw.rectangle([(x_pos, pos_y+height-offset_lines-(height_factor*int(value))),(x_pos+bar_width, pos_y+height-offset_lines)],fill = getIndexColor(element["bars"]["color"]))
                     bar_pos = bar_pos + 1
+        # plot
+        if element["type"] == "plot":
+            img_draw = ImageDraw.Draw(img)
+            # Obtain drawing region, assume whole canvas if nothing is given
+            x_start = element.get("x_start", 0)
+            y_start = element.get("y_start", 0)
+            x_end = element.get("x_end", canvas_width-1-x_start)
+            y_end = element.get("y_end", canvas_height-1-x_start)
+            width = x_end - x_start + 1
+            height = y_end - y_start + 1
+            # The duration of history to look at (default 1 day)
+            duration = timedelta(seconds=element.get("duration", 60*60*24))
+            end = dt.now()
+            start = end - duration
+            # The label font and size
+            size = element.get("size", 10)
+            font_file = element.get("font", "ppb.ttf")
+            abs_font_file = os.path.join(os.path.dirname(__file__), font_file)
+            font = ImageFont.truetype(abs_font_file, size)
+            # The value legend
+            ylegend = element.get("ylegend", dict())
+            if ylegend is None:
+                ylegend_width = 0
+            else:
+                ylegend_width = ylegend.get("width", -1)
+                ylegend_color = ylegend.get("color", "black")
+                ylegend_pos = ylegend.get("position", "left")
+                if ylegend_pos not in ("left", "right", None):
+                    ylegend_pos = "left"
+                ylegend_font_file = ylegend.get("font", font_file)
+                ylegend_size = ylegend.get("size", size)
+                if ylegend_font_file != font_file or ylegend_size != size:
+                    ylegend_abs_font_file = os.path.join(os.path.dirname(__file__), ylegend_font_file)
+                    ylegend_font = ImageFont.truetype(ylegend_abs_font_file, ylegend_size)
+                else:
+                    ylegend_font = font
+            # The value axis
+            yaxis = element.get("yaxis", dict())
+            if yaxis is None:
+                yaxis_width = 0
+                yaxis_tick_width = 0
+            else:
+                yaxis_width = yaxis.get("width", 1)
+                yaxis_color = yaxis.get("color", "black")
+                yaxis_tick_width = yaxis.get("tick_width", 2)
+                yaxis_tick_every = float(yaxis.get("tick_every", 1))
+                yaxis_grid = yaxis.get("grid", 5)
+                yaxis_grid_color = yaxis.get("grid_color", "black")
+            # The minimum and maximum values that are always shown
+            min_v = element.get("low", None)
+            max_v = element.get("high", None)
+            # Obtain all states of all given entities in the given duration
+            all_states = get_significant_states(hass, start_time=start, entity_ids=[plot["entity"] for plot in element["data"]], significant_changes_only=False, minimal_response=True, no_attributes=False)
+
+            # prepare data and obtain min_v and max_v with it
+            raw_data = []
+            for plot in element["data"]:
+                states = all_states[plot["entity"]]
+                state_obj = states[0]
+                states[0] = {"state": state_obj.state, "last_changed": str(state_obj.last_changed)}
+                states = [(datetime.fromisoformat(s["last_changed"]), float(s["state"])) for s in states if is_decimal(s["state"])]
+
+                min_v_local, max_v_local = min_max([s[1] for s in states])
+                min_v = min(min_v or min_v_local, min_v_local)
+                max_v = max(max_v or max_v_local, max_v_local)
+
+                raw_data.append(states)
+
+            max_v = math.ceil(max_v)
+            min_v = math.floor(min_v)
+            # Prevent division by zero errors
+            if max_v == min_v:
+                min_v -= 1
+            spread = max_v - min_v
+
+            # calculate ylenged_width if it should be automatically determined
+            if ylegend_width == -1:
+                ylegend_width = math.ceil(max(
+                    img_draw.textlength(str(max_v), font=ylegend_font),
+                    img_draw.textlength(str(min_v), font=ylegend_font),
+                ))
+
+            # effective diagram dimensions
+            diag_x = x_start + (ylegend_width if ylegend_pos == "left" else 0)
+            diag_y = y_start
+            diag_width = width - ylegend_width
+            diag_height = height
+
+            if element.get("debug", False):
+                img_draw.rectangle([(x_start, y_start), (x_end, y_end)], fill=None, outline=getIndexColor("black"), width=1)
+                img_draw.rectangle([(diag_x, diag_y), (diag_x + diag_width - 1, diag_y + diag_height - 1)], fill=None, outline=getIndexColor("red"), width=1)
+
+            # print y grid
+            if yaxis is not None:
+                if yaxis_grid is not None:
+                    grid_points = []
+                    curr = min_v
+                    while curr <= max_v:
+                        curr_y = round(diag_y + (1 - ((curr - min_v) / spread)) * (diag_height - 1))
+                        grid_points.extend((x, curr_y) for x in range(diag_x, diag_x + diag_width, yaxis_grid))
+                        curr += yaxis_tick_every
+                    img_draw.point(grid_points, fill=getIndexColor(yaxis_grid_color))
+
+            # scale data and draw plot
+            for plot, data in zip(element["data"], raw_data):
+                xy_raw = []
+                for time, value in data:
+                    rel_time = (time - start) / duration
+                    rel_value = (value - min_v) / spread
+                    xy_raw.append((round(diag_x + rel_time * (diag_width - 1)), round(diag_y + (1 - rel_value) * (diag_height - 1))))
+                # smooth out the data, i.e. if x values appear multiple times, only add them once with the average of all y values
+                xy = []
+                last_x = None
+                ys = []
+                for x, y in xy_raw:
+                    if x != last_x:
+                        if ys:
+                            xy.append((last_x, round(sum(ys) / len(ys))))
+                            ys = []
+                        last_x = x
+                    ys.append(y)
+                if ys:
+                    xy.append((last_x, round(sum(ys) / len(ys))))
+
+                img_draw.line(xy, fill=getIndexColor(plot.get("color", "black")), width=plot.get("width", 1), joint=plot.get("joint", None))
+
+            # print y legend
+            if ylegend_pos == "left":
+                img_draw.text((x_start, y_start), str(max_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="lt")
+                img_draw.text((x_start, y_end), str(min_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="ls")
+            elif ylegend_pos == "right":
+                img_draw.text((x_end, y_start), str(max_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="rt")
+                img_draw.text((x_end, y_end), str(min_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="rs")
+            # print y axis
+            if yaxis is not None:
+                img_draw.rectangle([(diag_x, diag_y), (diag_x + yaxis_width - 1, diag_y + diag_height - 1)], width=0, fill=getIndexColor(yaxis_color))
+                if yaxis_tick_width > 0:
+                    curr = min_v
+                    while curr <= max_v:
+                        curr_y = round(diag_y + (1 - ((curr - min_v) / spread)) * (diag_height - 1))
+                        img_draw.rectangle([(diag_x + yaxis_width, curr_y), (diag_x + yaxis_width + yaxis_tick_width - 1, curr_y)], width=0, fill=getIndexColor(yaxis_color))
+                        curr += yaxis_tick_every
+
     #post processing
     img = img.rotate(rotate, expand=True)
     rgb_image = img.convert('RGB')
@@ -300,14 +446,42 @@ def customimage(entity_id, service, hass):
         os.makedirs(pathc)
     rgb_image.save(patha, format='JPEG', quality="maximum")
     shutil.copy2(patha,pathb)
-    #rgb_image.save(os.path.join("/homeassistant/www/open_epaper_link", entity_id + '.jpg'), format='JPEG', quality="maximum")
     buf = io.BytesIO()
     rgb_image.save(buf, format='JPEG', quality="maximum")
     byte_im = buf.getvalue()
     return byte_im
 
+def queueimg(url, content):
+    queue.append([url,content])
+    
+def handlequeue():
+    global running
+    if running:
+        return True
+    if len(queue) == 0:
+        return True
+    running = True;
+    timebetweencalls = 10;
+    file_path = os.path.join(os.path.dirname(__file__), "lastapinteraction" + '.txt')
+    filecontent = "0";
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            filecontent = file.read()
+    curtime = round(datetime.timestamp(datetime.now()))
+    if round(float(filecontent)) + timebetweencalls < curtime:
+        with open(file_path, 'w') as file:
+            file.write(str(datetime.timestamp(datetime.now())))
+        tp = queue.pop(0)
+        running = False;
+        response = requests.post(tp[0], headers={'Content-Type': tp[1].content_type}, data=tp[1])
+        if response.status_code != 200:
+            _LOGGER.warning(response.status_code)
+            queue.append(tp)
+    running = False;
+
 # upload an image to the tag
-def uploadimg(img, mac, ip, dither=False,ttl=60):
+def uploadimg(img, mac, ip, dither,ttl,hass):
+    setup(hass,notsetup)
     url = "http://" + ip + "/imgupload"
     mp_encoder = MultipartEncoder(
         fields={
@@ -317,9 +491,8 @@ def uploadimg(img, mac, ip, dither=False,ttl=60):
             'image': ('image.jpg', img, 'image/jpeg'),
         }
     )
-    response = requests.post(url, headers={'Content-Type': mp_encoder.content_type}, data=mp_encoder)
-    if response.status_code != 200:
-        _LOGGER.warning(response.status_code)
+    queueimg(url, mp_encoder)
+
 
 # upload a cmd to the tag
 def uploadcfg(cfg, mac, contentmode, ip):
