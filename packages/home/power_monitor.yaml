@@ -326,8 +326,9 @@ input_number:
 sensor:
   - platform: integration
     source: sensor.water_meter_water_consumption
+    method: left
     unit_time: min
-    
+
   - platform: template
     sensors:
       net_energy_usage:
@@ -500,6 +501,45 @@ sensor:
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.tasmota_energy_power')|is_number }}" #Should also include sensor.heatpump_status being available
 
+      # Template sensor for projected costs per hour
+      current_electricity_cost_per_hour:
+        friendly_name: "Current Electricity Cost per Hour"
+        unit_of_measurement: "€/h"  # Adjust this based on your currency
+        value_template: "{{ (states('sensor.electricity_meter_power_consumption') | float * states('sensor.nordpool_kwh_nl_eur_3_10_021') | float) | round(3) }}"
+        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.nordpool_kwh_nl_eur_3_10_021')|is_number }}"
+      # Template sensor for lowest possible costs based on lowest price
+      potential_electricity_usage_cost_lowest_price:
+        friendly_name: "Potential Electricity Usage Costs (Lowest Price)"
+        unit_of_measurement: "€"  # Adjust this based on your currency
+        value_template: "{{ (states('sensor.daily_energy_use') | float * state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'min') | float ) | round(3) }}"
+        availability_template: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'min')|is_number }}"
+      # Template sensor for lowest possible costs based on lowest price
+      potential_electricity_usage_cost_highest_price:
+        friendly_name: "Potential Electricity Usage Costs (Highest Price)"
+        unit_of_measurement: "€"  # Adjust this based on your currency
+        value_template: "{{ (states('sensor.daily_energy_use') | float * state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'max') | float ) | round(3) }}"
+        availability_template: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'max')|is_number }}"
+      potential_electricity_usage_cost_mean_price:
+        friendly_name: "Potential Electricity Usage Costs (Mean Price)"
+        unit_of_measurement: "€"  # Adjust this based on your currency
+        value_template: "{{ (states('sensor.daily_energy_use') | float * state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'mean') | float ) | round(3) }}"
+        availability_template: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'mean')|is_number }}"
+      # # Template sensor for potential savings based on lowest price
+      # potential_savings_lowest_price:
+      #   friendly_name: "Potential Savings (Lowest Price)"
+      #   unit_of_measurement: "currency"  # Adjust this based on your currency
+      #   value_template: "{{ (states('sensor.current_total_usage') | float * states('sensor.lowest_price') | float) - states('sensor.projected_total_cost_per_day') | float }}"
+      # # Template sensor for potential savings based on average price
+      # potential_savings_average_price:
+      #   friendly_name: "Potential Savings (Average Price)"
+      #   unit_of_measurement: "currency"  # Adjust this based on your currency
+      #   value_template: "{{ (states('sensor.current_total_usage') | float * states('sensor.current_electricity_price') | float) - states('sensor.projected_total_cost_per_day') | float }}"
+      # # Template sensor for already saved costs
+      # already_saved_costs:
+      #   friendly_name: "Already Saved Costs"
+      #   unit_of_measurement: "currency"  # Adjust this based on your currency
+      #   value_template: "{{ states('sensor.projected_total_cost_per_day') | float - (states('sensor.current_total_usage') | float * states('sensor.current_electricity_price') | float) }}"
+
 
   - platform: integration
     source: sensor.total_power_consumption_watt
@@ -588,6 +628,14 @@ sensor:
       - filter: time_simple_moving_average
         window_size: '00:15'
         precision: 0
+
+  #Energy costs
+  - platform: integration
+    source: sensor.current_electricity_cost_per_hour
+    name: "Actual Costs Today"
+    method: left
+    unit_time: h
+    round: 2
   # - platform: template
   #   sensors:
   #     known_power:
@@ -804,140 +852,140 @@ scene:
 #    GROUPS    #
 ################
 group:
-  blitzwolf_router:
-    entities:
-      - switch.blitzwolf_router
-      - sensor.blitzwolf_router_status
-      - sensor.blitzwolf_router_energy_voltage
-      - sensor.blitzwolf_router_energy_current
-      - sensor.blitzwolf_router_energy_power
-      - sensor.blitzwolf_router_energy_apparentpower
-      - sensor.blitzwolf_router_energy_reactivepower
-      - sensor.blitzwolf_router_energy_today
-      - sensor.blitzwolf_router_energy_yesterday
-      - sensor.blitzwolf_router_energy_total
-      - sensor.blitzwolf_router_energy_totalstarttime
-  blitzwolf_computer:
-    entities:
-      - switch.blitzwolf_computer
-      - sensor.blitzwolf_computer_status
-      - sensor.blitzwolf_computer_energy_voltage
-      - sensor.blitzwolf_computer_energy_current
-      - sensor.blitzwolf_computer_energy_power
-      - sensor.blitzwolf_computer_energy_apparentpower
-      - sensor.blitzwolf_computer_energy_reactivepower
-      - sensor.blitzwolf_computer_energy_today
-      - sensor.blitzwolf_computer_energy_yesterday
-      - sensor.blitzwolf_computer_energy_total_2
-      - sensor.blitzwolf_computer_energy_totalstarttime
-  blitzwolf_electricblanket:
-    entities:
-      - switch.blitzwolf_electricblanket
-      - sensor.blitzwolf_electricblanket_status
-      - sensor.blitzwolf_electricblanket_energy_voltage
-      - sensor.blitzwolf_electricblanket_energy_current
-      - sensor.blitzwolf_electricblanket_energy_power
-      - sensor.blitzwolf_electricblanket_energy_apparentpower
-      - sensor.blitzwolf_electricblanket_energy_reactivepower
-      - sensor.blitzwolf_electricblanket_energy_today
-      - sensor.blitzwolf_electricblanket_energy_yesterday
-      - sensor.blitzwolf_electricblanket_energy_total
-      - sensor.blitzwolf_electricblanket_energy_totalstarttime
-  blitzwolf_mediacenter:
-    entities:
-      - switch.blitzwolf_mediacenter
-      - sensor.blitzwolf_mediacenter_status
-      - sensor.blitzwolf_mediacenter_energy_voltage
-      - sensor.blitzwolf_mediacenter_energy_current
-      - sensor.blitzwolf_mediacenter_energy_power
-      - sensor.blitzwolf_mediacenter_energy_apparentpower
-      - sensor.blitzwolf_mediacenter_energy_reactivepower
-      - sensor.blitzwolf_mediacenter_energy_today
-      - sensor.blitzwolf_mediacenter_energy_yesterday
-      - sensor.blitzwolf_mediacenter_energy_total
-      - sensor.blitzwolf_mediacenter_energy_totalstarttime
-  blitzwolf_watercooker:
-    entities:
-      - switch.blitzwolf_watercooker
-      - sensor.blitzwolf_watercooker_status
-      - sensor.blitzwolf_watercooker_energy_voltage
-      - sensor.blitzwolf_watercooker_energy_current
-      - sensor.blitzwolf_watercooker_energy_power
-      - sensor.blitzwolf_watercooker_energy_apparentpower
-      - sensor.blitzwolf_watercooker_energy_reactivepower
-      - sensor.blitzwolf_watercooker_energy_today
-      - sensor.blitzwolf_watercooker_energy_yesterday
-      - sensor.blitzwolf_watercooker_energy_total
-      - sensor.blitzwolf_watercooker_energy_totalstarttime
-  blitzwolf_nuc:
-    entities:
-      - switch.blitzwolf_nuc
-      - sensor.blitzwolf_nuc_status
-      - sensor.blitzwolf_nuc_energy_voltage
-      - sensor.blitzwolf_nuc_energy_current
-      - sensor.blitzwolf_nuc_energy_power
-      - sensor.blitzwolf_nuc_energy_apparentpower
-      - sensor.blitzwolf_nuc_energy_reactivepower
-      - sensor.blitzwolf_nuc_energy_today
-      - sensor.blitzwolf_nuc_energy_yesterday
-      - sensor.blitzwolf_nuc_energy_total
-      - sensor.blitzwolf_nuc_energy_totalstarttime
-  blitzwolf_ender3:
-    entities:
-      - switch.blitzwolf_3dprinter
-      - sensor.blitzwolf_3dprinter_status
-      - sensor.blitzwolf_3dprinter_energy_voltage
-      - sensor.blitzwolf_3dprinter_energy_current
-      - sensor.blitzwolf_3dprinter_energy_power
-      - sensor.blitzwolf_3dprinter_energy_apparentpower
-      - sensor.blitzwolf_3dprinter_energy_reactivepower
-      - sensor.blitzwolf_3dprinter_energy_today
-      - sensor.blitzwolf_3dprinter_energy_yesterday
-      - sensor.blitzwolf_3dprinter_energy_total
-      - sensor.blitzwolf_3dprinter_energy_totalstarttime
-      - sensor.blitzwolf_3dprinter_energy_bl0940_temperature
-  blitzwolf_washingmachine:
-    entities:
-      - switch.blitzwolf_washingmachine
-      - sensor.blitzwolf_washingmachine_status
-      - sensor.blitzwolf_washingmachine_energy_voltage
-      - sensor.blitzwolf_washingmachine_energy_current
-      - sensor.blitzwolf_washingmachine_energy_power
-      - sensor.blitzwolf_washingmachine_energy_apparentpower
-      - sensor.blitzwolf_washingmachine_energy_reactivepower
-      - sensor.blitzwolf_washingmachine_energy_today
-      - sensor.blitzwolf_washingmachine_energy_yesterday
-      - sensor.blitzwolf_washingmachine_energy_total
-      - sensor.blitzwolf_washingmachine_energy_totalstarttime
-      - sensor.blitzwolf_washingmachine_energy_bl0940_temperature
-  blitzwolf_plug1:
-    entities:
-      - switch.blitzwolf_nas
-      - sensor.blitzwolf_nas_status
-      - sensor.blitzwolf_nas_energy_voltage
-      - sensor.blitzwolf_nas_energy_current
-      - sensor.blitzwolf_nas_energy_power
-      - sensor.blitzwolf_nas_energy_apparentpower
-      - sensor.blitzwolf_nas_energy_reactivepower
-      - sensor.blitzwolf_nas_energy_today
-      - sensor.blitzwolf_nas_energy_yesterday
-      - sensor.blitzwolf_nas_energy_total
-      - sensor.blitzwolf_nas_energy_totalstarttime
-      - sensor.blitzwolf_nas_energy_bl0940_temperature
-  blitzwolf_ambilight:
-    entities:
-      - switch.blitzwolf_ambilight
-      - sensor.blitzwolf_ambilight_status
-      - sensor.blitzwolf_ambilight_energy_voltage
-      - sensor.blitzwolf_ambilight_energy_current
-      - sensor.blitzwolf_ambilight_energy_power
-      - sensor.blitzwolf_ambilight_energy_apparentpower
-      - sensor.blitzwolf_ambilight_energy_reactivepower
-      - sensor.blitzwolf_ambilight_energy_today
-      - sensor.blitzwolf_ambilight_energy_yesterday
-      - sensor.blitzwolf_ambilight_energy_total
-      - sensor.blitzwolf_ambilight_energy_totalstarttime
-      - sensor.blitzwolf_plug2_energy_bl0940_temperature
+  # blitzwolf_router:
+  #   entities:
+  #     - switch.blitzwolf_router
+  #     - sensor.blitzwolf_router_status
+  #     - sensor.blitzwolf_router_energy_voltage
+  #     - sensor.blitzwolf_router_energy_current
+  #     - sensor.blitzwolf_router_energy_power
+  #     - sensor.blitzwolf_router_energy_apparentpower
+  #     - sensor.blitzwolf_router_energy_reactivepower
+  #     - sensor.blitzwolf_router_energy_today
+  #     - sensor.blitzwolf_router_energy_yesterday
+  #     - sensor.blitzwolf_router_energy_total
+  #     - sensor.blitzwolf_router_energy_totalstarttime
+  # blitzwolf_computer:
+  #   entities:
+  #     - switch.blitzwolf_computer
+  #     - sensor.blitzwolf_computer_status
+  #     - sensor.blitzwolf_computer_energy_voltage
+  #     - sensor.blitzwolf_computer_energy_current
+  #     - sensor.blitzwolf_computer_energy_power
+  #     - sensor.blitzwolf_computer_energy_apparentpower
+  #     - sensor.blitzwolf_computer_energy_reactivepower
+  #     - sensor.blitzwolf_computer_energy_today
+  #     - sensor.blitzwolf_computer_energy_yesterday
+  #     - sensor.blitzwolf_computer_energy_total_2
+  #     - sensor.blitzwolf_computer_energy_totalstarttime
+  # blitzwolf_electricblanket:
+  #   entities:
+  #     - switch.blitzwolf_electricblanket
+  #     - sensor.blitzwolf_electricblanket_status
+  #     - sensor.blitzwolf_electricblanket_energy_voltage
+  #     - sensor.blitzwolf_electricblanket_energy_current
+  #     - sensor.blitzwolf_electricblanket_energy_power
+  #     - sensor.blitzwolf_electricblanket_energy_apparentpower
+  #     - sensor.blitzwolf_electricblanket_energy_reactivepower
+  #     - sensor.blitzwolf_electricblanket_energy_today
+  #     - sensor.blitzwolf_electricblanket_energy_yesterday
+  #     - sensor.blitzwolf_electricblanket_energy_total
+  #     - sensor.blitzwolf_electricblanket_energy_totalstarttime
+  # blitzwolf_mediacenter:
+  #   entities:
+  #     - switch.blitzwolf_mediacenter
+  #     - sensor.blitzwolf_mediacenter_status
+  #     - sensor.blitzwolf_mediacenter_energy_voltage
+  #     - sensor.blitzwolf_mediacenter_energy_current
+  #     - sensor.blitzwolf_mediacenter_energy_power
+  #     - sensor.blitzwolf_mediacenter_energy_apparentpower
+  #     - sensor.blitzwolf_mediacenter_energy_reactivepower
+  #     - sensor.blitzwolf_mediacenter_energy_today
+  #     - sensor.blitzwolf_mediacenter_energy_yesterday
+  #     - sensor.blitzwolf_mediacenter_energy_total
+  #     - sensor.blitzwolf_mediacenter_energy_totalstarttime
+  # blitzwolf_watercooker:
+  #   entities:
+  #     - switch.blitzwolf_watercooker
+  #     - sensor.blitzwolf_watercooker_status
+  #     - sensor.blitzwolf_watercooker_energy_voltage
+  #     - sensor.blitzwolf_watercooker_energy_current
+  #     - sensor.blitzwolf_watercooker_energy_power
+  #     - sensor.blitzwolf_watercooker_energy_apparentpower
+  #     - sensor.blitzwolf_watercooker_energy_reactivepower
+  #     - sensor.blitzwolf_watercooker_energy_today
+  #     - sensor.blitzwolf_watercooker_energy_yesterday
+  #     - sensor.blitzwolf_watercooker_energy_total
+  #     - sensor.blitzwolf_watercooker_energy_totalstarttime
+  # blitzwolf_nuc:
+  #   entities:
+  #     - switch.blitzwolf_nuc
+  #     - sensor.blitzwolf_nuc_status
+  #     - sensor.blitzwolf_nuc_energy_voltage
+  #     - sensor.blitzwolf_nuc_energy_current
+  #     - sensor.blitzwolf_nuc_energy_power
+  #     - sensor.blitzwolf_nuc_energy_apparentpower
+  #     - sensor.blitzwolf_nuc_energy_reactivepower
+  #     - sensor.blitzwolf_nuc_energy_today
+  #     - sensor.blitzwolf_nuc_energy_yesterday
+  #     - sensor.blitzwolf_nuc_energy_total
+  #     - sensor.blitzwolf_nuc_energy_totalstarttime
+  # blitzwolf_ender3:
+  #   entities:
+  #     - switch.blitzwolf_3dprinter
+  #     - sensor.blitzwolf_3dprinter_status
+  #     - sensor.blitzwolf_3dprinter_energy_voltage
+  #     - sensor.blitzwolf_3dprinter_energy_current
+  #     - sensor.blitzwolf_3dprinter_energy_power
+  #     - sensor.blitzwolf_3dprinter_energy_apparentpower
+  #     - sensor.blitzwolf_3dprinter_energy_reactivepower
+  #     - sensor.blitzwolf_3dprinter_energy_today
+  #     - sensor.blitzwolf_3dprinter_energy_yesterday
+  #     - sensor.blitzwolf_3dprinter_energy_total
+  #     - sensor.blitzwolf_3dprinter_energy_totalstarttime
+  #     - sensor.blitzwolf_3dprinter_energy_bl0940_temperature
+  # blitzwolf_washingmachine:
+  #   entities:
+  #     - switch.blitzwolf_washingmachine
+  #     - sensor.blitzwolf_washingmachine_status
+  #     - sensor.blitzwolf_washingmachine_energy_voltage
+  #     - sensor.blitzwolf_washingmachine_energy_current
+  #     - sensor.blitzwolf_washingmachine_energy_power
+  #     - sensor.blitzwolf_washingmachine_energy_apparentpower
+  #     - sensor.blitzwolf_washingmachine_energy_reactivepower
+  #     - sensor.blitzwolf_washingmachine_energy_today
+  #     - sensor.blitzwolf_washingmachine_energy_yesterday
+  #     - sensor.blitzwolf_washingmachine_energy_total
+  #     - sensor.blitzwolf_washingmachine_energy_totalstarttime
+  #     - sensor.blitzwolf_washingmachine_energy_bl0940_temperature
+  # blitzwolf_plug1:
+  #   entities:
+  #     - switch.blitzwolf_nas
+  #     - sensor.blitzwolf_nas_status
+  #     - sensor.blitzwolf_nas_energy_voltage
+  #     - sensor.blitzwolf_nas_energy_current
+  #     - sensor.blitzwolf_nas_energy_power
+  #     - sensor.blitzwolf_nas_energy_apparentpower
+  #     - sensor.blitzwolf_nas_energy_reactivepower
+  #     - sensor.blitzwolf_nas_energy_today
+  #     - sensor.blitzwolf_nas_energy_yesterday
+  #     - sensor.blitzwolf_nas_energy_total
+  #     - sensor.blitzwolf_nas_energy_totalstarttime
+  #     - sensor.blitzwolf_nas_energy_bl0940_temperature
+  # blitzwolf_ambilight:
+  #   entities:
+  #     - switch.blitzwolf_ambilight
+  #     - sensor.blitzwolf_ambilight_status
+  #     - sensor.blitzwolf_ambilight_energy_voltage
+  #     - sensor.blitzwolf_ambilight_energy_current
+  #     - sensor.blitzwolf_ambilight_energy_power
+  #     - sensor.blitzwolf_ambilight_energy_apparentpower
+  #     - sensor.blitzwolf_ambilight_energy_reactivepower
+  #     - sensor.blitzwolf_ambilight_energy_today
+  #     - sensor.blitzwolf_ambilight_energy_yesterday
+  #     - sensor.blitzwolf_ambilight_energy_total
+  #     - sensor.blitzwolf_ambilight_energy_totalstarttime
+  #     - sensor.blitzwolf_plug2_energy_bl0940_temperature
   meter_readings:
     name: Meter readings
     entities:
