@@ -1,5 +1,7 @@
 substitutions:
-  device_name: shp7
+  device_name: Blitzwolf Ambilight Amplifier
+  espname: "blitzwolf-ambilight-amplifier"
+  short_name: bw-ambilight-ampl
   # Higher value gives lower watt readout
   current_res: '0.002291'
   # Lower value gives lower voltage readout
@@ -10,17 +12,20 @@ substitutions:
   # Webserver is active and pw protected, and the OTA is password protected
 
 esphome:
-  name: '${device_name}'
-  platform: ESP8266
+  name: '${espname}'
+  comment: 'Blitzwolf SHP7'
+
+esp8266:
   board: esp8285
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
+  use_address: 10.0.30.143
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: ${device_name} Hotspot
+    ssid: ${short_name} Hotspot
     password: !secret esphome_fallback_pass
 
 # Enable logging
@@ -36,6 +41,11 @@ ota:
 time:
   - platform: homeassistant
     id: homeassistant_time
+
+button:
+  - platform: restart
+    id: restart_button
+    name: "${device_name} Restart"
 
 # Button configuration
 binary_sensor:
@@ -114,6 +124,15 @@ text_sensor:
 
 # Sensors for WIFI signal strength, Uptime, Voltage, Current, Power, Daily energy usage
 sensor:
+  # Uptime sensor.
+  - platform: uptime
+    name: ${device_name} Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${device_name} WiFi Signal
+    update_interval: 60s
+
   - platform: hlw8012
     sel_pin:
       number: GPIO03
@@ -127,6 +146,7 @@ sensor:
       unit_of_measurement: 'A'
       accuracy_decimals: 3
       icon: mdi:flash-outline
+      id: current
       filters:
         - or:
             - throttle_average: 60s
@@ -135,29 +155,30 @@ sensor:
       name: '${device_name} voltage'
       unit_of_measurement: 'V'
       icon: mdi:flash-outline
+      id: voltage
       filters:
         - or:
             - throttle_average: 60s
             - delta: 1
     power:
       name: '${device_name} power'
-      unit_of_measurement: 'kW'
+      unit_of_measurement: 'W'
       id: power
       accuracy_decimals: 3
       filters:
-        - multiply: 0.001
         - or:
           - throttle_average: 60s
           - delta: 0.01
       icon: mdi:flash-outline
     energy:
       name: "${device_name} Energy"
-      unit_of_measurement: "Wh"
+      unit_of_measurement: "kWh"
       icon: mdi:flash-outline
       filters:
+        - multiply: 0.001 #From Wh to kWh.
         - or:
             - throttle_average: 60s
-            - delta: 2
+            - delta: 0.1
     change_mode_every: 4
     update_interval: 1s
   - platform: total_daily_energy
@@ -177,3 +198,45 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.000011574
+
+  - platform: template
+    name: "${device_name} Apparent Power"
+    lambda: |-
+      return id(voltage).state * id(current).state;
+    update_interval: 1s
+    device_class: apparent_power
+    id: apparent_power
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 2.0
+  - platform: template
+    name: "${device_name} Power Factor"
+    lambda: |-
+      if (round(id(power).state) == 0) {
+        return 0;
+      } else {
+        return id(power).state / id(voltage).state / id(current).state;
+      }
+    update_interval: 1s
+    device_class: power_factor
+    id: power_factor
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 0.1
+  - platform: template
+    name: "${device_name} Reactive Power"
+    lambda: |-
+      if (pow(id(voltage).state * id(current).state, 2) <= pow(id(power).state, 2)) {
+        return 0;
+      } else {
+        return sqrt(pow(id(voltage).state * id(current).state, 2) - pow(id(power).state, 2));
+      }
+    update_interval: 1s
+    device_class: reactive_power
+    id: reactive_power
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 2.0
