@@ -8,7 +8,7 @@ import json
 import requests
 import qrcode
 import shutil
-from datetime import datetime
+import asyncio
 import time
 from .const import DOMAIN
 from PIL import Image, ImageDraw, ImageFont
@@ -16,6 +16,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.components.recorder.history import get_significant_states
 from homeassistant.util import dt
+from homeassistant.components.recorder import get_instance
 from datetime import timedelta, datetime
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,34 +24,40 @@ _LOGGER = logging.getLogger(__name__)
 white =  (255, 255, 255,255)
 black = (0, 0, 0,255)
 red = (255, 0, 0,255)
-
 queue = []
 notsetup = True;
 running = False;
 
+# setup
 def setup(hass,notsetup):
     if notsetup:
         hass.bus.listen(DOMAIN + "_event", handle_event)
         notsetup = False
     return True
-
+# handle_event
 def handle_event(self):
     handlequeue()
-
+# is_decimal
 def is_decimal(string):
+    if not string:
+        return False
     if string.startswith("-"):
         string = string[1:]
     return len(string.split(".")) <= 2 and string.replace(".", "").isdecimal()
-
+# min_max
 def min_max(data):
+    if not(data):
+        raise HomeAssistantError("data error, someting is not in range of the recorder")
     mi, ma = data[0], data[0]
     for d in data[1:]:
         mi = min(mi, d)
         ma = max(ma, d)
     return mi, ma
-
 # img downloader
 def downloadimg(entity_id, service, hass):
+    entity = hass.states.get(entity_id)
+    if not (entity and 'width' in entity.attributes):
+        raise HomeAssistantError("id was not found yet, please wait for the display to check in at least once " + entity_id)
     url = service.data.get("url", "")
     rotate = service.data.get("rotation", 0)
     # get image
@@ -70,9 +77,8 @@ def downloadimg(entity_id, service, hass):
     img.save(os.path.join(os.path.dirname(__file__), entity_id + '.jpg'), format='JPEG', quality="maximum")
     byte_im = buf.getvalue()
     return byte_im
-
-def get_wrapped_text(text: str, font: ImageFont.ImageFont,
-                     line_length: int):
+#g et_wrapped_text
+def get_wrapped_text(text: str, font: ImageFont.ImageFont,line_length: int):
         lines = ['']
         for word in text.split():
             line = f'{lines[-1]} {word}'.strip()
@@ -81,12 +87,10 @@ def get_wrapped_text(text: str, font: ImageFont.ImageFont,
             else:
                 lines.append(word)
         return '\n'.join(lines)
-
 # converts a color name to the corresponding color index for the palette
 def getIndexColor(color):
     if color is None:
         return None
-
     color_str = str(color)
     if color_str == "black" or color_str == "b":
         return black
@@ -94,28 +98,20 @@ def getIndexColor(color):
         return red
     else:
         return white
-
+# should_show_element
 def should_show_element(element):
     return element['visible'] if 'visible' in element else True
-
 # custom image generator
 def customimage(entity_id, service, hass):
-        
     payload = service.data.get("payload", "")
     rotate = service.data.get("rotate", 0)
     dither = service.data.get("dither", False)
     background = getIndexColor(service.data.get("background","white"))
-    
     entity = hass.states.get(entity_id)
-    if entity and 'width' in entity.attributes:
-        canvas_width = hass.states.get(entity_id).attributes['width']
-        
-    else:
-        raise HomeAssistantError("id was not found yet, please wait for the display to check in at least once")
-    
+    if not (entity and 'width' in entity.attributes):
+        raise HomeAssistantError("id was not found yet, please wait for the display to check in at least once " + entity_id)
     canvas_width = hass.states.get(entity_id).attributes['width']
     canvas_height = hass.states.get(entity_id).attributes['height']
-
     if rotate == 0:
         img = Image.new('RGBA', (canvas_width, canvas_height), color=background)
     elif rotate == 90:
@@ -127,13 +123,10 @@ def customimage(entity_id, service, hass):
     else:
         img = Image.new('RGBA', (canvas_width, canvas_height), color=background)
     pos_y = 0
-
     for element in payload:
         _LOGGER.info("type: " + element["type"])
-        
         if not should_show_element(element):
             continue
-          
         #line
         if element["type"] == "line":
             img_line = ImageDraw.Draw(img)  
@@ -176,14 +169,17 @@ def customimage(entity_id, service, hass):
         if element["type"] == "multiline":
             d = ImageDraw.Draw(img)
             d.fontmode = "1"
-            font_file = os.path.join(os.path.dirname(__file__), element['font'])
-            font = ImageFont.truetype(font_file, element['size'])
+            size = element.get('size', 20)
+            font = element.get('font', "ppb.ttf")
+            font_file = os.path.join(os.path.dirname(__file__), font)
+            font = ImageFont.truetype(font_file, size)
+            color = element.get('color', "black")
             _LOGGER.debug("Got Multiline string: %s with delimiter: %s" % (element['value'],element["delimiter"]))
             lst = element['value'].replace("\n","").split(element["delimiter"])
-            pos = element.get('start_y', pos_y + element['y_padding'])
+            pos = element.get('start_y', pos_y + element.get('y_padding', 10))
             for elem in lst:
                 _LOGGER.debug("String: %s" % (elem))
-                d.text((element['x'], pos ), str(elem), fill=getIndexColor(element['color']), font=font)
+                d.text((element['x'], pos ), str(elem), fill=getIndexColor(color), font=font)
                 pos = pos + element['offset_y']
             pos_y = pos
         #icon
@@ -196,17 +192,20 @@ def customimage(entity_id, service, hass):
             f = open(meta_file) 
             data = json.load(f)
             chr_hex = ""
-
             value = element['value']
             if value.startswith("mdi:"):
                 value = value[4:]
-
             for icon in data:
-                if icon['name'] == value or value in icon['aliases']:
+                if icon['name'] == value:
                     chr_hex = icon['codepoint']
                     break
             if chr_hex == "":
-                raise HomeAssistantError("Non valid icon used")
+                for icon in data:
+                    if value in icon['aliases']:
+                        chr_hex = icon['codepoint']
+                        break
+            if chr_hex == "":
+                raise HomeAssistantError("Non valid icon used: "+ value)
             font = ImageFont.truetype(font_file, element['size'])
             anchor = element['anchor'] if 'anchor' in element else "la"
             d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=getIndexColor(element['color']), font=font, anchor=anchor)
@@ -218,9 +217,14 @@ def customimage(entity_id, service, hass):
             xsize = element['xsize']
             ysize = element['ysize']
             rotate2 = element['rotate']
-            response = requests.get(url)
             res = [xsize,ysize]
-            imgdl = Image.open(io.BytesIO(response.content))
+            imgdl = ""
+            if "http://" in url or "https://" in url:
+                response = requests.get(url)
+                imgdl = Image.open(io.BytesIO(response.content))
+            else:
+                imgdl = Image.open(url)
+                
             if rotate2 != 0:
                 imgdl = imgdl.rotate(-rotate2, expand=1)
             width2, height2 = imgdl.size
@@ -295,6 +299,7 @@ def customimage(entity_id, service, hass):
         # plot
         if element["type"] == "plot":
             img_draw = ImageDraw.Draw(img)
+            img_draw.fontmode = "1"
             # Obtain drawing region, assume whole canvas if nothing is given
             x_start = element.get("x_start", 0)
             y_start = element.get("y_start", 0)
@@ -304,7 +309,8 @@ def customimage(entity_id, service, hass):
             height = y_end - y_start + 1
             # The duration of history to look at (default 1 day)
             duration = timedelta(seconds=element.get("duration", 60*60*24))
-            end = dt.now()
+            
+            end = dt.utcnow()
             start = end - duration
             # The label font and size
             size = element.get("size", 10)
@@ -345,10 +351,12 @@ def customimage(entity_id, service, hass):
             max_v = element.get("high", None)
             # Obtain all states of all given entities in the given duration
             all_states = get_significant_states(hass, start_time=start, entity_ids=[plot["entity"] for plot in element["data"]], significant_changes_only=False, minimal_response=True, no_attributes=False)
-
+            
             # prepare data and obtain min_v and max_v with it
             raw_data = []
             for plot in element["data"]:
+                if not(plot["entity"] in all_states):
+                    raise HomeAssistantError("no recorded data found for " + plot["entity"])
                 states = all_states[plot["entity"]]
                 state_obj = states[0]
                 states[0] = {"state": state_obj.state, "last_changed": str(state_obj.last_changed)}
@@ -450,10 +458,10 @@ def customimage(entity_id, service, hass):
     rgb_image.save(buf, format='JPEG', quality="maximum")
     byte_im = buf.getvalue()
     return byte_im
-
+# adds an image to the queue
 def queueimg(url, content):
     queue.append([url,content])
-    
+# if the timing is right, processes the queue
 def handlequeue():
     global running
     if running:
@@ -478,7 +486,6 @@ def handlequeue():
             _LOGGER.warning(response.status_code)
             queue.append(tp)
     running = False;
-
 # upload an image to the tag
 def uploadimg(img, mac, ip, dither,ttl,hass):
     setup(hass,notsetup)
@@ -492,8 +499,6 @@ def uploadimg(img, mac, ip, dither,ttl,hass):
         }
     )
     queueimg(url, mp_encoder)
-
-
 # upload a cmd to the tag
 def uploadcfg(cfg, mac, contentmode, ip):
     url = "http://" + ip + "/get_db?mac=" + mac
@@ -516,9 +521,11 @@ def uploadcfg(cfg, mac, contentmode, ip):
     response = requests.post(url, headers={'Content-Type': mp_encoder.content_type}, data=mp_encoder)
     if response.status_code != 200:
         _LOGGER.warning(response.status_code)
-
 #5 line text generator for 1.54 esls (depricated)
 def gen5line(entity_id, service, hass):
+    entity = hass.states.get(entity_id)
+    if not (entity and 'width' in entity.attributes):
+        raise HomeAssistantError("id was not found yet, please wait for the display to check in at least once " + entity_id)
     line1 = service.data.get("line1", "")
     line2 = service.data.get("line2", "")
     line3 = service.data.get("line3", "")
@@ -556,9 +563,11 @@ def gen5line(entity_id, service, hass):
     rgb_image.save(buf, format='JPEG', quality="maximum")
     byte_im = buf.getvalue()
     return byte_im
-
 #4 line text generator for 2.9 esls (depricated)
 def gen4line(entity_id, service, hass):
+    entity = hass.states.get(entity_id)
+    if not (entity and 'width' in entity.attributes):
+        raise HomeAssistantError("id was not found yet, please wait for the display to check in at least once " + entity_id)
     line1 = service.data.get("line1", "")
     line2 = service.data.get("line2", "")
     line3 = service.data.get("line3", "")
@@ -593,7 +602,6 @@ def gen4line(entity_id, service, hass):
     byte_im = buf.getvalue()
 
     return byte_im
-
 # handles Text alignment(depricated)
 def textgen(d, text, col, just, yofs):
     rbm = ImageFont.truetype(os.path.join(os.path.dirname(__file__), 'rbm.ttf'), 11)
@@ -613,7 +621,6 @@ def textgen(d, text, col, just, yofs):
     else:
         d.text((x, 15 + yofs), text, fill=col, anchor=just + "m", font=rbm)
     return d
-
 # handles Text alignment(depricated)
 def textgen2(d, text, col, just, yofs):
     rbm = ImageFont.truetype(os.path.join(os.path.dirname(__file__), 'rbm.ttf'), 11)
