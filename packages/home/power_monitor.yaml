@@ -247,6 +247,39 @@ utility_meter:
     cycle: yearly
     unique_id: yaml_utilitymeter_vacuums_yearly_energy_use
 
+# Zonnepanelen:
+  solar_panel_hourly_energy_production:
+    source: sensor.solar_panel_energy_production
+    delta_values: false
+    cycle: hourly
+    unique_id: yaml_utilitymeter_solar_panel_hourly_energy_production
+    name: Solar Panel Hourly Energy Production
+  solar_panel_daily_energy_production:
+    source: sensor.solar_panel_energy_production
+    delta_values: false
+    cycle: daily
+    unique_id: yaml_utilitymeter_solar_panel_daily_energy_production
+    name: Solar Panel Daily Energy Production
+  solar_panel_weekly_energy_production:
+    source: sensor.solar_panel_energy_production
+    delta_values: false
+    cycle: weekly
+    unique_id: yaml_utilitymeter_solar_panel_weekly_energy_production
+    name: Solar Panel Weekly Energy Production
+  solar_panel_monthly_energy_production:
+    source: sensor.solar_panel_energy_production
+    delta_values: false
+    cycle: monthly
+    unique_id: yaml_utilitymeter_solar_panel_monthly_energy_production
+    name: Solar Panel Monthly Energy Production
+  solar_panel_yearly_energy_production:
+    source: sensor.solar_panel_energy_production
+    delta_values: false
+    cycle: yearly
+    unique_id: yaml_utilitymeter_solar_panel_yearly_energy_production
+    name: Solar Panel Yearly Energy Production
+
+
 template:
   - trigger:
       - platform: time_pattern
@@ -674,6 +707,20 @@ sensor:
         availability_template: "{{ states('sensor.moeke_power_estimate')|is_number and states('sensor.nordpool_kwh_nl_eur_3_10_021')|is_number }}"
         value_template: "{{ (states('sensor.moeke_power_estimate') | float * states('sensor.nordpool_kwh_nl_eur_3_10_021') | float) / 1000 }}"
 
+
+      solar_panel_power_production_available:
+        friendly_name: "Solar Panel Power Production"
+        unique_id: "yaml_template_solar_panel_power_production_available"
+        unit_of_measurement: "W"
+        value_template: >-
+          {% if states('sensor.pv_power') in ['unavailable', 'uknown', None] %}
+            0
+          {% else %}
+            {{ states('sensor.pv_power') }}
+          {% endif %}
+
+
+
         #Total cost sensors for above template cost per hour sensors
   - platform: integration
     source: sensor.blitzwolf_10gb_switch_energy_cost_hourly
@@ -880,6 +927,15 @@ sensor:
     unique_id: integration_heatpump_heating_energy_usage
     unit_time: h
     unit_prefix: k
+    method: left
+    round: 2
+
+  - platform: integration
+    source: sensor.solar_panel_power_production_available
+    name: Solar Panel Energy Production
+    unique_id: yaml_integration_solar_panel_energy_production
+    unit_time: h #source is in W, this is in kWh.
+    unit_prefix: k #source is in W, this is in kWh.
     method: left
     round: 2
 
