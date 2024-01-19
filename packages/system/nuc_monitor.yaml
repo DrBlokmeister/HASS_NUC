@@ -125,7 +125,26 @@ sensor:
   #       device_class: timestamp
   #       value_template: >
   #         {{ states( 'sensor.uptime' )|float * 60 | float }}
-
+  - platform: template
+    sensors:
+      running_automations:
+        friendly_name: "Running Automations"
+        unique_id: yaml_template_running_automations
+        icon_template: "mdi:counter"
+        value_template: >
+          {{ states.automation | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | count() }}
+        attribute_templates:
+          automations: >
+            {{ states.automation | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
+      running_scripts:
+        friendly_name: "Running Scripts"
+        unique_id: yaml_template_running_scripts
+        icon_template: "mdi:counter"
+        value_template: >
+          {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | count() }}
+        attribute_templates:
+          automations: >
+            {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
 
   - platform: filter
     name: "Filtered NUC CPU Temperature"
