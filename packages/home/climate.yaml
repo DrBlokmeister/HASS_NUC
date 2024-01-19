@@ -191,6 +191,37 @@ input_boolean:
 #    SWITCHES    #
 ##################
 switch:
+  - platform: template
+    switches:
+      heatpump_tapwater_power_saving_mode:
+        value_template: "{{ states('number.heatpump_tapwater_target_temperature')|int <= 45 and states('number.heatpump_tapwater_hysteresis')|float() >= 5 }}"
+        turn_on:
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_target_temperature
+              value: 45
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_hysteresis
+              value: 5
+        turn_off:
+          delay:
+            seconds: 1
+      heatpump_tapwater_heatup_mode:
+        value_template: "{{ states('number.heatpump_tapwater_target_temperature')|int >= 55 and states('number.heatpump_tapwater_hysteresis')|float() < 5 }}"
+        turn_on:
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_target_temperature
+              value: 55
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_hysteresis
+              value: 1
+        turn_off:
+          delay:
+            seconds: 1
+
 
 #####################
 #    AUTOMATIONS    #
@@ -200,11 +231,18 @@ automation:
     id: home_climate_heat_up_tapwater_in_the_morning
     mode: single
     trigger:
+      # - platform: time
+      #   at: "5:00"
+      #   id: "heat_up"
       - platform: time
-        at: "5:00"
+        at: sensor.energyzero_today_energy_lowest_price_time
         id: "heat_up"
       - platform: time
         at: "10:00"
+        id: "cool_down"
+      - platform: template
+        value_template: >
+          {{ (now() - timedelta(hours=2)) == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()) }}
         id: "cool_down"
     condition:
     action:
@@ -218,7 +256,7 @@ automation:
             sequence:
               - service: number.set_value
                 data:
-                  value: "52"
+                  value: "55"
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
