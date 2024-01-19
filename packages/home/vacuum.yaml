@@ -693,13 +693,16 @@ automation:
 
   - alias: '[home|vacuum]Notify if Moeke Clean Water Reservoir is Empty'
     id: home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty
-    mode: parallel
+    mode: single
     trigger:
+      # - platform: state
+      #   entity_id: sensor.moeke_low_water_warning
+      #   not_to:
+      #     - "No warning"
+      #     - no_warning
       - platform: state
-        entity_id: sensor.moeke_low_water_warning
-        not_to:
-          - "No warning"
-          - no_warning
+        entity_id: binary_sensor.moeke_reservoir_leak_sensor
+        to: 'off'
     action:
       - service: notify.mobile_app_blokmeisters21u
         continue_on_error: true
@@ -724,16 +727,21 @@ automation:
           effect: Fast Pulse
       #- wait_template: "{{ not is_state(sensor.moeke_low_water_warning , 'No warning') }}"
       - wait_for_trigger:
+          # - platform: state
+          #   entity_id: sensor.moeke_low_water_warning
+          #   to:
+          #     - "No warning"
+          #     - no_warning
+          # - platform: event
+          #   event_type: deconz_event
+          #   event_data:
+          #     id: moeke_water_reset_switch
+          #     event: 1003
           - platform: state
-            entity_id: sensor.moeke_low_water_warning
-            to:
-              - "No warning"
-              - no_warning
-          - platform: event
-            event_type: deconz_event
-            event_data:
-              id: moeke_water_reset_switch
-              event: 1003
+            entity_id: binary_sensor.moeke_reservoir_leak_sensor
+            to: 'on'
+            for:
+              seconds: 5
       - service: button.press
         target:
           entity_id: button.moeke_clear_warning
