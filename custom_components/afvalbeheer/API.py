@@ -124,6 +124,8 @@ class WasteData(object):
             self.collector = RecycleApp(self.hass, self.waste_collector, self.postcode, self.street_name, self.street_number, self.suffix)
         elif self.waste_collector == "rd4":
             self.collector = RD4Collector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
+        elif self.waste_collector == "rwm":
+            self.collector = RWMCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector in BURGERPORTAAL_COLLECTOR_IDS.keys():
             self.collector = BurgerportaalCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector in OPZET_COLLECTOR_URLS.keys():
@@ -911,6 +913,86 @@ class RD4Collector(WasteCollector):
             return False
 
 
+class RWMCollector(WasteCollector):
+    WASTE_TYPE_MAPPING = {
+        'takken': WASTE_TYPE_BRANCHES,
+        # 'sloop': WASTE_TYPE_BULKLITTER,
+        # 'glas': WASTE_TYPE_GLASS,
+        # 'duobak': WASTE_TYPE_GREENGREY,
+        # 'groente': WASTE_TYPE_GREEN,
+        'gft': WASTE_TYPE_GREEN,
+        # 'chemisch': WASTE_TYPE_KCA,
+        # 'kca': WASTE_TYPE_KCA,
+        'restafval': WASTE_TYPE_GREY,
+        # 'plastic': WASTE_TYPE_PACKAGES,
+        'papier': WASTE_TYPE_PAPER,
+        'kerstbomen': WASTE_TYPE_TREE,
+        'pmd': WASTE_TYPE_PACKAGES,
+    }
+
+    def __init__(self, hass, waste_collector, postcode, street_number, suffix):
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
+        self.main_url = 'https://www.rwm.nl/api.php'
+        self.postcode_split = re.search(r"(\d\d\d\d) ?([A-z][A-z])", self.postcode)
+        self.postcode = self.postcode_split.group(1) + self.postcode_split.group(2).upper()
+
+    def __get_data(self):
+        data = {
+            "zipcode": self.postcode,
+            "houseNumber": self.street_number,
+            "addition": self.suffix.upper()
+        }
+
+        response = requests.post(
+            "{}".format(self.main_url),
+            data=data)
+
+        return response
+
+    async def update(self):
+        _LOGGER.debug('Updating Waste collection dates using Rest API')
+
+        self.collections.remove_all()
+
+        try:
+            r = await self.hass.async_add_executor_job(self.__get_data)
+            response = r.json()
+
+            if not response:
+                _LOGGER.error('No Waste data found!')
+                return
+
+            if not response["pickupdays"]:
+                _LOGGER.error('Error retrieving data!')
+                return
+
+            if "response" in  response["pickupdays"] and response["pickupdays"]["response"] == "NOK":
+                _LOGGER.error('Address not found!')
+                return
+
+            for item in response["pickupdays"].keys():
+
+                waste_type = self.map_waste_type(item)
+                if not waste_type:
+                    continue
+                for dateitem in response["pickupdays"][item]:
+                    date = dateitem["date"]
+                    if not date:
+                        continue
+                    datet = datetime.strptime(date, "%Y-%m-%d")
+
+                    if datet > datetime.now():
+                        collection = WasteCollection.create(
+                            date=datet,
+                            waste_type=waste_type
+                        )
+                        self.collections.add(collection)
+
+        except requests.exceptions.RequestException as exc:
+            _LOGGER.error('Error occurred while fetching data: %r', exc)
+            return False
+
+
 class RecycleApp(WasteCollector):
     WASTE_TYPE_MAPPING = {
         'grof': WASTE_TYPE_BULKLITTER,
@@ -1049,6 +1131,7 @@ class XimmioCollector(WasteCollector):
         'BULKLITTER': WASTE_TYPE_BULKLITTER,
         'BULKYGARDENWASTE': WASTE_TYPE_BULKYGARDENWASTE,
         'GLASS': WASTE_TYPE_GLASS,
+        'GREENGREY': WASTE_TYPE_GREENGREY,
         'GREEN': WASTE_TYPE_GREEN,
         'GREY': WASTE_TYPE_GREY,
         'KCA': WASTE_TYPE_KCA,
@@ -1065,6 +1148,7 @@ class XimmioCollector(WasteCollector):
         'meerlanden': "https://wasteprod2api.ximmio.com",
         'rad': "https://wasteprod2api.ximmio.com",
         'westland': "https://wasteprod2api.ximmio.com",
+        'woerden': "https://wasteprod2api.ximmio.com",        
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix, address_id, customer_id):

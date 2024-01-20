@@ -97,7 +97,7 @@ CONF_HMAX = 99.9
 
 # Sensors with deviating temperature range
 KETTLES = ('YM-K1501', 'YM-K1501EU', 'V-SK152')
-PROBES = ('iBBQ-2', 'iBBQ-4', 'iBBQ-6', 'H5182', 'H5183', 'H5184', 'H5185', 'H5198')
+PROBES = ('iBBQ-2', 'iBBQ-4', 'iBBQ-6', 'H5182', 'H5183', 'H5184', 'H5185', 'H5198', 'CQ60')
 
 
 # Sensor entity description
@@ -189,7 +189,7 @@ BINARY_SENSOR_TYPES: tuple[BLEMonitorBinarySensorEntityDescription, ...] = (
         force_update=True,
     ),
     BLEMonitorBinarySensorEntityDescription(
-        key="gas_detected",
+        key="gas detected",
         sensor_class="BaseBinarySensor",
         update_behavior="Instantly",
         name="gas",
@@ -704,11 +704,44 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     BLEMonitorSensorEntityDescription(
+        key="temperature probe tip",
+        sensor_class="TemperatureSensor",
+        update_behavior="Averaging",
+        name="ble temperature probe tip",
+        unique_id="t_probe_tip_",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        suggested_display_precision=0,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    BLEMonitorSensorEntityDescription(
         key="temperature calibrated",
         sensor_class="TemperatureSensor",
         update_behavior="Averaging",
         name="ble temperature calibrated",
         unique_id="t_calibrated_",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        suggested_display_precision=1,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    BLEMonitorSensorEntityDescription(
+        key="ambient temperature",
+        sensor_class="TemperatureSensor",
+        update_behavior="Averaging",
+        name="ble ambient temperature",
+        unique_id="t_ambient_",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        suggested_display_precision=1,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    BLEMonitorSensorEntityDescription(
+        key="meat temperature",
+        sensor_class="TemperatureSensor",
+        update_behavior="Averaging",
+        name="ble meat temperature",
+        unique_id="t_meat_",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         suggested_display_precision=1,
@@ -1604,7 +1637,6 @@ MEASUREMENT_DICT = {
     'YM-K1501'                : [["rssi"], ["temperature"], ["switch"]],
     'YM-K1501EU'              : [["rssi"], ["temperature"], ["switch"]],
     'V-SK152'                 : [["rssi"], ["temperature"], ["switch"]],
-    'SJWS01LM'                : [["battery", "rssi"], ["button"], ["moisture detected"]],
     'MJYD02YL'                : [["battery", "rssi"], [], ["light", "motion"]],
     'MUE4094RT'               : [["rssi"], [], ["motion"]],
     'RTCGQ02LM'               : [["battery", "rssi"], ["button"], ["light", "motion"]],
@@ -1634,7 +1666,6 @@ MEASUREMENT_DICT = {
     'MHO-C401'                : [["temperature", "humidity", "battery", "voltage", "rssi"], [], []],
     'MHO-C303'                : [["temperature", "humidity", "battery", "rssi"], [], []],
     'JQJCY01YM'               : [["temperature", "humidity", "battery", "formaldehyde", "rssi"], [], []],
-    'JTYJGD03MI'              : [["rssi"], ["button", "battery"], ["smoke detector"]],
     'K9B-1BTN'                : [["rssi"], ["one btn switch"], []],
     'K9B-2BTN'                : [["rssi"], ["two btn switch left", "two btn switch right"], []],
     'K9B-3BTN'                : [["rssi"], ["three btn switch left", "three btn switch middle", "three btn switch right"], []],
@@ -1739,7 +1770,6 @@ MANUFACTURER_DICT = {
     'YM-K1501'                : 'Xiaomi',
     'YM-K1501EU'              : 'Xiaomi',
     'V-SK152'                 : 'Viomi',
-    'SJWS01LM'                : 'Xiaomi',
     'MJYD02YL'                : 'Xiaomi',
     'MUE4094RT'               : 'Xiaomi',
     'RTCGQ02LM'               : 'Xiaomi',
@@ -1768,7 +1798,6 @@ MANUFACTURER_DICT = {
     'MHO-C401'                : 'Miaomiaoce',
     'MHO-C303'                : 'Miaomiaoce',
     'JQJCY01YM'               : 'Honeywell',
-    'JTYJGD03MI'              : 'Honeywell',
     'YLAI003'                 : 'Yeelight',
     'YLYK01YL'                : 'Yeelight',
     'YLYK01YL-FANCL'          : 'Yeelight',
@@ -1890,9 +1919,11 @@ AUTO_MANUFACTURER_DICT = {
     'Amazfit Smart Scale'     : 'Amazfit',
     'Blustream'               : 'Blustream',
     'BTHome'                  : 'BTHome',
+    'CQ60'                    : 'Chef iQ',
     'MI401'                   : 'Grundfos',
     'HHCCJCY10'               : 'HHCC',
     'HolyIOT BLE tracker'     : 'HolyIOT',
+    'JTYJGD03MI'              : 'Honeywell',
     'Supramatic E4 BS'        : 'Hörmann',
     'IBS-TH'                  : 'Inkbird',
     'IBS-TH2/P01B'            : 'Inkbird',
@@ -1918,6 +1949,7 @@ AUTO_MANUFACTURER_DICT = {
     'Tilt Yellow'             : 'Tilt',
     'Tilt Pink'               : 'Tilt',
     'MMC-W505'                : 'Xiaomi',
+    'SJWS01LM'                : 'Xiaomi',
 }
 
 
@@ -1962,6 +1994,7 @@ AUTO_BINARY_SENSOR_LIST = [
 # Sensors that are automatically added if device is in AUTO_MANUFACTURER_DICT
 AUTO_SENSOR_LIST = [
     "acceleration",
+    "ambient temperature",
     "battery",
     "button",
     "co2",
@@ -1981,6 +2014,7 @@ AUTO_SENSOR_LIST = [
     "humidity",
     "illuminance",
     "impedance",
+    "meat temperature",
     "moisture",
     "movement counter",
     "non-stabilized weight",
@@ -1999,6 +2033,12 @@ AUTO_SENSOR_LIST = [
     "rssi",
     "temperature",
     "temperature probe 1",
+    "temperature probe 2",
+    "temperature probe 3",
+    "temperature probe 4",
+    "temperature probe 5",
+    "temperature probe 6",
+    "temperature probe tip",
     "text",
     "timestamp",
     "tvoc",
@@ -2023,6 +2063,7 @@ REPORT_UNKNOWN_LIST = [
     "BlueMaestro",
     "Blustream",
     "BTHome",
+    'Chef iQ',
     "Govee",
     "Grundfos",
     "HHCC",
