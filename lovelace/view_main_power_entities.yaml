@@ -1,0 +1,272 @@
+title: Main Power
+icon: mdi:lightning-bolt
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.total_power_consumption_watt
+        name: Total Power Usage
+        min: 0
+        max: 5000
+        severity:
+          green: 0
+          yellow: 2500
+          red: 3500
+      - type: gauge
+        entity: sensor.solar_panel_power_production_available
+        name: Solar Production
+        min: 0
+        max: 5000
+        severity:
+          green: 0
+          yellow: 2500
+          red: 3500
+
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Energy Distribution Today
+    graph_span: 24h
+    chart_type: donut
+    series:
+      - entity: sensor.blitzwolf_computer_energy_today
+        name: Computer
+        color: '#DC143C' # Crimson
+      - entity: sensor.blitzwolf_nas_energy_today
+        name: NAS
+        color: '#4682B4' # Steel Blue
+      - entity: sensor.blitzwolf_poe_switch_energy_today
+        name: PoE Switch
+        color: '#FF8C00' # Dark Orange
+      - entity: sensor.blitzwolf_nuc_energy_today
+        name: NUC
+        color: '#6B8E23' # Olive Drab
+      - entity: sensor.blitzwolf_washingmachine_energy_today
+        name: Washing Machine
+        color: '#00CED1' # Dark Turquoise
+      - entity: sensor.blitzwolf_dishwasher_energy_today
+        name: Dishwasher
+        color: '#DB7093' # Pale Violet Red
+      - entity: sensor.heatpump_verwarming_daily_energy_use
+        name: Heating
+        color: '#FF4500' # Orange Red
+      - entity: sensor.heatpump_circulation_daily_energy_use
+        name: Circulation
+        color: '#32CD32' # Lime Green
+      - entity: sensor.heatpump_tapwater_daily_energy_use
+        name: Tapwater
+        color: '#2E8B57' # Sea Green
+      - entity: sensor.ventilation_daily_energy_use
+        name: Ventilation
+        color: '#A0522D' # Sienna
+      - entity: sensor.all_lights_power_estimate_energy_daily
+        name: Lights
+        color: '#FFA07A' # Light Salmon
+      - entity: sensor.daily_unknown_energy
+        name: Unknown
+        color: '#6A5ACD' # Slate Blue
+
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Power Usage per Device
+    graph_span: 12h
+    update_interval: 1m
+    apex_config:
+      chart:
+        height: 400px
+    yaxis:
+      - min: 0
+        max: ~2000
+        decimals: 0
+        apex_config:
+          tickAmount: 6
+          forceNiceScale: True
+    series:
+      - entity: sensor.blitzwolf_computer_energy_power
+        name: Computer
+        color: '#DC143C' # Crimson
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.blitzwolf_nas_energy_power
+        name: NAS
+        color: '#4682B4' # Steel Blue
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.blitzwolf_poe_switch_energy_power
+        name: PoE
+        color: '#FF8C00' # Dark Orange
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.blitzwolf_nuc_energy_power
+        name: NUC
+        color: '#6B8E23' # Olive Drab
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.blitzwolf_heatpump_power
+        name: Circulation
+        color: '#32CD32' # Lime Green
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.blitzwolf_washingmachine_energy_power
+        name: Washing Machine
+        color: '#00CED1' # Dark Turquoise
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.blitzwolf_dishwasher_energy_power
+        name: Dishwasher
+        color: '#DB7093' # Pale Violet Red
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.heatpump_heating_power
+        name: Heating
+        color: '#FF4500' # Orange Red
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.heatpump_tapwater_power
+        name: Tapwater
+        color: '#2E8B57' # Sea Green
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.ventilation_power_estimate
+        name: Ventilation
+        color: '#A0522D' # Sienna
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.all_lights_power_estimate_power
+        name: Lights
+        color: '#FFA07A' # Light Salmon
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.vacuums_power_estimate
+        name: Vacuums
+        color: '#6A5ACD' # Slate Blue
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.unknown_power
+        name: Unknown
+        color: '#778899' # Light Slate Gray
+        group_by:
+          func: avg
+          duration: 10min
+
+
+  - type: custom:apexcharts-card
+    header:
+      show: true
+      title: Power Production
+    yaxis:
+      - min: 0
+        max: ~1000
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+          forceNiceScale: True
+    apex_config:
+      chart:
+        height: 200px
+    graph_span: 24h
+    chart_type: line
+    series:
+      - entity: sensor.solar_panel_power_production_available
+        name: Solar Production
+
+  - type: 'custom:apexcharts-card'
+    graph_span: 24h
+    yaxis:
+      - min: ~0
+        max: ~0.5
+        decimals: 3
+        apex_config:
+          tickAmount: 8
+          forceNiceScale: True
+    header:
+      title: Energy price today (€/kWh)
+      show: true
+    span:
+      start: day
+    now:
+      show: true
+      label: Now
+    experimental:
+      color_threshold: true
+    series:
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        float_precision: 2
+        color_threshold:
+            # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
+            # default is: the default color of the serie
+            # Used this gradient generator: https://colordesigner.io/gradient-generator
+          - value: -1
+            color: '#5963c0'
+          - value: -0.66
+            color: '#2681cb'
+          - value: -0.33
+            color: '#2599c8'
+          - value: 0.0
+            color: '#59adc0'
+          - value: 0.033
+            color: '#39afb4'
+          - value: 0.066
+            color: '#2bb09e'
+          - value: 0.1
+            color: '#3faf81'
+          - value: 0.133
+            color: '#5eab5f'
+          - value: 0.166
+            color: '#7ea53b'
+          - value: 0.2
+            color: '#9f9b13'
+          - value: 0.233
+            color: '#c18c00'
+          - value: 0.266
+            color: '#e27609'
+          - value: 0.3
+            color: '#ff5833'
+          - value: 0.333
+            color: '#ed4323'
+          - value: 0.366
+            color: '#db2b12'
+          - value: 0.4
+            color: '#c90000'
+        type: column
+        data_generator: |
+          return entity.attributes.raw_today.map((start, index) => {
+            return [new Date(start["start"]).getTime(), entity.attributes.raw_today[index]["value"]];
+          });
+
+  - type: custom:mini-graph-card
+    entities:
+      - entity: sensor.daily_energy_use
+    name: Daily Energy Use (Last Week)
+    hours_to_show: 168
+    lower_bound: 0
+    min_bound_range: 15
+    aggregate_func: max
+    group_by: date
+    show:
+      graph: bar
+
+  - type: custom:mini-graph-card
+    entities:
+      - entity: sensor.daily_water_use
+    name: Daily Water Use (Last Week)
+    hours_to_show: 168
+    lower_bound: 0
+    min_bound_range: 150
+    aggregate_func: max
+    group_by: date
+    show:
+      graph: bar

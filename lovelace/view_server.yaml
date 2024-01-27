@@ -4,6 +4,60 @@ icon: 'mdi:server-network'
 panel: false
 badges: []
 cards:
+  - type: vertical-stack
+    cards:
+      - type: entity
+        entity: sensor.airvpn_connected_since
+        name: Connected Since
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.airvpn_server_name
+            name: Server Name
+          - type: entity
+            entity: sensor.airvpn_server_country
+            name: Server Country
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.airvpn_exit_ip
+            name: Exit IP
+          - type: entity
+            entity: sensor.airvpn_vpn_ip
+            name: VPN IP
+      - type: custom:apexcharts-card
+        header:
+          title: Total Down/Up
+        graph_span: 24h
+        yaxis:
+          - min: 0
+            max: ~50
+            decimals: 0
+            apex_config:
+              tickAmount: 4
+              forceNiceScale: True
+        series:
+          - entity: sensor.airvpn_data_uploaded
+            name: Data Uploaded
+          - entity: sensor.airvpn_data_downloaded
+            name: Data Downloaded
+      - type: custom:apexcharts-card
+        header:
+          title: Current Down/Up Speed
+        graph_span: 24h
+        yaxis:
+          - min: 0
+            max: ~10
+            decimals: 0
+            apex_config:
+              tickAmount: 4
+              forceNiceScale: True
+        series:
+          - entity: sensor.airvpn_upload_speed
+            name: Upload Speed
+          - entity: sensor.airvpn_download_speed
+            name: Download Speed
+  
   # - type: conditional
   #   conditions:
   #     - entity: switch.blokmeisternas

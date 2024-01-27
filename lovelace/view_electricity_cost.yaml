@@ -1,0 +1,270 @@
+title: Electricity Costs
+icon: mdi:flash
+cards:
+
+  # Current and Potential Costs Overview
+  - type: vertical-stack
+    cards:
+      - type: custom:apexcharts-card
+        header:
+          title: Current Electricity Price
+          show: true
+        graph_span: 24h
+        hours_12: false
+        update_interval: 1m
+        apex_config:
+          chart:
+            height: 300px
+        yaxis:
+          - min: 0
+            max: ~0.4
+            decimals: 2
+            apex_config:
+              tickAmount: 4
+              forceNiceScale: True
+        series:
+          - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+            name: Price per kWh
+            type: line
+            float_precision: 3
+      - type: custom:apexcharts-card
+        header:
+          title: Current Usage Costs
+          show: true
+        graph_span: 24h
+        hours_12: false
+        update_interval: 1m
+        apex_config:
+          chart:
+            height: 300px
+        yaxis:
+          - min: 0
+            max: ~1
+            decimals: 3
+            apex_config:
+              tickAmount: 5
+              forceNiceScale: True
+        series:
+          - entity: sensor.current_electricity_cost_per_hour
+            name: Cost Per Hour
+            type: line
+            float_precision: 3
+            group_by:
+              func: avg
+              duration: 10min
+      - type: entity
+        entity: sensor.current_electricity_cost_per_hour
+        name: Current Cost per Hour
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: entity
+            entity: sensor.total_electricity_cost_daily_energy_use
+            name: Current Cost Today
+          - type: entity
+            entity: sensor.potential_electricity_usage_cost_lowest_price
+            name: Potential Cost at Lowest Price
+          - type: entity
+            entity: sensor.potential_electricity_usage_cost_highest_price
+            name: Potential Cost at Highest Price
+          - type: entity
+            entity: sensor.potential_electricity_usage_cost_mean_price
+            name: Potential Mean Cost
+
+  # Individual Appliance Electricity Costs
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_10gb_switch_energy_cost_hourly
+        name: 10Gb Switch Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#FF6347' # Tomato
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_3dprinter_energy_cost_hourly
+        name: 3D Printer Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#20B2AA' # Light Sea Green
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_ambilight_amplifier_energy_cost_hourly
+        name: Ambilight/Amplifier Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#FFD700' # Gold
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_computer_energy_cost_hourly
+        name: Computer Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#DC143C' # Crimson
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_dishwasher_energy_cost_hourly
+        name: Dishwasher Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#DB7093' # Pale Violet Red
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_nas_energy_cost_hourly
+        name: NAS Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#4682B4' # Steel Blue
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_nuc_energy_cost_hourly
+        name: NUC Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#6B8E23' # Olive Drab
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_poe_switch_energy_cost_hourly
+        name: PoE Switch Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#FF8C00' # Dark Orange
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_router_energy_cost_hourly
+        name: Router Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#DA70D6' # Orchid
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_washingmachine_energy_cost_hourly
+        name: Washing Machine Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#00CED1' # Dark Turquoise
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_watercooker_energy_cost_hourly
+        name: Water Cooker Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#1E90FF' # Dodger Blue
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.blitzwolf_heatpump_energy_cost_hourly
+        name: Heatpump Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#32CD32' # Lime Green
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.all_lights_power_estimate_energy_cost_hourly
+        name: Lights Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#FFA07A' # Light Salmon
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.heatpump_heating_energy_cost_hourly
+        name: Heating Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#FF4500' # Orange Red
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.heatpump_tapwater_energy_cost_hourly
+        name: Tapwater Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#2E8B57' # Sea Green
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.ventilation_power_estimate_energy_cost_hourly
+        name: Ventilation Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#A0522D' # Sienna
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.alfred_power_estimate_energy_cost_hourly
+        name: Alfred Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#778899' # Light Slate Gray
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.argus_power_estimate_energy_cost_hourly
+        name: Argus Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#696969' # Dim Gray
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.moeke_power_estimate_energy_cost_hourly
+        name: Moeke Cost
+        hours_to_show: 24
+        points_per_hour: 2
+        lower_bound: 0
+        upper_bound: ~0.1
+        decimals: 3
+        line_color: '#808080' # Gray
+
