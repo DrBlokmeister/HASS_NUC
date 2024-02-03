@@ -62,6 +62,18 @@ sensor:
     name: ${device_name} WiFi Signal
     update_interval: 60s
 
+  - platform: adc
+    pin: GPIO3
+    name: "${device_name} Output Voltage"
+    update_interval: 1s
+    device_class: Voltage
+    entity_category: diagnostic
+    filters:
+      - multiply: 6.2
+      - or:
+          - throttle_average: 60s
+          - delta: 0.1
+
 output:
   - platform: ledc
     pin:
@@ -70,7 +82,7 @@ output:
         output: true
         pulldown: true
     frequency: "1000Hz"
-    max_power: 0.5
+    max_power: 0.4
     id: pwm_output
 
 light:
