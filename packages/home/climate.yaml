@@ -26,6 +26,17 @@ homeassistant:
 # luxtronik:
 #   host: !secret luxtronik_gateway_IP
 #   port: !secret luxtronik_gateway_port
+
+input_datetime:
+  last_heat_up:
+    name: Last Heat Up
+    has_date: true
+    has_time: true
+  last_disinfection:
+    name: Last Disinfection
+    has_date: true
+    has_time: true
+
 #################
 #    SENSORS    #
 #################
@@ -234,29 +245,48 @@ automation:
       # - platform: time
       #   at: "5:00"
       #   id: "heat_up"
-      - platform: time
-        at: sensor.energyzero_today_energy_lowest_price_time
-        id: "heat_up"
-      - platform: time
-        at: "10:00"
-        id: "cool_down"
+      # - platform: time
+      #   at: sensor.energyzero_today_energy_lowest_price_time
+      #   id: "heat_up"
+      # - platform: time
+      #   at: "10:00"
+      #   id: "cool_down"
       - platform: template
-        value_template: >
-          {{ (now() - timedelta(hours=2)) == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()) }}
+        value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
+        id: "heat_up_total_cheapest"
+      - platform: template #Two hours after lowest energy price time
+        value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 2 }}"
+        id: "cool_down"
+
+      - platform: template
+        value_template: "{{ now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') }}"
+        id: "heat_up_nightly_cheapest"
+      - platform: template
+        value_template: "{{ now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2 }}"
         id: "cool_down"
     condition:
     action:
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ trigger.id == 'heat_up' }}"
+                value_template: "{{ trigger.id == 'heat_up_total_cheapest' or trigger.id == 'heat_up_nightly_cheapest' }}"
               - condition: state
                 entity_id: binary_sensor.house_occupied
                 state: 'on'
+              # - condition: not
+              #   conditions:
+              #     - condition: time
+              #       weekday:
+              #         - sun
             sequence:
               - service: number.set_value
-                data:
-                  value: "55"
+                data: #If it is really the cheapest point during the day and it is a sunday, perform thermal desinfection. Otherwise, just heat up to 55 degrees.
+                  value: >
+                    {% if now().isoweekday() == 7 and trigger.id == 'heat_up_total_cheapest' %}
+                      60
+                    {% else %}
+                      55
+                    {% endif %}
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
@@ -271,7 +301,7 @@ automation:
             sequence:
               - service: number.set_value
                 data:
-                  value: "50"
+                  value: "45"
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
@@ -280,6 +310,74 @@ automation:
                 target:
                   entity_id:
                     - number.heatpump_tapwater_hysteresis
+
+  - alias: "[home|climate] Update Last Heat Up Time"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.heatpump_tapwater_temperature
+        above: '50'
+        for:
+          minutes: 30
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.last_heat_up
+        data:
+          timestamp: "{{ now().timestamp() }}"
+
+  - alias: "[home|climate] Update Last Disinfection Time"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.heatpump_tapwater_temperature
+        above: '59'
+        for:
+          minutes: 30
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.last_disinfection
+        data:
+          timestamp: "{{ now().timestamp() }}"
+
+  - alias: "[home|climate] Disinfection Overdue Notification"
+    trigger:
+      - platform: time_pattern
+        hours: "/1"
+      - platform: template # last disinfection was 8 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_disinfection'))) > (8 * 24 * 3600) }}
+    condition:
+      - condition: template # last disinfection was 8 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_disinfection'))) > (8 * 24 * 3600) }}
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Disinfection Overdue"
+          message: >
+            The thermal disinfection has not been performed since {{ strptime(states('input_datetime.last_disinfection'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
+          notification_id: thermal_disinfection_overdue
+
+  - alias: "[home|climate] Heat Up Overdue Notification"
+    trigger:
+      - platform: time_pattern
+        hours: "/1"
+      - platform: template # last disinfection was 1 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_heat_up'))) > (1 * 24 * 3600) }}
+    condition:
+      - condition: template # last disinfection was 1 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_heat_up'))) > (1 * 24 * 3600) }}
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Heat Up Overdue"
+          message: >
+            The water heatup has not been performed since {{ strptime(states('input_datetime.last_heat_up'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
+          notification_id: regular_heatup_overdue
+
+
   # - alias: '[climate|temperature] Poll Alpha Home Temperatures'
   #   trigger:
   #     platform: time_pattern

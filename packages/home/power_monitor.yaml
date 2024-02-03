@@ -46,6 +46,69 @@ template:
         state: >-
             {% set shellies = states.device_tracker | map(attribute='entity_id') | select('match', 'device_tracker.shelly') | list() %}
             {{ (0.4 * (states.device_tracker | selectattr('entity_id', 'in', shellies) | selectattr('state', 'eq', 'home') | list() | count()) )| int() }}
+
+  - trigger:
+      - platform: time
+        at:
+          - "15:05"
+          - "8:05"
+      # - platform: time_pattern
+      #   minutes: "/30"
+    sensor:
+      - name: "Cheapest Night Price"
+        unique_id: "cheapest_night_price_sensor"
+        unit_of_measurement: '€'
+        state: >
+          {%- set current_time = now() -%}
+          {%- set ns = namespace(cheapest=None) -%}
+          {%- if current_time.hour >= 15 -%}
+            {%- set prices = state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_today') + state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_tomorrow') -%}
+          {%- else -%}
+            {%- set prices = state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_today') -%}
+          {%- endif -%}
+          {%- for price in prices -%}
+            {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
+              {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
+                {%- set ns.cheapest = price -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{- ns.cheapest.value if ns.cheapest else 'Unavailable' -}}
+        attributes:
+          timestamp_of_cheapest_time: >
+            {%- set current_time = now() -%}
+            {%- set ns = namespace(cheapest=None) -%}
+            {%- if current_time.hour >= 15 -%}
+              {%- set prices = state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_today') + state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_tomorrow') -%}
+            {%- else -%}
+              {%- set prices = state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_today') -%}
+            {%- endif -%}
+            {%- for price in prices -%}
+              {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
+                {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
+                  {%- set ns.cheapest = price -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{- ns.cheapest.start.strftime('%Y-%m-%d %H:%M') if ns.cheapest else 'Unavailable' -}}
+          cheapest_hour: >
+            {%- set current_time = now() -%}
+            {%- set ns = namespace(cheapest=None) -%}
+            {%- if current_time.hour >= 15 -%}
+              {%- set prices = state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_today') + state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_tomorrow') -%}
+            {%- else -%}
+              {%- set prices = state_attr('sensor.nordpool_kwh_nl_eur_3_10_021', 'raw_today') -%}
+            {%- endif -%}
+            {%- for price in prices -%}
+              {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
+                {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
+                  {%- set ns.cheapest = price -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{- ns.cheapest.start.hour if ns.cheapest else 'Unavailable' -}}
+          whole_night_included: >
+            {{- 'Yes' if now().hour >= 15 else 'No' -}}
 #######################
 #    INPUT NUMBERS    #
 #######################
