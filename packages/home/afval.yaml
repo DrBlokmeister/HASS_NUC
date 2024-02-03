@@ -22,20 +22,7 @@ afvalbeheer:
     nameprefix: 1
     builtinicons: 1
     printwastetypes: 0
-  # - name: 'Afval Achter'
-  #   wastecollector: MijnAfvalwijzer
-  #   resources:
-  #     - restafval
-  #     - gft
-  #     - papier
-  #   postcode: !secret postal_code_afval_achter
-  #   streetnumber: !secret street_number_afval_achter
-  #   upcomingsensor: 1
-  #   dateformat: '%d-%m-%Y'
-  #   dateonly: 1
-  #   nameprefix: 1
-  #   builtinicons: 1
-  #   printwastetypes: 0
+
 #################
 #    SENSORS    #
 #################
@@ -60,37 +47,6 @@ sensor:
         value_template: >-
           {{ (strptime( states('sensor.mijnafvalwijzer_afval_voor_restafval'), '%d-%m-%Y', today_at() ) | as_local - today_at()).days }}
         availability_template: "{{ states('sensor.mijnafvalwijzer_afval_voor_restafval') not in ['unknown', 'unavailable', 'none'] }}"
-# - platform: afvalbeheer
-#   name: 'Afval Voor'
-#   wastecollector: MijnAfvalwijzer
-#   resources:
-#     - restafval
-#     - gft
-#     - papier
-#   postcode: !secret postal_code
-#   streetnumber: !secret street_number_nosuffix
-#   suffix: !secret street_number_suffix
-#   upcomingsensor: 1
-#   dateformat: '%d-%m-%Y'
-#   dateonly: 1
-#   nameprefix: 1
-#   builtinicons: 0
-#   printwastetypes: 0
-# - platform: afvalbeheer
-#   name: 'Afval Achter'
-#   wastecollector: MijnAfvalwijzer
-#   resources:
-#     - restafval
-#     - gft
-#     - papier
-#   postcode: !secret postal_code_afval_achter
-#   streetnumber: !secret street_number_afval_achter
-#   upcomingsensor: 1
-#   dateformat: '%d-%m-%Y'
-#   dateonly: 1
-#   nameprefix: 1
-#   builtinicons: 0
-#   printwastetypes: 0
 
 ########################
 #    BINARY SENSORS    #
@@ -129,22 +85,8 @@ automation:
       platform: time
       at: '19:00:00'
     condition:
-      # - condition: not
-      #   conditions:
-      #     - condition: state
-      #       entity_id: sensor.mijnafvalwijzer_afval_achter_morgen
-      #       state: "None"
-      #     - condition: state
-      #       entity_id: sensor.mijnafvalwijzer_afval_voor_morgen
-      #       state: "None"
-      # - condition: template
-      #   value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
-      - condition: or
-        conditions:
-          - condition: template
-            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
-          - condition: template
-            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
+      - condition: template
+        value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -156,7 +98,7 @@ automation:
             - service: notify.mobile_app_blokmeisters21u
               data:
                 title: Afval morgen
-                message: "Afval achter: {{ states( 'sensor.mijnafvalwijzer_afval_achter_tomorrow' ) }}, afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_tomorrow' ) }}"
+                message: "Afval: {{ states( 'sensor.mijnafvalwijzer_afval_voor_tomorrow' ) }}"
                 data:
                   group: reminder
                   tag: garbagenotify
@@ -177,13 +119,9 @@ automation:
                   entity_id: input_boolean.garbagereminder
                   state: 'off'
                 - condition: template
-                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_tomorrow', 'None') or not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
-                - condition: or
-                  conditions:
-                    - condition: template
-                      value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) }}"
-                    - condition: template
-                      value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0) }}"
+                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
+                - condition: template
+                  value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) }}"
 
   - alias: '[afval|notify]Herinnering afval vandaag'
     trigger:
@@ -194,12 +132,8 @@ automation:
         to: 'off'
         for: 00:10:00
     condition:
-      - condition: or
-        conditions:
-          - condition: template
-            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}"
-          - condition: template
-            value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < 0)  and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 > -12) }}"
+      - condition: template
+        value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}"
     action:
       - service: input_boolean.turn_on
         entity_id: input_boolean.garbagereminder
@@ -209,7 +143,7 @@ automation:
             - service: notify.mobile_app_blokmeisters21u
               data:
                 title: Afval vandaag
-                message: "Afval achter: {{ states( 'sensor.mijnafvalwijzer_afval_achter_today' ) }}, afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_today' ) }}"
+                message: "Afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_today' ) }}"
                 data:
                   group: reminder
                   tag: garbagenotify
@@ -230,13 +164,9 @@ automation:
                   entity_id: input_boolean.garbagereminder
                   state: 'off'
                 - condition: template
-                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', 'none') and not is_state('sensor.mijnafvalwijzer_afval_achter_today', '-') }}"
-                - condition: or
-                  conditions:
-                    - condition: template
-                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < -16}}"
-                    - condition: template
-                      value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer_2', 'start_time')) - as_timestamp(now()))/3600 < -16}}"
+                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', '-') }}"
+                - condition: template
+                  value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < -16}}"
 
 ################
 #    SCENES    #
