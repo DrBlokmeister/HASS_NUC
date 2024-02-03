@@ -239,6 +239,62 @@ automation:
                 data:
                   entity_id: scene.study_{{ states('input_select.study_scenes') }}
 
+  - alias: "[study|lights]Study Rotary Knob Control"
+    mode: queued
+    description: Controls the lights in the study based on rotary knob actions.
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_rotary_knob
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" #single press
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.study_lights
+                  brightness: 255
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2002 }}" #rotate CW
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_lights
+                  transition: 0.5
+                  brightness_step_pct: 10
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3002 }}" #rotate CCW
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_lights
+                  transition: 0.5
+                  brightness_step_pct: -10
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4002 }}" #hold rotate CW
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_lights
+                  transition: 0.5
+                  color_temp_kelvin: "{{ [state_attr('light.study', 'color_temp_kelvin') + 500 , 6500] | min }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 5002 }}" #hold rotate CW
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_lights
+                  transition: 0.5
+                  color_temp_kelvin: "{{ [state_attr('light.study', 'color_temp_kelvin') - 500 , 2000] | max }}"
+
 
 
   # - alias: '[study|power]Turn off pc plug'
