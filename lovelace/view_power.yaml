@@ -7,6 +7,13 @@ cards:
     - type: custom:apexcharts-card
       graph_span: 24h
       update_interval: 1m
+      yaxis:
+        - min: 0
+          max: ~0.4
+          decimals: 2
+          apex_config:
+            tickAmount: 4
+            forceNiceScale: True
       apex_config:
         plotOptions:
           pie:
@@ -24,31 +31,45 @@ cards:
       series:
         - entity: sensor.blitzwolf_computer_energy_today
           name: Computer
+          float_precision: 2
         - entity: sensor.blitzwolf_nas_energy_today
           name: NAS
+          float_precision: 2
         - entity: sensor.blitzwolf_poe_switch_energy_today
           name: PoE
+          float_precision: 2
         - entity: sensor.blitzwolf_nuc_energy_today
           name: NUC
+          float_precision: 2
         - entity: sensor.heatpump_circulation_daily_energy_use
           name: Circulation
+          float_precision: 2
         - entity: sensor.blitzwolf_washingmachine_energy_today
           name: Washing Machine
+          float_precision: 2
         - entity: sensor.blitzwolf_dishwasher_energy_today
           name: Dishwasher
+          float_precision: 2
         - entity: sensor.heatpump_verwarming_daily_energy_use
           name: Heating
+          float_precision: 2
         - entity: sensor.heatpump_tapwater_daily_energy_use
           name: Tapwater
+          float_precision: 2
         - entity: sensor.ventilation_daily_energy_use
           name: Ventilation
-        - entity: sensor.daily_unknown_energy
-          name: Unknown
+          float_precision: 2
         - entity: sensor.all_lights_power_estimate_energy_daily
           name: Lights
+          float_precision: 2
+        - entity: sensor.daily_unknown_energy
+          name: Unknown
+          float_precision: 2
     - type: custom:apexcharts-card
       graph_span: 24h
       update_interval: 1m
+      all_series_config:
+        float_precision: 0
       apex_config:
         plotOptions:
           pie:
@@ -60,8 +81,16 @@ cards:
                   label: Total
                   formatter: |
                     EVAL:function(w) {
-                      return Math.round(w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0))
-                      }
+                      return Math.round(w.globals.seriesTotals.reduce((a, b) => a + b , 0))
+                    }
+                value:
+                  show: true
+                  formatter: |
+                    EVAL:function(val) {
+                      return Math.round(val) + ' W'
+                    }
+      yaxis:
+        - decimals: 0
       chart_type: donut
       series:
         - entity: sensor.blitzwolf_computer_energy_power
@@ -132,6 +161,8 @@ cards:
     - type: custom:apexcharts-card
       graph_span: 24h
       update_interval: 1m
+      all_series_config:
+        float_precision: 0
       apex_config:
         plotOptions:
           pie:
@@ -143,30 +174,33 @@ cards:
                   label: Total
                   formatter: |
                     EVAL:function(w) {
-                      return (w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2);
+                      return Math.round((w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2)) + ' W';
                       }
+                value:
+                  show: true
+                  formatter: |
+                    EVAL:function(val) {
+                      return Math.round(val) + ' W'
+                    }
       chart_type: donut
       series:
         - entity: sensor.electricity_meter_power_consumption_phase_l1
           name: Phase 1
-          float_precision: 0
-          transform: "return Math.round(x * 1000);"
+          transform: "return (x * 1000);"
           unit: W
           group_by:
             func: avg
             duration: 1min
         - entity: sensor.electricity_meter_power_consumption_phase_l2
           name: Phase 2
-          float_precision: 0
-          transform: "return Math.round(x * 1000);"
+          transform: "return (x * 1000);"
           unit: W
           group_by:
             func: avg
             duration: 1min
         - entity: sensor.electricity_meter_power_consumption_phase_l3
           name: Phase 3
-          float_precision: 0
-          transform: "return Math.round(x * 1000);"
+          transform: "return (x * 1000);"
           unit: W
           group_by:
             func: avg
