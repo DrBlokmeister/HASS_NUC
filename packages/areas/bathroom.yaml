@@ -40,6 +40,31 @@ sensor:
     precision: 0
     max_age:
       hours: 24
+
+  - platform: template
+    sensors:
+      shower_occupied_bayesian_probability:
+        friendly_name: "Shower Occupied Bayesian Probability"
+        unit_of_measurement: Chance
+        value_template: >
+          {% set prior = 0.02 %}
+          {% set light_on = is_state("light.bathroom", "on") %}
+          {% set humidity_increase = (states('sensor.humidity_bathroom')|float - states('sensor.home_mean_humidity_without_bathroom')|float) > 20 %}
+          {% set water_usage = states('sensor.water_usage')|float > 1 %}
+          {% set temperature_change = states('sensor.tapwater_temperature_change')|float < -5 %}
+
+          {% set prob_light_given_shower = 0.8 if light_on else 0.08 %}
+          {% set prob_humidity_given_shower = 0.80 if humidity_increase else 0.05 %}
+          {% set prob_water_usage_given_shower = 0.80 if water_usage else 0.10 %}
+          {% set prob_temp_change_given_shower = 0.80 if temperature_change else 0.02 %}
+
+          {% set numerator = prior * prob_light_given_shower * prob_humidity_given_shower * prob_water_usage_given_shower * prob_temp_change_given_shower %}
+          {% set denominator = (prior * prob_light_given_shower * prob_humidity_given_shower * prob_water_usage_given_shower * prob_temp_change_given_shower) + ((1-prior) * (1-prob_light_given_shower) * (1-prob_humidity_given_shower) * (1-prob_water_usage_given_shower) * (1-prob_temp_change_given_shower)) %}
+
+          {% set posterior_probability = numerator / denominator %}
+
+          {{ posterior_probability }}
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -67,6 +92,7 @@ binary_sensor:
     name: Shower Occupied
     device_class: occupancy
     prior: 0.02 #Shower should be on around 30 min each day. So 0.5/24
+    probability_threshold: 0.5
     observations:
       - platform: state
         entity_id: light.bathroom
@@ -74,20 +100,20 @@ binary_sensor:
         prob_given_false: 0.08 #5% of the time we don't shower, the light is on
         to_state: "on"
       - platform: template
-        value_template: >  # Bathroom humidity is at least 15% above minimum humidity
-          {{ (states('sensor.humidity_bathroom')|int(0) - states('sensor.humidity_bathroom_min')|int(0)) > 15 }}
-        prob_given_true: 0.5
+        value_template: >  # Bathroom humidity is at least 20% above minimum humidity
+          {{ (states('sensor.humidity_bathroom')|int(0) - states('sensor.home_mean_humidity_without_bathroom')|int(0)) > 20 }}
+        prob_given_true: 0.80
         prob_given_false: 0.05
       - platform: numeric_state
-        entity_id: sensor.water_meter_current_water_consumption
+        entity_id: sensor.water_usage
         prob_given_true: 0.80
-        prob_given_false: 0.02
-        above: 20
+        prob_given_false: 0.10
+        above: 1
       - platform: numeric_state
         entity_id: sensor.tapwater_temperature_change
-        prob_given_true: 0.80
-        prob_given_false: 0.01
-        below: -10
+        prob_given_true: 0.90
+        prob_given_false: 0.02
+        below: -5
 
         # I should also use the current water usage. I created these, but should first test if they work. Added in power_monitor.yaml
                 # - platform: derivative
