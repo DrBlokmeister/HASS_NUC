@@ -32,6 +32,844 @@ automation:
       - platform: time_pattern
         minutes: "/30"
     action:
+      - service: script.update_garbage_monitor_display
+
+  - alias: '[misc|epaperlink]Update washing machine energy display'
+    id: misc_epaperlink_update_washing_machine_energy_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    condition:
+      # - condition: numeric_state
+      #   entity_id: sensor.blitzwolf_washingmachine_energy_today
+      #   above: 0.003
+      - condition: not
+        conditions:
+          - condition: template
+            value_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|int < 5 }}"
+            # for:
+            #   minutes: 15
+          # - condition: numeric_state
+          #   entity_id: sensor.blitzwolf_washingmachine_energy_power
+          #   below: 5
+          #   # for:
+          #   #   minutes: 15
+      - condition: time
+        after: "6:00:00"
+        before: "23:30:00"
+    action:
+      - service: script.update_washing_machine_energy_display
+
+  - alias: '[misc|epaperlink]Update study displays'
+    id: misc_epaperlink_update_study_displays
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.house_occupied
+        state: 'on'
+        for:
+          minutes: 5
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: binary_sensor.study_motion_combined
+            state: 'off'
+            for:
+              minutes: 15
+      - condition: time
+        after: "6:00:00"
+        before: "23:30:00"
+    action:
+      - service: open_epaper_link.lines4
+        target:
+          entity_id: open_epaper_link.00000218736E3B1E
+        data:
+          line1: " Update: {{ states('sensor.time') | string }} "
+          line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
+          line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
+          line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
+          border: b
+          format1: lwwb
+          format2: lwwb
+          format3: lwwb
+          format4: lwwb
+      - delay:
+          seconds: 2
+      - service: script.update_study_energy_display
+
+  - alias: '[misc|epaperlink]Timed update electricity price display'
+    id: misc_epaperlink_timed_update_electricity_price_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "0"
+    condition:
+      - condition: time
+        after: "6:00:00"
+        before: "23:30:00"
+    action:
+      - service: script.update_energy_price_today_display
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  update_washing_machine_energy_display:
+    alias: "Update Washing Machine Energy Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.0000021C3BC6341B
+        data:
+          background: white
+          rotate: 0
+          payload:
+            - type: text
+              value: "Energy today:"
+              font: ppb.ttf
+              x: 10
+              "y": 10
+              size: 18
+              color: 'black'
+            - type: text
+              value: "{{ states('sensor.blitzwolf_washingmachine_energy_today') | string }}"
+              font: ppb.ttf
+              x: 10
+              "y": 38
+              size: 45
+              color: 'red'
+            - type: text
+              value: "kWh"
+              font: ppb.ttf
+              x: 50
+              "y": 85
+              size: 18
+              color: black
+            - type: text
+              value: "Energy yesterday:"
+              font: ppb.ttf
+              x: 10
+              "y": 102
+              size: 14
+              color: black
+            - type: text
+              value: "{{ states('sensor.blitzwolf_washingmachine_energy_yesterday') | string }}"
+              font: ppb.ttf
+              x: 10
+              "y": 118
+              size: 18
+              color: red
+            - type: text
+              value: "kWh"
+              font: ppb.ttf
+              x: 50
+              "y": 138
+              size: 15
+              color: black
+
+  update_energy_price_today_display:
+    alias: "Update Energy Price Today Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.0000021f86d83b1e
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 0 else 'black' }}"
+              width: 1
+              x_start: 30
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[0].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 38
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 1 else 'black' }}"
+              width: 1
+              x_start: 41
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[1].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 49
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 2 else 'black' }}"
+              width: 1
+              x_start: 51
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[2].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 59
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 3 else 'black' }}"
+              width: 1
+              x_start: 62
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[3].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 70
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 4 else 'black' }}"
+              width: 1
+              x_start: 72
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[4].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 80
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 5 else 'black' }}"
+              width: 1
+              x_start: 83
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[5].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 91
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 6 else 'black' }}"
+              width: 1
+              x_start: 94
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[6].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 102
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 7 else 'black' }}"
+              width: 1
+              x_start: 104
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[7].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 112
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 8 else 'black' }}"
+              width: 1
+              x_start: 115
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[8].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 123
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 9 else 'black' }}"
+              width: 1
+              x_start: 125
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[9].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 133
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 10 else 'black' }}"
+              width: 1
+              x_start: 136
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[10].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 144
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 11 else 'black' }}"
+              width: 1
+              x_start: 146
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[11].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 154
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 12 else 'black' }}"
+              width: 1
+              x_start: 157
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[12].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 165
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 13 else 'black' }}"
+              width: 1
+              x_start: 168
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[13].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 176
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 14 else 'black' }}"
+              width: 1
+              x_start: 178
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[14].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 186
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 15 else 'black' }}"
+              width: 1
+              x_start: 189
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[15].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 197
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 16 else 'black' }}"
+              width: 1
+              x_start: 199
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[16].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 207
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 17 else 'black' }}"
+              width: 1
+              x_start: 210
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[17].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 218
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 18 else 'black' }}"
+              width: 1
+              x_start: 220
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[18].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 228
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 19 else 'black' }}"
+              width: 1
+              x_start: 231
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[19].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 239
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 20 else 'black' }}"
+              width: 1
+              x_start: 242
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[20].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 250
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 21 else 'black' }}"
+              width: 1
+              x_start: 252
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[21].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 260
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 22 else 'black' }}"
+              width: 1
+              x_start: 263
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[22].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 271
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 23 else 'black' }}"
+              width: 1
+              x_start: 273
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[23].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 281
+              y_end: 108
+
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 10
+              x_end: 286
+              y_end: 10
+            - type: text
+              value: '€0.50'
+              x: 0
+              "y": 1
+              size: 8
+              color: black
+              font: "ppb.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 30
+              x_end: 286
+              y_end: 30
+            - type: text
+              value: '€0.40'
+              x: 0
+              "y": 21
+              size: 8
+              color: black
+              font: "ppb.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 49
+              x_end: 286
+              y_end: 49
+            - type: text
+              value: '€0.30'
+              x: 0
+              "y": 40
+              size: 8
+              color: black
+              font: "ppb.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 69
+              x_end: 286
+              y_end: 69
+            - type: text
+              value: '€0.20'
+              x: 0
+              "y": 60
+              size: 8
+              color: black
+              font: "ppb.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 88
+              x_end: 286
+              y_end: 88
+            - type: text
+              value: '€0.10'
+              x: 0
+              "y": 79
+              size: 8
+              color: black
+              font: "ppb.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 108
+              x_end: 286
+              y_end: 108
+            - type: text
+              value: '€0.00'
+              x: 0
+              "y": 99
+              size: 8
+              color: black
+              font: "ppb.ttf"
+
+            - type: text
+              value: "0:00"
+              x: 20  # Adjust for alignment
+              "y": 113
+              size: 9
+              color: black
+              font: "ppb.ttf"
+            - type: text
+              value: "6:00"
+              x: 84  # Adjust for alignment
+              "y": 113
+              size: 9
+              color: black
+              font: "ppb.ttf"
+            - type: text
+              value: "12:00"
+              x: 147  # Adjust for alignment
+              "y": 113
+              size: 9
+              color: black
+              font: "ppb.ttf"
+            - type: text
+              value: "18:00"
+              x: 210  # Adjust for alignment
+              "y": 113
+              size: 9
+              color: black
+              font: "ppb.ttf"
+            - type: text
+              value: "24:00"
+              x: 260  # Adjust for alignment
+              "y": 113
+              size: 9
+              color: black
+              font: "ppb.ttf"
+
+            # - type: rectangle
+            #   outline: white
+            #   fill: white
+            #   x_start: 226
+            #   y_start: 10
+            #   x_end: 286
+            #   y_end: 30
+
+            - type: text
+              value: "Current: €{{ states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[now().hour].value }}"
+              x: 285
+              "y": 16
+              size: 16
+              color: red
+              anchor: rt
+
+            # - type: text
+            #   value: "{{ now().hour }}:00"
+            #   x: "{{ (10 + (now().hour * (single_bar_width + space_between_bars))) }}"
+            #   "y": 50  # Adjust the position as needed
+            #   size: 8
+            #   color: red
+
+  update_energy_price_tomorrow_display:
+    alias: "Update Energy Price Tomorrow Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.0000021f86d83b1e
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 0 else 'black' }}"
+              width: 1
+              x_start: 30
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[0].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 38
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 1 else 'black' }}"
+              width: 1
+              x_start: 41
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[1].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 49
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 2 else 'black' }}"
+              width: 1
+              x_start: 51
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[2].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 59
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 3 else 'black' }}"
+              width: 1
+              x_start: 62
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[3].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 70
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 4 else 'black' }}"
+              width: 1
+              x_start: 72
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[4].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 80
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 5 else 'black' }}"
+              width: 1
+              x_start: 83
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[5].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 91
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 6 else 'black' }}"
+              width: 1
+              x_start: 94
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[6].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 102
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 7 else 'black' }}"
+              width: 1
+              x_start: 104
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[7].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 112
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 8 else 'black' }}"
+              width: 1
+              x_start: 115
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[8].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 123
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 9 else 'black' }}"
+              width: 1
+              x_start: 125
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[9].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 133
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 10 else 'black' }}"
+              width: 1
+              x_start: 136
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[10].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 144
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 11 else 'black' }}"
+              width: 1
+              x_start: 146
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[11].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 154
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 12 else 'black' }}"
+              width: 1
+              x_start: 157
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[12].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 165
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 13 else 'black' }}"
+              width: 1
+              x_start: 168
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[13].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 176
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 14 else 'black' }}"
+              width: 1
+              x_start: 178
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[14].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 186
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 15 else 'black' }}"
+              width: 1
+              x_start: 189
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[15].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 197
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 16 else 'black' }}"
+              width: 1
+              x_start: 199
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[16].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 207
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 17 else 'black' }}"
+              width: 1
+              x_start: 210
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[17].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 218
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 18 else 'black' }}"
+              width: 1
+              x_start: 220
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[18].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 228
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 19 else 'black' }}"
+              width: 1
+              x_start: 231
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[19].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 239
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 20 else 'black' }}"
+              width: 1
+              x_start: 242
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[20].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 250
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 21 else 'black' }}"
+              width: 1
+              x_start: 252
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[21].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 260
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 22 else 'black' }}"
+              width: 1
+              x_start: 263
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[22].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 271
+              y_end: 108
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 23 else 'black' }}"
+              width: 1
+              x_start: 273
+              y_start: "{{ 108 - ((states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_tomorrow[23].value / 0.50 * (108 - 10))) | round(0) }}"
+              x_end: 281
+              y_end: 108
+
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 10
+              x_end: 286
+              y_end: 10
+            - type: text
+              value: '€0.50'
+              x: 0
+              "y": 1
+              size: 8
+              color: black
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 30
+              x_end: 286
+              y_end: 30
+            - type: text
+              value: '€0.40'
+              x: 0
+              "y": 21
+              size: 8
+              color: black
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 49
+              x_end: 286
+              y_end: 49
+            - type: text
+              value: '€0.30'
+              x: 0
+              "y": 40
+              size: 8
+              color: black
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 69
+              x_end: 286
+              y_end: 69
+            - type: text
+              value: '€0.20'
+              x: 0
+              "y": 60
+              size: 8
+              color: black
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 88
+              x_end: 286
+              y_end: 88
+            - type: text
+              value: '€0.10'
+              x: 0
+              "y": 79
+              size: 8
+              color: black
+            - type: line
+              fill: black
+              width: 1
+              x_start: 25
+              y_start: 108
+              x_end: 286
+              y_end: 108
+
+            - type: text
+              value: '€0.00'
+              x: 0
+              "y": 99
+              size: 8
+              color: black
+            - type: text
+              value: "0:00"
+              x: 20  # Adjust for alignment
+              "y": 113
+              size: 8
+              color: black
+            - type: text
+              value: "6:00"
+              x: 84  # Adjust for alignment
+              "y": 113
+              size: 8
+              color: black
+            - type: text
+              value: "12:00"
+              x: 147  # Adjust for alignment
+              "y": 113
+              size: 8
+              color: black
+            - type: text
+              value: "18:00"
+              x: 210  # Adjust for alignment
+              "y": 113
+              size: 8
+              color: black
+            - type: text
+              value: "24:00"
+              x: 274  # Adjust for alignment
+              "y": 113
+              size: 8
+              color: black
+
+            # - type: rectangle
+            #   outline: white
+            #   fill: white
+            #   x_start: 226
+            #   y_start: 10
+            #   x_end: 286
+            #   y_end: 30
+
+            - type: text
+              value: "Current: €{{ states.sensor.nordpool_kwh_nl_eur_3_10_021.attributes.raw_today[now().hour].value }}"
+              x: 285
+              "y": 12
+              size: 12
+              color: red
+              anchor: rt
+
+            # - type: text
+            #   value: "{{ now().hour }}:00"
+            #   x: "{{ (10 + (now().hour * (single_bar_width + space_between_bars))) }}"
+            #   "y": 50  # Adjust the position as needed
+            #   size: 8
+            #   color: red
+
+
+  update_garbage_monitor_display:
+    alias: "Update Garbage Monitor Display"
+    sequence:
       - service: open_epaper_link.drawcustom
         target:
           entity_id: open_epaper_link.00000219A2923B10
@@ -197,38 +1035,6 @@ automation:
               "y": 119
               size: 9
               color: black
-            # - type: rectangle
-            #   outline: white
-            #   fill: >-
-            #     {{'white' if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] or
-            #     states('sensor.green_bin_schedule') | int > 1 else 'red' }}
-            #   width: 1
-            #   x_start: 178
-            #   y_start: 70
-            #   x_end: 290
-            #   y_end: 123
-            # - type: text
-            #   value: Green
-            #   font: ppb.ttf
-            #   x: 190
-            #   "y": 80
-            #   size: 18
-            #   color: >-
-            #     {{'black' if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] or
-            #     states('sensor.green_bin_schedule') | int > 1 else 'white' }}
-            # - type: text
-            #   value: >-
-            #     {% if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] %}Unknown{%
-            #     elif states('sensor.green_bin_schedule') | int == 0 %}Today{% elif
-            #     states('sensor.green_bin_schedule') | int == 1 %}Tonight{% else
-            #     %}{{states('sensor.green_bin_schedule')}} days{% endif %}
-            #   font: ppb.ttf
-            #   x: 190
-            #   "y": 103
-            #   size: 18
-            #   color: >-
-            #     {{'black' if states('sensor.green_bin_schedule') in ['unknown', 'unavailable', 'none'] or
-            #     states('sensor.green_bin_schedule') | int > 1 else 'white' }}
             - type: icon
               value: trash-can
               x: 123
@@ -243,163 +1049,70 @@ automation:
                   states('sensor.days_to_gft')) ]) | min ) | int < 2 else
                 'black' }}
 
-      # - service: open_epaper_link.drawcustom
-      #   target:
-      #     entity_id: open_epaper_link.0000021C3BC6341B
-      #   data:
-      #     background: white
-      #     rotate: 0
-      #     payload:
-      #       - type: text
-      #         value: "Energy today:"
-      #         font: ppb.ttf
-      #         x: 10
-      #         "y": 10
-      #         size: 18
-      #         color: 'black'
-      #       - type: text
-      #         value: "{{ states('sensor.blitzwolf_washingmachine_energy_today') | string }}"
-      #         font: ppb.ttf
-      #         x: 10
-      #         "y": 50
-      #         size: 45
-      #         color: 'red'
-      #       - type: text
-      #         value: "kWh"
-      #         font: ppb.ttf
-      #         x: 50
-      #         "y": 110
-      #         size: 18
-      #         color: black
-
-  - alias: '[misc|epaperlink]Update washing machine energy display'
-    id: misc_epaperlink_update_washing_machine_energy_display
-    mode: single
-    trigger:
-      - platform: time_pattern
-        minutes: "/15"
-    condition:
-      # - condition: numeric_state
-      #   entity_id: sensor.blitzwolf_washingmachine_energy_today
-      #   above: 0.003
-      - condition: not
-        conditions:
-          - condition: template
-            value_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|int < 5 }}"
-            # for:
-            #   minutes: 15
-          # - condition: numeric_state
-          #   entity_id: sensor.blitzwolf_washingmachine_energy_power
-          #   below: 5
-          #   # for:
-          #   #   minutes: 15
-      - condition: time
-        after: "6:00:00"
-        before: "23:30:00"
-    action:
+  update_study_climate_display:
+    alias: "Update Study Climate Display"
+    sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.0000021C3BC6341B
+          entity_id: open_epaper_link.00000218736E3B1E
         data:
           background: white
           rotate: 0
           payload:
+            # Temperature
             - type: text
-              value: "Energy today:"
+              value: "Temperature:"
               font: ppb.ttf
               x: 10
-              "y": 10
+              y: 10
               size: 18
               color: 'black'
             - type: text
-              value: "{{ states('sensor.blitzwolf_washingmachine_energy_today') | string }}"
+              value: "{{ states('sensor.study_aqm_temperature') | round(1) }}°C"
               font: ppb.ttf
-              x: 10
-              "y": 38
-              size: 45
+              x: 180
+              y: 10
+              size: 24
               color: 'red'
+            # CO2
             - type: text
-              value: "kWh"
-              font: ppb.ttf
-              x: 50
-              "y": 85
-              size: 18
-              color: black
-            - type: text
-              value: "Energy yesterday:"
+              value: "CO2:"
               font: ppb.ttf
               x: 10
-              "y": 102
+              y: 40
+              size: 18
+              color: 'black'
+            - type: text
+              value: "{{ states('sensor.study_co2') | int }} ppm"
+              font: ppb.ttf
+              x: 180
+              y: 40
+              size: 24
+              color: 'red'
+            # PM2.5
+            - type: text
+              value: "PM2.5:"
+              font: ppb.ttf
+              x: 10
+              y: 70
+              size: 18
+              color: 'black'
+            - type: text
+              value: "{{ states('sensor.study_pm_2_5_concentration') | int }} µg/m³"
+              font: ppb.ttf
+              x: 180
+              y: 70
+              size: 24
+              color: 'red'
+            # Update Time
+            - type: text
+              value: "Last Update: {{ states('sensor.time') | string }}"
+              font: ppb.ttf
+              x: 10
+              y: 100
               size: 14
-              color: black
-            - type: text
-              value: "{{ states('sensor.blitzwolf_washingmachine_energy_yesterday') | string }}"
-              font: ppb.ttf
-              x: 10
-              "y": 118
-              size: 18
-              color: red
-            - type: text
-              value: "kWh"
-              font: ppb.ttf
-              x: 50
-              "y": 138
-              size: 15
-              color: black
+              color: 'black'
 
-  - alias: '[misc|epaperlink]Update study displays'
-    id: misc_epaperlink_update_study_displays
-    mode: single
-    trigger:
-      - platform: time_pattern
-        minutes: "/15"
-    condition:
-      - condition: state
-        entity_id: binary_sensor.house_occupied
-        state: 'on'
-        for:
-          minutes: 5
-      - condition: not
-        conditions:
-          - condition: state
-            entity_id: binary_sensor.study_motion_combined
-            state: 'off'
-            for:
-              minutes: 15
-      - condition: time
-        after: "6:00:00"
-        before: "23:30:00"
-    action:
-      - service: open_epaper_link.lines4
-        target:
-          entity_id: open_epaper_link.00000218736E3B1E
-        data:
-          line1: " Update: {{ states('sensor.time') | string }} "
-          line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
-          line3: "PM2.5: {{ states('sensor.study_pm_2_5_concentration') | int | string }} µg/m³ "
-          line4: " Today's Elec {{ states('sensor.blitzwolf_computer_energy_today') | round(2) | string }} kWh "
-          border: b
-          format1: lwwb
-          format2: lwwb
-          format3: lwwb
-          format4: lwwb
-      - delay:
-          seconds: 2
-      - service: script.update_study_energy_display
-################
-#    SCENES    #
-################
-scene:
-
-################
-#    GROUPS    #
-################
-group:
-
-#################
-#    SCRIPTS    #
-#################
-script:
   update_study_energy_display:
     alias: "Update Study Energy Display"
     sequence:
@@ -410,7 +1123,7 @@ script:
           background: white
           rotate: 0
           payload:
-      # Desk
+            # Desk
             - type: text
               value: "Desk:"
               font: ppb.ttf
@@ -435,7 +1148,7 @@ script:
               size: 14
               color: 'black'
               anchor: rb
-    # NAS
+            # NAS
             - type: text
               value: "NAS:"
               font: ppb.ttf
@@ -460,7 +1173,7 @@ script:
               size: 14
               color: 'black'
               anchor: rb
-    # Total energy
+            # Total energy
             - type: text
               value: "Total:"
               font: ppb.ttf
@@ -485,7 +1198,7 @@ script:
               size: 14
               color: 'black'
               anchor: rb
-    # Water
+              # Water
             - type: text
               value: "Water:"
               font: ppb.ttf
@@ -510,7 +1223,7 @@ script:
               size: 14
               color: 'black'
               anchor: rb
-      # Update
+              # Update
             - type: text
               value: " Update: {{ states('sensor.time') | string }} "
               font: ppb.ttf
