@@ -83,7 +83,7 @@ public:
     {
       byte incomingByte = read();
       // ESP_LOGD("DEBUG", "Incoming byte is: %08x", incomingByte);
-      
+
       // First byte, start of a packet
       if (incomingByte == 0x9b)
       {
@@ -108,23 +108,23 @@ public:
       if (history[2] == 0x9b)
       {
 
-        if (msg_type == 0x12 && msg_len == 7)
+        if (msg_type == 0x12 && (msg_len == 7 || msg_len == 10))
         {
           // Empty height
           if (incomingByte == 0)
           {
-             //ESP_LOGD("DEBUG", "Height 1 is EMPTY -> 0x%02x", incomingByte);
-             //deskSerial.write(command_wakeup, sizeof(command_wakeup));
+            // ESP_LOGD("DEBUG", "Height 1 is EMPTY -> 0x%02x", incomingByte);
+            // deskSerial.write(command_wakeup, sizeof(command_wakeup));
           }
           else if (hex_to_int(incomingByte) == 0)
           {
-             //ESP_LOGD("DEBUG", "Invalid height 1 -> 0x%02x", incomingByte);
-             //deskSerial.write(command_wakeup, sizeof(command_wakeup));
+            // ESP_LOGD("DEBUG", "Invalid height 1 -> 0x%02x", incomingByte);
+            // deskSerial.write(command_wakeup, sizeof(command_wakeup));
           }
           else
           {
             valid = true;
-          //   ESP_LOGD("DEBUG", "Height 1 is: 0x%02x", incomingByte);
+            //  ESP_LOGD("DEBUG", "Height 1 is: 0x%02x", incomingByte);
           }
         }
       }
@@ -134,7 +134,7 @@ public:
       {
         if (valid == true)
         {
-           //ESP_LOGD("DEBUG", "Height 2 is: 0x%02x", incomingByte);
+          // ESP_LOGD("DEBUG", "Height 2 is: 0x%02x", incomingByte);
         }
       }
 
@@ -148,7 +148,6 @@ public:
           int height3 = hex_to_int(incomingByte);
           if (height2 == 100) // check if 'number' is a hyphen, return value 10 multiplied by 10
           {
-            
           }
           else
           {
@@ -163,8 +162,6 @@ public:
         }
       }
 
-
-
       // Save byte buffer to history arrary
       history[4] = history[3];
       history[3] = history[2];
@@ -172,15 +169,15 @@ public:
       history[1] = history[0];
       history[0] = incomingByte;
 
-           // End byte
+      // End byte
       if (incomingByte == 0x9d)
       {
         if (value && value != lastPublished)
         {
           publish_state(value);
-            lastPublished = value;
-        } 
+          lastPublished = value;
+        }
       }
-    } 
+    }
   }
 };
