@@ -118,6 +118,8 @@ class WasteData(object):
             self.collector = CirculusCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector == "limburg.net":
             self.collector = LimburgNetCollector(self.hass, self.waste_collector, self.city_name, self.postcode, self.street_name, self.street_number, self.suffix)
+        elif self.waste_collector == "montferland":
+            self.collector = MontferlandNetCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector == "omrin":
             self.collector = OmrinCollector(self.hass, self.waste_collector, self.postcode, self.street_number, self.suffix)
         elif self.waste_collector == "recycleapp":
@@ -680,6 +682,85 @@ class LimburgNetCollector(WasteCollector):
             return False
 
 
+class MontferlandNetCollector(WasteCollector):
+    WASTE_TYPE_MAPPING = {
+        'Glas': WASTE_TYPE_GLASS,
+        'GFT': WASTE_TYPE_GREEN,
+        'Rest afval': WASTE_TYPE_GREY,
+        'PMD': WASTE_TYPE_PACKAGES,
+        'Papier': WASTE_TYPE_PAPER,
+        'Textiel': WASTE_TYPE_TEXTILE,
+        # 'kerstboom': WASTE_TYPE_TREE,
+    }
+
+    def __init__(self, hass, waste_collector, postcode, street_number, suffix):
+        super().__init__(hass, waste_collector, postcode, street_number, suffix)
+        self.main_url = "http://afvalwijzer.afvaloverzicht.nl/"
+        self.query_start = "?Username=GSD&Password=gsd$2014"
+        self.administratie_id = None
+        self.adres_id = None
+
+    def __fetch_address(self):
+        response = requests.get('{}Login.ashx{}&Postcode={}&Huisnummer={}&Toevoeging='.format(
+            self.main_url, self.query_start, self.postcode, self.street_number, self.suffix)).json()
+
+        if not response[0]['AdresID']:
+            _LOGGER.error('AdresID not found!')
+            return
+        
+        if not response[0]['AdministratieID']:
+            _LOGGER.error('AdministratieID not found!')
+            return
+        
+        self.adres_id = response[0]["AdresID"]
+        self.administratie_id = response[0]["AdministratieID"]
+
+    def __get_data(self):
+        data = []
+        
+        today = datetime.today()
+        year = today.year
+
+        get_url = '{}/OphaalDatums.ashx/{}&ADM_ID={}&ADR_ID={}&Jaar={}'.format(
+                self.main_url, self.query_start, self.administratie_id, self.adres_id, year)
+        data = requests.get(get_url).json()
+
+        return data
+
+    async def update(self):
+        _LOGGER.debug('Updating Waste collection dates using Rest API')
+
+        self.collections.remove_all()
+
+        try:
+            if not self.administratie_id or not self.adres_id:
+                await self.hass.async_add_executor_job(self.__fetch_address)
+
+            response = await self.hass.async_add_executor_job(self.__get_data)
+
+            if not response:
+                _LOGGER.error('No Waste data found!')
+                return
+
+            for item in response:
+                if not item['Datum']:
+                    continue
+
+                waste_type = self.map_waste_type(item['Soort'])
+                if not waste_type:
+                    continue
+
+                collection = WasteCollection.create(
+                    date=datetime.strptime(item['Datum'], '%Y-%m-%dT%H:%M:%S'),
+                    waste_type=waste_type
+                )
+                self.collections.add(collection)
+
+        except requests.exceptions.RequestException as exc:
+            _LOGGER.error('Error occurred while fetching data: %r', exc)
+            return False
+
+
 class OmrinCollector(WasteCollector):
     WASTE_TYPE_MAPPING = {
         # 'BRANCHES': WASTE_TYPE_BRANCHES,
@@ -765,11 +846,13 @@ class OpzetCollector(WasteCollector):
         'duobak': WASTE_TYPE_GREENGREY,
         'groente': WASTE_TYPE_GREEN,
         'gft': WASTE_TYPE_GREEN,
+        'groene container': WASTE_TYPE_GREEN,
         'chemisch': WASTE_TYPE_KCA,
         'kca': WASTE_TYPE_KCA,
         'tariefzak restafval': WASTE_TYPE_GREY_BAGS,
         'restafvalzakken': WASTE_TYPE_GREY_BAGS,
         'rest': WASTE_TYPE_GREY,
+        'grijze container': WASTE_TYPE_GREY,
         'plastic': WASTE_TYPE_PACKAGES,
         'papier': WASTE_TYPE_PAPER,
         'textiel': WASTE_TYPE_TEXTILE,
@@ -1024,7 +1107,7 @@ class RecycleApp(WasteCollector):
         super().__init__(hass, waste_collector, postcode, street_number, suffix)
         self.street_name = street_name
         self.main_url = 'https://api.recycleapp.be/api/app/v1/'
-        self.xsecret = '8eTFgy3AQH0mzAcj3xMwaKnNyNnijEFIEegjgNpBHifqtQ4IEyWqmJGFz3ggKQ7B4vwUYS8xz8KwACZihCmboGb6brtVB3rpne2Ww5uUM2n3i4SKNUg6Vp7lhAS8INDUNH8Ll7WPhWRsQOXBCjVz5H8fr0q6fqZCosXdndbNeiNy73FqJBn794qKuUAPTFj8CuAbwI6Wom98g72Px1MPRYHwyrlHUbCijmDmA2zoWikn34LNTUZPd7kS0uuFkibkLxCc1PeOVYVHeh1xVxxwGBsMINWJEUiIBqZt9VybcHpUJTYzureqfund1aeJvmsUjwyOMhLSxj9MLQ07iTbvzQa6vbJdC0hTsqTlndccBRm9lkxzNpzJBPw8VpYSyS3AhaR2U1n4COZaJyFfUQ3LUBzdj5gV8QGVGCHMlvGJM0ThnRKENSWZLVZoHHeCBOkfgzp0xl0qnDtR8eJF0vLkFiKwjX7DImGoA8IjqOYygV3W9i9rIOfK'
+        self.xsecret = 'Op2tDi2pBmh1wzeC5TaN2U3knZan7ATcfOQgxh4vqC0mDKmnPP2qzoQusmInpglfIkxx8SZrasBqi5zgMSvyHggK9j6xCQNQ8xwPFY2o03GCcQfcXVOyKsvGWLze7iwcfcgk2Ujpl0dmrt3hSJMCDqzAlvTrsvAEiaSzC9hKRwhijQAFHuFIhJssnHtDSB76vnFQeTCCvwVB27DjSVpDmq8fWQKEmjEncdLqIsRnfxLcOjGIVwX5V0LBntVbeiBvcjyKF2nQ08rIxqHHGXNJ6SbnAmTgsPTg7k6Ejqa7dVfTmGtEPdftezDbuEc8DdK66KDecqnxwOOPSJIN0zaJ6k2Ye2tgMSxxf16gxAmaOUqHS0i7dtG5PgPSINti3qlDdw6DTKEPni7X0rxM'
         self.xconsumer = 'recycleapp.be'
         self.accessToken = ''
         self.postcode_id = ''
