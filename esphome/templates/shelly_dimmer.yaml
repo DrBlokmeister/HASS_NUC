@@ -13,58 +13,18 @@ esp8266:
   framework:
     version: recommended
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  output_power: 10dB
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: ${device_name} Hotspot
-    password: !secret esphome_fallback_pass
-
-captive_portal:
-
-# Enable logging
-logger:
-  baud_rate: 0
-# Enable Home Assistant API
-api:
-
-# Enable OTA updates
-ota:
-
-# Enable Web server (optional).
-web_server:
-  port: 80
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
 
 uart:
     tx_pin: 1
     rx_pin: 3
     baud_rate: 115200
 
-button:
-  - platform: restart
-    id: restart_button
-    name: "${device_name} Restart"
-
-# Text sensors with general information.
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: ${device_name} IP
-
 # Sensors with general information.
 sensor:
-  # Uptime sensor.
-  - platform: uptime
-    name: ${device_name} Uptime
-
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${device_name} WiFi Signal
-    update_interval: 60s
-
   # Home assistant adaptive lighting
   - platform: homeassistant
     id: colortemperature
@@ -129,6 +89,7 @@ sensor:
       return id(voltage).state * id(current).state;
     update_interval: 1s
     device_class: apparent_power
+    unit_of_measurement: "VA"
     id: apparent_power
     filters:
       - or:
@@ -159,6 +120,7 @@ sensor:
       }
     update_interval: 1s
     device_class: reactive_power
+    unit_of_measurement: "var"
     id: reactive_power
     filters:
       - or:
@@ -189,7 +151,7 @@ light:
       id: current
     min_brightness: "${min_brightness}"
     max_brightness: "${max_brightness}"
-    warmup_brightness: 40
+    warmup_brightness: 100
     leading_edge: false #Trailing edge is for LED dimming (see https://github.com/esphome/issues/issues/3487)
     default_transition_length: 1s
     gamma_correct: 2
