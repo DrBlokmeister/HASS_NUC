@@ -642,17 +642,18 @@ automation:
         entity_id: vacuum.alfred
         to: "error"
         id: "Alfred"
-      - platform: state
-        entity_id: vacuum.moeke
-        to: "error"
+      - platform: template
+        value_template: "{{ not is_state('sensor.moeke_error', 'no_error') and not is_state('vacuum.moeke', 'docked') }}"
         id: "Moeke"
     action:
       - variables:
           vacuumentityid: "{{ trigger.entity_id }}"
+          vacuumentityname: "{{ 'vacuum.moeke' if trigger.id == 'Moeke' else trigger.entity_id }}"
+          errordescription: "{{ states('sensor.moeke_error') if trigger.id == 'Moeke' else 'Error' }}"
       - service: camera.snapshot
         continue_on_error: true
         data:
-          entity_id: "camera.{{ vacuumentityid[7:] }}_map"
+          entity_id: "camera.{{ vacuumentityname.split('.')[1] }}_map"
           filename: "/config/www/tmp/snapshot_vacuum_error.jpg"
       - delay:
           seconds: 5
@@ -660,15 +661,15 @@ automation:
         continue_on_error: true
         data:
           title: "Error with {{ trigger.id }}"
-          message: "Vacuum {{ trigger.id }} has state {{ trigger.to_state.state }}!"
+          message: "Vacuum {{ trigger.id }} has an error{% if trigger.id == 'Moeke' %} with description '{{ errordescription }}'.{% else %}.{% endif %}"
           data:
             group: vacuum
             tag: vacuumerror
-            icon_url: local/icons/robot-vacuum.png
+            icon_url: "/local/icons/robot-vacuum.png"
             image: "/local/tmp/snapshot_vacuum_error.jpg"
       - service: scene.create
         data:
-          scene_id: atmoorb_bulbs_before
+          scene_id: "atmoorb_bulbs_before"
           snapshot_entities:
             - light.ambilight_left
             - light.ambilight_right
@@ -678,18 +679,18 @@ automation:
             - light.ambilight_left
             - light.ambilight_right
         data:
-          rgb_color: [255,0,0]
-          effect: Fast Pulse
-      - wait_template: "{{ not is_state( vacuumentityid, 'error' ) }}"
+          rgb_color: [255, 0, 0]
+          effect: "Fast Pulse"
+      - wait_template: "{{ is_state(vacuumentityid, 'docked') or is_state(vacuumentityid, 'idle') }}"
       - service: scene.turn_on
         data:
-          entity_id: scene.atmoorb_bulbs_before
+          entity_id: "scene.atmoorb_bulbs_before"
           transition: 1
       - service: notify.mobile_app_blokmeisters21u
         data:
           message: "clear_notification"
           data:
-            tag: vacuumerror
+            tag: "vacuumerror"
 
   - alias: '[home|vacuum]Notify if Moeke Clean Water Reservoir is Empty'
     id: home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty
