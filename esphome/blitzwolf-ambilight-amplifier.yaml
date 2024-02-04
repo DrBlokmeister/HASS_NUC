@@ -181,23 +181,13 @@ sensor:
             - delta: 0.1
     change_mode_every: 4
     update_interval: 1s
-  - platform: total_daily_energy
+  - platform: total_daily_energy #I think this sensor can be removed?
     name: '${device_name} daily energy'
     power_id: power
     unit_of_measurement: kWh
     accuracy_decimals: 5
-
-  - platform: wifi_signal
-    name: '${device_name} WiFi Signal'
-    update_interval: 60s
-    accuracy_decimals: 0
-  - platform: uptime
-    name: '${device_name} Uptime'
-    unit_of_measurement: days
-    update_interval: 300s
-    accuracy_decimals: 1
     filters:
-      - multiply: 0.000011574
+      - multiply: 0.001 #From Wh to kWh.
 
   - platform: template
     name: "${device_name} Apparent Power"
@@ -205,6 +195,7 @@ sensor:
       return id(voltage).state * id(current).state;
     update_interval: 1s
     device_class: apparent_power
+    unit_of_measurement: "VA"
     id: apparent_power
     filters:
       - or:
@@ -235,6 +226,7 @@ sensor:
       }
     update_interval: 1s
     device_class: reactive_power
+    unit_of_measurement: "var"
     id: reactive_power
     filters:
       - or:
