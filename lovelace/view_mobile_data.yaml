@@ -1,0 +1,51 @@
+title: Mobile Data Monitoring
+icon: mdi:cellphone-information
+badges: []
+cards:
+  - type: entities
+    title: Mobile Data Usage Overview
+    entities:
+      - entity: sensor.youfone_sim_info
+        name: SIM Status
+      - entity: sensor.youfone_data_subscription
+        name: Data Limit
+      - entity: sensor.youfone_remaining_days
+        name: Days until Renewal
+      - entity: sensor.youfone_data
+        name: Data Usage Percentage
+
+  - type: custom:apexcharts-card
+    header:
+      title: Mobile Data Usage This Month
+      show: true
+      show_states: true
+      standard_format: true
+    graph_span: 30d
+    span:
+      start: month
+    now:
+      show: true
+    yaxis:
+      - min: 0
+        max: 100
+        apex_config:
+          stepSize: 25
+          tickAmount: 4
+          forceNiceScale: false
+          labels:  # Add '%'
+            formatter: |
+              EVAL:function(value) {
+                return `${value} %`;
+              }
+    series:
+      - entity: sensor.youfone_data
+        name: Data Usage
+        float_precision: 1
+        type: line
+        extend_to: now
+        color: '#1E90FF' # DodgerBlue
+        # Other color suggestions:
+        # - '#FF6347' # Tomato
+        # - '#32CD32' # LimeGreen
+        # - '#FFD700' # Gold
+        # - '#6A5ACD' # SlateBlue
