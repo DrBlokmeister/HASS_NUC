@@ -1,0 +1,148 @@
+homeassistant:
+  customize:
+
+
+utility_meter:
+  # Daily Total Sleep Time for Long-Term Analysis
+  daily_total_sleep_time:
+    source: sensor.total_sleep_time
+    cycle: daily
+    offset: '18:00'
+
+  # Daily Actual Sleep Time for Long-Term Analysis
+  daily_actual_sleep_time:
+    source: sensor.actual_sleep_time
+    cycle: daily
+    offset: '18:00'
+#################
+#    SENSORS    #
+#################
+sensor:
+  # Total Time Spent in Bed (Sleep Tracking Duration)
+  - platform: history_stats
+    name: "Total Sleep Time"
+    entity_id: sensor.sleepasandroid_sander
+    state:
+      - sleep_tracking_started
+      - sleep_tracking_paused
+      - sleep_tracking_resumed
+      - deep_sleep
+      - light_sleep
+      - rem
+      - not_awake
+    type: time
+    start: >
+      {% if now().hour >= 18 %}
+        {{ now().replace(hour=18, minute=0, second=0) }}
+      {% else %}
+        {{ (now() - timedelta(days=1)).replace(hour=18, minute=0, second=0) }}
+      {% endif %}
+    end: "{{ now() }}"
+
+  # Actual Sleep Time (Deep, Light, REM Sleep)
+  - platform: history_stats
+    name: "Actual Sleep Time"
+    entity_id: sensor.sleepasandroid_sander
+    state:
+      - deep_sleep
+      - light_sleep
+      - rem
+      - not_awake
+    type: time
+    start: >
+      {% if now().hour >= 18 %}
+        {{ now().replace(hour=18, minute=0, second=0) }}
+      {% else %}
+        {{ (now() - timedelta(days=1)).replace(hour=18, minute=0, second=0) }}
+      {% endif %}
+    end: "{{ now() }}"
+
+  # Time spent awake
+  - platform: history_stats
+    name: "Actual Awake Time"
+    entity_id: sensor.sleepasandroid_sander
+    state:
+      - awake
+    type: time
+    start: >
+      {% if now().hour >= 18 %}
+        {{ now().replace(hour=18, minute=0, second=0) }}
+      {% else %}
+        {{ (now() - timedelta(days=1)).replace(hour=18, minute=0, second=0) }}
+      {% endif %}
+    end: "{{ now() }}"
+    
+  # Sleep Efficiency Calculation
+  - platform: template
+    sensors:
+      sleep_efficiency:
+        friendly_name: "Sleep Efficiency"
+        unit_of_measurement: '%'
+        value_template: >
+          {% set sleep_time = states('sensor.actual_sleep_time') | float %}
+          {% set in_bed_time = states('sensor.total_sleep_time') | float %}
+          {% if in_bed_time > 0 %}
+            {{ ((sleep_time / in_bed_time) * 100) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+
+  - platform: statistics
+    name: "Monthly Mean Total Sleep Time"
+    entity_id: sensor.daily_total_sleep_time
+    state_characteristic: mean
+    max_age:
+      days: 30
+  - platform: statistics
+    name: "Monthly Mean Actual Sleep Time"
+    entity_id: sensor.daily_actual_sleep_time
+    state_characteristic: mean
+    max_age:
+      days: 30
+
+  - platform: statistics
+    name: "Monthly STD Total Sleep Time"
+    entity_id: sensor.daily_total_sleep_time
+    state_characteristic: standard_deviation
+    max_age:
+      days: 30
+  - platform: statistics
+    name: "Monthly STD Actual Sleep Time"
+    entity_id: sensor.daily_actual_sleep_time
+    state_characteristic: standard_deviation
+    max_age:
+      days: 30
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
