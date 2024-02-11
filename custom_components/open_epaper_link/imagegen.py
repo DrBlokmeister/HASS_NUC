@@ -124,12 +124,12 @@ def customimage(entity_id, service, hass):
         img = Image.new('RGBA', (canvas_width, canvas_height), color=background)
     pos_y = 0
     for element in payload:
-        _LOGGER.info("type: " + element["type"])
+        _LOGGER.debug("type: " + element["type"])
         if not should_show_element(element):
             continue
         #line
         if element["type"] == "line":
-            img_line = ImageDraw.Draw(img)  
+            img_line = ImageDraw.Draw(img)
             if not "y_start" in element:
                 y_start = pos_y + element.get("y_padding", 0)
                 y_end = y_start
@@ -140,7 +140,7 @@ def customimage(entity_id, service, hass):
             pos_y = y_start
         #rectangle
         if element["type"] == "rectangle":
-            img_rect = ImageDraw.Draw(img)  
+            img_rect = ImageDraw.Draw(img)
             img_rect.rectangle([(element['x_start'],element['y_start']),(element['x_end'],element['y_end'])],fill = getIndexColor(element['fill']), outline=getIndexColor(element['outline']), width=element['width'])
         #text
         if element["type"] == "text":
