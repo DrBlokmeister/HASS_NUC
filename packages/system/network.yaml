@@ -51,58 +51,118 @@ rest:
     sensor:
       - name: "AirVPN exit IP"
         unique_id: "yaml_restful_airvpn_exit_ip_new"
-        value_template: "{{ value_json.sessions[0].exit_ip }}"
+        value_template: >-
+          {% if value_json is defined and value_json.sessions is defined and value_json.sessions | length > 0 %}
+            {{ value_json.sessions[0].exit_ip }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Username"
         unique_id: "yaml_restful_airvpn_username"
-        value_template: "{{ value_json.user.login }}"
+        value_template: >-
+          {% if value_json is defined and value_json.user is defined %}
+            {{ value_json.user.login }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:account"
       - name: "AirVPN VPN IP"
         unique_id: "yaml_restful_airvpn_vpn_ip"
-        value_template: "{{ value_json.connection.vpn_ip }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ value_json.connection.vpn_ip }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Exit IP"
         unique_id: "yaml_restful_airvpn_exit_ip"
-        value_template: "{{ value_json.connection.exit_ip }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ value_json.connection.exit_ip }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Entry IP"
         unique_id: "yaml_restful_airvpn_entry_ip"
-        value_template: "{{ value_json.connection.entry_ip }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ value_json.connection.entry_ip }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Server Name"
         unique_id: "yaml_restful_airvpn_server_name"
-        value_template: "{{ value_json.connection.server_name }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ value_json.connection.server_name }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:server"
       - name: "AirVPN Server Country"
         unique_id: "yaml_restful_airvpn_server_country"
-        value_template: "{{ value_json.connection.server_country }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ value_json.connection.server_country }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         icon: "mdi:earth"
       - name: "AirVPN Data Uploaded"
         unique_id: "yaml_restful_airvpn_data_uploaded"
-        value_template: "{{ (value_json.connection.bytes_read/(1024*1024*1024))|round(2) }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ (value_json.connection.bytes_read/(1024*1024*1024))|round(2) }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         device_class: data_size
         unit_of_measurement: GB
         icon: "mdi:upload-network-outline"
       - name: "AirVPN Data Downloaded"
         unique_id: "yaml_restful_airvpn_data_downloaded"
-        value_template: "{{ (value_json.connection.bytes_write/(1024*1024*1024))|round(2) }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ (value_json.connection.bytes_write/(1024*1024*1024))|round(2) }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         device_class: data_size
         unit_of_measurement: GB
         icon: "mdi:download-network-outline"
       - name: "AirVPN Connected Since"
         unique_id: "yaml_restful_airvpn_connected_since"
-        value_template: "{{ as_datetime(value_json.connection.connected_since_unix) }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ as_datetime(value_json.connection.connected_since_unix) }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         device_class: timestamp
         icon: "mdi:timer-sand"
       - name: "AirVPN Upload Speed"
         unique_id: "yaml_restful_airvpn_upload_speed"
-        value_template: "{{ (value_json.connection.speed_read/(1024*1024))|round(2) }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ (value_json.connection.speed_read/(1024*1024))|round(2) }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         device_class: data_rate
         unit_of_measurement: MB/s
         icon: "mdi:upload-network"
       - name: "AirVPN Download Speed"
         unique_id: "yaml_restful_airvpn_download_speed"
-        value_template: "{{ (value_json.connection.speed_write/(1024*1024))|round(2) }}"
+        value_template: >-
+          {% if value_json is defined and value_json.connection is defined %}
+            {{ (value_json.connection.speed_write/(1024*1024))|round(2) }}
+          {% else %}
+            'unavailable'
+          {% endif %}
         device_class: data_rate
         unit_of_measurement: MB/s
         icon: "mdi:download-network"
