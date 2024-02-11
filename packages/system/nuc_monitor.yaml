@@ -124,6 +124,19 @@ sensor:
   #   queries:
   #     - name: InfluxDB Size
   #       unit_of_measurement: MB
+  #       value_template: '{{ value | float | round(1) }}'
+  #       group_function: sum
+  #       measurement: '"_internal".."tsm1_engine"'
+  #       database: _internal
+  #       where: 'time > now() - 10m'
+  #       field: diskBytes
+
+  # - platform: influxdb
+  #   username: !secret influxdb_user
+  #   password: !secret influxdb_pass
+  #   queries:
+  #     - name: InfluxDB Size
+  #       unit_of_measurement: MB
   #       value_template: '{{ (value | float / 1024 /1024) | round(1) }}'
   #       group_function: sum
   #       measurement: '"monitor"."shard"'
@@ -284,7 +297,7 @@ automation:
     action:
       - service: recorder.purge
         data:
-          keep_days: 7
+          keep_days: 14
           repack: true
 
   - alias: "[System Monitor] Monitor log for errors"
