@@ -17,6 +17,7 @@ packages:
   wifi: !include /config/esphome/common/wifi.yaml
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
+  power: !include /config/esphome/common/power.yaml
 
 uart:
     tx_pin: 1
@@ -83,49 +84,49 @@ sensor:
     id: temp_analog_reading
     pin: A0
 
-  - platform: template
-    name: "${device_name} Apparent Power"
-    lambda: |-
-      return id(voltage).state * id(current).state;
-    update_interval: 1s
-    device_class: apparent_power
-    unit_of_measurement: "VA"
-    id: apparent_power
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 1.0
-  - platform: template
-    name: "${device_name} Power Factor"
-    lambda: |-
-      if (round(id(power).state) == 0) {
-        return 0;
-      } else {
-        return id(power).state / id(voltage).state / id(current).state;
-      }
-    update_interval: 1s
-    device_class: power_factor
-    id: power_factor
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 0.1
-  - platform: template
-    name: "${device_name} Reactive Power"
-    lambda: |-
-      if (pow(id(voltage).state * id(current).state, 2) <= pow(id(power).state, 2)) {
-        return 0;
-      } else {
-        return sqrt(pow(id(voltage).state * id(current).state, 2) - pow(id(power).state, 2));
-      }
-    update_interval: 1s
-    device_class: reactive_power
-    unit_of_measurement: "var"
-    id: reactive_power
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 1.0
+  # - platform: template
+  #   name: "${device_name} Apparent Power"
+  #   lambda: |-
+  #     return id(voltage).state * id(current).state;
+  #   update_interval: 1s
+  #   device_class: apparent_power
+  #   unit_of_measurement: "VA"
+  #   id: apparent_power
+  #   filters:
+  #     - or:
+  #       - throttle_average: 60s
+  #       - delta: 1.0
+  # - platform: template
+  #   name: "${device_name} Power Factor"
+  #   lambda: |-
+  #     if (round(id(power).state) == 0) {
+  #       return 0;
+  #     } else {
+  #       return id(power).state / id(voltage).state / id(current).state;
+  #     }
+  #   update_interval: 1s
+  #   device_class: power_factor
+  #   id: power_factor
+  #   filters:
+  #     - or:
+  #       - throttle_average: 60s
+  #       - delta: 0.1
+  # - platform: template
+  #   name: "${device_name} Reactive Power"
+  #   lambda: |-
+  #     if (pow(id(voltage).state * id(current).state, 2) <= pow(id(power).state, 2)) {
+  #       return 0;
+  #     } else {
+  #       return sqrt(pow(id(voltage).state * id(current).state, 2) - pow(id(power).state, 2));
+  #     }
+  #   update_interval: 1s
+  #   device_class: reactive_power
+  #   unit_of_measurement: "var"
+  #   id: reactive_power
+  #   filters:
+  #     - or:
+  #       - throttle_average: 60s
+  #       - delta: 1.0
 
 
 # Shelly 2 Dimmer light
