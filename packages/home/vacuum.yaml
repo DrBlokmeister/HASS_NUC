@@ -643,7 +643,7 @@ automation:
         to: "error"
         id: "Alfred"
       - platform: template
-        value_template: "{{ not is_state('sensor.moeke_error', 'no_error') and not is_state('vacuum.moeke', 'docked') }}"
+        value_template: "{{ not is_state('sensor.moeke_error', 'no_error') and (state('vacuum.moeke') in ['docked', 'paused']) }}"
         id: "Moeke"
     action:
       - variables:
@@ -681,7 +681,7 @@ automation:
         data:
           rgb_color: [255, 0, 0]
           effect: "Fast Pulse"
-      - wait_template: "{{ is_state(vacuumentityid, 'docked') or is_state(vacuumentityid, 'idle') }}"
+      - wait_template: "{{ not states(vacuumentityid) in ['error', 'paused'] }}"
       - service: scene.turn_on
         data:
           entity_id: "scene.atmoorb_bulbs_before"
