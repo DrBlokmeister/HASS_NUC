@@ -1,6 +1,73 @@
 title: Power Diagnostics
 icon: mdi:lightning-bolt-circle
 cards:
+  - type: custom:apexcharts-card
+    graph_span: 16h
+    span:
+      start: day
+      offset: +6h
+    header:
+      show: true
+      title: Solar Production Last 7 Days
+      show_states: false
+      colorize_states: true
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    chart_type: line
+    update_interval: 1m
+    yaxis:
+      - min: 0
+        max: ~1000
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+    all_series_config:
+      stroke_width: 2
+      float_precision: 0
+      transform: "return Math.round(x);"
+      unit: W
+      group_by:
+        func: avg
+        duration: 15min
+    series:
+      - entity: sensor.solar_panel_power_production_available
+        name: Today
+        color: '#57c785' # Lighter and slightly different hue
+        stroke_width: 4 # Thicker line for better visibility
+        extend_to: now
+      - entity: sensor.solar_panel_power_production_available
+        offset: '-1d'
+        name: Yesterday
+        color: '#0da035'
+        opacity: 0.75
+      - entity: sensor.solar_panel_power_production_available
+        offset: '-2d'
+        name: 2 Days Ago
+        color: '#0da035'
+        opacity: 0.5
+      - entity: sensor.solar_panel_power_production_available
+        offset: '-3d'
+        name: 3 Days Ago
+        color: '#0da035'
+        opacity: 0.25
+      - entity: sensor.solar_panel_power_production_available
+        offset: '-4d'
+        name: 4 Days Ago
+        color: '#0da035'
+        opacity: 0.2
+      - entity: sensor.solar_panel_power_production_available
+        offset: '-5d'
+        name: 5 Days Ago
+        color: '#0da035'
+        opacity: 0.15
+      - entity: sensor.solar_panel_power_production_available
+        offset: '-6d'
+        name: 6 Days Ago
+        color: '#0da035'
+        opacity: 0.1
   - type: vertical-stack
     cards:
       - type: horizontal-stack
@@ -419,3 +486,70 @@ cards:
         group_by:
           func: avg
           duration: 1h
+
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    span:
+      start: day
+    header:
+      show: true
+      title: Total Power Consumption Last 24 Hours
+      show_states: false
+      colorize_states: true
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    chart_type: line
+    update_interval: 1m
+    yaxis:
+      - min: 0
+        max: ~1000
+        decimals: 0
+        apex_config:
+          tickAmount: 5
+          forceNiceScale: True
+    all_series_config:
+      stroke_width: 2
+      float_precision: 0
+      transform: "return Math.round(x);"
+      unit: W
+      group_by:
+        func: avg
+        duration: 15min
+    series:
+      - entity: sensor.total_power_consumption_watt
+        name: Today
+        color: '#00BCD4' # Light blue for "Today"
+        stroke_width: 4 # Thicker line for better visibility
+      - entity: sensor.total_power_consumption_watt
+        offset: '-1d'
+        name: Yesterday
+        color: '#2196F3' # Blue
+        opacity: 0.75
+      - entity: sensor.total_power_consumption_watt
+        offset: '-2d'
+        name: 2 Days Ago
+        color: '#3F51B5' # Indigo
+        opacity: 0.5
+      - entity: sensor.total_power_consumption_watt
+        offset: '-3d'
+        name: 3 Days Ago
+        color: '#673AB7' # Deep purple
+        opacity: 0.25
+      - entity: sensor.total_power_consumption_watt
+        offset: '-4d'
+        name: 4 Days Ago
+        color: '#9C27B0' # Purple
+        opacity: 0.2
+      - entity: sensor.total_power_consumption_watt
+        offset: '-5d'
+        name: 5 Days Ago
+        color: '#E91E63' # Pink
+        opacity: 0.15
+      - entity: sensor.total_power_consumption_watt
+        offset: '-6d'
+        name: 6 Days Ago
+        color: '#F44336' # Red
+        opacity: 0.1

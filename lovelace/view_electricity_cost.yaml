@@ -1,7 +1,73 @@
 title: Electricity Costs
 icon: mdi:flash
 cards:
-
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    span:
+      start: day
+    header:
+      show: true
+      title: Electricity Price Last 7 Days
+      show_states: false
+      colorize_states: true
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    chart_type: line
+    update_interval: 1m
+    yaxis:
+      - min: ~0.10
+        max: ~0.20
+        decimals: 3
+        apex_config:
+          tickAmount: 5
+          forceNiceScale: True
+    all_series_config:
+      stroke_width: 2
+      float_precision: 3
+      transform: "return Math.round(x * 1000) / 1000;"
+      unit: €/kWh
+      # group_by:
+      #   func: avg
+      #   duration: 15min
+    series:
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        name: Today
+        color: '#f9d423' # Bright yellow for visibility
+        stroke_width: 4 # Thicker line for Today
+        extend_to: now
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        offset: '-1d'
+        name: Yesterday
+        color: '#f48642' # Orange
+        opacity: 0.75
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        offset: '-2d'
+        name: 2 Days Ago
+        color: '#f45d3e' # Darker Orange
+        opacity: 0.5
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        offset: '-3d'
+        name: 3 Days Ago
+        color: '#f44336' # Red
+        opacity: 0.25
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        offset: '-4d'
+        name: 4 Days Ago
+        color: '#ff5722' # Deep orange
+        opacity: 0.2
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        offset: '-5d'
+        name: 5 Days Ago
+        color: '#e64a19' # Dark orange
+        opacity: 0.15
+      - entity: sensor.nordpool_kwh_nl_eur_3_10_021
+        offset: '-6d'
+        name: 6 Days Ago
+        color: '#d84315' # Dark red
+        opacity: 0.1
   # Current and Potential Costs Overview
   - type: vertical-stack
     cards:
