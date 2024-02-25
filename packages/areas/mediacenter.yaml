@@ -43,6 +43,44 @@ media_player:
   #   host: 192.168.1.51
   #   name: Ambilight_RPI
 
+command_line:
+  - sensor:
+      name: 'CoreELEC CPU temp'
+      unit_of_measurement: '°C'
+      scan_interval: 60
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.20.50
+        cputemp | awk '{print $1}'
+      #availability_template: '{{ is_state('device_tracker.coreelec', 'home') }}'
+  - sensor:
+      name: 'CoreELEC GPU temp'
+      unit_of_measurement: '°C'
+      scan_interval: 60
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.20.50
+        gputemp | awk '{print $1}'
+      #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
+  - sensor:
+      name: 'CoreELEC Memory Usage'
+      unit_of_measurement: '%'
+      scan_interval: 60
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.20.50
+        free -m | awk 'NR==2{printf "%.2f\n", $3*100/$2 }'
+      #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
+  - sensor:
+      name: 'CoreELEC Disk Usage'
+      unit_of_measurement: '%'
+      scan_interval: 60
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.20.50
+        df -h /storage | awk '{ if (NR==2) print $5}' | tr -d '%'
+      #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
+
 #################
 #    SENSORS    #
 #################
@@ -52,30 +90,12 @@ sensor:
   #   host: 10.0.0.252
 
   # - platform: command_line
-  #   name: 'CoreELEC CPU temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-  #     root@192.168.1.50
-  #     cputemp | awk '{print $1}'
-
-  # - platform: command_line
-  #   name: 'CoreELEC GPU temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-  #     root@192.168.1.50
-  #     gputemp | awk '{print $1}'
-
-  # - platform: command_line
   #   name: 'LibreELEC CPU temp'
   #   unit_of_measurement: '°C'
   #   scan_interval: 60
   #   command: >-
   #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-  #     root@192.168.1.51
+  #     root@10.0.20.51
   #     cputemp | awk '{print $1}'
 
   # - platform: command_line
@@ -84,7 +104,7 @@ sensor:
   #   scan_interval: 60
   #   command: >-
   #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-  #     root@192.168.1.51
+  #     root@10.0.20.51
   #     gputemp | awk '{print $1}'
 ########################
 #    BINARY SENSORS    #
