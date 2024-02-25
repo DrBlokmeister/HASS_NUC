@@ -1,0 +1,130 @@
+substitutions:
+  device_name: "IR Remote Study"
+  espname: "ir-remote-study"
+
+esphome:
+  name: '${espname}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: esp-idf
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+remote_receiver:
+  pin:
+    number: GPIO33
+    inverted: true
+    mode:
+        input: true
+        pullup: true
+  dump:
+    - raw
+  buffer_size: 30kB
+
+remote_transmitter:
+  pin: GPIO7
+  carrier_duty_percent: 50%
+
+button:
+  - platform: template
+    name: "Turn On/Off Speakers"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9008, -4472, 609, -523, 608, -525, 607, -525, 607, -525, 607, -1657, 608, -524, 608, -524, 608, -525, 607, -1657, 607, -1657, 607, -1657, 607, -525, 607, -525, 607, -1658, 607, -1657, 607, -1657, 606, -526, 606, -1658, 606, -1658, 606, -526, 606, -526, 606, -526, 605, -1659, 605, -527, 605, -1659, 605, -527, 605, -527, 605, -1658, 605, -1659, 604, -1659, 605, -527, 604, -1660, 604]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Volume Up"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9002, -4476, 604, -527, 604, -528, 604, -528, 604, -528, 603, -1660, 603, -528, 604, -528, 603, -528, 604, -1659, 604, -1659, 603, -1660, 603, -529, 602, -529, 603, -1660, 603, -1659, 603, -1660, 603, -529, 602, -1660, 603, -1660, 603, -529, 603, -528, 603, -529, 603, -529, 602, -529, 602, -1661, 603, -528, 603, -529, 602, -1661, 603, -1660, 603, -1660, 604, -1660, 603, -1661, 603]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Volume Down"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9005, -4474, 608, -525, 606, -526, 606, -525, 607, -525, 607, -1657, 607, -525, 607, -525, 607, -525, 606, -1658, 606, -1657, 606, -1658, 606, -526, 606, -526, 605, -1658, 606, -1657, 606, -1658, 606, -1658, 606, -526, 605, -526, 605, -1658, 605, -526, 606, -526, 605, -1657, 606, -526, 605, -526, 606, -1657, 605, -1657, 606, -526, 605, -1657, 606, -1657, 605, -527, 605, -1657, 606]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Set Channel to PC"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9010, -4467, 613, -519, 613, -519, 612, -519, 613, -519, 612, -1651, 613, -519, 612, -519, 612, -520, 612, -1651, 612, -1651, 612, -1652, 611, -520, 611, -521, 610, -1653, 610, -1652, 611, -1652, 610, -1653, 610, -1653, 610, -1653, 609, -523, 608, -523, 609, -523, 608, -524, 608, -524, 608, -523, 608, -524, 608, -524, 608, -1655, 607, -1656, 607, -1655, 607, -1656, 607, -1656, 606]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Set Channel to AUX"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9007, -4473, 605, -527, 603, -529, 602, -530, 602, -530, 601, -1663, 601, -531, 600, -532, 600, -532, 600, -1663, 601, -1663, 600, -1665, 598, -534, 597, -536, 596, -1668, 596, -1668, 595, -1669, 595, -1669, 594, -538, 594, -538, 593, -1671, 592, -540, 591, -541, 591, -541, 590, -542, 589, -543, 589, -1675, 589, -1676, 586, -546, 19, -2, 561, -1683, 580, -1684, 17, -3, 558, -1687, 14, -6, 555, -1689, 12, -8, 554]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Set Channel to OPT"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9007, -4472, 608, -524, 607, -525, 607, -525, 607, -524, 608, -1656, 607, -525, 607, -525, 607, -525, 607, -1656, 607, -1657, 607, -1656, 607, -525, 607, -525, 607, -1657, 607, -1656, 607, -1657, 607, -1657, 607, -525, 607, -1657, 607, -525, 607, -525, 607, -524, 607, -1656, 608, -524, 608, -524, 607, -1657, 607, -525, 607, -1656, 607, -1656, 608, -1656, 607, -525, 607, -1657, 607]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Set Channel to COX"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9003, -4476, 606, -526, 605, -527, 605, -527, 605, -527, 605, -1659, 606, -526, 606, -526, 606, -526, 606, -1658, 606, -1658, 607, -1657, 607, -525, 606, -526, 607, -1657, 607, -1657, 607, -1657, 607, -1657, 607, -1657, 607, -525, 607, -525, 607, -525, 607, -525, 607, -525, 608, -524, 607, -525, 608, -524, 608, -1656, 608, -1656, 608, -1655, 609, -1656, 607, -1656, 608, -1656, 608]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Set Channel to Bluetooth"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9008, -4468, 610, -521, 610, -522, 610, -522, 609, -522, 610, -1653, 610, -522, 610, -521, 610, -522, 610, -1653, 610, -1653, 610, -1653, 610, -521, 610, -522, 610, -1652, 611, -1653, 610, -1653, 610, -521, 610, -522, 610, -1653, 611, -1653, 610, -1653, 610, -522, 610, -1653, 611, -520, 611, -1652, 612, -1652, 611, -520, 612, -520, 612, -520, 611, -1652, 612, -520, 611, -1653, 611]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms
+
+  - platform: template
+    name: "Mute Speakers"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          code: [9001, -4475, 606, -526, 606, -526, 606, -526, 606, -526, 607, -1657, 607, -525, 607, -525, 607, -524, 608, -1656, 608, -1655, 609, -1655, 609, -523, 609, -523, 609, -1655, 609, -1655, 609, -1654, 610, -1654, 610, -522, 610, -522, 610, -522, 610, -522, 610, -521, 611, -1653, 611, -521, 611, -521, 611, -1653, 611, -1653, 611, -1653, 611, -1652, 612, -1652, 612, -520, 612, -1653, 611]
+          carrier_frequency: 38kHz
+          repeat:
+            times: 5
+            wait_time: 16ms

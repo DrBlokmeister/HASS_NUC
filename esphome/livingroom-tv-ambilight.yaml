@@ -1,0 +1,128 @@
+substitutions:
+  device_name: "Livingroom TV Ambilight"
+  espname: "livingroom-tv-ambilight"
+
+esphome:
+  name: '${espname}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+#   framework:
+#     type: esp-idf
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+e131:
+  method: unicast
+
+# Example configuration entry
+# spi:
+#   mosi_pin: GPIO35
+#   clk_pin: GPIO33
+
+light:
+#   - platform: spi_led_strip
+#     num_leds: 222
+#     color_correct: [80%, 60%, 100%]
+#     id: rgb_led
+#     name: "${device_name}"
+#     data_rate: 1MHz
+  - platform: fastled_spi
+    chipset: APA102
+    data_pin: GPIO35  #WRONG PINS!
+    clock_pin: GPIO33 #WRONG PINS!
+    num_leds: 222 #bottom: 0-71, right: 72-110, top: 111-182, left: 183-221
+    rgb_order: BGR
+    name: "${device_name}"
+    effects:
+      - e131:
+          universe: 1
+          channels: RGB
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 100%
+      - addressable_rainbow:
+          name: Rainbow
+          speed: 51
+          width: 222
+      - addressable_lambda:
+          name: "Random Running Dots with Afterglow"
+          update_interval: 20ms
+          lambda: |-
+            static int progress = 0;
+            const int dot_count = 5; // Number of dots to run
+            static int positions[dot_count] = {-1, -1, -1, -1, -1}; // Positions of the dots
+            static ESPColor colors[dot_count]; // Colors of the dots
+            static bool initial = true;
+
+            if (initial) {
+              for (int i = 0; i < dot_count; i++) {
+                positions[i] = random(0, it.size());
+                colors[i] = ESPColor(random(0, 255), random(0, 255), random(0, 255));
+              }
+              initial = false;
+            }
+
+            // Fade all LEDs slightly
+            for (int i = 0; i < it.size(); i++) {
+              ESPColor current = it[i].get();
+              it[i] = ESPColor(max(0, current.r - 10), max(0, current.g - 10), max(0, current.b - 10));
+            }
+
+            // Move and redraw dots
+            for (int i = 0; i < dot_count; i++) {
+              // Erase the dot's previous position
+              if (positions[i] != -1) it[positions[i]] = it[positions[i]].get().fade_to_black(50);
+
+              // Move the dot
+              positions[i] = (positions[i] + 1) % it.size();
+
+              // Redraw at new position with afterglow
+              it[positions[i]] = colors[i];
+            }
+
+            progress++;
+            if (progress > it.size()) {
+              progress = 0;
+              // Optionally, re-randomize colors and positions after a full cycle
+              for (int i = 0; i < dot_count; i++) {
+                positions[i] = random(0, it.size());
+                colors[i] = ESPColor(random(0, 255), random(0, 255), random(0, 255));
+              }
+            }
+      - addressable_lambda:
+          name: "Breathing Rainbow Swirl"
+          update_interval: 50ms
+          lambda: |-
+            static int breathe_progress = 0;
+            static int color_progress = 0;
+            const int breathe_max = 512;
+            const float pi = 3.14159265;
+
+            // Sinusoidal breathing calculation
+            float breathe_intensity = (sin(breathe_progress * 2 * pi / breathe_max) + 1) / 2;
+
+            for (int i = 0; i < it.size(); i++) {
+              int hue = (i + color_progress) % 360;
+              // Assuming manual HSV to RGB conversion or direct RGB usage
+              // Placeholder for setting color based on hue and breathe_intensity
+              // This part needs adjustment based on available functions or manual conversion
+              it[i] = it[i].get(); // Placeholder for actual color setting
+            }
+
+            breathe_progress = (breathe_progress + 1) % breathe_max;
+            color_progress = (color_progress + 1) % 360;
