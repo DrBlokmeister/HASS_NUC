@@ -1,42 +1,23 @@
 substitutions:
   device_name: "Ventilation Controller ESP32"
   device_name_short: "Ventilation ESP32"
+  espname: "ventilation-controller-esp32"
 
 esphome:
   name: ventilation-controller-esp32
+  comment: "${shelly_dimmer_version}"
 
 esp32:
   board: esp32doit-devkit-v1
 
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
+
 wifi:
-  power_save_mode: none
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: ${device_name_short} Hotspot
-    password: !secret esphome_fallback_pass
-
-captive_portal:
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
-
-ota:
-
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: ${device_name} IP
-
-time:
-  - platform: sntp
-    # on_time:
-    #   - seconds: /30
-
 
 output:
   - platform: ledc
@@ -51,17 +32,6 @@ fan:
     id: ventilationsystem
 
 sensor:
-  # Uptime sensor
-  - platform: uptime
-    name: ${device_name} Uptime
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${device_name} WiFi Signal
-    update_interval: 60s
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 1
   # ADC sensors
   - platform: adc
     pin: 35
