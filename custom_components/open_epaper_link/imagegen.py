@@ -11,6 +11,7 @@ import shutil
 import asyncio
 import time
 from .const import DOMAIN
+from .util import get_image_folder, get_image_path
 from PIL import Image, ImageDraw, ImageFont
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from homeassistant.exceptions import HomeAssistantError
@@ -124,12 +125,12 @@ def customimage(entity_id, service, hass):
         img = Image.new('RGBA', (canvas_width, canvas_height), color=background)
     pos_y = 0
     for element in payload:
-        _LOGGER.debug("type: " + element["type"])
+        _LOGGER.info("type: " + element["type"])
         if not should_show_element(element):
             continue
         #line
         if element["type"] == "line":
-            img_line = ImageDraw.Draw(img)
+            img_line = ImageDraw.Draw(img)  
             if not "y_start" in element:
                 y_start = pos_y + element.get("y_padding", 0)
                 y_end = y_start
@@ -140,7 +141,7 @@ def customimage(entity_id, service, hass):
             pos_y = y_start
         #rectangle
         if element["type"] == "rectangle":
-            img_rect = ImageDraw.Draw(img)
+            img_rect = ImageDraw.Draw(img)  
             img_rect.rectangle([(element['x_start'],element['y_start']),(element['x_end'],element['y_end'])],fill = getIndexColor(element['fill']), outline=getIndexColor(element['outline']), width=element['width'])
         #text
         if element["type"] == "text":
@@ -447,8 +448,8 @@ def customimage(entity_id, service, hass):
     img = img.rotate(rotate, expand=True)
     rgb_image = img.convert('RGB')
     patha = os.path.join(os.path.dirname(__file__), entity_id + '.jpg')
-    pathb = os.path.join("/config/www/open_epaper_link", str(entity_id).lower() + '.jpg')
-    pathc = "/config/www/open_epaper_link"
+    pathb = get_image_path(hass, entity_id)
+    pathc = get_image_folder(hass)
     isExist = os.path.exists(pathc)
     if not isExist:
         os.makedirs(pathc)
@@ -487,14 +488,17 @@ def handlequeue():
             queue.append(tp)
     running = False;
 # upload an image to the tag
-def uploadimg(img, mac, ip, dither,ttl,hass):
+def uploadimg(img, mac, ip, dither,ttl,preloadtype,preloadlut,hass):
     setup(hass,notsetup)
     url = "http://" + ip + "/imgupload"
     mp_encoder = MultipartEncoder(
         fields={
             'mac': mac,
+            'contentmode': "25",
             'dither': "1" if dither else "0",
             'ttl': str( ttl),
+            'preloadtype': str( preloadtype),
+            'preloadlut': str( preloadlut),
             'image': ('image.jpg', img, 'image/jpeg'),
         }
     )

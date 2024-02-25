@@ -16,7 +16,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import device_registry as dr
 from .const import DOMAIN
+
 _LOGGER: Final = logging.getLogger(__name__)
+
+# Time to wait before trying to reconnect on disconnections.
+_RECONNECT_SECONDS : int = 30
+
 #Hub class for handeling communication
 class Hub:
     #the init function starts the thread for all other communication
@@ -36,7 +41,7 @@ class Hub:
         self.data["ap"]["dbsize"] = None;
         self.data["ap"]["littlefsfree"] = None;
         self.eventloop = asyncio.get_event_loop()
-        thread = Thread(target=self.establish_connection)
+        thread = Thread(target=self.connection_thread)
         thread.start()
         self.online = True
     #parses websocket messages
@@ -114,7 +119,15 @@ class Hub:
                 52: ["M3 4.2\"",  400, 300],
                 53: ["M3 6.0\"",  600, 448],
                 54: ["M3 7.5\"",  800, 480],
+                96: ["HS BWY 3.5\"",  384, 184],
+                97: ["HS BWR 3.5\"",  384, 184],
+                98: ["HS BW 3.5\"",  384, 184],
+                178: ["Gicisky BLE EPD BW 2.9\"",  296, 128],
+                179: ["Gicisky BLE EPD BWR 2.9\"",  296, 128],
+                181: ["Gicisky BLE EPD BWR 4.2\"",  400, 300],
+                190: ["ATC MiThermometer BLE",  6, 8],
                 224: ["AP display",  320, 170],
+                225: ["AP display",  160, 80],
                 240: ["Segmented",  0, 0]
             }
             if hwType in hwmap:
@@ -134,8 +147,8 @@ class Hub:
                     "height": hwmap[hwType][2],
                 })
             else:
-                _LOGGER.warning("Id not in hwmap, pleas open an issue on github about this." +str(hwType))
-
+                _LOGGER.warning("Id not in hwmap, please open an issue on github about this." +str(hwType))
+                
             self.data[tagmac] = dict()
             self.data[tagmac]["temperature"] = temperature
             self.data[tagmac]["rssi"] = RSSI
@@ -163,7 +176,7 @@ class Hub:
             if tagmac not in self.esls:
                 self.esls.append(tagmac)
                 loop = self.eventloop
-                asyncio.run_coroutine_threadsafe(self.reloadcfgett(),loop)
+                asyncio.run_coroutine_threadsafe(self.reloadcfgett(),loop)            
             #fire event with the wakeup reason
             lut = {0: "TIMED",1: "BOOT",2: "GPIO",3: "NFC",4: "BUTTON1",5: "BUTTON2",252: "FIRSTBOOT",253: "NETWORK_SCAN",254: "WDT_RESET"}
             event_data = {
@@ -184,18 +197,30 @@ class Hub:
     def on_error(self,ws, error) -> None:
         _LOGGER.debug("Websocket error, most likely on_message crashed")
         _LOGGER.debug(error)
-    def on_close(self,ws, error, a) -> None:
-        _LOGGER.warning("Websocket connection lost, trying to reconnect every 30 seconds")
+    def on_close(self, ws, close_status_code, close_msg) -> None:
+        _LOGGER.warning(
+            f"Websocket connection lost to url={ws.url} "
+            f"(close_status_code={close_status_code}, close_msg={close_msg}), "
+            f"trying to reconnect every {_RECONNECT_SECONDS} seconds")
     #we could do something here
     def on_open(self,ws) -> None:
         _LOGGER.debug("WS started")
+
     #starts the websocket
-    def establish_connection(self) -> None:
-        ws_url = "ws://" + self._host + "/ws"
-        ws = websocket.WebSocketApp(ws_url,on_message=self.on_message,on_error=self.on_error,on_close=self.on_close,on_open=self.on_open)
-        # try to reconnect every 30 seconds
-        ws.run_forever(reconnect=30)
-        _LOGGER.error("Integration crashed, this should never happen. It will not reconnect")
+    def connection_thread(self) -> None:
+        while True:
+            try:
+                ws_url = "ws://" + self._host + "/ws"
+                ws = websocket.WebSocketApp(
+                    ws_url, on_message=self.on_message, on_error=self.on_error,
+                    on_close=self.on_close, on_open=self.on_open)
+                ws.run_forever(reconnect=_RECONNECT_SECONDS)
+            except Exception as e:
+                _LOGGER.exception(e)
+
+            _LOGGER.error(f"open_epaper_link WebSocketApp crashed, reconnecting in {_RECONNECT_SECONDS} seconds")
+            time.sleep(_RECONNECT_SECONDS)
+
     #we should do more here
     async def test_connection(self) -> bool:
         return True
