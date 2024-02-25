@@ -64,6 +64,14 @@ sensor:
           {% set posterior_probability = numerator / denominator %}
 
           {{ posterior_probability }}
+        availability_template: >
+          {{ not (
+              states('light.bathroom') in [None, 'unavailable', 'unknown'] or
+              states('sensor.humidity_bathroom') in [None, 'unavailable', 'unknown'] or
+              states('sensor.home_mean_humidity_without_bathroom') in [None, 'unavailable', 'unknown'] or
+              states('sensor.water_usage') in [None, 'unavailable', 'unknown'] or
+              states('sensor.tapwater_temperature_change') in [None, 'unavailable', 'unknown']
+            ) }}
 
 ########################
 #    BINARY SENSORS    #
