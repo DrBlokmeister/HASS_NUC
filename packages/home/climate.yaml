@@ -242,27 +242,17 @@ automation:
     id: home_climate_heat_up_tapwater_in_the_morning
     mode: single
     trigger:
-      # - platform: time
-      #   at: "5:00"
-      #   id: "heat_up"
-      # - platform: time
-      #   at: sensor.energyzero_today_energy_lowest_price_time
-      #   id: "heat_up"
-      # - platform: time
-      #   at: "10:00"
-      #   id: "cool_down"
       - platform: template
         value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
         id: "heat_up_total_cheapest"
       - platform: template #Two hours after lowest energy price time
         value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 2 }}"
         id: "cool_down"
-
       - platform: template
-        value_template: "{{ now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') }}"
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
         id: "heat_up_nightly_cheapest"
       - platform: template
-        value_template: "{{ now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2 }}"
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 2) }}"
         id: "cool_down"
     condition:
     action:
@@ -280,12 +270,15 @@ automation:
               #         - sun
             sequence:
               - service: number.set_value
-                data: #If it is really the cheapest point during the day and it is a sunday, perform thermal desinfection. Otherwise, just heat up to 55 degrees.
+                data_template: # Note: Changed to data_template for dynamic data
                   value: >
-                    {% if now().isoweekday() == 7 and trigger.id == 'heat_up_total_cheapest' %}
-                      60
+                    {% set day = now().isoweekday() %}
+                    {% set is_sunday = day == 7 %}
+                    {% set is_cheapest = trigger.id == 'heat_up_total_cheapest' %}
+                    {% if is_sunday and is_cheapest %}
+                      60  # Thermal disinfection temperature
                     {% else %}
-                      55
+                      55  # Regular heat up temperature
                     {% endif %}
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
