@@ -1374,13 +1374,18 @@ script:
               size: 9
               color: black
             - type: icon
-              value: trash-can
+              value: >-
+                {{ 'alert-circle' if
+                  (states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none']) or
+                  (states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none']) or
+                  (states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'])
+                else 'trash-can' }}
               x: 123
               "y": 39
               size: 50
               color: >-
-                {{ 'red' if (([(14 if states('sensor.days_to_restafval') ==
-                  'unknown' else states('sensor.days_to_restafval')),(14 if
+                {{ 'red' if (([(14 if
+                  states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] else states('sensor.days_to_restafval')),(14 if
                   states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] else
                   states('sensor.days_to_papier')),(14 if
                   states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] else
