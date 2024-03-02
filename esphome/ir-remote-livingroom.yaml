@@ -1,0 +1,79 @@
+substitutions:
+  device_name: "IR Remote Livingroom"
+  espname: "ir-remote-livingroom"
+  room: "Livingroom"
+
+esphome:
+  name: '${espname}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: esp-idf
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+status_led:
+  pin: GPIO15
+
+remote_receiver:
+  pin:
+    number: GPIO7
+    inverted: true
+    mode:
+        input: true
+        pullup: true
+  dump: raw
+  buffer_size: 100kB
+
+remote_transmitter:
+  pin: GPIO33
+  carrier_duty_percent: 50%
+
+button:
+  - platform: template
+    name: "Turn On/Off ${room} Speakers"
+    on_press:
+      - remote_transmitter.transmit_pronto:
+          data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 0046 000a 001f 000a 001e 000a 001e 000a 001f 000a 0046 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001f 000a 001f 000a 0046 000a 0047 000a 0046 000a 0046 000a 001f 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
+
+  - platform: template
+    name: "${room} Volume Up"
+    on_press:
+      - remote_transmitter.transmit_pronto:
+          data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 0046 000a 001f 000a 001e 000a 001e 000a 0047 000a 0046 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001e 000a 001f 000a 0046 000a 0047 000a 0046 000a 001e 000a 001f 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
+
+  - platform: template
+    name: "${room} Volume Down"
+    on_press:
+      - remote_transmitter.transmit_pronto:
+          data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 001e 000a 0047 000b 001e 000a 001e 000a 0047 000a 0046 000a 0046 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001e 000a 0047 000a 001e 000a 0047 000b 0046 000a 001e 000a 001f 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
+
+  - platform: template
+    name: "Set ${room} Channel to TV"
+    on_press:
+      - remote_transmitter.transmit_pronto:
+          data: "0000 006d 0010 0020 0011 003b 0011 003b 0011 0015 0011 0015 0011 0017 0011 003b 0011 003b 0011 0015 0011 0015 0011 003b 0011 0015 0011 0015 0011 0015 0011 003b 0011 0015 0011 0650 0011 003b 0011 003b 0011 0015 0011 0015 0011 001b 0011 0015 0011 0015 0011 003b 0011 003b 0011 0015 0011 003b 0011 003b 0011 003b 0011 0015 0011 003b 0011 0604 0011 003b 0011 003b 0011 0015 0011 0015 0011 0017 0011 003b 0011 003b 0011 0015 0011 0015 0011 003b 0011 0015 0011 0015 0011 0015 0011 003b 0011 0015 0011 0651"
+
+  - platform: template
+    name: "Set ${room} Channel to Phono"
+    on_press:
+      - remote_transmitter.transmit_pronto:
+          data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 0046 000a 0047 000a 001e 000a 001e 000a 001f 000a 001e 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001e 000a 001f 000a 001e 000a 0047 000a 0046 000a 0046 000a 0047 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
+
+  - platform: template
+    name: "Mute ${room} Speakers"
+    on_press:
+      - remote_transmitter.transmit_pronto:
+          data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 001e 000a 001f 000a 001e 000a 001e 000a 0047 000a 0046 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001e 000a 0047 000a 0046 000a 0047 000a 0046 000a 001e 000a 001f 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
