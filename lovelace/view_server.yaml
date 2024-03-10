@@ -57,128 +57,150 @@ cards:
             name: Upload Speed
           - entity: sensor.airvpn_download_speed
             name: Download Speed
-  
-  # - type: conditional
-  #   conditions:
-  #     - entity: switch.blokmeisternas
-  #       state: "off"
-  #   card:
-  #     type: vertical-stack
-  #     cards:
-  #       - type: markdown
-  #         content: >
-  #           ## <center>NAS is Offline</center>
-  #       - type: glance
-  #         entities:
-  #           - switch.blokmeisternas
-  # - cards:
-  #     - entities:
-  #         - entity: sensor.nas_parity_temperature
-  #           name: Parity
-  #         - entity: sensor.nas_disk1_temperature
-  #           name: Disk 1
-  #         - entity: sensor.nas_disk2_temperature
-  #           name: Disk 2
-  #         - entity: sensor.nas_disk3_temperature
-  #           name: Disk 3
-  #         - entity: sensor.nas_dev1_temperature
-  #           name: Dev 1
-  #         - entity: sensor.nas_dev2_temperature
-  #           name: Dev 2
-  #         - entity: sensor.nas_cache_temperature
-  #           name: Cache
-  #       icon: mdi:harddisk
-  #       name: Disk temperatures
-  #       hours_to_show: 48
-  #       points_per_hour: 12
-  #       hour24: true
-  #       font_size: 70
-  #       height: 250
-  #       line_width: 2.5
-  #       lower_bound: 20
-  #       upper_bound: 50
-  #       show:
-  #         labels: true
-  #         average: true
-  #       type: custom:mini-graph-card
-  #     - entities:
-  #         - entity: sensor.nas_parity_temperature
-  #           name: Parity
-  #           icon: 'mdi:harddisk'
-  #         - entity: sensor.nas_disk1_temperature
-  #           name: Disk 1
-  #           icon: 'mdi:harddisk'
-  #         - entity: sensor.nas_disk2_temperature
-  #           name: Disk 2
-  #           icon: 'mdi:harddisk'
-  #         - entity: sensor.nas_disk3_temperature
-  #           name: Disk 3
-  #           icon: 'mdi:harddisk'
-  #         - entity: sensor.nas_dev1_temperature
-  #           name: Dev 1
-  #           icon: 'mdi:harddisk'
-  #         - entity: sensor.nas_dev2_temperature
-  #           name: Dev 2
-  #           icon: 'mdi:harddisk'
-  #         - entity: sensor.nas_cache_temperature
-  #           name: Cache
-  #           icon: 'mdi:harddisk'
-  #         # - entity: sensor.nas_disk_ada7_temperature
-  #         #   name: ada7
-  #         #   icon: 'mdi:harddisk'
-  #         # - entity: sensor.nas_disk_da0_temperature
-  #         #   name: da0
-  #         #   icon: 'mdi:harddisk'
-  #         # - entity: sensor.nas_disk_da1_temperature
-  #         #   name: da1
-  #         #   icon: 'mdi:harddisk'
-  #       columns: 4
-  #       type: glance
-  #   type: vertical-stack
-  # - cards:
-  #     - entities:
-  #         - entity: sensor.nas_core0_temperature
-  #           name: Core0
-  #         - entity: sensor.nas_core1_temperature
-  #           name: Core1
-  #         - entity: sensor.nas_core2_temperature
-  #           name: Core2
-  #         - entity: sensor.nas_core3_temperature
-  #           name: Core3
-  #         - entity: sensor.glances_package_id_0_temperature
-  #           name: Package
-  #       name: CPU temperature
-  #       hours_to_show: 48
-  #       points_per_hour: 12
-  #       hour24: true
-  #       font_size: 70
-  #       height: 250
-  #       line_width: 2.5
-  #       lower_bound: 20
-  #       upper_bound: 50
-  #       show:
-  #         labels: true
-  #         average: true
-  #       type: custom:mini-graph-card
-  #     - entities:
-  #         - entity: sensor.glances_cpu_used
-  #           name: Total
-  #         - entity: sensor.glances_containers_cpu_used
-  #           name: Containers
-  #       name: NAS Load
-  #       hours_to_show: 48
-  #       points_per_hour: 12
-  #       hour24: true
-  #       font_size: 70
-  #       height: 250
-  #       line_width: 2.5
-  #       lower_bound: 0
-  #       upper_bound: 100
-  #       show:
-  #         labels: true
-  #         average: true
-  #       type: custom:mini-graph-card
-  #   type: vertical-stack
+
+  - type: custom:apexcharts-card
+    header:
+      title: NAS CPU Stats
+      show: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 350px
+    all_series_config:
+      group_by:
+        func: median
+        duration: 5min
+      stroke_width: 3
+    yaxis:
+      - min: 0
+        max: ~50
+        decimals: 2
+        apex_config:
+          forceNiceScale: True
+          tickAmount: 5
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} %`;
+              }
+    series:
+      - entity: sensor.nas_cpu_temperature_file
+        name: CPU Temperature
+        color: '#FF6384'
+      - entity: sensor.nas_cpu_usage_file
+        name: CPU Usage
+        color: '#36A2EB'
+
+  - type: custom:apexcharts-card
+    header:
+      title: NAS Memory Usage
+      show: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 350px
+    all_series_config:
+      group_by:
+        func: median
+        duration: 5min
+      stroke_width: 3
+      transform: "return (x / 1024).toFixed(2);"
+    yaxis:
+      - min: 0
+        max: 32
+        decimals: 1
+        apex_config:
+          forceNiceScale: True
+          tickAmount: 4
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} GB`;
+              }
+    series:
+      - entity: sensor.nas_total_memory_file
+        name: Total Memory
+        color: '#FFCE56'
+      - entity: sensor.nas_used_memory_file
+        name: Used Memory
+        color: '#FF9F40'
+
+  - type: custom:apexcharts-card
+    header:
+      title: NAS Disk Temperatures
+      show: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 350px
+    all_series_config:
+      group_by:
+        func: median
+        duration: 5min
+      stroke_width: 3
+    yaxis:
+      - min: ~20
+        max: ~40
+        apex_config:
+          tickAmount: 4
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} °C`;
+              }
+    series:
+      - entity: sensor.nas_parity_temperature_file
+        name: Parity Disk Temperature
+        color: '#4BC0C0'
+      - entity: sensor.nas_disk_1_temperature_file
+        name: Disk 1 Temperature
+        color: '#9966FF'
+      - entity: sensor.nas_disk_2_temperature_file
+        name: Disk 2 Temperature
+        color: '#C9CBCF'
+      - entity: sensor.nas_disk_3_temperature_file
+        name: Disk 3 Temperature
+        color: '#7E57C2'
+      - entity: sensor.nas_dev_1_temperature_file
+        name: Dev 1 Temperature
+        color: '#FFCE56'
+      - entity: sensor.nas_dev_2_temperature_file
+        name: Dev 2 Temperature
+        color: '#FF9F40'
+      - entity: sensor.nas_nvme_composite_temperature_file
+        name: NVMe Composite Temperature
+        color: '#36A2EB'
+
+  - type: custom:apexcharts-card
+    header:
+      title: NAS Power
+      show: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 350px
+    all_series_config:
+      group_by:
+        func: median
+        duration: 5min
+      stroke_width: 3
+    yaxis:
+      - min: 0
+        max: ~80
+        decimals: 0
+        apex_config:
+          forceNiceScale: True
+          tickAmount: 5
+          # labels:
+          #   formatter: |
+          #     EVAL:function(value) {
+          #       return `${value} GB`;
+          #     }
+    series:
+      - entity: sensor.blitzwolf_nas_energy_power
+        name: Power
+        color: '#FFCE56'
+
   - cards:
       - type: entities
         entities:
@@ -201,52 +223,6 @@ cards:
             name: Power
     type: vertical-stack
 
-      # - entities:
-      #     - entity: switch.blokmeisternas
-      #       tap_action:
-      #         action: toggle
-      #         confirmation:
-      #           text: Are you sure you want to power on/off?
-      #       name: Power
-      #       icon: mdi:server-network
-          # - entity: sensor.fn_alert_level
-          #   name: Alert
-          #   icon: 'mdi:alert'
-          # - entity: sensor.fn_version
-          #   name: Version
-          # - entity: sensor.fn_newstorage_report
-          #   name: NewStorage
-          # - entity: sensor.fn_newstorage_pct_used
-          #   name: Newstorage
-          #   icon: 'mdi:harddisk'
-          # - entity: sensor.fn_storage2_pct_used
-          #   name: Storage2
-          #   icon: 'mdi:harddisk'
-
-        # theme: Backend-selected
-        # type: glance
-      # - entities:
-      #     - entity: sensor.fn_newstorage_report
-      #       name: NewStorage
-      #       icon: 'mdi:harddisk'
-      #     - entity: sensor.fn_storage2_report
-      #       name: Storage2
-      #       icon: 'mdi:harddisk'
-      #     - entity: sensor.nas_swap_use
-      #       name: Swap Use
-      #       icon: 'mdi:harddisk'
-      #     - entity: sensor.fn_newstorage_pct_used
-      #       name: NewStorage
-      #       icon: 'mdi:harddisk'
-      #     - entity: sensor.fn_storage2_pct_used
-      #       name: Storage2
-      #       icon: 'mdi:harddisk'
-      #     - entity: sensor.nas_memory_use_percent
-      #       name: Memory use
-      #       icon: 'mdi:memory'
-      #   theme: Backend-selected
-      #   columns: 3
-      #   type: glance
 
 
   - cards:
@@ -269,17 +245,6 @@ cards:
           labels: true
           average: true
         type: custom:mini-graph-card
-      # - entities:
-      #     - entity: sensor.ping_router_avg
-      #     - entity: sensor.ping_blokmeisternas_avg
-      #     - entity: sensor.ping_phone_avg
-      #     - entity: sensor.ping_odroid_c2_avg
-      #     - entity: sensor.ping_ambilight_rpi_avg
-      #     - entity: sensor.ping_transmission_avg
-      #     - entity: sensor.ping_plinq_avg
-      #     - entity: sensor.ping_google_dns_avg
-      #       hours_to_show: 168
-      #   type: history-graph
       - entities:
           - entity: sensor.ping_router_avg
           - entity: sensor.ping_blokmeisternas_avg
@@ -368,22 +333,57 @@ cards:
           average: true
           labels_secondary: true
         type: custom:mini-graph-card
-      - entities:
+      - type: custom:apexcharts-card
+        header:
+          title: Router Speeds
+          show: true
+        graph_span: 24h
+        apex_config:
+          chart:
+            height: 250px
+        all_series_config:
+          group_by:
+            func: median
+            duration: 15min
+          stroke_width: 2
+          type: area
+        yaxis:
+          - min: 0
+            max: ~25
+            decimals: 2
+            apex_config:
+              #tickAmount: 4
+              forceNiceScale: True
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return `${value} Mbps`;
+                  }
+        #layout: minimal
+        series:
           - entity: sensor.udmp_download_speed_mbs
             name: Down
+            color: '#36A2EB'  # Blue
           - entity: sensor.udmp_upload_speed_mbs
             name: Up
-        icon: mdi:swap-vertical-bold
-        name: Router
-        hours_to_show: 48
-        points_per_hour: 5
-        hour24: true
-        font_size: 70
-        height: 250
-        line_width: 2.5
-        show:
-          labels: true
-        type: custom:mini-graph-card
+            color: '#FF6384'  # Red
+
+    #   - entities:
+    #       - entity: sensor.udmp_download_speed_mbs
+    #         name: Down
+    #       - entity: sensor.udmp_upload_speed_mbs
+    #         name: Up
+    #     icon: mdi:swap-vertical-bold
+    #     name: Router
+    #     hours_to_show: 48
+    #     points_per_hour: 5
+    #     hour24: true
+    #     font_size: 70
+    #     height: 250
+    #     line_width: 2.5
+    #     show:
+    #       labels: true
+    #     type: custom:mini-graph-card
     type: vertical-stack
 
   - type: vertical-stack
@@ -430,7 +430,7 @@ cards:
             icon: mdi:docker
           - entity: sensor.nas_portainer_transmission
             name: Transmission
-            icon: mdi:transmission-tower
+            icon: mdi:car-shift-pattern
       - type: entity-filter
         entities:
           - entity: sensor.nas_portainer_apacheguacamole
@@ -504,7 +504,7 @@ cards:
             icon: mdi:graph-outline
           - entity: sensor.nas_portainer_transmission
             name: Transmission
-            icon: mdi:transmission-tower
+            icon: mdi:car-shift-pattern
           - entity: sensor.nas_portainer_unraid_api_re
             name: Unraid API
             icon: mdi:server-network
@@ -516,6 +516,24 @@ cards:
         card:
           type: entities
           title: Running Docker Containers
+
+  - type: grid
+    cards:
+      - type: button
+        entity: switch.apache_guacamole_container
+      - type: button
+        entity: switch.firefox_container
+      - type: button
+        entity: switch.onedrive_container
+      - type: button
+        entity: switch.photoprism_container
+      - type: button
+        entity: switch.plex_container
+      - type: button
+        entity: switch.portainer_ce_container
+      - type: button
+        entity: switch.transmission_container
+    columns: 4
 
   - type: glance
     title: Study Desk Powerstrip
