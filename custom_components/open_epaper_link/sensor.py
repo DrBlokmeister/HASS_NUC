@@ -45,7 +45,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     
 class IPSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_ip_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_ip"
         self._attr_name = "AP IP"
         self._hub = hub
     @property
@@ -63,7 +63,7 @@ class IPSensor(SensorEntity):
 
 class APWifiRssiSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_wifirssi_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_wifirssi"
         self._attr_name = "AP Wifi RSSI"
         self._hub = hub
         self._attr_native_unit_of_measurement = "dB"
@@ -79,7 +79,7 @@ class APWifiRssiSensor(SensorEntity):
         
 class APStateSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_state_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_state"
         self._attr_name = "AP State"
         self._hub = hub
     @property
@@ -93,7 +93,7 @@ class APStateSensor(SensorEntity):
         
 class APRunStateSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_runstate_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_runstate"
         self._attr_name = "AP Run State"
         self._hub = hub
     @property
@@ -107,7 +107,7 @@ class APRunStateSensor(SensorEntity):
         
 class APTempSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_temp_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_aptemp"
         self._attr_name = "AP Temp"
         self._hub = hub
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -125,7 +125,7 @@ class APTempSensor(SensorEntity):
         
 class APWifiStatusSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_wifistate_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_wifistate"
         self._attr_name = "AP Wifi State"
         self._hub = hub
     @property
@@ -139,7 +139,7 @@ class APWifiStatusSensor(SensorEntity):
         
 class APWifiSssidSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_wifissid_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_wifissid"
         self._attr_name = "AP Wifi SSID"
         self._hub = hub
     @property
@@ -152,7 +152,7 @@ class APWifiSssidSensor(SensorEntity):
         
 class SystimeSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_systime_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_systime"
         self._attr_name = "AP Systime"
         self._hub = hub
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
@@ -166,7 +166,7 @@ class SystimeSensor(SensorEntity):
         
 class HeapSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_heap_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_heap"
         self._attr_name = "AP free Heap"
         self._hub = hub
         self._attr_native_unit_of_measurement = "kB"
@@ -182,7 +182,7 @@ class HeapSensor(SensorEntity):
 
 class RecordcountSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_recordcount_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_recordcount"
         self._attr_name = "AP Recordcount"
         self._hub = hub
     @property
@@ -195,7 +195,7 @@ class RecordcountSensor(SensorEntity):
         
 class DBsizeSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_dbsize_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_dbsize"
         self._attr_name = "AP DBSize"
         self._hub = hub
         self._attr_native_unit_of_measurement = "kB"
@@ -211,7 +211,7 @@ class DBsizeSensor(SensorEntity):
         
 class LitefsfreeSensor(SensorEntity):
     def __init__(self, hub):
-        self._attr_unique_id = f"ap_littlefsfree_{hub.data['ap']['ip']}"
+        self._attr_unique_id = "ap_littlefsfree"
         self._attr_name = "AP Free Space"
         self._hub = hub
         self._attr_native_unit_of_measurement = "kB"

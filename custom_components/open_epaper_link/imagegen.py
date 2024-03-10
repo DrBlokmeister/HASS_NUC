@@ -125,7 +125,7 @@ def customimage(entity_id, service, hass):
         img = Image.new('RGBA', (canvas_width, canvas_height), color=background)
     pos_y = 0
     for element in payload:
-        _LOGGER.info("type: " + element["type"])
+        _LOGGER.debug("type: " + element["type"])
         if not should_show_element(element):
             continue
         #line
@@ -491,17 +491,29 @@ def handlequeue():
 def uploadimg(img, mac, ip, dither,ttl,preloadtype,preloadlut,hass):
     setup(hass,notsetup)
     url = "http://" + ip + "/imgupload"
-    mp_encoder = MultipartEncoder(
-        fields={
-            'mac': mac,
-            'contentmode': "25",
-            'dither': "1" if dither else "0",
-            'ttl': str( ttl),
-            'preloadtype': str( preloadtype),
-            'preloadlut': str( preloadlut),
-            'image': ('image.jpg', img, 'image/jpeg'),
-        }
-    )
+    mp_encoder = ""
+    if preloadtype == 0:
+       mp_encoder = MultipartEncoder(
+            fields={
+                'mac': mac,
+                'contentmode': "25",
+                'dither': "1" if dither else "0",
+                'ttl': str( ttl),
+                'image': ('image.jpg', img, 'image/jpeg'),
+            }
+        )
+    else:
+       mp_encoder = MultipartEncoder(
+            fields={
+                'mac': mac,
+                'contentmode': "25",
+                'dither': "1" if dither else "0",
+                'ttl': str( ttl),
+                'preloadtype': str( preloadtype),
+                'preloadlut': str( preloadlut),
+                'image': ('image.jpg', img, 'image/jpeg'),
+            }
+        )
     queueimg(url, mp_encoder)
 # upload a cmd to the tag
 def uploadcfg(cfg, mac, contentmode, ip):
