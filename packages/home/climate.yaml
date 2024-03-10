@@ -270,21 +270,18 @@ automation:
               #         - sun
             sequence:
               - service: number.set_value
-                data_template: # Note: Changed to data_template for dynamic data
+                data_template: # Cheapest time and a sunday
                   value: >
-                    {% set day = now().isoweekday() %}
-                    {% set is_sunday = day == 7 %}
-                    {% set is_cheapest = trigger.id == 'heat_up_total_cheapest' %}
-                    {% if is_sunday and is_cheapest %}
-                      60  # Thermal disinfection temperature
+                    {% if (now().isoweekday() == 7) and (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) %}
+                      60
                     {% else %}
-                      55  # Regular heat up temperature
+                      55
                     {% endif %}
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
                 data:
-                  value: "1"
+                  value: 1
                 target:
                   entity_id:
                     - number.heatpump_tapwater_hysteresis
@@ -294,12 +291,12 @@ automation:
             sequence:
               - service: number.set_value
                 data:
-                  value: "45"
+                  value: 45
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
                 data:
-                  value: "5"
+                  value: 5
                 target:
                   entity_id:
                     - number.heatpump_tapwater_hysteresis
