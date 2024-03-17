@@ -142,11 +142,12 @@ cards:
       - min: ~20
         max: ~40
         apex_config:
+          forceNiceScale: True
           tickAmount: 4
           labels:
             formatter: |
               EVAL:function(value) {
-                return `${value} °C`;
+                return `${(value)} °C`;
               }
     series:
       - entity: sensor.nas_parity_temperature_file
@@ -175,7 +176,13 @@ cards:
     header:
       title: NAS Power
       show: true
+      show_states: true
+      colorize_states: true
     graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
       chart:
         height: 350px
@@ -184,6 +191,10 @@ cards:
         func: median
         duration: 5min
       stroke_width: 3
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: false
     yaxis:
       - min: 0
         max: ~80
@@ -191,15 +202,46 @@ cards:
         apex_config:
           forceNiceScale: True
           tickAmount: 5
-          # labels:
-          #   formatter: |
-          #     EVAL:function(value) {
-          #       return `${value} GB`;
-          #     }
     series:
       - entity: sensor.blitzwolf_nas_energy_power
+        offset: '-6d'
+        name: 6 Days Ago
+        color: '#DD2C00'
+        opacity: 0.2
+      - entity: sensor.blitzwolf_nas_energy_power
+        offset: '-5d'
+        name: 5 Days Ago
+        color: '#E65100'
+        opacity: 0.25
+      - entity: sensor.blitzwolf_nas_energy_power
+        offset: '-4d'
+        name: 4 Days Ago
+        color: '#EF6C00'
+        opacity: 0.3
+      - entity: sensor.blitzwolf_nas_energy_power
+        offset: '-3d'
+        name: 3 Days Ago
+        color: '#F57C00'
+        opacity: 0.35
+      - entity: sensor.blitzwolf_nas_energy_power
+        offset: '-2d'
+        name: 2 Days Ago
+        color: '#FB8C00'
+        opacity: 0.4
+      - entity: sensor.blitzwolf_nas_energy_power
+        offset: '-1d'
+        name: Yesterday
+        color: '#FFA726'
+        opacity: 0.45
+      - entity: sensor.blitzwolf_nas_energy_power
         name: Power
-        color: '#FFCE56'
+        color: '#FFCE56' # Bright color for today to stand out
+        type: line
+        extend_to: now
+        opacity: 1 # Full opacity for today
+        show:
+          in_header: true
+          legend_value: true
 
   - cards:
       - type: entities
