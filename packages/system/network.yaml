@@ -181,10 +181,13 @@ command_line:
         root@10.0.0.250
         "docker stop transmission"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' transmission"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.transmission_container_state'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' transmission"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch:
       unique_id: "yaml_command_line_switch_plex_container"
       name: "Plex Container"
@@ -198,10 +201,13 @@ command_line:
         root@10.0.0.250
         "docker stop plex"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' plex"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.plex_container_state'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' plex"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch:
       unique_id: "yaml_command_line_switch_portainer_ce_container"
       name: "Portainer CE Container"
@@ -215,10 +221,13 @@ command_line:
         root@10.0.0.250
         "docker stop Portainer-CE"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' Portainer-CE"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '."Portainer-CE_container_state"'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' Portainer-CE"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch:
       unique_id: "yaml_command_line_switch_firefox_container"
       name: "Firefox Container"
@@ -232,10 +241,13 @@ command_line:
         root@10.0.0.250
         "docker stop Firefox"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' Firefox"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.Firefox_container_state'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' Firefox"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch:
       unique_id: "yaml_command_line_switch_apache_guacamole_container"
       name: "Apache Guacamole Container"
@@ -249,10 +261,13 @@ command_line:
         root@10.0.0.250
         "docker stop ApacheGuacamole"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' ApacheGuacamole"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.ApacheGuacamole_container_state'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' ApacheGuacamole"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch:
       unique_id: "yaml_command_line_switch_photoprism_container"
       name: "PhotoPrism Container"
@@ -266,10 +281,13 @@ command_line:
         root@10.0.0.250
         "docker stop PhotoPrism"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' PhotoPrism"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.PhotoPrism_container_state'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' PhotoPrism"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch:
       unique_id: "yaml_command_line_switch_onedrive_container"
       name: "OneDrive Container"
@@ -283,10 +301,13 @@ command_line:
         root@10.0.0.250
         "docker stop Onedrive"
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker inspect -f '{{.State.Running}}' Onedrive"
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.Onedrive_container_state'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "docker inspect -f '{{.State.Running}}' Onedrive"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
 
   - switch:
       unique_id: "unraid_array_control"
@@ -301,11 +322,13 @@ command_line:
         -q root@10.0.0.250
         '/usr/local/sbin/emcmd stoparray'
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "mdcmd status | grep 'mdState=' | cut -d'=' -f2"
-      value_template: >-
-        {{ value == "STARTED" }}
+        cat /config/www/nas_status.json | jq -r '.unraid_array_status'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+      # root@10.0.0.250
+      # "mdcmd status | grep 'mdState=' | cut -d'=' -f2"
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
 
   - switch:
       unique_id: "wireguard_service_control"
@@ -320,10 +343,11 @@ command_line:
         -q root@10.0.0.250
         '/etc/rc.d/rc.wireguard stop'
       command_state: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no
-        -q root@10.0.0.250
-        'if [[ $(wg) ]]; then echo true; else echo false; fi'
-      value_template: "{{ value == 'true' }}"
+        cat /config/www/nas_status.json | jq -r '.wireguard_service_status'
+      # ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no
+      # -q root@10.0.0.250
+      # 'if [[ $(wg) ]]; then echo true; else echo false; fi'
+      value_template: "{{ value == 'true' or value == true }}"
 
   # - sensor:
   #     name: "NAS CPU Usage"
@@ -434,6 +458,12 @@ command_line:
   #       root@10.0.0.250
   #       "smartctl -A /dev/sdg | grep Temperature_Celsius | awk '{print \$10}'"
   #     scan_interval: 600
+  - binary_sensor:
+      name: "NAS SSH Reachability"
+      command: "cat /config/www/nas_status.json | jq -r '.nas_available'"
+      payload_on: "true"
+      payload_off: "false"
+      device_class: connectivity
 
   - sensor:
       name: "NAS CPU Usage File"
@@ -766,13 +796,40 @@ automation:
     mode: single
 
   - alias: "[system|network]Query NAS sensors"
-    description: "Automatically queries the sensors in the NAS using a bash script every five minutes."
+    mode: single
+    description: "Automatically queries the sensors in the NAS using a bash script every minute."
     trigger:
       - platform: time_pattern
-        minutes: "/5"
+        minutes: "/1"
     action:
       - service: shell_command.execute_nas_monitor_commands
-    mode: single
+      - delay:
+          seconds: 5
+      - service: homeassistant.update_entity
+        data:
+          entity_id:
+            - binary_sensor.nas_ssh_reachability
+            - sensor.nas_cpu_usage_file
+            - sensor.nas_cpu_temperature_file
+            - sensor.nas_total_memory_file
+            - sensor.nas_used_memory_file
+            - sensor.nas_used_disk_space_file
+            - sensor.nas_nvme_composite_temperature_file
+            - sensor.nas_parity_temperature_file
+            - sensor.nas_disk_1_temperature_file
+            - sensor.nas_disk_2_temperature_file
+            - sensor.nas_disk_3_temperature_file
+            - sensor.nas_dev_1_temperature_file
+            - sensor.nas_dev_2_temperature_file
+            - switch.transmission_container
+            - switch.plex_container
+            - switch.portainer_ce_container
+            - switch.firefox_container
+            - switch.apache_guacamole_container
+            - switch.photoprism_container
+            - switch.onedrive_container
+            - switch.nas_unraid_array
+            - switch.nas_wireguard_service
 
 
 ################
