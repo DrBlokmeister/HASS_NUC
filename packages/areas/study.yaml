@@ -62,6 +62,8 @@ sensor:
   - platform: group
     type: mean
     name: "Study Average Illuminance"
+    device_class: illuminance
+    unit_of_measurement: lx
     entities:
       - sensor.study_motion_1_illuminance
       - sensor.study_motion_2_illuminace
@@ -515,18 +517,31 @@ automation:
                 entity_id:
                   - light.study_candle
                   - light.study_desk_a_rgb_ledstrip
+              - variables:
+                  start_time: "{{ now().timestamp() }}"
               - repeat:
                   sequence:
                     - delay:
                         milliseconds: 500
-                  until:
-                    - condition: state
+                    - service: light.turn_off
                       entity_id:
                         - light.study_candle
                         - light.study_desk_a_rgb_ledstrip
-                      state: 'off'
-                      for:
-                        seconds: 2
+                  until:
+                    - condition: or
+                      conditions:
+                        - condition: state
+                          entity_id:
+                            - light.study_candle
+                            - light.study_desk_a_rgb_ledstrip
+                          state:
+                            - 'off'
+                            - 'unavailable'
+                          for:
+                            seconds: 2
+                    - condition: template
+                      value_template: >
+                        {{ (now() - start_time).total_seconds() < 10 }}
               - service: switch.toggle
                 entity_id: switch.study_shp9_powerstrip_socket_peripherals
           - conditions:
