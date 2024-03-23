@@ -252,7 +252,7 @@ automation:
         value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
         id: "heat_up_nightly_cheapest"
       - platform: template
-        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 2) }}"
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 4) }}"
         id: "cool_down"
     condition:
     action:
@@ -282,6 +282,26 @@ automation:
               - service: number.set_value
                 data:
                   value: 1
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+              - delay:
+                  seconds: 5
+              - wait_for_trigger:
+                  - platform: numeric_state
+                    entity_id: sensor.heatpump_tapwater_temperature
+                    value_template: "{{ states('sensor.heatpump_tapwater_temperature')|float - states('number.heatpump_tapwater_target_temperature')|float }}"
+                    above: -1
+                    for:
+                      minutes: 30
+              - service: number.set_value
+                data:
+                  value: 45
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 5
                 target:
                   entity_id:
                     - number.heatpump_tapwater_hysteresis
