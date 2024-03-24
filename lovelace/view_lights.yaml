@@ -8,10 +8,11 @@ cards:
       #- entity: light.plants
       #- entity: light.bedroom_lights
       - entity: light.bedroom_2
+        name: Bedroom
       - entity: light.kitchen
         name: Kitchen
         icon: mdi:lightbulb-spot
-      - entity: light.study
+      - entity: light.study_lights
         icon: mdi:lightbulb-spot
       - entity: switch.shelly_closet
         name: Closet
@@ -37,6 +38,10 @@ cards:
         icon: mdi:lightbulb-spot
       - entity: light.dinner_table_d2
         name: Dinner Table
+      - entity: light.baby_room
+        name: Baby Room
+      - entity: light.guest_room
+        name: Guest Room
       - entity: light.livingroom_light_string
         icon: mdi:string-lights
       - entity: light.hyperion_apa102
@@ -55,60 +60,229 @@ cards:
     title: Lights
     show_header_toggle: false
     type: entities
-  - entities:
-      - entity: light.kitchen
-        name: Kitchen
-        icon: mdi:fridge-outline
-        tap_action:
-          action: toggle
-      - entity: light.living_room
-        name: Livingroom
-        icon: mdi:sofa
-        tap_action:
-          action: toggle
-      - entity: light.dinner_table
-        name: Dinner Table
-        icon: mdi:table-chair
-        tap_action:
-          action: toggle
-      - entity: light.entry
-        name: Entry
-        icon: mdi:door
-        tap_action:
-          action: toggle
-      # - entity: automation.bathroom_light_turn_on_light_through_motion
-      #   name: Bathroom
-      #   icon: mdi:shower
-      #   tap_action:
-      #     action: toggle
-      # - entity: automation.entry_light_turn_on_light_through_motion
-      #   name: Entry
-      #   icon: mdi:door
-      #   tap_action:
-      #     action: toggle
-      # - entity: automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
-      #   name: 2nd Floor
-      #   icon: mdi:door
-      #   tap_action:
-      #     action: toggle
-      # - entity: automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
-      #   name: 1st Floor
-      #   icon: mdi:door
-      #   tap_action:
-      #     action: toggle
-      # - entity: input_boolean.sleep_tracking_on
-      #   name: Sleep tracking
-      #   tap_action:
-      #     action: toggle
-      # - entity: group.update_illumination_limit_automations
-      #   name: Update limits
-      #   icon: mdi:light-switch
-      #   tap_action:
-      #     action: toggle
-    title: Lights
-    columns: 4
-    show_state: false
-    type: glance
+  # - entities:
+  #     - entity: light.kitchen
+  #       name: Kitchen
+  #       icon: mdi:fridge-outline
+  #       tap_action:
+  #         action: toggle
+  #     - entity: light.living_room
+  #       name: Livingroom
+  #       icon: mdi:sofa
+  #       tap_action:
+  #         action: toggle
+  #     - entity: light.dinner_table
+  #       name: Dinner Table
+  #       icon: mdi:table-chair
+  #       tap_action:
+  #         action: toggle
+  #     - entity: light.entry
+  #       name: Entry
+  #       icon: mdi:door
+  #       tap_action:
+  #         action: toggle
+  #   title: Lights
+  #   columns: 4
+  #   show_state: false
+  #   type: glance
+  - type: vertical-stack
+    cards:
+      - type: glance
+        #title: Ground Floor
+        columns: 4
+        show_state: false
+        entities:
+          - entity: light.kitchen
+            name: Kitchen
+            icon: mdi:fridge-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.kitchen
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.living_room
+            name: Living Room
+            icon: mdi:sofa
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.living_room
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: switch.shelly_closet
+            name: Closet
+            icon: mdi:wardrobe-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: switch.shelly_closet
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.dinner_table_d2
+            name: Dinner Table
+            icon: mdi:table-chair
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.dinner_table_d2
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.entry
+            name: Entry
+            icon: mdi:door-open
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.entry
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.shelly_porch_light
+            name: Porch
+            icon: mdi:wall-sconce-flat
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.shelly_porch_light
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.back_garden
+            name: Back Garden
+            icon: mdi:tree-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.back_garden
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+      - type: glance
+        #title: First Floor
+        columns: 4
+        show_state: false
+        entities:
+          - entity: light.bedroom_2
+            name: Bedroom
+            icon: mdi:bed-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.bedroom_2
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.bathroom
+            name: Bathroom
+            icon: mdi:shower-head
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.bathroom
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.hallway_1st_floor
+            name: Hallway
+            icon: mdi:floor-plan
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.hallway_1st_floor
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.baby_room
+            name: Baby Room
+            icon: mdi:baby-bottle-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.baby_room
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+      - type: glance
+        #title: Second Floor
+        columns: 4
+        show_state: false
+        entities:
+          - entity: light.study_lights
+            name: Study
+            icon: mdi:desk
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.study_lights
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: switch.shelly_washroom
+            name: Washroom
+            icon: mdi:washing-machine
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: switch.shelly_washroom
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.hallway_2nd_floor
+            name: Hallway
+            icon: mdi:floor-plan
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.hallway_2nd_floor
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.guest_room
+            name: Guest Room
+            icon: mdi:account-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.guest_room
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - entity: light.tamara_s_room_2
+            name: Tamara's Room
+            icon: mdi:face-woman-outline
+            tap_action:
+              action: call-service
+              service: light.toggle
+              target:
+                entity_id: light.tamara_s_room_2
+              data_template:
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+        columns: 4
+        show_state: false
+
   - entities:
       # - entity: group.bedroom_lighting_automations
       #   name: Bedroom
