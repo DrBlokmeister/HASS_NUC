@@ -236,18 +236,29 @@ automation:
           message: "Home Assistant shut down"
           language: en-IE
       - service: notify.mobile_app_blokmeisters21u
-        data:
-          message: "Hass.io was shut down!"
+        data_template:
           title: "Hass.io Offline"
+          message: >
+            {% set running_scripts = states('sensor.running_scripts')|int %}
+            {% set running_automations = states('sensor.running_automations')|int %}
+            {% set script_ids = state_attr('sensor.running_scripts', 'automations') %}
+            {% set automation_ids = state_attr('sensor.running_automations', 'automations') %}
+            {% if running_scripts == 0 and running_automations == 0 %}
+              No automations or scripts were running upon shutdown.
+            {% else %}
+              {% set script_msg = 'script' if running_scripts == 1 else 'scripts' %}
+              {% set automation_msg = 'automation' if running_automations == 1 else 'automations' %}
+              {{ running_scripts }} {{ script_msg }} ({{ script_ids }}) and {{ running_automations }} {{ automation_msg }} ({{ automation_ids }}) were running at shutdown.
+            {% endif %}
           data:
             group: reminder
             tag: hassiostopstart
             icon_url: local/icons/home-assistant.png
-      - condition: state
-        entity_id: switch.unrarredmovies_mounted
-        state: 'on'
-      - service: switch.turn_on
-        entity_id: switch.plexmediaserver
+      # - condition: state
+      #   entity_id: switch.unrarredmovies_mounted
+      #   state: 'on'
+      # - service: switch.turn_on
+      #   entity_id: switch.plexmediaserver
 
 
   - alias: '[System] Hass Started'
