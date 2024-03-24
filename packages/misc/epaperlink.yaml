@@ -40,21 +40,19 @@ automation:
     trigger:
       - platform: time_pattern
         minutes: "/15"
+      - platform: time
+        at: '07:00:00'  # This will trigger the automation every morning at 7 AM
     condition:
-      # - condition: numeric_state
-      #   entity_id: sensor.blitzwolf_washingmachine_energy_today
-      #   above: 0.003
-      - condition: not
+      - condition: or  # Wrap the existing conditions in an or condition
         conditions:
+          - condition: not
+            conditions:
+              - condition: template
+                value_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|int < 5 }}"
+                # for:
+                #   minutes: 15
           - condition: template
-            value_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|int < 5 }}"
-            # for:
-            #   minutes: 15
-          # - condition: numeric_state
-          #   entity_id: sensor.blitzwolf_washingmachine_energy_power
-          #   below: 5
-          #   # for:
-          #   #   minutes: 15
+            value_template: "{{ now().strftime('%H:%M:%S') == '07:00:00' }}"  # This effectively bypasses the conditions for the morning trigger
       - condition: time
         after: "6:00:00"
         before: "23:30:00"
