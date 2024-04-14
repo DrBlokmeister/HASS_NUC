@@ -5,7 +5,7 @@ badges: []
 cards:
   - cards:
     - type: custom:apexcharts-card
-      graph_span: 24h
+      graph_span: 10m
       update_interval: 1m
       yaxis:
         - min: 0
@@ -27,6 +27,10 @@ cards:
                     EVAL:function(w) {
                       return (w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2);
                       }
+      all_series_config:
+        group_by:
+          func: avg
+          duration: 1min
       chart_type: donut
       series:
         - entity: sensor.blitzwolf_computer_energy_today
@@ -66,9 +70,12 @@ cards:
           name: Unknown
           float_precision: 2
     - type: custom:apexcharts-card
-      graph_span: 24h
+      graph_span: 10m
       update_interval: 1m
       all_series_config:
+        group_by:
+          func: avg
+          duration: 1min
         float_precision: 0
       apex_config:
         plotOptions:
@@ -95,9 +102,6 @@ cards:
       series:
         - entity: sensor.blitzwolf_computer_energy_power
           name: Computer
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_nas_energy_power
           name: NAS
           group_by:
@@ -105,63 +109,33 @@ cards:
             duration: 10min
         - entity: sensor.blitzwolf_poe_switch_energy_power
           name: PoE
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_nuc_energy_power
           name: NUC
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_heatpump_power
           name: Circulation
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_washingmachine_energy_power
           name: Washing Machine
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_dishwasher_energy_power
           name: Dishwasher
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.heatpump_heating_power
           name: Heating
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.heatpump_tapwater_power
           name: Tapwater
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.ventilation_power_estimate
           name: Ventilation
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.all_lights_power_estimate_power
           name: Lights
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.vacuums_power_estimate
           name: Vacuums
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.unknown_power
           name: Unknown
-          group_by:
-            func: avg
-            duration: 10min
     - type: custom:apexcharts-card
       graph_span: 24h
       update_interval: 1m
       all_series_config:
+        group_by:
+          func: avg
+          duration: 1min
         float_precision: 0
       apex_config:
         plotOptions:
@@ -222,48 +196,17 @@ cards:
         unit: W
         group_by:
           func: avg
-          duration: 1min
-      # apex_config:
-      #   plotOptions:
-      #     pie:
-      #       donut:
-      #         labels:
-      #           show: true
-      #           total:
-      #             show: true
-      #             label: Total
-      #             formatter: |
-      #               EVAL:function(w) {
-      #                 return (w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2);
-      #                 }
+          duration: 5min
       chart_type: line
       brush:
         selection_span: 10m
       series:
         - entity: sensor.electricity_meter_power_consumption_phase_l1
           name: Phase 1
-          # float_precision: 0
-          # transform: "return Math.round(x * 1000);"
-          # unit: W
-          # group_by:
-          #   func: avg
-          #   duration: 1min
         - entity: sensor.electricity_meter_power_consumption_phase_l2
           name: Phase 2
-          # float_precision: 0
-          # transform: "return Math.round(x * 1000);"
-          # unit: W
-          # group_by:
-          #   func: avg
-          #   duration: 1min
         - entity: sensor.electricity_meter_power_consumption_phase_l3
           name: Phase 3
-          # float_precision: 0
-          # transform: "return Math.round(x * 1000);"
-          # unit: W
-          # group_by:
-          #   func: avg
-          #   duration: 1min
         - entity: sensor.total_power_consumption_watt
           name: Total
           transform: "return Math.round(x * 1);"
@@ -324,81 +267,47 @@ cards:
     - type: custom:apexcharts-card
       graph_span: 12h
       update_interval: 1m
-      #chart_type: donut
       yaxis: # only 1 yaxis, no need for id or yaxis_id
         - min: 0
           # if the sensor doesn't go above 50, the max of the axis will be 50
           # else the max will be the maximum value of the sensor
-          max: ~500
+          max: ~2000
           decimals: 0
           apex_config:
             tickAmount: 4
+      all_series_config:
+        group_by:
+          func: avg
+          duration: 10min
+        stroke_width: 2
+        type: area
       series:
         - entity: sensor.blitzwolf_computer_energy_power
           name: Computer
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_nas_energy_power
           name: NAS
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_poe_switch_energy_power
           name: PoE
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_nuc_energy_power
           name: NUC
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_heatpump_power
           name: Circulation
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_washingmachine_energy_power
           name: Washing Machine
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.blitzwolf_dishwasher_energy_power
           name: Dishwasher
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.heatpump_heating_power
           name: Heating
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.heatpump_tapwater_power
           name: Tapwater
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.ventilation_power_estimate
           name: Ventilation
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.all_lights_power_estimate_power
           name: Lights
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.vacuums_power_estimate
           name: Vacuums
-          group_by:
-            func: avg
-            duration: 10min
         - entity: sensor.unknown_power
           name: Unknown
-          group_by:
-            func: avg
-            duration: 10min
     - type: 'custom:apexcharts-card'
       graph_span: 24h
       yaxis:
@@ -653,28 +562,78 @@ cards:
         points: false
     type: vertical-stack
   - cards:
-      - cards:
+      - type: gauge
+        name: Net Power usage
+        unit: 'kW'
+        entity: sensor.net_energy_usage
+        min: -3
+        max: 3
+        needle: true
+        segments:
+          - from: -3
+            to: -2.5
+            color: '#2636FF'  # Deep Blue
+          - from: -2.5
+            to: -2
+            color: '#3042FF'  # Dark Blue
+          - from: -2
+            to: -1.5
+            color: '#3A5EFF'  # Royal Blue
+          - from: -1.5
+            to: -1
+            color: '#447AFF'  # Bright Blue
+          - from: -1
+            to: -0.5
+            color: '#4E96FF'  # Sky Blue
+          - from: -0.5
+            to: 0
+            color: '#58B3FF'  # Soft Blue
+          - from: 0
+            to: 0.75
+            color: '#8BC34A'  # Green
+          - from: 0.75
+            to: 1.5
+            color: '#FFEB3B'  # Yellow
+          - from: 1.5
+            to: 2.25
+            color: '#FFC107'  # Amber
+          - from: 2.25
+            to: 3
+            color: '#E64A19'  # Deep Orange
+      - type: horizontal-stack
+        cards:
           - type: gauge
             name: Total Power usage
             unit: 'W'
             entity: sensor.total_power_consumption_watt
             min: 0
             max: 5000
-            severity:
-              green: 0
-              yellow: 2500
-              red: 3500
+            segments:
+              - from: 0
+                to: 2500
+                color: '#8BC34A'  # Soft Green
+              - from: 2500
+                to: 3500
+                color: '#FFEB3B'  # Soft Yellow
+              - from: 3500
+                to: 5000
+                color: '#F44336'  # Soft Red
           - type: gauge
             name: Total Power Production
             unit: 'W'
             entity: sensor.solar_panel_power_production_available
             min: 0
-            max: 5000
-            severity:
-              green: 0
-              yellow: 2500
-              red: 3500
-        type: horizontal-stack
+            max: 3000
+            segments:
+              - from: 0
+                to: 1000
+                color: '#7BCB60'  # Light Green
+              - from: 1000
+                to: 2000
+                color: '#5A9FFF'  # Medium Green
+              - from: 2000
+                to: 3000
+                color: '#3A7DFF'  # Dark Green
       - cards:
           - type: gauge
             name: Computer Power
@@ -682,20 +641,32 @@ cards:
             entity: sensor.blitzwolf_computer_energy_power
             min: 0
             max: 1000
-            severity:
-              green: 0
-              yellow: 400
-              red: 700
+            segments:
+              - from: 0
+                to: 300
+                color: '#8BC34A'  # Soft Green
+              - from: 300
+                to: 700
+                color: '#FFEB3B'  # Soft Yellow
+              - from: 700
+                to: 1000
+                color: '#F44336'  # Soft Red
           - type: gauge
             name: NAS Power
             unit: 'W'
             entity: sensor.blitzwolf_nas_energy_power
             min: 0
-            max: 1000
-            severity:
-              green: 0
-              yellow: 300
-              red: 500
+            max: 200
+            segments:
+              - from: 0
+                to: 50
+                color: '#8BC34A'  # Soft Green
+              - from: 50
+                to: 100
+                color: '#FFEB3B'  # Soft Yellow
+              - from: 100
+                to: 200
+                color: '#F44336'  # Soft Red
         type: horizontal-stack
       - type: custom:mini-graph-card
         entities:
@@ -712,16 +683,28 @@ cards:
           graph: bar
         color_thresholds_transition: smooth
         color_thresholds:
-          - value: 5
-            color: "#46ff33"
+          - value: 0
+            color: "#8BC34A"  # Green
+          - value: 2
+            color: "#AED581"  # Light Green
+          - value: 4
+            color: "#C5E1A5"  # Lime Green
+          - value: 6
+            color: "#DCE775"  # Yellowish Green
+          - value: 8
+            color: "#FFF176"  # Light Yellow
           - value: 10
-            color: "#beff33"
-          - value: 15
-            color: "#ffd433"
+            color: "#FFD54F"  # Yellow
+          - value: 12
+            color: "#FFB74D"  # Orange Yellow
+          - value: 14
+            color: "#FF9800"  # Orange
+          - value: 16
+            color: "#FB8C00"  # Dark Orange
+          - value: 18
+            color: "#F57C00"  # Reddish Orange
           - value: 20
-            color: "#ffaf33"
-          - value: 25
-            color: "#ff5733"
+            color: "#E64A19"  # Red
       - type: custom:mini-graph-card
         entities:
           - entity: sensor.solar_panel_daily_energy_production
@@ -731,22 +714,34 @@ cards:
         hours_to_show: 168
         group_by: date
         lower_bound: 0
-        #upper_bound: 20
+        upper_bound: 10
         icon: mdi:lightning-bolt
         show:
           graph: bar
         color_thresholds_transition: smooth
         color_thresholds:
-          - value: 5
-            color: "#46ff33"
-          - value: 10
-            color: "#beff33"
+          - value: 0
+            color: "#8BC34A"  # Green
+          - value: 1.5
+            color: "#80C686"  # Green toward Cyan
+          - value: 3
+            color: "#76C9BC"  # Cyan
+          - value: 4.5
+            color: "#6CCCCF"  # Soft Cyan
+          - value: 6
+            color: "#62CFFF"  # Lighter Cyan
+          - value: 7.5
+            color: "#58B3FF"  # Soft Blue
+          - value: 9
+            color: "#4E96FF"  # Sky Blue
+          - value: 10.5
+            color: "#447AFF"  # Bright Blue
+          - value: 12
+            color: "#3A5EFF"  # Royal Blue
+          - value: 13.5
+            color: "#3042FF"  # Dark Blue
           - value: 15
-            color: "#ffd433"
-          - value: 20
-            color: "#ffaf33"
-          - value: 25
-            color: "#ff5733"
+            color: "#2636FF"  # Deep Blue
       - type: custom:mini-graph-card
         entities:
           - entity: sensor.daily_water_use
