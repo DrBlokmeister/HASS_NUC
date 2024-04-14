@@ -79,6 +79,33 @@ switch:
       mhz19.abc_disable: mh_sensor
 
 sensor:
+  - platform: sgp30
+    eco2:
+      name: "${location} eCO2"
+      accuracy_decimals: 1
+      id: eco2
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 20
+    tvoc:
+      name: "${location} TVOC"
+      accuracy_decimals: 1
+      id: tvoc
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 20
+    update_interval: 1s
+    address: 0x58
+    # https://esphome.io/components/sensor/sgp30.html#calibrating-baseline
+    baseline:
+      eco2_baseline: 0x92B7
+      tvoc_baseline: 0x935A
+    compensation:
+      temperature_source: temp
+      humidity_source: hum
+
   - platform: pmsx003
     type: PMSX003
     uart_id: pms
@@ -135,7 +162,7 @@ sensor:
     uart_id: mh
     id: mh_sensor
 
-  - platform: bme280
+  - platform: bme280_i2c
     temperature:
       name: "${location} AQM Temperature"
       oversampling: 1x
