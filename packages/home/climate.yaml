@@ -41,29 +41,29 @@ input_datetime:
 #    SENSORS    #
 #################
 sensor:
-  - platform: min_max
-    type: sum
-    name: Total Heat Production Power
-    round_digits: 3
-    entity_ids:
-      - sensor.tapwater_heat_production_power
-      - sensor.heating_heat_production_power
+  # - platform: min_max
+  #   type: sum
+  #   name: Total Heat Production Power
+  #   round_digits: 3
+  #   entity_ids:
+  #     - sensor.tapwater_heat_production_power
+  #     - sensor.heating_heat_production_power
 
-  - platform: derivative
-    source: sensor.tapwater_heat_amount_updating
-    name: Tapwater Heat Production Power
-    round : 3
-    unit_time: h
-    unit: kW
-    time_window: "00:10:00"
+  # - platform: derivative
+  #   source: sensor.tapwater_heat_amount_updating
+  #   name: Tapwater Heat Production Power
+  #   round : 3
+  #   unit_time: h
+  #   unit: kW
+  #   time_window: "00:10:00"
 
-  - platform: derivative
-    source: sensor.heating_heat_amount_updating
-    name: Heating Heat Production Power
-    round : 3
-    unit_time: h
-    unit: kW
-    time_window: "00:10:00"
+  # - platform: derivative
+  #   source: sensor.heating_heat_amount_updating
+  #   name: Heating Heat Production Power
+  #   round : 3
+  #   unit_time: h
+  #   unit: kW
+  #   time_window: "00:10:00"
 
   - platform: derivative
     source: sensor.heatpump_tapwater_temperature
@@ -168,20 +168,20 @@ sensor:
         unit_of_measurement: '°C'
         value_template: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
         availability_template: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
-      tapwater_heat_amount_updating:
-        friendly_name: Tapwater Heat Amount Updating
-        unit_of_measurement: "kWh"
-        value_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
-        attribute_templates:
-          update_minute: "{{ now().minute }}"
-        availability_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|is_number() }}"
-      heating_heat_amount_updating:
-        friendly_name: Heating Heat Amount Updating
-        unit_of_measurement: "kWh"
-        value_template: "{{ states('sensor.heatpump_heat_amount_heating')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
-        attribute_templates:
-          update_minute: "{{ now().minute }}"
-        availability_template: "{{ states('sensor.heatpump_heat_amount_heating')|is_number() }}"
+      # tapwater_heat_amount_updating:
+      #   friendly_name: Tapwater Heat Amount Updating
+      #   unit_of_measurement: "kWh"
+      #   value_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
+      #   attribute_templates:
+      #     update_minute: "{{ now().minute }}"
+      #   availability_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|is_number() }}"
+      # heating_heat_amount_updating:
+      #   friendly_name: Heating Heat Amount Updating
+      #   unit_of_measurement: "kWh"
+      #   value_template: "{{ states('sensor.heatpump_heat_amount_heating')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
+      #   attribute_templates:
+      #     update_minute: "{{ now().minute }}"
+      #   availability_template: "{{ states('sensor.heatpump_heat_amount_heating')|is_number() }}"
       heatpump_efficiency:
         friendly_name: Heatpump Efficiency
         unit_of_measurement: '%'
