@@ -316,12 +316,15 @@ sensor:
         availability_template: "{{ states('sensor.heatpump_hot_gas_temperature')|is_number }}" #Should also include recirculation pump being available
 
     #Actual data from shelly sensor
+    #If power is being used but no tapwater or heating, then equally divide between the two
       heatpump_tapwater_power:
         value_template: >-
           {% if is_state('sensor.heatpump_status', 'hot water')%}
             {{ states('sensor.tasmota_energy_power') }}
-          {% else %}
+          {% elif is_state('sensor.heatpump_status', 'heating') %}
             0
+          {% else %}
+            {{ (states('sensor.tasmota_energy_power')|float())/2 }}
           {% endif %}
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.tasmota_energy_power')|is_number }}" #Should also include sensor.heatpump_status being available
@@ -329,8 +332,10 @@ sensor:
         value_template: >-
           {% if is_state('sensor.heatpump_status', 'heating')%}
             {{ states('sensor.tasmota_energy_power') }}
-          {% else %}
+          {% elif is_state('sensor.heatpump_status', 'hot water')%}
             0
+          {% else %}
+            {{ (states('sensor.tasmota_energy_power')|float())/2 }}
           {% endif %}
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.tasmota_energy_power')|is_number }}" #Should also include sensor.heatpump_status being available
@@ -958,6 +963,109 @@ automation:
             clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
             ledColor: "orange"
             channel: warning
+
+  - alias: "[home|power] Turn off solar panels if energy price is below zero"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        below: 0
+        id: negative_price
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        above: 0
+        id: positive_price
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'negative_price' }}"
+            sequence:
+              - service: number.set_value
+                data:
+                  value: 0
+                target:
+                  entity_id:
+                    - number.grid_export_limit
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'positive_price' }}"
+            sequence:
+              - service: number.set_value
+                data:
+                  value: 3000
+                target:
+                  entity_id:
+                    - number.grid_export_limit
+
+  - alias: "[home|power] Utilize negative electricity prices"
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        below: 0
+        id: negative_price
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        above: 0
+        id: positive_price
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'negative_price' }}"
+            sequence:
+              - service: number.set_value
+                data:
+                  value: 0
+                target:
+                  entity_id:
+                    - number.grid_export_limit
+              - service: number.set_value
+                data:
+                  value: 1
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+              - service: number.set_value
+                data:
+                  value: 60
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_target_temperature
+              - wait_for_trigger:
+                  - platform: numeric_state
+                    entity_id: sensor.nordpool_energy_price
+                    above: 0
+                    id: positive_price
+              - service: number.set_value
+                data:
+                  value: 5
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+              - service: number.set_value
+                data:
+                  value: 45
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 3000
+                target:
+                  entity_id:
+                    - number.grid_export_limit
+          # - conditions:
+          #     - condition: template
+          #       value_template: "{{ trigger.id == 'positive_price' }}"
+          #   sequence:
+          #     - service: number.set_value
+          #       data:
+          #         value: 3000
+          #       target:
+          #         entity_id:
+          #           - number.grid_export_limit
 
   # - alias: "[power|watermeter] Save watermeter states to HA"
   #   trigger:
