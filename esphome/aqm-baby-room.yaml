@@ -1,0 +1,436 @@
+substitutions:
+  device_friendly_name: "AQM Baby Room"
+  device_name: "AQM Baby Room"
+  location: "Baby Room"
+  espname: "aqm-baby-room"
+
+packages:
+  aqm: !include templates/AQM.yaml
+
+wifi:
+  #use_address: 10.0.30.100
+
+script:
+  - id: min_max_zero_script
+    then:
+      - globals.set:
+          id: pm_max
+          value: '0.0'
+      - globals.set:
+          id: pm_min
+          value: '300.0'
+      - globals.set:
+          id: co_max
+          value: '0.0'
+      - globals.set:
+          id: co_min
+          value: '5000.0'
+      - globals.set:
+          id: temp_min
+          value: '50.0'
+      - globals.set:
+          id: temp_max
+          value: '0.0'
+
+globals:
+  - id: button_mode
+    type: int
+    initial_value: '1'
+  - id: brightness_correction
+    type: float
+    restore_value: yes
+    initial_value: '0.15'
+  - id: ver_sion
+    type: bool
+    initial_value: 'false'
+  - id: led_status
+    type: bool
+    initial_value: 'true'
+    restore_value: yes
+  - id: display_on
+    type: bool
+    initial_value: 'true'
+  - id: led_status_display
+    type: bool
+    initial_value: 'false'
+  - id: night_mode
+    type: bool
+    restore_value: yes
+  - id: night_mode_display
+    type: bool
+  - id: pm_min
+    type: float
+    initial_value: '300.0'
+  - id: pm_max
+    type: float
+    initial_value: '0.0'
+  - id: co_min
+    type: float
+    initial_value: '5000.0'
+  - id: co_max
+    type: float
+    initial_value: '0.0'
+  - id: temp_min
+    type: float
+    initial_value: '50.0'
+  - id: temp_max
+    type: float
+    initial_value: '0.0'
+  - id: min_max_zero
+    type: bool
+    initial_value: 'false'
+
+binary_sensor:
+  - platform: gpio
+    id: gpio_button
+    pin:
+      number: GPIO23
+      mode: INPUT_PULLUP
+      inverted: True
+    on_click:
+      - min_length: 25ms
+        max_length: 500ms
+        then:
+          - display.page.show_next: display1
+          - component.update: display1
+          - lambda: |-
+              if (id(button_mode) < 8) { id(button_mode) += 1; }
+              else { id(button_mode) = 1; }
+      - min_length: 2s
+        max_length: 5s
+        then:
+          - lambda: |-
+              if (id(led_status)) { id(led_status) = false; }
+              else { id(led_status) = true; }
+          - globals.set:
+              id: led_status_display
+              value: 'true'
+          - delay: 3s
+          - globals.set:
+              id: led_status_display
+              value: 'false'
+      - min_length: 5s
+        max_length: 10s
+        then:
+          - globals.set:
+              id: night_mode_display
+              value: 'true'
+          - delay: 3s
+          - globals.set:
+              id: night_mode_display
+              value: 'false'
+          - lambda: |-
+              if (id(night_mode)) { id(night_mode) = false; }
+              else { id(night_mode) = true; }
+      - min_length: 10s
+        max_length: 15s
+        then:
+          - globals.set:
+              id: min_max_zero
+              value: 'true'
+          - script.execute: min_max_zero_script
+          - delay: 3s
+          - globals.set:
+              id: min_max_zero
+              value: 'false'
+      - min_length: 15s
+        max_length: 20s
+        then:
+          - lambda: |-
+              if (id(brightness_correction) >= 0.4) { id(brightness_correction) = 0.0; }
+              else { id(brightness_correction) += 0.05; }
+      - min_length: 20s
+        max_length: 30s
+        then:
+          - globals.set:
+              id: ver_sion
+              value: 'true'
+          - delay: 20s
+          - globals.set:
+              id: ver_sion
+              value: 'false'
+
+sensor:
+  - platform: template
+    name: "${location} PM2.5 24h average"
+    id: pm2_5_avg
+    icon: mdi:chemical-weapon
+    unit_of_measurement: µg/m³
+    lambda: |-
+      return id(pm2_5).state;
+    update_interval: 60s
+    filters:
+      - sliding_window_moving_average:
+          window_size: 1440
+          send_every: 1
+    on_value:
+      - if:
+          condition:
+            sensor.in_range:
+              id: pm2_5_avg
+              below: 10
+          then:
+            - light.control:
+                id: led2
+                red: 0
+                green: 1
+                blue: 0
+            - text_sensor.template.publish:
+                id: aqi
+                state: "Good"
+      - if:
+          condition:
+            sensor.in_range:
+              id: pm2_5_avg
+              above: 10
+              below: 20
+          then:
+            - light.control:
+                id: led2
+                red: 0
+                green: 1
+                blue: 1
+            - text_sensor.template.publish:
+                id: aqi
+                state: "Fair"
+      - if:
+          condition:
+            sensor.in_range:
+              id: pm2_5_avg
+              above: 20
+              below: 25
+          then:
+            - light.control:
+                id: led2
+                red: 1
+                green: 1
+                blue: 0
+            - text_sensor.template.publish:
+                id: aqi
+                state: "Moderate"
+      - if:
+          condition:
+            sensor.in_range:
+              id: pm2_5_avg
+              above: 25
+              below: 50
+          then:
+            - light.control:
+                id: led2
+                red: 1
+                green: 0
+                blue: 1
+            - text_sensor.template.publish:
+                id: aqi
+                state: "Poor"
+      - if:
+          condition:
+            sensor.in_range:
+              id: pm2_5_avg
+              above: 50
+              below: 75
+          then:
+            - light.control:
+                id: led2
+                red: 1
+                green: 0
+                blue: 0
+            - text_sensor.template.publish:
+                id: aqi
+                state: "Very Poor"
+      - if:
+          condition:
+            sensor.in_range:
+              id: pm2_5_avg
+              above: 75
+          then:
+            - light.control:
+                id: led2
+                red: 1
+                green: 0
+                blue: 0
+            - text_sensor.template.publish:
+                id: aqi
+                state: "Extremely Poor"
+
+  - platform: template
+    name: "${location} PM2.5 median"
+    id: pm2_5_median
+    icon: mdi:chemical-weapon
+    unit_of_measurement: µg/m³
+    lambda: |-
+      return id(pm2_5).state;
+    update_interval: 1s
+    filters:
+      - median:
+          window_size: 30
+          send_every: 30
+          send_first_at: 15
+      - or:
+        - throttle_average: 60s
+        - delta: 20
+
+light:
+  - platform: partition
+    name: ${location} led1
+    id: led1
+    default_transition_length: 0s
+    segments:
+      - id: rgb_led
+        from: 0
+        to: 0
+  - platform: partition
+    name: ${location} led2
+    id: led2
+    default_transition_length: 0s
+    segments:
+    - id: rgb_led
+      from: 1
+      to: 1
+  - platform: partition
+    name: ${location} led3
+    id: led3
+    default_transition_length: 0s
+    segments:
+    - id: rgb_led
+      from: 2
+      to: 2
+  - platform: neopixelbus
+    num_leds: 3
+    pin: GPIO16
+    name: "${location} RGB strip"
+    id: rgb_led
+    default_transition_length: 0s
+    variant: 800KBPS
+
+text_sensor:
+  - platform: template
+    name: "${location} Air Quality Index (AQI)"
+    id: aqi
+    icon: mdi:air-filter
+
+# display:
+#   - platform: ssd1306_i2c
+#     model: "SSD1306 128x64"
+#     address: 0x3C
+#     brightness: 100%
+#     rotation: 180
+#     id: display1
+#     lambda: |-
+#       if (id(button_mode) == 7 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#         it.printf(0, 0, id(arial), "T: %.1f", id(temp_min));
+#         it.printf(0, 20, id(arial), "P2: %.0f", id(pm_min));
+#         it.printf(0, 40, id(arial), "C: %.0f", id(co_min));
+#         it.printf(70, 0, id(arial), "T: %.1f", id(temp_max));
+#         it.printf(70, 20, id(arial), "P2: %.0f", id(pm_max));
+#         it.printf(70, 40, id(arial), "C: %.0f", id(co_max));
+#         it.line(58, 0, 58, 64);
+#       } else if (id(button_mode) == 6 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#         it.printf(0, 0, id(arial), "P1: %.0f", id(pm1).state);
+#         it.printf(0, 20, id(arial), "P2: %.0f", id(pm2_5).state);
+#         it.printf(0, 40, id(arial), "P10: %.0f", id(pm10).state);
+#         it.printf(70, 0, id(arial), "T: %.1f", id(temp).state);
+#         it.printf(70, 20, id(arial), "H: %.0f", id(hum).state);
+#         it.printf(70, 40, id(arial), "C: %.0f", id(co2).state);
+#         it.line(65, 0, 65, 64);
+#       } else if (id(button_mode) == 1 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#           it.print(0, 10, id(arial), "PM2.5:   ");
+#           it.printf(50, 0, id(arial30), "%.0f", id(pm2_5).state);
+#           it.print(0, 37, id(arial), "CO2:   ");
+#           it.printf(50, 30, id(arial30), "%.0f", id(co2).state);
+#       } else if (id(button_mode) == 5 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#           //it.printf(0, 0, id(arial), "Light: %.0f lux", id(light_sens).state);
+#           //it.printf(0, 20, id(arial), "TVOC: %.0f ppb", id(tvoc).state);
+#           //it.printf(0, 40, id(arial), "eCO2: %.0f ppm", id(eco2).state);
+#       } else if (id(button_mode) == 4 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#           it.printf(0, 0, id(arial), "PM1: %.0f ugm3", id(pm1).state);
+#           it.printf(0, 20, id(arial), "P2.5: %.0f ugm3", id(pm2_5).state);
+#           it.printf(0, 40, id(arial), "PM10: %.0f ugm3", id(pm10).state);
+#       } else if (id(button_mode) == 3 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#           it.printf(0, 0, id(arial), "Temp: %.1f °C", id(temp).state);
+#           it.printf(0, 20, id(arial), "Humidity: %.0f %%", id(hum).state);
+#           it.printf(0, 40, id(arial), "Pressure: %.0f hPa", id(press).state);
+#       } else if (id(button_mode) == 2 && !id(ver_sion) && !id(led_status_display) && !id(night_mode_display) && !id(min_max_zero) && id(display_on)) {
+#           it.print(2, 0, id(arial), " Air Quality Index");
+#           it.line(0, 18, 128, 18);
+#           std::string aqi_ = id(aqi).state;
+#           it.printf(30, 25, id(arial), "%s", aqi_.c_str());
+#           it.printf(30, 45, id(arial), "%.0f ugm3", id(pm2_5_avg).state);
+#       } else if (id(ver_sion)) {
+#           it.print(0, 0, id(arial10), "YAML ver: $yaml_version");
+#           it.line(0, 12, 128, 12);
+#           it.printf(0, 15, id(arial10), "ESPHome ver: %s", ESPHOME_VERSION);
+#           std::string ip_ = id(ip).state;
+#           it.printf(0, 25, id(arial10), "IP: %s", ip_.c_str());
+#           std::string ssid_ = id(ssid).state;
+#           it.printf(0, 35, id(arial10), "Connected to: %s", ssid_.c_str());
+#           it.printf(0, 45, id(arial10), "LED brightness: +%.0f %%", id(brightness_correction)*100);
+#       } else if (id(led_status_display)) {
+#           it.printf(0, 20, id(arial), "LEDs status: %s", id(led_status) ? "ON" : "OFF");
+#       } else if (id(night_mode_display)) {
+#           it.printf(0, 20, id(arial), "Night dim: %s", id(night_mode) ? "ON" : "OFF");
+#       } else if (id(min_max_zero)) {
+#           it.print(0, 20, id(arial), "MIN-MAX reset!");
+#       }
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    brightness: 100%
+    rotation: 180
+    id: display1
+    pages:
+      - id: page1
+        lambda: |-
+          // PM2.5 and CO2 data
+          it.print(0, 10, id(arial), "PM2.5:   ");
+          it.printf(50, 0, id(arial30), "%.0f", id(pm2_5).state);
+          it.print(0, 37, id(arial), "CO2:   ");
+          it.printf(50, 30, id(arial30), "%.0f", id(co2).state);
+      - id: page2
+        lambda: |-
+          // Air Quality Index
+          it.print(2, 0, id(arial), "Air Quality Index");
+          it.line(0, 18, 128, 18);
+          std::string aqi_ = id(aqi).state;
+          it.printf(30, 25, id(arial), "%s", aqi_.c_str());
+          it.printf(30, 45, id(arial), "%.0f ugm3", id(pm2_5_avg).state);
+      - id: page3
+        lambda: |-
+          // Temperature, Humidity, and Pressure
+          it.printf(0, 0, id(arial), "Temp: %.1f °C", id(temp).state);
+          it.printf(0, 20, id(arial), "Humidity: %.0f %%", id(hum).state);
+          it.printf(0, 40, id(arial), "Pressure: %.0f hPa", id(press).state);
+      - id: page4
+        lambda: |-
+          // PM1, PM2.5, and PM10 data
+          it.printf(0, 0, id(arial), "PM1: %.0f ugm3", id(pm1).state);
+          it.printf(0, 20, id(arial), "P2.5: %.0f ugm3", id(pm2_5).state);
+          it.printf(0, 40, id(arial), "PM10: %.0f ugm3", id(pm10).state);
+      - id: page5
+        lambda: |-
+          // Additional data or placeholders for commented out sensors like Light, TVOC, eCO2
+          it.print(0, 0, id(arial), "Additional Sensors");
+          // Uncomment and populate with real sensor data if available
+      - id: page6
+        lambda: |-
+          // Min/Max Values Display (Example from the original conditional logic)
+          it.printf(0, 0, id(arial), "T Min: %.1f", id(temp_min));
+          it.printf(0, 20, id(arial), "P2 Min: %.0f", id(pm_min));
+          it.printf(0, 40, id(arial), "C Min: %.0f", id(co_min));
+          it.printf(70, 0, id(arial), "T Max: %.1f", id(temp_max));
+          it.printf(70, 20, id(arial), "P2 Max: %.0f", id(pm_max));
+          it.printf(70, 40, id(arial), "C Max: %.0f", id(co_max));
+          it.line(58, 0, 58, 64);
+      - id: page7
+        lambda: |-
+          // Version Information Display
+          it.print(0, 0, id(arial10), "YAML ver: $yaml_version");
+          it.line(0, 12, 128, 12);
+          it.printf(0, 15, id(arial10), "ESPHome ver: %s", ESPHOME_VERSION);
+          std::string ip_ = id(ip).state;
+          it.printf(0, 25, id(arial10), "IP: %s", ip_.c_str());
+          std::string ssid_ = id(ssid).state;
+          it.printf(0, 35, id(arial10), "Connected to: %s", ssid_.c_str());
+          it.printf(0, 45, id(arial10), "LED brightness: +%.0f %%", id(brightness_correction)*100);
