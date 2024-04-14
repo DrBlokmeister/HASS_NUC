@@ -237,12 +237,29 @@ automation:
       - platform: event
         event_type: deconz_event
         event_data:
-          id: "vacuum_smart_switch"
-          event: 1002
+          id: "turntable"
+          event: 1002  # Single press
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: "turntable"
+          event: 1004  # Double press
     action:
-      - service: switch.toggle
-        data:
-          entity_id: switch.amplifier_power
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}"
+            sequence:
+              - service: switch.toggle
+                data:
+                  entity_id: switch.amplifier_power
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1004 }}"
+            sequence:
+              - service: switch.turn_off
+                data:
+                  entity_id: switch.amplifier_power
 
   - alias: "[areas|mediacenter]Update Plex library if torrent completed"
     id: areas_mediacenter_update_plex_library_if_torrent_completed
