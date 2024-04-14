@@ -1,31 +1,35 @@
-substitutions:
-  devicename: "gosund_sp111"
-  upper_devicename: "Gosund SP111"
-  # Higher value gives lower watt readout
-  current_res: "0.00280"
-  # Lower value gives lower voltage readout. In my case of about 15 of those devices this value is closest to my voltage meter
-  voltage_div: "648"
+# substitutions:
+#   devicename: "gosund_sp111"
+#   upper_devicename: "Gosund SP111"
+#   # Higher value gives lower watt readout
+#   current_res: "0.00280"
+#   # Lower value gives lower voltage readout. In my case of about 15 of those devices this value is closest to my voltage meter
+#   voltage_div: "648"
 
 esphome:
-  name: $devicename
-  platform: ESP8266
-  board: esp8285
+  name: ${espname}
+  friendly_name: ${device_name}
+  comment: ${plug_type}
 # This allows the device to restore the last saved relay state, either "ON" or "OFF" for the switch later in this config
-  esp8266_restore_from_flash: true
+#  esp8266_restore_from_flash: true
 
+esp8266:
+  board: esp8285
+  framework:
+    version: recommended
 
-preferences:
-  flash_write_interval: 5min  # set to 5min to prevent wearing out the onboard flash module too quickly
-  
+# preferences:
+#   flash_write_interval: 5min  # set to 5min to prevent wearing out the onboard flash module too quickly
+
 # Enable logging
 logger:
   baud_rate: 0
-  
+
 packages:
   wifi: !include /config/esphome/common/wifi.yaml
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
-
+  power: !include /config/esphome/common/power.yaml
 
 binary_sensor:
   # toggle relay on/off
@@ -34,14 +38,37 @@ binary_sensor:
       number: GPIO13
       mode: INPUT_PULLUP
       inverted: True
-    id: "${devicename}_button_state"
-    on_press:
-      - switch.toggle: button_switch
+    id: input_button
+    on_multi_click:
+      - timing:
+          - ON for at most 1s
+          - OFF for at least 0.3s
+        then:
+          - switch.toggle: relay
+      - timing:
+          - ON for at least 5s
+          #- OFF for at least 0.3s
+        then:
+          - output.turn_on: led_red
+          - delay: 500ms
+          - output.turn_off: led_red
+          - delay: 500ms
+          - output.turn_on: led_red
+          - delay: 500ms
+          - output.turn_off: led_red
+          - delay: 500ms
+          - output.turn_on: led_red
+          - delay: 500ms
+          - output.turn_off: led_red
+          - delay: 500ms
+          - button.press: restart_button
+    # on_press:
+    #   - switch.toggle: relay
 
 sensor:
   - platform: total_daily_energy
-    name: "${devicename} - Todays Usage"
-    power_id: "power_wattage"
+    name: "${device_name} Energy Today"
+    power_id: "power"
     filters:
       # Multiplication factor from W to kW is 0.001
       - multiply: 0.001
@@ -50,8 +77,12 @@ sensor:
 
   - platform: adc
     pin: VCC
-    name: "${devicename} - VCC Volt"
+    name: "${device_name} VCC Voltage"
     icon: mdi:flash-outline
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 0.3
 
   - platform: hlw8012
     sel_pin:
@@ -62,25 +93,44 @@ sensor:
     change_mode_every: 4
     current_resistor: ${current_res}
     voltage_divider: ${voltage_div}
-    update_interval: 3s
-
+    update_interval: 0.5s
     current:
-      name: "${devicename} - Ampere"
+      name: "${device_name} Current"
       unit_of_measurement: A
       accuracy_decimals: 3
+      id: current
       icon: mdi:current-ac
-
+      filters:
+        - multiply: ${current_multiplier}
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 0.5
+            - delta: 5%
     voltage:
-      name: "${devicename} - Volt"
+      name: "${device_name} Voltage"
       unit_of_measurement: V
       accuracy_decimals: 1
+      id: voltage
       icon: mdi:flash-outline
-
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - delta: 1.0
     power:
-      name: "${devicename} - Watt"
+      name: "${device_name} Power"
       unit_of_measurement: W
-      id: "power_wattage"
+      id: power
       icon: mdi:gauge
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 20.0
+            - delta: 5%
 
 status_led:
   pin:
@@ -95,20 +145,29 @@ output:
     id: led_red
 
 switch:
-  - platform: template
-    name: "${devicename} - Switch"
-    icon: mdi:power
-    optimistic: true
-# This is where the "restore_from_flash" comes in. I set it to try to restore from flash and, if that fails, set it to ON
-    restore_mode: RESTORE_DEFAULT_ON
-    lambda: 'return id(relay).state;'
-    id: button_switch
-    turn_on_action:
-      - switch.turn_on: relay
-      - output.turn_on: led_red
-    turn_off_action:
-      - switch.turn_off: relay
-      - output.turn_off: led_red
+#   - platform: template
+#     name: "${device_name} Switch"
+#     icon: mdi:power
+#     optimistic: true
+# # This is where the "restore_from_flash" comes in. I set it to try to restore from flash and, if that fails, set it to ON
+#     restore_mode: RESTORE_DEFAULT_ON
+#     lambda: 'return id(relay).state;'
+#     id: button_switch
+#     turn_on_action:
+#       - switch.turn_on: relay
+#       - output.turn_on: led_red
+#     turn_off_action:
+#       - switch.turn_off: relay
+#       - output.turn_off: led_red
   - platform: gpio
+    name: "${device_name} Switch"
+    icon: mdi:power
     pin: GPIO15
     id: relay
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - switch.turn_on: relay
+      - output.turn_on: led_red
+    on_turn_off:
+      - switch.turn_off: relay
+      - output.turn_off: led_red
