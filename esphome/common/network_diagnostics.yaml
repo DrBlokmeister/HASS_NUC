@@ -16,6 +16,24 @@ text_sensor:
       name: "${device_name} BSSID"
       id: bssid
 
+  # Additional text sensor for AP Name based on BSSID
+  - platform: template
+    name: "${device_name} AP Name"
+    lambda: |-
+      if (id(bssid).state == "D2:21:F9:A7:9C:89") {
+        return {"AP-Lite 1st Floor"};
+      } else if (id(bssid).state == "D0:21:F9:B7:EA:68") {
+        return {"AP-Lite Outside"};
+      } else if (id(bssid).state == "D2:21:F9:24:06:3A") {
+        return {"U6-LR"};
+      } else if (id(bssid).state == "B2:8B:A9:15:EF:0A") {
+        return {"U6-Pro 2nd Floor"};
+      } else {
+        return {"Unknown AP"};
+      }
+    icon: "mdi:access-point-network"
+    entity_category: diagnostic
+
 sensor:
   # Uptime Sensor
   # Measures how long the device has been running since the last restart.
