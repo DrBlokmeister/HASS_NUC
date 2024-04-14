@@ -12,6 +12,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_COUNTRY
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -19,7 +20,7 @@ from homeassistant.helpers.typing import StateType
 
 from . import YoufoneDataUpdateCoordinator
 from .const import DOMAIN
-from .entity import YoufoneEntity
+from .entity import YoufoneBeEntity
 from .models import YoufoneItem
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class YoufoneSensorDescription(SensorEntityDescription):
 
     value_fn: Callable[[Any], StateType] | None = None
     name_suffix: str | None = None
+    unique_id_fn: Callable | None = None
 
 
 SENSOR_DESCRIPTIONS: list[SensorEntityDescription] = [
@@ -38,6 +40,7 @@ SENSOR_DESCRIPTIONS: list[SensorEntityDescription] = [
         key="usage_percentage_data",
         icon="mdi:signal-4g",
         device_class=BinarySensorDeviceClass.SAFETY,
+        unique_id_fn=lambda customer: customer.get("customer_id"),
         name_suffix="Alarm",
         value_fn=lambda data: data.state
         > data.extra_attributes.get("period_percentage_completed"),
@@ -46,6 +49,7 @@ SENSOR_DESCRIPTIONS: list[SensorEntityDescription] = [
         key="usage_percentage_voice_sms",
         icon="mdi:phone",
         device_class=BinarySensorDeviceClass.SAFETY,
+        unique_id_fn=lambda customer: customer.get("customer_id"),
         name_suffix="Alarm",
         value_fn=lambda data: data.state
         > data.extra_attributes.get("period_percentage_completed"),
@@ -69,27 +73,28 @@ async def async_setup_entry(
         description.key: description for description in SENSOR_DESCRIPTIONS
     }
 
-    if coordinator.data is not None:
-        for _, item in coordinator.data.items():
-            if description := SUPPORTED_KEYS.get(item.type):
-                _LOGGER.debug(f"[sensor|async_setup_entry|adding] {item.name}")
-                entities.append(
-                    YoufoneBinarySensor(
-                        coordinator=coordinator,
-                        description=description,
-                        item=item,
+    if entry.data[CONF_COUNTRY] == "be":
+        if coordinator.data is not None:
+            for _, item in coordinator.data.items():
+                if description := SUPPORTED_KEYS.get(item.type):
+                    _LOGGER.debug(f"[sensor|async_setup_entry|adding] {item.name}")
+                    entities.append(
+                        YoufoneBinarySensor(
+                            coordinator=coordinator,
+                            description=description,
+                            item=item,
+                        )
                     )
-                )
-            else:
-                _LOGGER.debug(
-                    f"[sensor|async_setup_entry|no support type found] {item.name}, type: {item.type}, keys: {SUPPORTED_KEYS.get(item.type)}",
-                    True,
-                )
+                else:
+                    _LOGGER.debug(
+                        f"[sensor|async_setup_entry|no support type found] {item.name}, type: {item.type}, keys: {SUPPORTED_KEYS.get(item.type)}",
+                        True,
+                    )
 
-        async_add_entities(entities)
+            async_add_entities(entities)
 
 
-class YoufoneBinarySensor(YoufoneEntity, BinarySensorEntity):
+class YoufoneBinarySensor(YoufoneBeEntity, BinarySensorEntity):
     """Representation of a Youfone binary sensor."""
 
     entity_description: YoufoneSensorDescription

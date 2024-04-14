@@ -129,7 +129,7 @@ class YoufoneEntity(CoordinatorEntity[YoufoneDataUpdateCoordinator]):
             entry_type=DeviceEntryType.SERVICE,
             sw_version=VERSION,
         )
-        # self.name = f"{self.entity_description.unique_id_fn(self.item)} {self.entity_description.translation_key}"
+        self.name = f"{self.entity_description.unique_id_fn(self.item)} {self.entity_description.translation_key}"
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{self.entity_description.translation_key}_{self.entity_description.unique_id_fn(self.item)}"
         self.last_synced = datetime.now()
         _LOGGER.debug(f"[YoufoneEntity|init] {self._identifier}")
@@ -157,11 +157,6 @@ class YoufoneEntity(CoordinatorEntity[YoufoneDataUpdateCoordinator]):
     def available(self) -> bool:
         """Return if the entity is available."""
         return super().available and self.entity_description.available_fn(self.item)
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return f"{self.entity_description.unique_id_fn(self.item)} {self.entity_description.translation_key}"
 
     async def async_update(self) -> None:
         """Update the entity.  Only used by the generic entity update service."""

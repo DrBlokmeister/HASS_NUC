@@ -62,19 +62,41 @@ SENSOR_TYPES: tuple[YoufoneSensorDescription, ...] = (
     ),
     YoufoneSensorDescription(
         key="sim_only",
+        icon="mdi:currency-eur",
+        translation_key="sim_subscription_price",
+        unique_id_fn=lambda sim: sim.get("msisdn"),
+        available_fn=lambda sim: sim.get("msisdn") is not None,
+        value_fn=lambda sim: sim.get("subscription_info").get("price"),
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement=CURRENCY_EURO,
+        suggested_display_precision=1,
+    ),
+    YoufoneSensorDescription(
+        key="sim_only",
         icon="mdi:signal-5g",
         translation_key="data",
         unique_id_fn=lambda sim: sim.get("msisdn"),
         available_fn=lambda sim: sim.get("msisdn") is not None,
-        native_unit_of_measurement_fn=lambda sim: None
-        if sim.get("usage").get("data").get("percentage") is None
-        else PERCENTAGE,
-        value_fn=lambda sim: "∞"
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda sim: "0"
         if sim.get("usage").get("data").get("percentage") is None
         else sim.get("usage").get("data").get("percentage"),
         attributes_fn=lambda sim: {
             "usage": sim.get("usage").get("data"),
             "msisdn": f"+{sim.get('msisdn')}",
+            "is_unlimited": sim.get("usage").get("data").get("is_unlimited"),
+        },
+    ),
+    YoufoneSensorDescription(
+        key="sim_only",
+        icon="mdi:calendar-end-outline",
+        translation_key="remaining_days",
+        unique_id_fn=lambda sim: sim.get("msisdn"),
+        available_fn=lambda sim: sim.get("msisdn") is not None,
+        value_fn=lambda sim: sim.get("usage").get("data").get("remaining_days"),
+        attributes_fn=lambda sim: {
+            "usage": sim.get("usage").get("data"),
+            "period_percentage": sim.get("usage").get("data").get("period_percentage"),
         },
     ),
     YoufoneSensorDescription(
@@ -83,15 +105,14 @@ SENSOR_TYPES: tuple[YoufoneSensorDescription, ...] = (
         translation_key="voice",
         unique_id_fn=lambda sim: sim.get("msisdn"),
         available_fn=lambda sim: sim.get("msisdn") is not None,
-        native_unit_of_measurement_fn=lambda sim: None
-        if sim.get("usage").get("data").get("percentage") is None
-        else PERCENTAGE,
+        native_unit_of_measurement=PERCENTAGE,
         value_fn=lambda sim: "∞"
         if sim.get("usage").get("voice").get("percentage") is None
         else sim.get("usage").get("voice").get("percentage"),
         attributes_fn=lambda sim: {
             "usage": sim.get("usage").get("voice"),
             "msisdn": f"+{sim.get('msisdn')}",
+            "is_unlimited": sim.get("usage").get("voice").get("is_unlimited"),
         },
     ),
 )
@@ -318,15 +339,6 @@ class YoufoneBeSensor(YoufoneBeEntity, SensorEntity):
             return self.entity_description.value_fn(state)
 
         return state
-
-    @property
-    def native_unit_of_measurement(self) -> str | None:
-        """Return native unit of mesurement of the sensor."""
-        if self.entity_description.native_unit_of_measurement:
-            return self.entity_description.native_unit_of_measurement
-        if self.entity_description.native_unit_of_measurement_fn:
-            return self.entity_description.native_unit_of_measurement_fn(self.item)
-        return None
 
     @property
     def extra_state_attributes(self):
