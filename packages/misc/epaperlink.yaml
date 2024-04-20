@@ -122,6 +122,37 @@ automation:
         default:
           - service: script.update_energy_price_transition_display
 
+  - alias: "[misc|epaperlink]Notify if tag not seen"
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"  # Check every 5 minutes
+    condition:
+      - condition: template
+        value_template: >
+          {% set outdated = namespace(found=false) %}
+          {% for sensor in [
+            "sensor.0000021f86d83b1e_last_seen",
+            "sensor.0000021e6b5b3b17_last_seen",
+            "sensor.0000039223703418_last_seen",
+            "sensor.840b2d9179570131_last_seen",
+            "sensor.840b2d917bad0131_last_seen",
+            "sensor.garbage_monitor_tag_last_seen",
+            "sensor.00000218736e3b1e_last_seen",
+            "sensor.0000021c3bc6341b_last_seen"
+            ] %}
+              {% if states(sensor) == 'unavailable' or (as_timestamp(now()) - as_timestamp(states(sensor).state)) > 300 %}
+                {% set outdated.found = true %}
+              {% endif %}
+          {% endfor %}
+          {{ outdated.found }}
+    action:
+      # - condition: template
+      #   value_template: "{{ trigger.to_state.state == 'unavailable' or (as_timestamp(now()) - as_timestamp(trigger.to_state.last_changed)) > 300 }}"
+      - service: persistent_notification.create
+        data_template:
+          title: "Tag Not Seen Alert"
+          message: "One or more tags have not been seen for more than 5 minutes."
+
 ################
 #    SCENES    #
 ################
