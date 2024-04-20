@@ -43,9 +43,17 @@ ALL_METRICS=$($SSH_CMD "
     echo disk_3_temperature \$(smartctl -A /dev/sdd | grep Temperature_Celsius | awk '{print \$10}');
     echo dev_1_temperature \$(smartctl -A /dev/sdg | grep Temperature_Celsius | awk '{print \$10}');
     echo dev_2_temperature \$(smartctl -A /dev/sdf | grep Temperature_Celsius | awk '{print \$10}');
-    for container in transmission plex Portainer-CE Firefox ApacheGuacamole PhotoPrism Onedrive; do
+    for container in transmission plex Portainer-CE Firefox ApacheGuacamole PhotoPrism Onedrive HDDTemp glances ntp swag; do
         state=\$(docker inspect -f '{{.State.Running}}' \$container);
         echo \${container}_container_state \$(if [ \"\$state\" = \"true\" ]; then echo true; else echo false; fi);
+        # Fetch container stats
+        stats=\$(docker stats --no-stream --format \"{{.Name}} {{.CPUPerc}} {{.MemUsage}} {{.MemPerc}}\" \$container);
+        cpu_usage=\$(echo \$stats | awk '{print \$2}' | sed 's/%//'); # CPU usage without the percent sign
+        mem_usage=\$(echo \$stats | awk '{print \$3}'); # Memory usage (used)
+        mem_perc=\$(echo \$stats | awk '{print \$NF}' | sed 's/%//'); # Memory usage percent without the percent sign, assuming it's the last field (NF: Number of Fields)
+        echo \${container}_cpu_usage \${cpu_usage};
+        echo \${container}_mem_usage \${mem_usage};
+        echo \${container}_mem_perc \${mem_perc};
     done;
     echo unraid_array_status \$(mdcmd status | grep 'mdState=' | cut -d'=' -f2 | awk '{print \$1 == \"STARTED\" ? \"true\" : \"false\"}');
     echo wireguard_service_status \$(if [[ \$(wg) ]]; then echo true; else echo false; fi);

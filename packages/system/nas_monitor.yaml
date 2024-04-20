@@ -132,7 +132,7 @@ rest:
 #    COMMAND LINE    #
 ######################
 command_line:
-  - switch:
+  - switch: #Transmission
       unique_id: "yaml_command_line_switch_transmission_container"
       name: "Transmission Container"
       icon: "mdi:car-shift-pattern"
@@ -149,7 +149,7 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch:
+  - switch: #Plex
       unique_id: "yaml_command_line_switch_plex_container"
       name: "Plex Container"
       icon: "mdi:plex"
@@ -166,7 +166,7 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch:
+  - switch: #Portainer
       unique_id: "yaml_command_line_switch_portainer_ce_container"
       name: "Portainer CE Container"
       icon: "mdi:docker"
@@ -183,7 +183,7 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch:
+  - switch: #Firefox
       unique_id: "yaml_command_line_switch_firefox_container"
       name: "Firefox Container"
       icon: "mdi:firefox"
@@ -200,7 +200,7 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch:
+  - switch: #ApacheGuacamole
       unique_id: "yaml_command_line_switch_apache_guacamole_container"
       name: "Apache Guacamole Container"
       icon: "mdi:application"
@@ -217,7 +217,7 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch:
+  - switch: #PhotoPrism
       unique_id: "yaml_command_line_switch_photoprism_container"
       name: "PhotoPrism Container"
       icon: "mdi:image-multiple"
@@ -234,7 +234,7 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch:
+  - switch: #Onedrive
       unique_id: "yaml_command_line_switch_onedrive_container"
       name: "OneDrive Container"
       icon: "mdi:cloud-outline"
@@ -248,6 +248,74 @@ command_line:
         "docker stop Onedrive"
       command_state: >-
         cat /config/www/nas_status.json | jq -r '.Onedrive_container_state'
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
+  - switch: #HDDTemp
+      unique_id: "yaml_command_line_switch_hddtemp_container"
+      name: "HDDTemp Container"
+      icon: "mdi:harddisk"
+      command_on: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker start HDDTemp"
+      command_off: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker stop HDDTemp"
+      command_state: >-
+        cat /config/www/nas_status.json | jq -r '.HDDTemp_container_state'
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
+  - switch: #Glances
+      unique_id: "yaml_command_line_switch_glances_container"
+      name: "Glances Container"
+      icon: "mdi:eye-settings"
+      command_on: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker start glances"
+      command_off: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker stop glances"
+      command_state: >-
+        cat /config/www/nas_status.json | jq -r '.glances_container_state'
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
+  - switch: #NTP
+      unique_id: "yaml_command_line_switch_ntp_container"
+      name: "NTP Container"
+      icon: "mdi:clock"
+      command_on: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker start ntp"
+      command_off: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker stop ntp"
+      command_state: >-
+        cat /config/www/nas_status.json | jq -r '.ntp_container_state'
+      value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
+  - switch: #SWAG
+      unique_id: "yaml_command_line_switch_swag_container"
+      name: "SWAG Container"
+      icon: "mdi:shield-account"
+      command_on: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker start swag"
+      command_off: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.0.250
+        "docker stop swag"
+      command_state: >-
+        cat /config/www/nas_status.json | jq -r '.swag_container_state'
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
@@ -590,6 +658,137 @@ command_line:
       value_template: "{{ value_json.get('onedrive_mem_perc', 0) }}"
       icon: mdi:percent
 
+  - sensor:
+      name: "HDDTemp CPU Usage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('hddtemp_cpu_usage', 0) }}"
+      icon: mdi:cpu-64-bit
+  - sensor:
+      name: "HDDTemp Memory Usage"
+      unit_of_measurement: 'GB'
+      command: "cat /config/www/nas_status.json"
+      value_template: >
+        {% set mem_usage = value_json.get('hddtemp_mem_usage', '0B') %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
+        {% if unit == 'MiB' %}
+          {{ '%0.3f' | format(value / 1024) }}
+        {% elif unit == 'GiB' %}
+          {{ '%0.3f' | format(value) }}
+        {% elif unit == 'KiB' %}
+          {{ '%0.3f' | format(value / (1024 * 1024)) }}
+        {% elif unit == 'B' %}
+          {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
+        {% else %}
+          {{ '0.000' }}  # Fallback in case unit is not recognized
+        {% endif %}
+      icon: mdi:memory
+  - sensor:
+      name: "HDDTemp Memory Usage Percentage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('hddtemp_mem_perc', 0) }}"
+      icon: mdi:percent
+
+  - sensor:
+      name: "Glances CPU Usage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('glances_cpu_usage', 0) }}"
+      icon: mdi:cpu-64-bit
+  - sensor:
+      name: "Glances Memory Usage"
+      unit_of_measurement: 'GB'
+      command: "cat /config/www/nas_status.json"
+      value_template: >
+        {% set mem_usage = value_json.get('glances_mem_usage', '0B') %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
+        {% if unit == 'MiB' %}
+          {{ '%0.3f' | format(value / 1024) }}
+        {% elif unit == 'GiB' %}
+          {{ '%0.3f' | format(value) }}
+        {% elif unit == 'KiB' %}
+          {{ '%0.3f' | format(value / (1024 * 1024)) }}
+        {% elif unit == 'B' %}
+          {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
+        {% else %}
+          {{ '0.000' }}  # Fallback in case unit is not recognized
+        {% endif %}
+      icon: mdi:memory
+  - sensor:
+      name: "Glances Memory Usage Percentage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('glances_mem_perc', 0) }}"
+      icon: mdi:percent
+
+  - sensor:
+      name: "NTP CPU Usage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('ntp_cpu_usage', 0) }}"
+      icon: mdi:cpu-64-bit
+  - sensor:
+      name: "NTP Memory Usage"
+      unit_of_measurement: 'GB'
+      command: "cat /config/www/nas_status.json"
+      value_template: >
+        {% set mem_usage = value_json.get('ntp_mem_usage', '0B') %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
+        {% if unit == 'MiB' %}
+          {{ '%0.3f' | format(value / 1024) }}
+        {% elif unit == 'GiB' %}
+          {{ '%0.3f' | format(value) }}
+        {% elif unit == 'KiB' %}
+          {{ '%0.3f' | format(value / (1024 * 1024)) }}
+        {% elif unit == 'B' %}
+          {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
+        {% else %}
+          {{ '0.000' }}  # Fallback in case unit is not recognized
+        {% endif %}
+      icon: mdi:memory
+  - sensor:
+      name: "NTP Memory Usage Percentage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('ntp_mem_perc', 0) }}"
+      icon: mdi:percent
+
+  - sensor:
+      name: "SWAG CPU Usage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('swag_cpu_usage', 0) }}"
+      icon: mdi:cpu-64-bit
+  - sensor:
+      name: "SWAG Memory Usage"
+      unit_of_measurement: 'GB'
+      command: "cat /config/www/nas_status.json"
+      value_template: >
+        {% set mem_usage = value_json.get('swag_mem_usage', '0B') %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
+        {% if unit == 'MiB' %}
+          {{ '%0.3f' | format(value / 1024) }}
+        {% elif unit == 'GiB' %}
+          {{ '%0.3f' | format(value) }}
+        {% elif unit == 'KiB' %}
+          {{ '%0.3f' | format(value / (1024 * 1024)) }}
+        {% elif unit == 'B' %}
+          {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
+        {% else %}
+          {{ '0.000' }}  # Fallback in case unit is not recognized
+        {% endif %}
+      icon: mdi:memory
+  - sensor:
+      name: "SWAG Memory Usage Percentage"
+      unit_of_measurement: '%'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('swag_mem_perc', 0) }}"
+      icon: mdi:percent
 
 #################
 #    SENSORS    #
@@ -608,7 +807,7 @@ binary_sensor:
 switch:
   platform: wake_on_lan
   name: BlokmeisterNAS
-  host: 192.168.1.250
+  host: 10.0.0.250
   mac: "BC:5F:F4:8B:7A:9E"
   turn_off:
     service: rest_command.nas_shutdown
@@ -699,6 +898,22 @@ automation:
             - sensor.onedrive_cpu_usage
             - sensor.onedrive_memory_usage
             - sensor.onedrive_memory_usage_percentage
+            - sensor.hddtemp_cpu_usage
+            - sensor.hddtemp_memory_usage
+            - sensor.hddtemp_memory_usage_percentage
+            - sensor.glances_cpu_usage
+            - sensor.glances_memory_usage
+            - sensor.glances_memory_usage_percentage
+            - sensor.ntp_cpu_usage
+            - sensor.ntp_memory_usage
+            - sensor.ntp_memory_usage_percentage
+            - sensor.swag_cpu_usage
+            - sensor.swag_memory_usage
+            - sensor.swag_memory_usage_percentage
+            - switch.hddtemp_container
+            - switch.glances_container
+            - switch.ntp_container
+            - switch.swag_container
 
   - alias: 'Completed Torrent'
     trigger:
@@ -723,6 +938,87 @@ scene:
 #    GROUPS    #
 ################
 group:
+  container_sensors_switches:
+    name: "NAS Container Sensors and Switches"
+    entities:
+      - switch.transmission_container
+      - switch.plex_container
+      - switch.portainer_ce_container
+      - switch.firefox_container
+      - switch.apache_guacamole_container
+      - switch.photoprism_container
+      - switch.onedrive_container
+      - switch.hddtemp_container
+      - switch.glances_container
+      - switch.ntp_container
+      - switch.swag_container
+      - sensor.transmission_cpu_usage
+      - sensor.transmission_memory_usage
+      - sensor.transmission_memory_usage_percentage
+      - sensor.plex_cpu_usage
+      - sensor.plex_memory_usage
+      - sensor.plex_memory_usage_percentage
+      - sensor.portainer_ce_cpu_usage
+      - sensor.portainer_ce_memory_usage
+      - sensor.portainer_ce_memory_usage_percentage
+      - sensor.firefox_cpu_usage
+      - sensor.firefox_memory_usage
+      - sensor.firefox_memory_usage_percentage
+      - sensor.apacheguacamole_cpu_usage
+      - sensor.apacheguacamole_memory_usage
+      - sensor.apacheguacamole_memory_usage_percentage
+      - sensor.photoprism_cpu_usage
+      - sensor.photoprism_memory_usage
+      - sensor.photoprism_memory_usage_percentage
+      - sensor.onedrive_cpu_usage
+      - sensor.onedrive_memory_usage
+      - sensor.onedrive_memory_usage_percentage
+      - sensor.hddtemp_cpu_usage
+      - sensor.hddtemp_memory_usage
+      - sensor.hddtemp_memory_usage_percentage
+      - sensor.glances_cpu_usage
+      - sensor.glances_memory_usage
+      - sensor.glances_memory_usage_percentage
+      - sensor.ntp_cpu_usage
+      - sensor.ntp_memory_usage
+      - sensor.ntp_memory_usage_percentage
+      - sensor.swag_cpu_usage
+      - sensor.swag_memory_usage
+      - sensor.swag_memory_usage_percentage
+  nas_status_sensors:
+    name: "NAS Status Sensors"
+    entities:
+      - sensor.nas_cpu_usage_file
+      - sensor.nas_cpu_temperature_file
+      - sensor.nas_total_memory_file
+      - sensor.nas_used_memory_file
+      - sensor.nas_used_disk_space_file
+      - sensor.nas_nvme_composite_temperature_file
+      - sensor.nas_parity_temperature_file
+      - sensor.nas_disk_1_temperature_file
+      - sensor.nas_disk_2_temperature_file
+      - sensor.nas_disk_3_temperature_file
+      - sensor.nas_dev_1_temperature_file
+      - sensor.nas_dev_2_temperature_file
+      - binary_sensor.nas_ssh_reachability
+      - switch.nas_unraid_array
+      - switch.nas_wireguard_service
+  airvpn_status:
+    name: "AirVPN Status"
+    entities:
+      - switch.nas_wireguard_service
+      - sensor.airvpn_exit_ip
+      - sensor.airvpn_username
+      - sensor.airvpn_vpn_ip
+      - sensor.airvpn_exit_ip
+      - sensor.airvpn_entry_ip
+      - sensor.airvpn_server_name
+      - sensor.airvpn_server_country
+      - sensor.airvpn_data_uploaded
+      - sensor.airvpn_data_downloaded
+      - sensor.airvpn_connected_since
+      - sensor.airvpn_upload_speed
+      - sensor.airvpn_download_speed
 
 #################
 #    SCRIPTS    #
