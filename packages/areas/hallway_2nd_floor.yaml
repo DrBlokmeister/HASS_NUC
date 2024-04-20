@@ -96,6 +96,14 @@ automation:
           - binary_sensor.hallway_2nd_floor_motion_1
           - binary_sensor.hallway_2nd_floor_motion_2
         to: 'on'
+      - platform: template #going up second stairs
+        id: going_up_first_stairs
+        value_template: >-
+          {{
+            (is_state('binary_sensor.hallway_1st_floor_motion_1', 'on') or is_state('binary_sensor.hallway_1st_floor_motion_1', 'on')) and
+            (is_state('binary_sensor.hallway_2nd_floor_motion_1', 'off') and is_state('binary_sensor.hallway_2nd_floor_motion_2', 'off')) and
+            is_state('binary_sensor.stairs_upper_motion_1', 'on')
+          }}
     condition:
       - condition: template
         value_template: "{{ states('sensor.hallway_2nd_floor_average_illuminance')|int < states('input_number.hallway_2nd_floor_illumination_limit')|int }}"

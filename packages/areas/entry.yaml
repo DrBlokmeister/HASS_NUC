@@ -130,6 +130,14 @@ automation:
       - platform: state
         entity_id: binary_sensor.entry_motion_combined
         to: 'on'
+      - platform: template #Going down first stairs
+        id: going_down_second_stairs
+        value_template: >-
+          {{
+            (is_state('binary_sensor.hallway_1st_floor_motion_1', 'on') or is_state('binary_sensor.hallway_1st_floor_motion_2', 'on')) and
+            (is_state('binary_sensor.entry_motion_1', 'off') and is_state('binary_sensor.entry_motion_2', 'off')) and
+            is_state('binary_sensor.stairs_lower_motion_1', 'on')
+          }}
     condition:
       - condition: template
         value_template: "{{ states('sensor.entry_average_illuminance')|int < states('input_number.entry_illumination_limit')|int }}"
