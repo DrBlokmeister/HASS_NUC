@@ -431,107 +431,6 @@ automation:
       - service: vacuum.start
         entity_id: vacuum.moeke
 
-  # - alias: '[home|vacuum]Drive Alfred to Hallway when Dust Bin is full'
-  #   id: home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
-  #   mode: single
-  #   trigger:
-  #     - platform: numeric_state
-  #       entity_id: vacuum.alfred
-  #       attribute: battery_level
-  #       above: 99
-  #     - platform: state
-  #       entity_id: binary_sensor.house_occupied
-  #       to: 'on'
-  #     - platform: time
-  #       at: "9:00:00"
-  #   condition:
-  #     - condition: numeric_state
-  #       entity_id: sensor.alfred_area_cleaned_since_last_empty_bin
-  #       above: 100
-  #     - condition: state
-  #       entity_id: binary_sensor.house_occupied
-  #       state: 'on'
-  #     - condition: numeric_state
-  #       entity_id: vacuum.alfred
-  #       attribute: battery_level
-  #       above: 99
-  #     - condition: time
-  #       after: "9:00:00"
-  #       before: "21:00:00"
-  #   action:
-  #     - service: script.alfred_goto_hallway
-  #     - wait_for_trigger:
-  #         - platform: state
-  #           entity_id: vacuum.alfred
-  #           to:
-  #             - 'returning'
-  #             - 'Returning to dock'
-  #             - 'docked'
-  #     - service: utility_meter.calibrate
-  #       data:
-  #         value: 0
-  #       target:
-  #         entity_id: sensor.alfred_area_cleaned_since_last_empty_bin
-      # - service: utility_meter.reset
-      #   entity_id: sensor.alfred_area_cleaned_at_last_empty_bin
-      # - service: input_number.set_value
-      #   data:
-      #     entity_id: input_number.alfred_area_cleaned_at_last_empty_bin
-      #     value: "{{ states('sensor.alfred_total_clean_area') }}"
-
-  # - alias: '[home|vacuum]Drive Argus to Hallway when Dust Bin is full'
-  #   id: home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
-  #   mode: single
-  #   trigger:
-  #     - platform: numeric_state
-  #       entity_id: vacuum.argus
-  #       attribute: battery_level
-  #       above: 99
-  #     - platform: state
-  #       entity_id: binary_sensor.house_occupied
-  #       to: 'on'
-  #     - platform: time
-  #       at: "9:00:00"
-  #   condition:
-  #     - condition: numeric_state
-  #       entity_id: sensor.argus_area_cleaned_since_last_empty_bin
-  #       above: 100
-  #     - condition: state
-  #       entity_id: binary_sensor.house_occupied
-  #       state: 'on'
-  #     - condition: numeric_state
-  #       entity_id: vacuum.argus
-  #       attribute: battery_level
-  #       above: 99
-  #     - condition: time
-  #       after: "9:00:00"
-  #       before: "21:00:00"
-  #   action:
-  #     - service: xiaomi_miio.vacuum_goto
-  #       data:
-  #         entity_id: vacuum.argus
-  #         x_coord: 28946
-  #         y_coord: 26144
-  #     #- service: script.argus_goto_hallway
-  #     - wait_for_trigger:
-  #         - platform: state
-  #           entity_id: vacuum.argus
-  #           to:
-  #             - 'returning'
-  #             - 'Returning to dock'
-  #             - 'docked'
-      # - service: utility_meter.reset
-      #   entity_id: sensor.argus_area_cleaned_since_last_empty_bin
-      # - service: utility_meter.calibrate
-      #   data:
-      #     value: 0
-      #   target:
-      #     entity_id: sensor.argus_area_cleaned_since_last_empty_bin
-      # - service: input_number.set_value
-      #   data:
-      #     entity_id: input_number.argus_area_cleaned_at_last_empty_bin
-      #     value: "{{ states('sensor.argus_total_clean_area') }}"
-
   - alias: '[home|vacuum] Button control moeke'
     id: home_vacuum_button_control_moeke
     mode: restart
@@ -539,7 +438,11 @@ automation:
       - platform: event
         event_type: deconz_event
         event_data:
-          id: moeke_water_reset_switch
+          id: smart_switch
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: moeke_switch
     action:
       - choose:
           - conditions:
@@ -784,9 +687,9 @@ group:
     entities:
       - automation.home_vacuum_scheduled_cleanup
       - automation.home_vacuum_backup_cleanup
-      - automation.home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
-      - automation.home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
-      - automation.home_vacuum_drive_consuela_to_hallway_when_dust_bin_is_full
+      # - automation.home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
+      # - automation.home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
+      # - automation.home_vacuum_drive_consuela_to_hallway_when_dust_bin_is_full
       - automation.home_vacuum_reset_area_cleaned_input_number
 #################
 #    SCRIPTS    #
@@ -874,55 +777,24 @@ script:
         repeats: 2
         zone: [[23482,25044,29387,30204]]
 
-  alfred_goto_hallway:
-    alias: "Alfred go to Hallway"
+  start_all_vacuums:
+    alias: "Start All Vacuums"
     sequence:
-    - service: xiaomi_miio.vacuum_goto
-      data:
-        entity_id: vacuum.alfred
-        x_coord: 25119
-        y_coord: 28904
-  # consuela_goto_hallway:
-  #   alias: "Consuela go to Kitchen"
-  #   sequence:
-  #   - service: xiaomi_miio.vacuum_goto
-  #     data:
-  #       entity_id: vacuum.consuela
-  #       x_coord: 25226
-  #       y_coord: 28459
-  argus_goto_hallway:
-    alias: "Argus go to Hallway"
-    sequence:
-    - service: xiaomi_miio.vacuum_goto
-      data:
-        entity_id: vacuum.argus
-        x_coord: 28946
-        y_coord: 26144
-
-  call_cleaning_loop:
-    alias: "Calls the cleaning loop"
-    mode: queued
-    sequence:
-      - condition: template
-        value_template: "{{ not is_state('input_select.vacuum_area_coordinates', '16') }}"
-      - service: script.turn_on
-        data:
-          entity_id: script.clean_next_area
-
-  clean_next_area:
-    alias: "cleans the next area"
-    mode: queued
-    sequence:
-      - service: vacuum.send_command
-        data:
-          entity_id: vacuum.xiaomi_vacuum_cleaner
-          command: app_segment_clean
-          params: >-
-            {{states('input_select.vacuum_room_numbers')|int}}
-      - wait_template: "{{ is_state_attr('vacuum.xiaomi_vacuum_cleaner','status','Returning home') }}"
-      - service: input_select.select_next
-        data:
-          entity_id: input_select.vacuum_room_numbers
-      - service: script.turn_on
-        data:
-          entity_id: script.call_cleaning_loop
+      - parallel:
+          - sequence:
+              - service: select.select_option
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: "sweeping_and_mopping"
+              - delay:
+                  seconds: 2
+              - service: vacuum.start
+                target:
+                  entity_id: vacuum.moeke
+          - service: vacuum.start
+            target:
+              entity_id: vacuum.argus
+          - service: vacuum.start
+            target:
+              entity_id: vacuum.alfred

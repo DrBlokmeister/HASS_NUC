@@ -3,15 +3,47 @@ title: Vacuums
 icon: mdi:robot-vacuum
 badges: []
 cards:
-  - type: button
-    entity: group.vacuum_automations
-    name: Vacuum Automations
-    icon: mdi:robot-vacuum
-    state_color: true
-    show_state: true
-    tap_action:
-      action: toggle
-
+  - type: grid
+    columns: 5
+    cards:
+      - type: button
+        entity: group.vacuum_automations
+        name: Automations
+        icon: mdi:robot-vacuum
+        state_color: true
+        show_state: true
+        tap_action:
+          action: toggle
+      - type: button
+        icon: mdi:robot-vacuum
+        name: Start All
+        tap_action:
+          action: call-service
+          service: script.start_all_vacuums
+      - type: button
+        icon: mdi:robot-vacuum
+        name: Start Moeke
+        tap_action:
+          action: call-service
+          service: vacuum.start
+          service_data:
+            entity_id: vacuum.moeke
+      - type: button
+        icon: mdi:robot-vacuum
+        name: Start Argus
+        tap_action:
+          action: call-service
+          service: vacuum.start
+          service_data:
+            entity_id: vacuum.argus
+      - type: button
+        icon: mdi:robot-vacuum
+        name: Start Alfred
+        tap_action:
+          action: call-service
+          service: vacuum.start
+          service_data:
+            entity_id: vacuum.alfred
   - type: vertical-stack
     cards:
       - type: custom:xiaomi-vacuum-map-card
@@ -31,37 +63,6 @@ cards:
           - entity: select.moeke_cleaning_mode
           - entity: binary_sensor.moeke_reservoir_leak_sensor
             name: Clean Water Reservoir
-      # - type: glance
-      #   title: Clean Areas
-      #   columns: 4
-      #   entities:
-      #     - entity: script.vacuum_entry_twice
-      #       icon: mdi:door
-      #       name: Entry
-      #       tap_action:
-      #         action: call-service
-      #         service: script.vacuum_entry_twice
-      #     - entity: script.vacuum_kitchen_twice
-      #       icon: mdi:fridge-outline
-      #       name: Kitchen
-      #       tap_action:
-      #         action: call-service
-      #         service: script.vacuum_kitchen_twice
-      #     - entity: script.vacuum_livingroom_twice
-      #       icon: mdi:table-chair
-      #       name: Living Room
-      #       tap_action:
-      #         action: call-service
-      #         service: script.vacuum_livingroom_twice
-      #     - entity: script.argus_goto_kitchen
-      #       icon: 'mdi:robot-vacuum'
-      #       name: Empty Argus
-      #       tap_action:
-      #         action: call-service
-      #         service: automation.trigger
-      #         service_data:
-      #           entity_id: automation.home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
-      #           skip_condition: true
 
   - type: vertical-stack
     cards:
@@ -79,8 +80,6 @@ cards:
         entities:
           - entity: sensor.argus_area_cleaned_today
             name: Argus Cleaned Today
-          # - entity: sensor.argus_area_cleaned_since_last_empty_bin
-          #   name: Argus Dust Collected
       - type: glance
         title: Clean Areas
         columns: 4
@@ -103,62 +102,6 @@ cards:
             tap_action:
               action: call-service
               service: script.vacuum_livingroom_twice
-          - entity: script.argus_goto_kitchen
-            icon: 'mdi:robot-vacuum'
-            name: Empty Argus
-            tap_action:
-              action: call-service
-              service: automation.trigger
-              service_data:
-                entity_id: automation.home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
-                skip_condition: true
-
-  # - type: vertical-stack
-  #   cards:
-  #     - type: custom:xiaomi-vacuum-map-card
-  #       title: Consuela
-  #       preset_name: Live map
-  #       map_locked: true
-  #       entity: vacuum.consuela
-  #       map_source:
-  #         camera: camera.consuela_map
-  #       calibration_source:
-  #         camera: true
-  #       debug: true
-  #     - type: entities
-  #       entities:
-  #         - entity: sensor.consuela_area_cleaned_today
-  #           name: Consuela Cleaned Today
-  #         - entity: sensor.consuela_area_cleaned_since_last_empty_bin
-  #           name: Consuela Dust Collected
-  #     - type: glance
-  #       title: Clean Areas
-  #       columns: 3
-  #       entities:
-  #         - entity: script.vacuum_bedroom_twice
-  #           icon: mdi:bed-double
-  #           name: Bedroom
-  #           tap_action:
-  #             action: call-service
-  #             service: script.vacuum_bedroom_twice
-  #         - entity: script.vacuum_bathroom_twice
-  #           icon: mdi:shower
-  #           name: Bathroom
-  #           tap_action:
-  #             action: call-service
-  #             service: script.vacuum_bathroom_twice
-  #         - entity: script.consuela_goto_hallway
-  #           icon: 'mdi:robot-vacuum'
-  #           name: Empty Consuela
-  #           tap_action:
-  #             action: call-service
-  #             service: automation.trigger
-  #             service_data:
-  #               entity_id: automation.home_vacuum_drive_consuela_to_hallway_when_dust_bin_is_full
-  #               skip_condition: true
-  #       show_icon: true
-  #       show_name: true
-  #       show_state: false
 
   - type: vertical-stack
     cards:
@@ -176,8 +119,6 @@ cards:
         entities:
           - entity: sensor.alfred_area_cleaned_today
             name: Alfred Cleaned Today
-          # - entity: sensor.alfred_area_cleaned_since_last_empty_bin
-          #   name: Alfred Dust Collected
       - type: glance
         title: Clean Areas
         columns: 5
@@ -206,15 +147,6 @@ cards:
             tap_action:
               action: call-service
               service: script.vacuum_tamarasroom_twice
-          - entity: script.alfred_goto_hallway
-            icon: 'mdi:robot-vacuum'
-            name: Empty Alfred
-            tap_action:
-              action: call-service
-              service: automation.trigger
-              service_data:
-                entity_id: automation.home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
-                skip_condition: true
         show_icon: true
         show_name: true
         show_state: false
