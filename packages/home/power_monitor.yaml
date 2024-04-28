@@ -677,7 +677,13 @@ sensor:
     method: left
     round: 2
 
-
+  - platform: integration
+    source: sensor.solar_panels_production_benefits_hourly
+    name: Solar Panels Total Electricity Benefits
+    unique_id: yaml_integration_solar_panel_total_electricity_benefits
+    unit_time: h
+    method: left
+    round: 2
 
   - platform: integration
     source: sensor.total_power_consumption_watt
@@ -783,54 +789,6 @@ sensor:
     method: left
     unit_time: h
     round: 2
-  # - platform: template
-  #   sensors:
-  #     known_power:
-  #       friendly_name: "Known Power"
-  #       unit_of_measurement: 'W'
-  #       value_template: >-
-  #         {{ expand('group.power_entities') |rejectattr('domain','eq','group')
-  #                                           |rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|map(attribute='state')|map('float')|sum}}
-
-  # - platform: template
-  #   sensors:
-  #     unknown power:
-  #       friendly_name: "Unknown Power"
-  #       unit_of_measurement: 'W'
-  #       value_template: "{{ states('sensor.total_power_consumption_watt')|float - states('sensor.known_power')|float }}"
-  #       availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.known_power')|is_number }}"
-
-
-  # - platform: template
-  #   sensors:
-  #     light_power_estimate: #I fitted power monitoring data to the power consumption using a trendline in Excel. Formula is 0.35*exp(brightness*0.0096)
-  #       unit_of_measurement: 'W'
-  #       value_template: >-
-  #         {% set lights = [
-  #           states.light.bedroom_1,
-  #           states.light.bedroom_2,
-  #           states.light.bedroom_3,
-  #           states.light.tvarea_1,
-  #           states.light.tvarea_2,
-  #           states.light.tvarea_3,
-  #           states.light.tvarea_4,
-  #           states.light.tvarea_5,
-  #           states.light.kitchen_1,
-  #           states.light.kitchen_2,
-  #           states.light.kitchen_3,
-  #           states.light.study_1,
-  #           states.light.study_2,
-  #           states.light.study_3,
-  #           states.light.plant_1,
-  #           states.light.plant_2,
-  #           states.light.entry_1
-  #         ] %}
-  #         {%- set ns = namespace(power = 0) -%}
-  #         {%- set threshold = 100 -%}
-  #         {%- for item in lights if (item.attributes.brightness is defined) -%}
-  #           {%- set ns.power = ns.power + (0.35*2.72**(item.attributes['brightness']|round(1) * 0.0096))|round(2) -%}
-  #         {%- endfor -%}
-  #         {{ ns.power|round(1) }}
 
   - platform: min_max
     name: Phase 1 Known Power
