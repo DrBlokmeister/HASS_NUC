@@ -352,6 +352,8 @@ command_line:
       command_state: >-
         cat /config/www/nas_status.json | jq -r '.wireguard_service_status'
       value_template: "{{ value == 'true' or value == true }}"
+      availability: >-
+        {{ states('binary_sensor.nas_ssh_reachability') }}
 
   - binary_sensor:
       name: "NAS SSH Reachability"
@@ -366,86 +368,111 @@ command_line:
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('cpu_usage', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS CPU Temperature File"
       icon: mdi:thermometer
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('cpu_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Total Memory File"
       icon: mdi:memory
       unit_of_measurement: 'MB'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('total_memory', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Used Memory File"
       icon: mdi:memory
       unit_of_measurement: 'MB'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('used_memory', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
+  - sensor:
+      name: "NAS Link Speed"
+      unit_of_measurement: 'Mb/s'
+      command: "cat /config/www/nas_status.json"
+      value_template: "{{ value_json.get('link_speed', '0Mb/s').split('Mb/s')[0] }}"
+      icon: mdi:speedometer
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Used Disk Space File"
       icon: mdi:harddisk
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('used_disk_space', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS NVMe Composite Temperature File"
       icon: mdi:thermometer
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('nvme_composite_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Parity Temperature File"
       icon: mdi:harddisk
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('parity_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Disk 1 Temperature File"
       icon: mdi:harddisk
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('disk_1_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Disk 2 Temperature File"
       icon: mdi:harddisk
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('disk_2_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Disk 3 Temperature File"
       icon: mdi:harddisk
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('disk_3_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Dev 1 Temperature File"
       icon: mdi:harddisk
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('dev_1_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NAS Dev 2 Temperature File"
       icon: mdi:harddisk
       unit_of_measurement: '°C'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('dev_2_temperature', 0) }}"
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
 
   - sensor:
       name: "Transmission CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('transmission_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('transmission_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('transmission_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Transmission Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
-        {% set mem_usage = "229.5MiB" %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set mem_usage = value_json.get('transmission_mem_usage', '0B') %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -456,28 +483,36 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '%0.3f' | format(0) }}  # Fallback in case unit is not recognized
+          {{ '-1' | format(0) }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Transmission Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
       value_template: "{{ value_json.get('transmission_mem_perc', 0) }}"
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Plex CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('plex_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('plex_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('plex_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Plex Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.plex_mem_usage %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -488,28 +523,41 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '%0.3f' | format(0) }}  # Fallback in case unit is not recognized
+          {{ '-1' | format(0) }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Plex Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('plex_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('plex_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('plex_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Portainer-CE CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('Portainer-CE_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('Portainer-CE_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('Portainer-CE_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Portainer-CE Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('Portainer-CE_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -520,28 +568,41 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}  # Fallback in case unit is not recognized
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Portainer-CE Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('Portainer-CE_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('Portainer-CE_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('Portainer-CE_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Firefox CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('Firefox_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('Firefox_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('Firefox_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Firefox Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('Firefox_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -552,28 +613,41 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}  # Fallback in case unit is not recognized
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Firefox Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('Firefox_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('Firefox_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('Firefox_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "ApacheGuacamole CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('ApacheGuacamole_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('ApacheGuacamole_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('ApacheGuacamole_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "ApacheGuacamole Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('ApacheGuacamole_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -584,28 +658,41 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "ApacheGuacamole Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('ApacheGuacamole_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('ApacheGuacamole_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('ApacheGuacamole_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "PhotoPrism CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('photoprism_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('photoprism_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('photoprism_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "PhotoPrism Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
-        {% set mem_usage = value_json.get('PhotoPrism_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set mem_usage = value_json.get('PhotoPrism_mem_usage', 'unavailable') %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -616,28 +703,41 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "PhotoPrism Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('photoprism_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('photoprism_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('photoprism_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "OneDrive CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('onedrive_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('onedrive_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('onedrive_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "OneDrive Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('Onedrive_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -648,29 +748,42 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "OneDrive Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('onedrive_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('onedrive_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('onedrive_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
 
   - sensor:
       name: "HDDTemp CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('hddtemp_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('hddtemp_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('hddtemp_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "HDDTemp Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('hddtemp_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -681,29 +794,42 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "HDDTemp Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('hddtemp_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('hddtemp_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('hddtemp_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
 
   - sensor:
       name: "Glances CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('glances_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('glances_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('glances_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Glances Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('glances_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -714,29 +840,42 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Glances Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('glances_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('glances_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('glances_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
 
   - sensor:
       name: "NTP CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('ntp_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('ntp_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('ntp_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NTP Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('ntp_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -747,29 +886,42 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}  # Fallback in case unit is not recognized
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "NTP Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('ntp_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('ntp_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('ntp_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
 
   - sensor:
       name: "SWAG CPU Usage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('swag_cpu_usage', 0) }}"
+      value_template: >
+        {% if value_json.get('swag_cpu_usage', 'Unavailable') is number %}
+          {{ value_json.get('swag_cpu_usage', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:cpu-64-bit
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "SWAG Memory Usage"
       unit_of_measurement: 'GB'
       command: "cat /config/www/nas_status.json"
       value_template: >
         {% set mem_usage = value_json.get('swag_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float %}
+        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
         {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
         {% if unit == 'MiB' %}
           {{ '%0.3f' | format(value / 1024) }}
@@ -780,15 +932,22 @@ command_line:
         {% elif unit == 'B' %}
           {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
         {% else %}
-          {{ '0.000' }}  # Fallback in case unit is not recognized
+          {{ '-1' }}
         {% endif %}
       icon: mdi:memory
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "SWAG Memory Usage Percentage"
       unit_of_measurement: '%'
       command: "cat /config/www/nas_status.json"
-      value_template: "{{ value_json.get('swag_mem_perc', 0) }}"
+      value_template: >
+        {% if value_json.get('swag_mem_perc', 'Unavailable') is number %}
+          {{ value_json.get('swag_mem_perc', 'Unavailable') }}
+        {% else %}
+          -1
+        {% endif %}
       icon: mdi:percent
+      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
 
 #################
 #    SENSORS    #
@@ -929,6 +1088,28 @@ automation:
           tag: transmission
           icon_url: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Transmission_icon.png"
           timeout: 1800
+
+  - alias: "[system|nas]Link Speed Alert"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.nas_link_speed
+        below: 9000
+        for:
+          minutes: 10
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Network Speed Alert"
+          message: "Warning: Network speed has dropped below 9000 Mb/s."
+          notification_id: "network_speed_alert"
+      - wait_for_trigger:
+          - platform: numeric_state
+            entity_id: sensor.nas_link_speed
+            above: 9000
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: "network_speed_alert"
+
 ################
 #    SCENES    #
 ################
