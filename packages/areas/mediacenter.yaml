@@ -164,6 +164,9 @@ automation:
         entity_id: switch.amplifier_power
       - service: switch.turn_on
         entity_id: switch.ambilight
+      - service: button.press
+        target:
+          entity_id: button.set_livingroom_channel_to_tv
       - wait_for_trigger:
           # - platform: state
           #   entity_id: media_player.coreelec
@@ -250,13 +253,23 @@ automation:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1002 }}"
             sequence:
-              - service: switch.toggle
+              - service: switch.turn_on
                 data:
                   entity_id: switch.amplifier_power
+              - delay:
+                  seconds: 3
+              - service: button.press
+                target:
+                  entity_id: button.set_livingroom_channel_to_phono
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1004 }}"
             sequence:
+              - service: button.press
+                target:
+                  entity_id: button.set_livingroom_channel_to_tv
+              - delay:
+                  seconds: 1
               - service: switch.turn_off
                 data:
                   entity_id: switch.amplifier_power
@@ -440,6 +453,12 @@ script:
             #   entity_id: switch.hyperion_apa102_component_led_device
             #   state: 'on'
             - condition: state
+              entity_id: switch.tv_apa102_universe_1_component_led_device
+              state: 'on'
+            - condition: state
+              entity_id: switch.tv_apa102_universe_2_component_led_device
+              state: 'on'
+            - condition: state
               entity_id: switch.hyperion_atmoorb_right_component_led_device
               state: 'on'
             - condition: state
@@ -450,25 +469,44 @@ script:
               continue_on_error: true
               entity_id:
                 #- switch.hyperion_apa102_component_led_device
+                - switch.tv_apa102_universe_1_component_led_device
+                - switch.tv_apa102_universe_2_component_led_device
                 - switch.hyperion_atmoorb_right_component_led_device
                 - switch.hyperion_atmoorb_left_component_led_device
             - delay:
                 seconds: 0.5  # Short delay before checking state
       - delay:
           seconds: 0.5
+      - repeat:
+          until:
+            - condition: state
+              entity_id: light.livingroom_tv_ambilight
+              state: 'on'
+            - condition: state
+              entity_id: light.ambilight_left
+              state: 'on'
+            - condition: state
+              entity_id: light.ambilight_right
+              state: 'on'
+          sequence:
+            - service: light.turn_on
+              continue_on_error: true
+              data:
+                brightness: 255
+                effect: E1.31
+                entity_id:
+                  - light.livingroom_tv_ambilight
+                  - light.ambilight_left
+                  - light.ambilight_right
+            - delay:
+                seconds: 0.5
       - service: light.turn_on
         continue_on_error: true
         data:
-          brightness: 255
-          effect: E1.31
           entity_id:
-            - light.ambilight_left
-            - light.ambilight_right
-      - service: light.turn_on
-        continue_on_error: true
-        data:
-          entity_id:
-            - light.hyperion_apa102
+            - light.tv_apa102_universe_1
+            - light.tv_apa102_universe_2
+            #- light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
           brightness: 255
@@ -481,6 +519,12 @@ script:
             #   entity_id: light.hyperion_apa102
             #   state: 'off'
             - condition: state
+              entity_id: light.tv_apa102_universe_1
+              state: 'off'
+            - condition: state
+              entity_id: light.tv_apa102_universe_2
+              state: 'off'
+            - condition: state
               entity_id: light.hyperion_atmoorb_left
               state: 'off'
             - condition: state
@@ -491,7 +535,9 @@ script:
               continue_on_error: true
               data:
                 entity_id:
-                  - light.hyperion_apa102
+                  - light.tv_apa102_universe_1
+                  - light.tv_apa102_universe_2
+                  #- light.hyperion_apa102
                   - light.hyperion_atmoorb_left
                   - light.hyperion_atmoorb_right
             - delay:
@@ -508,7 +554,9 @@ script:
         continue_on_error: true
         data:
           entity_id:
-            - light.hyperion_apa102
+            - light.tv_apa102_universe_1
+            - light.tv_apa102_universe_2
+            #- light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
           effect: "System Shutdown"
@@ -519,7 +567,9 @@ script:
       - service: switch.turn_off
         continue_on_error: true
         entity_id:
-          - switch.hyperion_apa102_component_led_device
+          - switch.tv_apa102_universe_1_component_led_device
+          - switch.tv_apa102_universe_2_component_led_device
+          #- switch.hyperion_apa102_component_led_device
           - switch.hyperion_atmoorb_right_component_led_device
           - switch.hyperion_atmoorb_left_component_led_device
       # Wait a moment before proceeding
@@ -529,9 +579,11 @@ script:
       - service: light.turn_off
         continue_on_error: true
         entity_id:
-          - light.hyperion_apa102
-          - light.hyperion_atmoorb_left
-          - light.hyperion_atmoorb_right
+          - light.livingroom_tv_ambilight
+          #- light.livingroom_tv_ambilight_first_half
+          #- light.hyperion_apa102
+          - light.ambilight_left
+          - light.ambilight_right
       # Finally, turn off the Ambilight power supply
       - delay:
           seconds: 2
