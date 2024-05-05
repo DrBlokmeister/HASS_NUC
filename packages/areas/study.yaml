@@ -137,7 +137,7 @@ automation:
             for:
               minutes: >-
                 {% if is_state('device_tracker.blokmeisterh2o', 'home') or is_state('device_tracker.worklaptop', 'home')%}
-                  30
+                  15
                 {% else %}
                   {{ states('input_number.study_light_timeout')|int }}
                 {% endif %}
@@ -149,6 +149,8 @@ automation:
             value_template: "{{ states('sensor.study_average_illuminance')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
             for:
               minutes: 5
+        timeout:
+          minutes: "{{ states('input_number.study_light_timeout')|int * 2}}"
       - service: light.turn_on
         data:
           entity_id:
