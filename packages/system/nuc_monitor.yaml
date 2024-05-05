@@ -286,15 +286,16 @@ automation:
     trigger:
       - platform: state
         entity_id: update.home_assistant_core_update
+        to: 'on'
     action:
       - service: persistent_notification.create
         data:
-          message: "Hass.io version **[{{ state_attr('sensor.latest_version', 'latest_version') }}](https://www.home-assistant.io/latest-release-notes/)** is now available!"
+          message: "Hass.io version **[{{ state_attr('update.home_assistant_core_update', 'latest_version') }}]({{ state_attr('update.home_assistant_core_update', 'release_url') }})** is now available! Installed version: {{ state_attr('update.home_assistant_core_update', 'installed_version') }}"
           title: Upgrade time!
           notification_id: update_available
-      - service: hassio.addon_start
-        data:
-          addon: core_check_config
+      # - service: hassio.addon_start
+      #   data:
+      #     addon: core_check_config
 
   - alias: '[system|database] Update MariaDB database size sensor'
     mode: single
