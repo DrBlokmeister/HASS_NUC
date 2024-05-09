@@ -119,8 +119,10 @@ automation:
               before: "15:00:00"
           sequence:
             - service: script.update_energy_price_today_display
+            - service: script.update_energy_price_today_larger_display
         default:
           - service: script.update_energy_price_transition_display
+          - service: script.update_energy_price_transition_larger_display
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
     trigger:
@@ -588,54 +590,79 @@ script:
               color: black
               font: "ppb.ttf"
 
-            - type: text
-              value: "High: €{{state_attr('sensor.nordpool_energy_price', 'max')}}"
-              x: 285
-              "y": 2
-              size: 13
-              color: white
-              font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
-              anchor: rt
-            - type: text
-              value: "Low: €{{state_attr('sensor.nordpool_energy_price', 'min')}}"
-              x: 285
-              "y": 15
-              size: 13
-              color: white
-              font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
-              anchor: rt
-            - type: text
-              value: "Current: €{{states('sensor.nordpool_energy_price')}}"
-              x: 285
-              "y": 28
-              size: 13
-              color: white
-              font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
-              anchor: rt
+            # - type: text
+            #   value: "High: €{{state_attr('sensor.nordpool_energy_price', 'max')}}"
+            #   x: 285
+            #   "y": 2
+            #   size: 13
+            #   color: white
+            #   font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
+            #   anchor: rt
+            # - type: text
+            #   value: "Low: €{{state_attr('sensor.nordpool_energy_price', 'min')}}"
+            #   x: 285
+            #   "y": 15
+            #   size: 13
+            #   color: white
+            #   font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
+            #   anchor: rt
+            # - type: text
+            #   value: "Current: €{{states('sensor.nordpool_energy_price')}}"
+            #   x: 285
+            #   "y": 28
+            #   size: 13
+            #   color: white
+            #   font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
+            #   anchor: rt
 
             - type: text
               value: "High: €{{state_attr('sensor.nordpool_energy_price', 'max')}}"
               x: 285
               "y": 2
-              size: 13
+              size: 10
               color: red
-              font: "/config/www/fonts/poppins/Poppins-SemiBold.ttf" #"ppb.ttf"
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf" #"ppb.ttf"
               anchor: rt
             - type: text
               value: "Low: €{{state_attr('sensor.nordpool_energy_price', 'min')}}"
               x: 285
               "y": 15
-              size: 13
+              size: 10
               color: red
-              font: "/config/www/fonts/poppins/Poppins-SemiBold.ttf" #"ppb.ttf"
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf" #"ppb.ttf"
               anchor: rt
             - type: text
               value: "Current: €{{states('sensor.nordpool_energy_price')}}"
               x: 285
               "y": 28
-              size: 13
+              size: 10
               color: red
-              font: "/config/www/fonts/poppins/Poppins-SemiBold.ttf" #"ppb.ttf"
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf" #"ppb.ttf"
+              anchor: rt
+
+            - type: text
+              value: "High: €{{state_attr('sensor.nordpool_energy_price', 'max')}}"
+              x: 185
+              "y": 2
+              size: 10
+              color: red
+              font: "/config/www/fonts/PixeloidMono_9px_h10.ttf" #"ppb.ttf"
+              anchor: rt
+            - type: text
+              value: "Low: €{{state_attr('sensor.nordpool_energy_price', 'min')}}"
+              x: 185
+              "y": 15
+              size: 10
+              color: red
+              font: "/config/www/fonts/PixeloidMono_9px_h10.ttf" #"ppb.ttf"
+              anchor: rt
+            - type: text
+              value: "Current: €{{states('sensor.nordpool_energy_price')}}"
+              x: 185
+              "y": 28
+              size: 10
+              color: red
+              font: "/config/www/fonts/PixeloidMono_9px_h10.ttf" #"ppb.ttf"
               anchor: rt
 
   update_energy_price_tomorrow_display:
@@ -1333,6 +1360,734 @@ script:
               y_start: 10
               x_end: 155
               y_end: 108
+
+  update_energy_price_today_larger_display:
+    alias: "Update Energy Price Today Larger Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id:
+            - open_epaper_link.00007E22B1D7B299
+            - open_epaper_link.00007e22b1b2b29a
+            - open_epaper_link.00007e225dc2b29f
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 0 else 'black' }}"
+              width: 1
+              x_start: 35
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[0].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 46
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[0].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 1 else 'black' }}"
+              width: 1
+              x_start: 49
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[1].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 60
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[1].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 2 else 'black' }}"
+              width: 1
+              x_start: 63
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[2].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 74
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[2].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 3 else 'black' }}"
+              width: 1
+              x_start: 77
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[3].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 88
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[3].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 4 else 'black' }}"
+              width: 1
+              x_start: 91
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[4].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 102
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[4].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 5 else 'black' }}"
+              width: 1
+              x_start: 105
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[5].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 116
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[5].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 6 else 'black' }}"
+              width: 1
+              x_start: 119
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[6].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 130
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[6].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 7 else 'black' }}"
+              width: 1
+              x_start: 133
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[7].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 144
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[7].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 8 else 'black' }}"
+              width: 1
+              x_start: 147
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[8].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 158
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[8].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 9 else 'black' }}"
+              width: 1
+              x_start: 161
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[9].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 172
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[9].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 10 else 'black' }}"
+              width: 1
+              x_start: 175
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[10].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 186
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[10].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 11 else 'black' }}"
+              width: 1
+              x_start: 189
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[11].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 200
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[11].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 12 else 'black' }}"
+              width: 1
+              x_start: 204
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[12].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 215
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[12].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 13 else 'black' }}"
+              width: 1
+              x_start: 218
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[13].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 229
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[13].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 14 else 'black' }}"
+              width: 1
+              x_start: 232
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[14].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 243
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[14].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 15 else 'black' }}"
+              width: 1
+              x_start: 246
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[15].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 257
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[15].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 16 else 'black' }}"
+              width: 1
+              x_start: 260
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[16].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 271
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[16].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 17 else 'black' }}"
+              width: 1
+              x_start: 274
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[17].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 285
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[17].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 18 else 'black' }}"
+              width: 1
+              x_start: 288
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[18].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 299
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[18].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 19 else 'black' }}"
+              width: 1
+              x_start: 302
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[19].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 313
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[19].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 20 else 'black' }}"
+              width: 1
+              x_start: 316
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[20].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 327
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[20].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 21 else 'black' }}"
+              width: 1
+              x_start: 330
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[21].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 341
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[21].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 22 else 'black' }}"
+              width: 1
+              x_start: 344
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[22].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 355
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[22].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 23 else 'black' }}"
+              width: 1
+              x_start: 358
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[23].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 369
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[23].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 10
+              x_end: 374
+              y_end: 10
+            - type: text
+              value: '€0.50'
+              x: 1
+              "y": 1
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 38
+              x_end: 374
+              y_end: 38
+            - type: text
+              value: '€0.40'
+              x: 1
+              "y": 29
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 65
+              x_end: 374
+              y_end: 65
+            - type: text
+              value: '€0.30'
+              x: 1
+              "y": 56
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 93
+              x_end: 374
+              y_end: 93
+            - type: text
+              value: '€0.20'
+              x: 1
+              "y": 84
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 120
+              x_end: 374
+              y_end: 120
+            - type: text
+              value: '€0.10'
+              x: 1
+              "y": 111
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 148
+              x_end: 374
+              y_end: 148
+            - type: text
+              value: '€0.00'
+              x: 1
+              "y": 139
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+
+            - type: text
+              value: "0:00"
+              x: 27  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "6:00"
+              x: 109  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "12:00"
+              x: 190  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "18:00"
+              x: 272  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "24:00"
+              x: 354  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+
+            - type: text
+              value: "Max: €{{ states.sensor.nordpool_energy_price.attributes.max }}"
+              x: 373
+              "y": 3
+              size: 16
+              color: red
+              font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              anchor: rt
+            - type: text
+              value: "Min: €{{ states.sensor.nordpool_energy_price.attributes.min }}"
+              x: 373
+              "y": 19
+              size: 16
+              color: red
+              font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              anchor: rt
+            - type: text
+              value: "Current: €{{ states.sensor.nordpool_energy_price.attributes.raw_today[now().hour].value }}"
+              x: 373
+              "y": 35
+              size: 16
+              color: red
+              font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              anchor: rt
+
+  update_energy_price_transition_larger_display:
+    alias: "Update Energy Price Transition Larger Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id:
+            - open_epaper_link.00007E22B1D7B299
+            - open_epaper_link.00007e22b1b2b29a
+            - open_epaper_link.00007e225dc2b29f
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 12 else 'black' }}"
+              width: 1
+              x_start: 35
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[12].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 46
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[12].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 13 else 'black' }}"
+              width: 1
+              x_start: 49
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[13].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 60
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[13].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 14 else 'black' }}"
+              width: 1
+              x_start: 63
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[14].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 74
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[14].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 15 else 'black' }}"
+              width: 1
+              x_start: 77
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[15].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 88
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[15].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 16 else 'black' }}"
+              width: 1
+              x_start: 91
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[16].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 102
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[16].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 17 else 'black' }}"
+              width: 1
+              x_start: 105
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[17].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 116
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[17].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 18 else 'black' }}"
+              width: 1
+              x_start: 119
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[18].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 130
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[18].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 19 else 'black' }}"
+              width: 1
+              x_start: 133
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[19].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 144
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[19].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 20 else 'black' }}"
+              width: 1
+              x_start: 147
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[20].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 158
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[20].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 21 else 'black' }}"
+              width: 1
+              x_start: 161
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[21].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 172
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[21].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 22 else 'black' }}"
+              width: 1
+              x_start: 175
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[22].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 186
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[22].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 23 else 'black' }}"
+              width: 1
+              x_start: 189
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[23].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 200
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_today[23].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 0 else 'black' }}"
+              width: 1
+              x_start: 204
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[0].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 215
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[0].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 1 else 'black' }}"
+              width: 1
+              x_start: 218
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[1].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 229
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[1].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 2 else 'black' }}"
+              width: 1
+              x_start: 232
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[2].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 243
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[2].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 3 else 'black' }}"
+              width: 1
+              x_start: 246
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[3].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 257
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[3].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 4 else 'black' }}"
+              width: 1
+              x_start: 260
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[4].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 271
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[4].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 5 else 'black' }}"
+              width: 1
+              x_start: 274
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[5].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 285
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[5].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 6 else 'black' }}"
+              width: 1
+              x_start: 288
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[6].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 299
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[6].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 7 else 'black' }}"
+              width: 1
+              x_start: 302
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[7].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 313
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[7].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 8 else 'black' }}"
+              width: 1
+              x_start: 316
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[8].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 327
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[8].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 9 else 'black' }}"
+              width: 1
+              x_start: 330
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[9].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 341
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[9].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 10 else 'black' }}"
+              width: 1
+              x_start: 344
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[10].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 355
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[10].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+            - type: rectangle
+              outline: black
+              fill: "{{ 'red' if now().hour == 11 else 'black' }}"
+              width: 1
+              x_start: 358
+              y_start: "{{ max(min(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[11].value / 0.50 * (148 - 5))) | round(0), 148), 5) }}"
+              x_end: 369
+              y_end: "{{ min(max(148 - ((states.sensor.nordpool_energy_price.attributes.raw_tomorrow[11].value / 0.50 * (148 - 5))) | round(0), 148), 168) }}"
+
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 10
+              x_end: 374
+              y_end: 10
+            - type: text
+              value: '€0.50'
+              x: 1
+              "y": 1
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 38
+              x_end: 374
+              y_end: 38
+            - type: text
+              value: '€0.40'
+              x: 1
+              "y": 29
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 65
+              x_end: 374
+              y_end: 65
+            - type: text
+              value: '€0.30'
+              x: 1
+              "y": 56
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 93
+              x_end: 374
+              y_end: 93
+            - type: text
+              value: '€0.20'
+              x: 1
+              "y": 84
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 120
+              x_end: 374
+              y_end: 120
+            - type: text
+              value: '€0.10'
+              x: 1
+              "y": 111
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: line
+              fill: black
+              width: 1
+              x_start: 30
+              y_start: 148
+              x_end: 374
+              y_end: 148
+            - type: text
+              value: '€0.00'
+              x: 1
+              "y": 139
+              size: 10
+              color: black
+              anchor: lt
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+
+            - type: text
+              value: "12:00"
+              x: 27  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "18:00"
+              x: 109  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "0:00"
+              x: 190  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "6:00"
+              x: 272  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+            - type: text
+              value: "12:00"
+              x: 354  # Adjust for alignment
+              "y": 162
+              size: 10
+              color: black
+              anchor: lb
+              font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
+
+            - type: text
+              value: "Max: €{{ states.sensor.nordpool_energy_price.attributes.max }}"
+              x: 373
+              "y": 16
+              size: 16
+              color: red
+              font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              anchor: rt
+            - type: text
+              value: "Min: €{{ states.sensor.nordpool_energy_price.attributes.min }}"
+              x: 373
+              "y": 29
+              size: 16
+              color: red
+              font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              anchor: rt
+            - type: text
+              value: "Current: €{{ states.sensor.nordpool_energy_price.attributes.raw_today[now().hour].value }}"
+              x: 373
+              "y": 42
+              size: 16
+              color: red
+              font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              anchor: rt
 
   update_garbage_monitor_display:
     alias: "Update Garbage Monitor Display"
