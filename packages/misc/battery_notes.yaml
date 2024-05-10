@@ -1,0 +1,85 @@
+homeassistant:
+  customize: {}
+
+battery_notes:
+  round_battery: True
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: "[misc|batterynotes] Battery Low Notification"
+    description: Battery Low Notification with auto dismiss
+    trigger:
+      - platform: event
+        event_type: battery_notes_battery_threshold
+        event_data:
+          battery_low: true
+        id: low
+        alias: Battery went low
+      - platform: event
+        event_type: battery_notes_battery_threshold
+        event_data:
+          battery_low: false
+        id: high
+        alias: Battery went high
+    condition: []
+    action:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id:
+                  - low
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: |
+                    {{ trigger.event.data.device_name }} Battery Low
+                  notification_id: "{{ trigger.event.data.device_id }}"
+                  message: >
+                    The device has a battery level of {{
+                    trigger.event.data.battery_level }}% {{ '\n' -}} You need {{
+                    trigger.event.data.battery_quantity }}x {{
+                    trigger.event.data.battery_type }}
+          - conditions:
+              - condition: trigger
+                id:
+                  - high
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: "{{ trigger.event.data.device_id }}"
+    mode: queued
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:

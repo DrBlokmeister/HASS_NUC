@@ -1,0 +1,154 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "En cas de demande d'aide, aller à: https://andrew-codechimp.github.io/HA-Battery-Notes/",
+                "data": {
+                    "device_id": "Entité",
+                    "name": "Nom"
+                },
+                "data_description": {
+                    "name": "Le nom sera celui de l'entité si absent"
+                }
+            },
+            "battery": {
+                "data": {
+                    "battery_type": "Type de batterie",
+                    "battery_quantity": "Nombre de batteries",
+                    "battery_low_threshold": "Seuil de batterie faible",
+                    "battery_low_template": "Modèle de batterie faible"
+                },
+                "data_description": {
+                    "battery_low_threshold": "0 gardera le seuil par defaut",
+                    "battery_low_template": "Modèle pour déterminer si une batterie est faible, devrait retourner vrai si faible\nNécessaire uniquement pour les niveaux de batterie non standard"
+                }
+            }
+        },
+        "abort": {
+            "already_configured": "L'entité est deja configurée"
+        },
+        "error": {
+            "unknown": "Erreur inconnue."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "En cas de demande d'aide, aller à: https://andrew-codechimp.github.io/HA-Battery-Notes/",
+                "data": {
+                    "name": "Nom",
+                    "battery_type": "Type de batterie",
+                    "battery_quantity": "Nombre de batteries",
+                    "battery_low_threshold": "Seuil de batterie faible",
+                    "battery_low_template": "Modèle de batterie faible"
+                },
+                "data_description": {
+                    "name": "Laisser vide gardera le seuil par defaut",
+                    "battery_low_threshold": "0 gardera le seuil par defaut",
+                    "battery_low_template": "Modèle pour déterminer si une batterie est faible, devrait retourner vrai si faible\nNécessaire uniquement pour les niveaux de batterie non standard"
+                }
+            }
+        },
+        "error": {
+            "unknown": "Erreur inconnue.."
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "battery_low": {
+                "name": "Batterie faible",
+                "state_attributes": {
+                    "battery_low_threshold": {
+                        "name": "Seuil bas de la batterie"
+                    }
+                }
+            }
+        },
+        "button": {
+            "battery_replaced": {
+                "name": "Batterie remplacée"
+            }
+        },
+        "sensor": {
+            "battery_plus": {
+                "name": "Batterie+",
+                "state_attributes": {
+                    "battery_type": {
+                        "name": "Type de batterie"
+                    },
+                    "battery_quantity": {
+                        "name": "Nombre de batteries"
+                    },
+                    "battery_type_and_quantity": {
+                        "name": "Type de batterie et quantité"
+                    },
+                    "battery_last_replaced": {
+                        "name": "Dernier remplacement de la batterie"
+                    },
+                    "battery_low": {
+                        "name": "Batterie faible"
+                    },
+                    "battery_low_threshold": {
+                        "name": "Seuil bas de la batterie"
+                    },
+                    "battery_last_reported": {
+                        "name": "Batterie signalée pour la dernière fois"
+                    },
+                    "battery_last_reported_level": {
+                        "name": "Dernier niveau de batterie signalé"
+                    },
+                    "device_id": {
+                        "name": "ID de l’appareil"
+                    },
+                    "device_name": {
+                        "name": "Nom de l'appareil"
+                    }
+                }
+            },
+            "battery_type": {
+                "name": "Type de batterie",
+                "state_attributes": {
+                    "battery_type": {
+                        "name": "Type de batterie"
+                    },
+                    "battery_quantity": {
+                        "name": "Nombre de batteries"
+                    }
+                }
+            },
+            "battery_last_replaced": {
+                "name": "Dernier remplacement de la batterie"
+            }
+        }
+    },
+    "services": {
+        "set_battery_replaced": {
+            "description": "Forcer le remplacement de la batterie.",
+            "fields": {
+                "device_id": {
+                    "description": "Entitée non remplacée.",
+                    "name": "Appareil"
+                },
+                "datetime_replaced": {
+                    "description": "Date de remplacement.",
+                    "name": "Date"
+                }
+            },
+            "name": "Mise à jour remplacement de la batterie"
+        },
+        "check_battery_last_reported": {
+            "description": "Remontée des appareils qui n'ont pas signalé leur niveau de batterie.",
+            "fields": {
+                "days_last_reported": {
+                    "description": "Nombre de jours écoulés depuis la dernière fois qu'un appareil a signalé son niveau de batterie.",
+                    "name": "Jours"
+                }
+            },
+            "name": "Batterie signalée pour la dernière fois"
+        },
+        "check_battery_low": {
+            "description": "Déclenche des événements pour les appareils qui ont une batterie faible.",
+            "name": "Vérifier si batterie faible"
+        }
+    }
+}

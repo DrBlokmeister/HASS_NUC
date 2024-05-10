@@ -1,0 +1,154 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Hilfe zur Konfiguration findest du unter: https://andrew-codechimp.github.io/HA-Battery-Notes/",
+                "data": {
+                    "device_id": "Gerät",
+                    "name": "Name"
+                },
+                "data_description": {
+                    "name": "Wenn du nichts eingibst, wird der Name vom Quellgerät übernommen"
+                }
+            },
+            "battery": {
+                "data": {
+                    "battery_type": "Batterieart",
+                    "battery_quantity": "Batteriemenge",
+                    "battery_low_threshold": "Schwelle für niedrigen Batteriestand",
+                    "battery_low_template": "Vorlage für niedrigen Batteriestand"
+                },
+                "data_description": {
+                    "battery_low_threshold": "0 verwendet den globalen Standardschwellenwert",
+                    "battery_low_template": "Vorlage um zu bestimmen, ob eine Batterie schwach ist; sollte \"wahr\" (true) rückmelden, wenn schwach.\nNur für nicht-Standard Batteriewerte benötigt."
+                }
+            }
+        },
+        "abort": {
+            "already_configured": "Das Gerät ist bereits konfiguriert."
+        },
+        "error": {
+            "unknown": "Ein unbekannter Fehler ist aufgetreten."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Hilfe zur Konfiguration findest du unter: https://andrew-codechimp.github.io/HA-Battery-Notes/",
+                "data": {
+                    "name": "Name",
+                    "battery_type": "Batterieart",
+                    "battery_quantity": "Batteriemenge",
+                    "battery_low_threshold": "Schwelle für niedrigen Batteriestand",
+                    "battery_low_template": "Vorlage für niedrigen Batteriestand"
+                },
+                "data_description": {
+                    "name": "Wenn du nichts eingibst, wird der Name vom Quellgerät übernommen",
+                    "battery_low_threshold": "0 verwendet den globalen Standardschwellenwert",
+                    "battery_low_template": "Vorlage um zu bestimmen, ob eine Batterie schwach ist; sollte \"wahr\" (true) rückmelden, wenn schwach.\nNur für nicht-Standard Batteriewerte benötigt."
+                }
+            }
+        },
+        "error": {
+            "unknown": "Ein unbekannter Fehler ist aufgetreten."
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "battery_low": {
+                "name": "Akku fast leer",
+                "state_attributes": {
+                    "battery_low_threshold": {
+                        "name": "Schwelle für niedrigen Batteriestand"
+                    }
+                }
+            }
+        },
+        "button": {
+            "battery_replaced": {
+                "name": "Batterie ersetzt"
+            }
+        },
+        "sensor": {
+            "battery_plus": {
+                "name": "Batterie+",
+                "state_attributes": {
+                    "battery_type": {
+                        "name": "Batterieart"
+                    },
+                    "battery_quantity": {
+                        "name": "Batteriemenge"
+                    },
+                    "battery_type_and_quantity": {
+                        "name": "Batterietyp und -menge"
+                    },
+                    "battery_last_replaced": {
+                        "name": "Batterie zuletzt ersetzt"
+                    },
+                    "battery_low": {
+                        "name": "Akku fast leer"
+                    },
+                    "battery_low_threshold": {
+                        "name": "Schwelle für niedrigen Batteriestand"
+                    },
+                    "battery_last_reported": {
+                        "name": "Letzte gemeldete Batterie"
+                    },
+                    "battery_last_reported_level": {
+                        "name": "Letzter gemeldeter Batteriestand"
+                    },
+                    "device_id": {
+                        "name": "Geräte-ID"
+                    },
+                    "device_name": {
+                        "name": "Gerätename"
+                    }
+                }
+            },
+            "battery_type": {
+                "name": "Batterieart",
+                "state_attributes": {
+                    "battery_type": {
+                        "name": "Batterieart"
+                    },
+                    "battery_quantity": {
+                        "name": "Batteriemenge"
+                    }
+                }
+            },
+            "battery_last_replaced": {
+                "name": "Batterie zuletzt ersetzt"
+            }
+        }
+    },
+    "services": {
+        "set_battery_replaced": {
+            "description": "Stellen Sie die zuletzt ausgetauschte Batterie ein.",
+            "fields": {
+                "device_id": {
+                    "description": "Gerät, bei dem die Batterie ersetzt wurde.",
+                    "name": "Gerät"
+                },
+                "datetime_replaced": {
+                    "description": "Datum ersetzt.",
+                    "name": "Datum"
+                }
+            },
+            "name": "Stelle Batteriewechsel ein"
+        },
+        "check_battery_last_reported": {
+            "description": "Erzeuge Ereignis für Geräte, die keinen Batteriestand gemeldet haben.",
+            "fields": {
+                "days_last_reported": {
+                    "description": "Anzahl der Tage seit der letzten Batteriestands-Meldung.",
+                    "name": "Tage"
+                }
+            },
+            "name": "Prüfe auf letzte Batteriestands-Meldungen"
+        },
+        "check_battery_low": {
+            "description": "Erzeuge Ereignis für Geräte, die einen niedrigen Batteriestand haben.",
+            "name": "Prüfe auf schwache Batterien"
+        }
+    }
+}

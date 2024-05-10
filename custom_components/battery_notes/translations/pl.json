@@ -1,0 +1,154 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Jeśli potrzebujesz pomocy w konfiguracji, zajrzyj tutaj: https://andrew-codechimp.github.io/HA-Battery-Notes/",
+                "data": {
+                    "device_id": "Urządzenie",
+                    "name": "Nazwa"
+                },
+                "data_description": {
+                    "name": "Pozostawienie pustego pola spowoduje pobranie nazwy z urządzenia źródłowego"
+                }
+            },
+            "battery": {
+                "data": {
+                    "battery_type": "Typ baterii",
+                    "battery_quantity": "Liczba baterii",
+                    "battery_low_threshold": "Próg niskiego poziomu baterii",
+                    "battery_low_template": "Szablon niskiego poziomu baterii"
+                },
+                "data_description": {
+                    "battery_low_threshold": "0 użyje globalnego progu domyślnego",
+                    "battery_low_template": "Szablon do określenia czy poziom naładowania baterii jest niski, powinien zwrócić wartość true, jeśli poziom jest niski.\nJest wymagany tylko dla niestandardowych raportów poziomu baterii"
+                }
+            }
+        },
+        "abort": {
+            "already_configured": "Urządzenie jest już skonfigurowane"
+        },
+        "error": {
+            "unknown": "Wystąpił nieznany błąd."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Jeśli potrzebujesz pomocy w konfiguracji, zajrzyj tutaj: https://andrew-codechimp.github.io/HA-Battery-Notes/",
+                "data": {
+                    "name": "Nazwa",
+                    "battery_type": "Typ baterii",
+                    "battery_quantity": "Liczba baterii",
+                    "battery_low_threshold": "Próg niskiego poziomu baterii",
+                    "battery_low_template": "Szablon niskiego poziomu baterii"
+                },
+                "data_description": {
+                    "name": "Pozostawienie pustego pola spowoduje pobranie nazwy z urządzenia źródłowego",
+                    "battery_low_threshold": "0 użyje globalnego progu domyślnego",
+                    "battery_low_template": "Szablon do określenia czy poziom naładowania baterii jest niski, powinien zwrócić wartość true, jeśli poziom jest niski.\nJest wymagany tylko dla niestandardowych raportów poziomu baterii"
+                }
+            }
+        },
+        "error": {
+            "unknown": "Wystąpił nieznany błąd."
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "battery_low": {
+                "name": "Niski poziom baterii",
+                "state_attributes": {
+                    "battery_low_threshold": {
+                        "name": "Próg niskiego poziomu baterii"
+                    }
+                }
+            }
+        },
+        "button": {
+            "battery_replaced": {
+                "name": "Wymiana baterii"
+            }
+        },
+        "sensor": {
+            "battery_plus": {
+                "name": "Bateria+",
+                "state_attributes": {
+                    "battery_type": {
+                        "name": "Typ baterii"
+                    },
+                    "battery_quantity": {
+                        "name": "Liczba baterii"
+                    },
+                    "battery_type_and_quantity": {
+                        "name": "Typ i ilość baterii"
+                    },
+                    "battery_last_replaced": {
+                        "name": "Ostatnia wymiana baterii"
+                    },
+                    "battery_low": {
+                        "name": "Niski poziom baterii"
+                    },
+                    "battery_low_threshold": {
+                        "name": "Próg niskiego poziomu baterii"
+                    },
+                    "battery_last_reported": {
+                        "name": "Ostatni raport dotyczący baterii"
+                    },
+                    "battery_last_reported_level": {
+                        "name": "Ostatni zgłoszony poziom baterii"
+                    },
+                    "device_id": {
+                        "name": "ID Urządzenia"
+                    },
+                    "device_name": {
+                        "name": "Nazwa urządzenia"
+                    }
+                }
+            },
+            "battery_type": {
+                "name": "Typ baterii",
+                "state_attributes": {
+                    "battery_type": {
+                        "name": "Typ baterii"
+                    },
+                    "battery_quantity": {
+                        "name": "Liczba baterii"
+                    }
+                }
+            },
+            "battery_last_replaced": {
+                "name": "Ostatnia wymiana baterii"
+            }
+        }
+    },
+    "services": {
+        "set_battery_replaced": {
+            "description": "Ustawia ostatnią wymianę baterii.",
+            "fields": {
+                "device_id": {
+                    "description": "Urządzenie w którym wymieniono baterię/baterie.",
+                    "name": "Urządzenie"
+                },
+                "datetime_replaced": {
+                    "description": "Data wymiany.",
+                    "name": "Data"
+                }
+            },
+            "name": "Ustaw wymianę baterii"
+        },
+        "check_battery_last_reported": {
+            "description": "Zgłaszaj zdarzenia dla urządzeń, które nie zgłosiły poziomu naładowania baterii.",
+            "fields": {
+                "days_last_reported": {
+                    "description": "Liczba dni od ostatniego zgłoszenia poziomu baterii przez urządzenie.",
+                    "name": "Dni"
+                }
+            },
+            "name": "Ostatni raport dotyczący sprawdzenia baterii"
+        },
+        "check_battery_low": {
+            "description": "Raise events for devices that have a low battery.",
+            "name": "Check battery low"
+        }
+    }
+}
