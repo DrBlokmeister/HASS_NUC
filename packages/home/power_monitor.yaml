@@ -179,7 +179,7 @@ sensor:
       #       + states( 'sensor.blitzwolf_mediacenter_energy_power' )|float(0)
       #       + states( 'sensor.blitzwolf_watercooker_energy_power' )|float(0)
       #       + states( 'sensor.blitzwolf_router_energy_power' )|float(0)
-      #       + states( 'sensor.blitzwolf_3dprinter_energy_power' )|float(0)
+      #       + states( 'sensor.plug_3d_printer_power' )|float(0)
       #       + states( 'sensor.blitzwolf_washingmachine_energy_power' )|float(0)) |round(2)
       #     }}
       #   availability_template: >-
@@ -189,7 +189,7 @@ sensor:
       #       or states( 'sensor.blitzwolf_mediacenter_energy_power' )|is_number
       #       or states( 'sensor.blitzwolf_watercooker_energy_power' )|is_number
       #       or states( 'sensor.blitzwolf_router_energy_power' )|is_number
-      #       or states( 'sensor.blitzwolf_3dprinter_energy_power' )|is_number
+      #       or states( 'sensor.plug_3d_printer_power' )|is_number
       #       or states( 'sensor.blitzwolf_washingmachine_energy_power' )|is_number
       #     }}
       # total_blitzwolf_energy_today:
@@ -398,8 +398,8 @@ sensor:
         friendly_name: "Blitzwolf 3D Printer Electricity Cost per Hour"
         unique_id: "yaml_template_sensor_blitzwolf_3dprinter_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.blitzwolf_3dprinter_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.blitzwolf_3dprinter_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_3d_printer_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.plug_3d_printer_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_ambilight_amplifier_energy_cost_hourly:
         friendly_name: "Blitzwolf Ambilight Amplifier Electricity Cost per Hour"
         unique_id: "yaml_template_sensor_blitzwolf_ambilight_amplifier_energy_cost_hourly"
@@ -797,7 +797,7 @@ sensor:
     type: sum
     entity_ids:
       - sensor.blitzwolf_10gb_switch_energy_power #in W
-      - sensor.blitzwolf_3dprinter_energy_power #in W
+      - sensor.plug_3d_printer_power #in W
       - sensor.blitzwolf_computer_energy_power #in W
       - sensor.plug_nas_power #in W
       - sensor.blitzwolf_washingmachine_energy_power #in W
@@ -1144,7 +1144,7 @@ group:
   #     - sensor.blitzwolf_3dprinter_status
   #     - sensor.blitzwolf_3dprinter_energy_voltage
   #     - sensor.blitzwolf_3dprinter_energy_current
-  #     - sensor.blitzwolf_3dprinter_energy_power
+  #     - sensor.plug_3d_printer_power
   #     - sensor.blitzwolf_3dprinter_energy_apparentpower
   #     - sensor.blitzwolf_3dprinter_energy_reactivepower
   #     - sensor.blitzwolf_3dprinter_energy_today
@@ -1212,12 +1212,13 @@ group:
   power_entities:
     name: Power Entities
     entities:
+      - sensor.plug_3d_printer_power
+      - sensor.plug_nas_power
+      - sensor.plug_tv_plug_tv_power
       - sensor.blitzwolf_10gb_switch_energy_power
-      - sensor.blitzwolf_3dprinter_energy_power
       - sensor.blitzwolf_ambilight_amplifier_power
       - sensor.blitzwolf_computer_energy_power
       - sensor.blitzwolf_dishwasher_energy_power
-      - sensor.plug_nas_power
       - sensor.blitzwolf_nuc_energy_power
       - sensor.blitzwolf_poe_switch_energy_power
       - sensor.blitzwolf_router_energy_power
@@ -1230,10 +1231,9 @@ group:
       - sensor.shelly_closet_power
       - sensor.shelly_dinner_table_d2_power
       - sensor.shelly_tamara_s_room_power_2
-      - sensor.plug_tv_plug_tv_power
       - sensor.heatpump_heating_power
       - sensor.heatpump_tapwater_power
-      - sensor.tasmota_energy_power
+      #- sensor.tasmota_energy_power
       - sensor.ventilation_power_estimate
       - sensor.alfred_power_estimate
       - sensor.argus_power_estimate
