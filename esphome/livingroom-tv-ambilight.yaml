@@ -18,6 +18,10 @@ esp32:
 #   framework:
 #     type: esp-idf
 
+# external_components:
+#   - source: github://esphome/esphome@2023.5.5
+#     components: e131
+
 packages:
   wifi: !include common/wifi.yaml
   network_diagnostics: !include common/network_diagnostics.yaml
@@ -26,29 +30,24 @@ packages:
 e131:
   method: unicast
 
-# Example configuration entry
-# spi:
-#   mosi_pin: GPIO35
-#   clk_pin: GPIO33
+wled:
 
 light:
-#   - platform: spi_led_strip
-#     num_leds: 222
-#     color_correct: [80%, 60%, 100%]
-#     id: rgb_led
-#     name: "${device_name}"
-#     data_rate: 1MHz
   - platform: fastled_spi
     chipset: APA102
-    data_pin: GPIO35  #WRONG PINS!
-    clock_pin: GPIO33 #WRONG PINS!
+    data_pin: GPIO3
+    clock_pin: GPIO5
     num_leds: 222 #bottom: 0-71, right: 72-110, top: 111-182, left: 183-221
     rgb_order: BGR
+    gamma_correct: 1
     name: "${device_name}"
+    id: full_strip
     effects:
       - e131:
           universe: 1
           channels: RGB
+      - wled:
+          port: 19446
       - pulse:
           name: "Fast Pulse"
           transition_length: 0.5s
@@ -57,7 +56,7 @@ light:
           max_brightness: 100%
       - addressable_rainbow:
           name: Rainbow
-          speed: 51
+          speed: 20
           width: 222
       - addressable_lambda:
           name: "Random Running Dots with Afterglow"

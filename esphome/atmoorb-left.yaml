@@ -1,0 +1,65 @@
+substitutions:
+  device_name: "AtmoOrb Left"
+  espname: "atmoorb-left"
+  area: "Livingroom"
+
+esphome:
+  name: '${espname}'
+  friendly_name: '${device_name}'
+  area: '${area}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L  # Flash frequency, here 40MHz.
+    board_build.flash_mode: dio     # Dual I/O flash mode.
+    board_build.flash_size: 4MB     # Size of the flash.
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Disable USB CDC on boot.
+  on_boot:
+    priority: -100  # Ensures this runs after most other things have initialized
+    then:
+      - light.turn_on:
+          id: ledstrip
+          effect: "Rainbow"
+      - delay: 2s  # Let the rainbow show run for 2 seconds
+      - light.turn_off:
+          id: ledstrip
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+e131:
+  method: unicast
+
+light:
+  - platform: neopixelbus
+    type: GRB
+    #color_correct: [80%, 80%, 80%]
+    variant: WS2812
+    method: esp32_i2s  # Recommended for ESP32. Learn more at https://esphome.io/components/light/neopixelbus.html#neopixelbus-methods
+    # ESP32_I2S options:
+    # - Works on all output pins
+    # - Not available on ESP32-S3 or ESP32-C3
+    # - Bus 0 available on ESP32-S2
+    pin: GPIO3 #RX
+    num_leds: 35
+    name: '${device_name}'
+    gamma_correct: 1.2
+    id: ledstrip
+    effects:
+        - addressable_rainbow:
+            name: "Rainbow"
+            width: 35
+        - e131:
+            universe: 3
+            channels: RGB
+        - pulse:
+            name: "Fast Pulse"
+            transition_length: 0.5s
+            update_interval: 0.5s
+            min_brightness: 0%
+            max_brightness: 100%
