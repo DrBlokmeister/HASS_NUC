@@ -20,35 +20,10 @@ esphome:
           id: switch_clicker_2
           state: OFF
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: ${device_name} Hotspot
-    password: !secret esphome_fallback_pass
-
-captive_portal:
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
-
-# Enable OTA updates
-ota:
-
-# Enable Web server (optional).
-web_server:
-  port: 80
-
-# Text sensors with general information.
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: ${device_name} IP
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
 
 i2c:
   sda: GPIO12
@@ -56,15 +31,6 @@ i2c:
 
 # Sensors with general information.
 sensor:
-  # Uptime sensor.
-  - platform: uptime
-    name: ${device_name} Uptime
-
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${device_name} WiFi Signal
-    update_interval: 60s
-
   # Home assistant adaptive lighting
   - platform: homeassistant
     id: colortemperature
@@ -75,7 +41,7 @@ sensor:
     entity_id: switch.adaptive_lighting_adaptive_lighting
     attribute: brightness_pct
 
-  - platform: ade7953
+  - platform: ade7953_i2c
     voltage:
       name: ${device_name} voltage
     current_a:
@@ -157,14 +123,14 @@ switch:
     name: ${device_name} Relay 1
     pin: GPIO4
     id: shelly_relay_1
-    # After reboot, restore to ON
-    restore_mode: ALWAYS_ON
+    # After reboot, restore default or turn off
+    restore_mode: RESTORE_DEFAULT_OFF
   - platform: gpio # Spotlights
     name: ${device_name} Relay 2
     pin: GPIO15
     id: shelly_relay_2
     # After reboot, restore to ON
-    restore_mode: ALWAYS_ON
+    restore_mode: RESTORE_DEFAULT_ON
 
 
 binary_sensor:
@@ -214,6 +180,23 @@ binary_sensor:
     name: ${device_name} Momentary Switch 2
     id: switch_clicker_2
     on_multi_click:
+      # triple click
+      - timing:
+          - ON for at most 1s
+          - OFF for at most 1s
+          - ON for at most 1s
+          - OFF for at most 1s
+          - ON for at most 1s
+          - OFF for at least 0.2s
+        then:
+          - homeassistant.event:
+              event: esphome.button_pressed
+              data:
+                title: ${device_name} triple click
+                device_name: ${device_name}
+                channel: ${channel_2}
+                click_type: triple
+                click_count: "3"
       # double click
       - timing:
           - ON for at most 1s
@@ -235,6 +218,7 @@ binary_sensor:
                       device_name: ${device_name}
                       channel: ${channel_2}
                       click_type: double
+                      click_count: "2"
       - timing:
           - ON for at most 1s
           - OFF for at least 0.5s
@@ -254,6 +238,7 @@ binary_sensor:
                       device_name: ${device_name}
                       channel: ${channel_2}
                       click_type: single
+                      click_count: "1"
               # toggle relay in case either wifi or api are not connected
               else:
                 - switch.toggle: shelly_relay_2

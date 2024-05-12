@@ -11,17 +11,14 @@ esp8266:
   restore_from_flash: true
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
   use_address: 10.0.30.105
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: ${espname} Hotspot
-    password: !secret esphome_fallback_pass
-
 # Enable logging
 logger:
+
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
 
 # Enable Home Assistant API
 api:
@@ -34,49 +31,59 @@ api:
             id: pulse_meter_water_usage
             value: !lambda 'return new_total;'
 
-# Enable OTA updates
-ota:
+# Water Meter Pulse Counter Logic Overview:
+#
+# This setup uses two metal detectors, each connected to an ESP8266 GPIO pin. The detectors
+# monitor a spinner in the water meter, with each rotation indicating 1 liter of water usage,
+# generating four edges (two ON and two OFF states).
+#
+# Each rising edge (OFF to ON) from the detectors triggers a brief ON-OFF pulse via a template
+# binary sensor and a corresponding GPIO output. This output pulse is wired directly to another
+# GPIO input pin on the same ESP device.
+#
+# The input GPIO is connected to a pulse meter sensor that counts these pulses, translating
+# each pulse to a liter of water used. The system reports real-time and total water usage to
+# Home Assistant, ensuring accurate tracking with minimal physical modifications.
 
-# Enable Web server (optional).
-web_server:
-  port: 80
 
-time:
-  - platform: homeassistant
-    id: homeassistant_time
+output:
+  - platform: gpio
+    pin: D2
+    id: combine_pulse_output # GPIO pin to output combined pulse signals.
 
-button:
-  - platform: restart
-    id: restart_button
-    name: "${device_name} Restart"
-
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: ${device_name} IP
+binary_sensor:
+  - platform: gpio
+    id: metal_detector_1
+    pin: D1
+    name: "Metal Detector 1"
+    filters:
+      - delayed_on: 10ms
+    on_state:
+        then:
+          - binary_sensor.template.publish:
+              id: combined_pulses
+              state: ON
+          - output.turn_on: combine_pulse_output
+          - delay: 50ms
+          - binary_sensor.template.publish:
+              id: combined_pulses
+              state: OFF
+          - output.turn_off: combine_pulse_output
+  - platform: template
+    name: ${device_name} Pulses
+    id: combined_pulses
 
 sensor:
-  # Uptime sensor.
-  - platform: uptime
-    name: ${device_name} Uptime
-
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${device_name} WiFi Signal
-    update_interval: 5s
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 5
-
   - platform: pulse_meter
     id: pulse_meter_water_usage
     name: Water Usage
-    pin: D1
-    timeout: 5 min
+    pin: D3
+    timeout: 2.5 min
     unit_of_measurement: 'L/min'
     accuracy_decimals: 2
     icon: mdi:waves-arrow-right
+    filters:
+      - multiply: 0.5
     total:
       name: "Total Water"
       device_class: water
@@ -84,3 +91,5 @@ sensor:
       state_class: 'measurement'
       accuracy_decimals: 0
       icon: mdi:water
+      filters:
+        - multiply: 0.5

@@ -19,33 +19,15 @@ esp8266:
   board: esp8285
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
   use_address: 10.0.30.143
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: ${short_name} Hotspot
-    password: !secret esphome_fallback_pass
 
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
-
-# Enable OTA updates
-ota:
-
-# Sets time from Homeassistant
-time:
-  - platform: homeassistant
-    id: homeassistant_time
-
-button:
-  - platform: restart
-    id: restart_button
-    name: "${device_name} Restart"
+packages:
+  wifi: !include
+    file: common/wifi.yaml
+    vars:
+      device_name: ${short_name}
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
 
 # Button configuration
 binary_sensor:
@@ -112,26 +94,9 @@ status_led:
     number: GPIO01
     inverted: true
 
-# Sensors for ESP version and WIFI information
-text_sensor:
-  - platform: version
-    name: "${device_name} ESPHome Version"
-  - platform: wifi_info
-    ip_address:
-      name: "${device_name} ip"
-    ssid:
-      name: "${device_name} ssid"
-
 # Sensors for WIFI signal strength, Uptime, Voltage, Current, Power, Daily energy usage
 sensor:
-  # Uptime sensor.
-  - platform: uptime
-    name: ${device_name} Uptime
 
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${device_name} WiFi Signal
-    update_interval: 60s
 
   - platform: hlw8012
     sel_pin:

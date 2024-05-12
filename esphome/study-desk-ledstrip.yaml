@@ -7,55 +7,13 @@ esphome:
 esp32:
   board: nodemcu-32s
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: ${device_name} Hotspot
-    password: !secret esphome_fallback_pass
-
-
-captive_portal:
-
-# Enable logging
-logger:
-
-# Enable Home Assistant API
-api:
-
-ota:
-
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: "${device_name} IP Address"
-    ssid:
-      name: "${device_name} SSID"
-    bssid:
-      name: "${device_name} BSSID"
-  - platform: version
-    name: "${device_name} ESPHome Version"
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
 
 e131:
   method: unicast
-
-# status_led:
-  # pin: GPIO2
-
-sensor:
-  # Uptime sensor
-  - platform: uptime
-    name: ${device_name} Uptime
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${device_name} WiFi Signal
-    update_interval: 60s
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 1
 
 light:
   - platform: neopixelbus
@@ -73,3 +31,36 @@ light:
           name: Rainbow Swirl
           speed: 10
           width: 122
+      - addressable_lambda:
+          name: "Simple Color Wipe"
+          update_interval: 100ms
+          lambda: |-
+            for (int i = it.size() - 1; i > 0; i--) {
+              it[i] = it[i - 1].get();
+            }
+            it[0] = ESPColor::random_color();  // Correct random color function
+      - addressable_lambda:
+          name: "Random Sparkle"
+          update_interval: 50ms
+          lambda: |-
+            it.all().fade_to_black(50);  // Correct fading method
+            if (random_uint32() % 10 > 8) {
+              it[random_uint32() % it.size()] = ESPColor::random_color();  // Correct random color function
+            }
+      - addressable_lambda:
+          name: "Gradient Shift"
+          update_interval: 50ms
+          lambda: |-
+            static uint16_t start_index = 0;
+            it.shift_right(1);
+            start_index++;
+            if (start_index >= it.size()) {
+              start_index = 0;
+            }
+            float hue = float(start_index) / it.size();
+            int hue_deg = int(hue * 360);  // Convert to degrees
+            int saturation = 255;  // Maximum saturation
+            int value = 255;       // Maximum brightness
+            // Create an HSV color and set it to the first LED
+            ESPHSVColor hsv_color(hue_deg, saturation, value);
+            it[0].set_hsv(hsv_color);
