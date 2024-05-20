@@ -10,6 +10,7 @@ import qrcode
 import shutil
 import asyncio
 import time
+import base64
 from .const import DOMAIN
 from .util import get_image_folder, get_image_path
 from PIL import Image, ImageDraw, ImageFont
@@ -130,7 +131,7 @@ def customimage(entity_id, service, hass):
             continue
         #line
         if element["type"] == "line":
-            img_line = ImageDraw.Draw(img)  
+            img_line = ImageDraw.Draw(img)
             if not "y_start" in element:
                 y_start = pos_y + element.get("y_padding", 0)
                 y_end = y_start
@@ -141,7 +142,7 @@ def customimage(entity_id, service, hass):
             pos_y = y_start
         #rectangle
         if element["type"] == "rectangle":
-            img_rect = ImageDraw.Draw(img)  
+            img_rect = ImageDraw.Draw(img)
             img_rect.rectangle([(element['x_start'],element['y_start']),(element['x_end'],element['y_end'])],fill = getIndexColor(element['fill']), outline=getIndexColor(element['outline']), width=element['width'])
         #text
         if element["type"] == "text":
@@ -177,6 +178,7 @@ def customimage(entity_id, service, hass):
             font_file = os.path.join(os.path.dirname(__file__), font)
             font = ImageFont.truetype(font_file, size)
             color = element.get('color', "black")
+            anchor = element.get('anchor', "lm")
             stroke_width = element.get('stroke_width', 0)
             stroke_fill = element.get('stroke_fill', 'white')
             _LOGGER.debug("Got Multiline string: %s with delimiter: %s" % (element['value'],element["delimiter"]))
@@ -184,7 +186,7 @@ def customimage(entity_id, service, hass):
             pos = element.get('start_y', pos_y + element.get('y_padding', 10))
             for elem in lst:
                 _LOGGER.debug("String: %s" % (elem))
-                d.text((element['x'], pos ), str(elem), fill=getIndexColor(color), font=font, stroke_width=stroke_width, stroke_fill=stroke_fill)
+                d.text((element['x'], pos ), str(elem), fill=getIndexColor(color), font=font, anchor=anchor, stroke_width=stroke_width, stroke_fill=stroke_fill)
                 pos = pos + element['offset_y']
             pos_y = pos
         #icon
@@ -229,9 +231,28 @@ def customimage(entity_id, service, hass):
             if "http://" in url or "https://" in url:
                 response = requests.get(url)
                 imgdl = Image.open(io.BytesIO(response.content))
+            elif "data:" in url:
+                s = url[5:]
+                if not s or ',' not in s:
+                    raise HomeAssistantError('invalid data url')
+                media_type, _, raw_data = s.partition(',')
+                is_base64_encoded = media_type.endswith(';base64')
+                if is_base64_encoded:
+                    media_type = media_type[:-7]
+                    missing_padding = '=' * (-len(raw_data) % 4)
+                    if missing_padding:
+                        raw_data += missing_padding
+                    try:
+                        data = base64.b64decode(raw_data)
+                    except ValueError as exc:
+                        raise HomeAssistantError('invalid base64 in data url') from exc
+                else:
+                    # Note: unquote_to_bytes() does not raise exceptions for invalid
+                    # or partial escapes, so there is no error handling here.
+                    data = urllib.parse.unquote_to_bytes(raw_data)
+                imgdl = Image.open(io.BytesIO(data))
             else:
                 imgdl = Image.open(url)
-                
             if rotate2 != 0:
                 imgdl = imgdl.rotate(-rotate2, expand=1)
             width2, height2 = imgdl.size
@@ -316,7 +337,7 @@ def customimage(entity_id, service, hass):
             height = y_end - y_start + 1
             # The duration of history to look at (default 1 day)
             duration = timedelta(seconds=element.get("duration", 60*60*24))
-            
+
             end = dt.utcnow()
             start = end - duration
             # The label font and size
@@ -358,7 +379,7 @@ def customimage(entity_id, service, hass):
             max_v = element.get("high", None)
             # Obtain all states of all given entities in the given duration
             all_states = get_significant_states(hass, start_time=start, entity_ids=[plot["entity"] for plot in element["data"]], significant_changes_only=False, minimal_response=True, no_attributes=False)
-            
+
             # prepare data and obtain min_v and max_v with it
             raw_data = []
             for plot in element["data"]:

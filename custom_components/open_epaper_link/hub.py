@@ -111,20 +111,29 @@ class Hub:
                 17: ["M2 2.9\" (NFC)", 296, 128],
                 26: ["M2 7.4\" (outdated)",  640, 384],
                 33: ["M2 2.9\"", 296, 128],
+                38: ["M2 7.4 BW\"",  640, 384],
                 46: ["M3 9.7\"",  960, 672],
                 47: ["M3 4.3\"",  522, 152],
                 48: ["M3 1.6\"",  200, 200],
                 49: ["M3 2.2\"",  296, 160],
+                50: ["M3 2.6\"",  360, 184],
                 51: ["M3 2.9\"",  384, 168],
                 52: ["M3 4.2\"",  400, 300],
                 53: ["M3 6.0\"",  600, 448],
                 54: ["M3 7.5\"",  800, 480],
+                67: ["M3 1.3\" Peghook",  144, 200],
+                85: ["HS BWR 2.13\"",  256, 128],
+                86: ["HS BWR 2.66\"",  296, 152],
                 96: ["HS BWY 3.5\"",  384, 184],
                 97: ["HS BWR 3.5\"",  384, 184],
                 98: ["HS BW 3.5\"",  384, 184],
+                176: ["Gicisky BLE EPD BW 2.1\"",  212, 104],
+                177: ["Gicisky BLE EPD BWR 2.13\"",  250, 128],
                 178: ["Gicisky BLE EPD BW 2.9\"",  296, 128],
                 179: ["Gicisky BLE EPD BWR 2.9\"",  296, 128],
                 181: ["Gicisky BLE EPD BWR 4.2\"",  400, 300],
+                186: ["Gicisky BLE TFT 2.13\"",  250, 132],
+                191: ["Gicisky BLE Unknown",  0, 0],
                 190: ["ATC MiThermometer BLE",  6, 8],
                 224: ["AP display",  320, 170],
                 225: ["AP display",  160, 80],
@@ -183,7 +192,7 @@ class Hub:
                 "device_id": tagmac,
                 "type": lut[wakeupReason],
             }
-            self._hass.bus.async_fire(DOMAIN + "_event", event_data)
+            self._hass.bus.fire(DOMAIN + "_event", event_data)
         elif 'errMsg' in data:
             ermsg = data.get('errMsg');
         elif 'logMsg' in data:
