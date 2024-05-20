@@ -17,6 +17,62 @@ cards:
             show_state: true
             suffix: '%'
         camera_image: camera.buienradar
+      - type: 'custom:apexcharts-card'
+        graph_span: 2h
+        span:
+          start: minute
+        header:
+          title: Precipitation
+          show: true
+        apex_config:
+          annotations:
+            position: front
+            yaxis:
+              - y: 0.2
+                borderColor: '#00E396'  # Greenish color for low intensity
+                label:
+                  borderColor: '#00E396'
+                  text: 'Light'
+                  style:
+                    background: 'transparent'
+                    color: '#00E396'  # Text color matches the line color
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 1
+                borderColor: '#FEB019'  # Amber color for medium intensity
+                label:
+                  borderColor: '#FEB019'
+                  text: 'Moderate'
+                  style:
+                    background: 'transparent'
+                    color: '#FEB019'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 2.5
+                borderColor: '#FF4560'  # Red color for high intensity
+                label:
+                  borderColor: '#FF4560'
+                  text: 'Heavy'
+                  style:
+                    background: 'transparent'
+                    color: '#FF4560'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+        yaxis:
+          - min: 0
+            max: ~3
+            apex_config:
+              tickAmount: 1
+        series:
+          - entity: sensor.precipitation_forecast
+            float_precision: 1
+            type: area
+            color: '#87ceeb'
+            data_generator: |
+              console.log(entity.attributes.precipitation_raw.map(item => [new Date(item.datetime).getTime(), item.precipitation]));
+              return entity.attributes.precipitation_raw.map(item => {
+                return [new Date(item.datetime).getTime(), item.precipitation];
+              });
       - entities:
           - entity: sensor.entry_average_illuminance
             name: Entry
@@ -98,9 +154,9 @@ cards:
         entities:
           - entity: sensor.temperature_outside
             name: Outside
-          - entity: sensor.woonkamer_temperatuur
-            name: Living room
-          - entity: sensor.slaapkamer3_temperatuur
+          # - entity: sensor.woonkamer_temperatuur
+          #   name: Living room
+          # - entity: sensor.slaapkamer3_temperatuur
       - type: custom:mini-graph-card
         entities:
           - entity: sensor.temperature_outside

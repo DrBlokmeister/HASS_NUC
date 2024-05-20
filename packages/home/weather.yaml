@@ -9,6 +9,37 @@ homeassistant:
 
 # camera:
 #   - platform: buienradar
+
+command_line:
+  - sensor:
+      name: "Precipitation Forecast"
+      unique_id: "yaml_command_line_buienradar_api_precip_forecast"
+      icon: mdi:weather-rainy
+      command: >
+        curl -s 'https://gadgets.buienradar.nl/data/raintext/?lat={{ state_attr('zone.home', 'latitude')|round(2) }}&lon={{ state_attr('zone.home', 'longitude')|round(2) }}' | 
+        awk -F'|' -v "date=$(date +'%Y-%m-%d')" -v "hour=$(date +'%H')" '
+        BEGIN {first = 1; print "{\"precipitation_raw\": ["} 
+        {
+          if (!first) printf ", "; 
+          first = 0; 
+          split($2, t, ":"); 
+          if (t[1] < hour && hour >= 22) date=strftime("%Y-%m-%d", systime() + 86400); 
+          ts = mktime(date " " t[1] " " t[2] " 00"); 
+          printf "{\"time\":\"%s\",\"timestamp\":%d,\"precipitation\":%.1f,\"datetime\":\"%sT%s:00\"}", $2, ts, 10^(($1-109)/32), date, $2
+        } 
+        END {print "]}"}'
+      scan_interval: 60  # Updates every minute; adjust as needed.
+      value_template: "{{ value_json['precipitation_raw'][0]['precipitation'] }}"
+      unit_of_measurement: "mm/h"
+      device_class: precipitation_intensity
+      json_attributes:
+        - precipitation_raw
+
+  - sensor:
+      name: "Precipitation Test"
+      command: "curl -s 'https://gadgets.buienradar.nl/data/raintext/?lat=51.46&lon=5.46' | head -1 | awk -F'|' '{print \"{\\\"time\\\":\\\"\" $2 \"\\\",\\\"precipitation\\\":\\\"\" $1 \"\\\"}\"}'"
+      scan_interval: 300  # Updates every 5 minutes; adjust as needed.
+      value_template: "{{ value_json['precipitation'] }}"
 #################
 #    SENSORS    #
 #################
@@ -51,6 +82,7 @@ sensor:
   #     - windforce_2d
   #     - windspeed_1d
   #     - windspeed_2d
+
 ########################
 #    BINARY SENSORS    #
 ########################
