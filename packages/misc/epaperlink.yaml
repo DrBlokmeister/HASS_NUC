@@ -120,9 +120,19 @@ automation:
           sequence:
             - service: script.update_energy_price_today_display
             - service: script.update_energy_price_today_larger_display
+              data:
+                display_entity_id:
+                  - open_epaper_link.00007E22B1D7B299
+                  - open_epaper_link.00007e22b1b2b29a
+                  - open_epaper_link.00007e225dc2b29f
         default:
           - service: script.update_energy_price_transition_display
           - service: script.update_energy_price_transition_larger_display
+            data:
+              display_entity_id:
+                - open_epaper_link.00007E22B1D7B299
+                - open_epaper_link.00007e22b1b2b29a
+                - open_epaper_link.00007e225dc2b29f
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
     trigger:
@@ -1363,13 +1373,19 @@ script:
 
   update_energy_price_today_larger_display:
     alias: "Update Energy Price Today Larger Display"
+    description: "Updates the new Solum M3 2.9 inch screens with today's electricty prices"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated"
+        example: "open_epaper_link.00007E22B1D7B299"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id:
-            - open_epaper_link.00007E22B1D7B299
-            - open_epaper_link.00007e22b1b2b29a
-            - open_epaper_link.00007e225dc2b29f
+          entity_id: "{{ display_entity_id }}"
+            # - open_epaper_link.00007E22B1D7B299
+            # #- open_epaper_link.00007e22b1b2b29a
+            # - open_epaper_link.00007e225dc2b29f
         data:
           background: white
           rotate: 0
@@ -1707,6 +1723,8 @@ script:
               size: 16
               color: red
               font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              stroke_width: 2
+              stroke_fill: 'white'
               anchor: rt
             - type: text
               value: "Min: €{{ states.sensor.nordpool_energy_price.attributes.min }}"
@@ -1715,6 +1733,8 @@ script:
               size: 16
               color: red
               font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              stroke_width: 2
+              stroke_fill: 'white'
               anchor: rt
             - type: text
               value: "Current: €{{ states.sensor.nordpool_energy_price.attributes.raw_today[now().hour].value }}"
@@ -1723,17 +1743,22 @@ script:
               size: 16
               color: red
               font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              stroke_width: 2
+              stroke_fill: 'white'
               anchor: rt
 
   update_energy_price_transition_larger_display:
     alias: "Update Energy Price Transition Larger Display"
+    description: "Updates the new Solum M3 2.9 inch screens with tonight's and tomorrow morning's electricty prices"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated"
+        example: "open_epaper_link.00007E22B1D7B299"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id:
-            - open_epaper_link.00007E22B1D7B299
-            - open_epaper_link.00007e22b1b2b29a
-            - open_epaper_link.00007e225dc2b29f
+          entity_id: "{{ display_entity_id }}"
         data:
           background: white
           rotate: 0
@@ -2067,26 +2092,32 @@ script:
             - type: text
               value: "Max: €{{ states.sensor.nordpool_energy_price.attributes.max }}"
               x: 373
-              "y": 16
+              "y": 3
               size: 16
               color: red
               font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              stroke_width: 2
+              stroke_fill: 'white'
               anchor: rt
             - type: text
               value: "Min: €{{ states.sensor.nordpool_energy_price.attributes.min }}"
               x: 373
-              "y": 29
+              "y": 19
               size: 16
               color: red
               font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              stroke_width: 2
+              stroke_fill: 'white'
               anchor: rt
             - type: text
               value: "Current: €{{ states.sensor.nordpool_energy_price.attributes.raw_today[now().hour].value }}"
               x: 373
-              "y": 42
+              "y": 35
               size: 16
               color: red
               font: "/config/www/fonts/SF Pixelate 10pt/SF Pixelate Bold.ttf"
+              stroke_width: 2
+              stroke_fill: 'white'
               anchor: rt
 
   update_garbage_monitor_display:
@@ -2644,3 +2675,34 @@ script:
               size: 14
               color: 'black'
               anchor: rb
+
+  update_precipitation_display:
+    alias: "Update Precipitation Display"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: open_epaper_link.00007e225dd0b29c
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: plot_custom
+              x_start: 10
+              y_start: 10
+              x_end: 344
+              y_end: 150
+              low: 0
+              high: 20
+              ylegend:
+                position: right
+                color: red
+              yaxis:
+                tick_width: 4
+                grid: 5
+              data:
+                color: black
+                width: 1
+                joint: None
+                x: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='timestamp') | join(',') }}"
+                y: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='precipitation') | join(',') }}"

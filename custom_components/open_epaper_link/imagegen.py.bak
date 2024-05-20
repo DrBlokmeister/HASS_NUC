@@ -159,15 +159,13 @@ def customimage(entity_id, service, hass):
             anchor = element.get('anchor', "lt")
             align = element.get('align', "left")
             spacing = element.get('spacing', 5)
-            stroke_width = element.get('stroke_width', 0)
-            stroke_fill = element.get('stroke_fill', 'white')
             if "max_width" in element:
                 text = get_wrapped_text(str(element['value']), font, line_length=element['max_width'])
                 anchor = None
             else:
                 text = str(element['value'])
-            d.text((element['x'],  akt_pos_y), text, fill=getIndexColor(color), font=font, anchor=anchor, align=align, spacing=spacing, stroke_width=stroke_width, stroke_fill=stroke_fill)
-            textbbox = d.textbbox((element['x'],  akt_pos_y), text, font=font, anchor=anchor, align=align, spacing=spacing, stroke_width=stroke_width)
+            d.text((element['x'],  akt_pos_y), text, fill=getIndexColor(color), font=font, anchor=anchor, align=align, spacing=spacing)
+            textbbox = d.textbbox((element['x'],  akt_pos_y), text, font=font, anchor=anchor, align=align, spacing=spacing)
             pos_y = textbbox[3]
         if element["type"] == "multiline":
             d = ImageDraw.Draw(img)
@@ -177,14 +175,12 @@ def customimage(entity_id, service, hass):
             font_file = os.path.join(os.path.dirname(__file__), font)
             font = ImageFont.truetype(font_file, size)
             color = element.get('color', "black")
-            stroke_width = element.get('stroke_width', 0)
-            stroke_fill = element.get('stroke_fill', 'white')
             _LOGGER.debug("Got Multiline string: %s with delimiter: %s" % (element['value'],element["delimiter"]))
             lst = element['value'].replace("\n","").split(element["delimiter"])
             pos = element.get('start_y', pos_y + element.get('y_padding', 10))
             for elem in lst:
                 _LOGGER.debug("String: %s" % (elem))
-                d.text((element['x'], pos ), str(elem), fill=getIndexColor(color), font=font, stroke_width=stroke_width, stroke_fill=stroke_fill)
+                d.text((element['x'], pos ), str(elem), fill=getIndexColor(color), font=font)
                 pos = pos + element['offset_y']
             pos_y = pos
         #icon
@@ -194,7 +190,7 @@ def customimage(entity_id, service, hass):
             # ttf from https://github.com/Templarian/MaterialDesign-Webfont/blob/master/fonts/materialdesignicons-webfont.ttf
             font_file = os.path.join(os.path.dirname(__file__), 'materialdesignicons-webfont.ttf')
             meta_file = os.path.join(os.path.dirname(__file__), "materialdesignicons-webfont_meta.json") 
-            f = open(meta_file)
+            f = open(meta_file) 
             data = json.load(f)
             chr_hex = ""
             value = element['value']
@@ -211,11 +207,9 @@ def customimage(entity_id, service, hass):
                         break
             if chr_hex == "":
                 raise HomeAssistantError("Non valid icon used: "+ value)
-            stroke_width = element.get('stroke_width', 0)
-            stroke_fill = element.get('stroke_fill', 'white')
             font = ImageFont.truetype(font_file, element['size'])
             anchor = element['anchor'] if 'anchor' in element else "la"
-            d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=getIndexColor(element['color']), font=font, anchor=anchor, stroke_width=stroke_width, stroke_fill=stroke_fill)
+            d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=getIndexColor(element['color']), font=font, anchor=anchor)
        #dlimg
         if element["type"] == "dlimg":
             url = element['url']
@@ -450,132 +444,6 @@ def customimage(entity_id, service, hass):
                         img_draw.rectangle([(diag_x + yaxis_width, curr_y), (diag_x + yaxis_width + yaxis_tick_width - 1, curr_y)], width=0, fill=getIndexColor(yaxis_color))
                         curr += yaxis_tick_every
 
-        if element["type"] == "plot_custom":
-            _LOGGER.info("Started rendering custom plot.")
-            img_draw = ImageDraw.Draw(img)
-            img_draw.fontmode = "1"
-
-            # Canvas dimensions
-            x_start = element.get("x_start", 0)
-            y_start = element.get("y_start", 0)
-            x_end = element.get("x_end", canvas_width-1-x_start)
-            y_end = element.get("y_end", canvas_height-1-x_start)
-            width = x_end - x_start + 1
-            height = y_end - y_start + 1
-
-            # The label font and size
-            size = element.get("size", 10)
-            font_file = element.get("font", "ppb.ttf")
-            abs_font_file = os.path.join(os.path.dirname(__file__), font_file)
-            font = ImageFont.truetype(abs_font_file, size)
-            # The value legend
-            ylegend = element.get("ylegend", dict())
-            if ylegend is None:
-                ylegend_width = 0
-            else:
-                ylegend_width = ylegend.get("width", -1)
-                ylegend_color = ylegend.get("color", "black")
-                ylegend_pos = ylegend.get("position", "left")
-                if ylegend_pos not in ("left", "right", None):
-                    ylegend_pos = "left"
-                ylegend_font_file = ylegend.get("font", font_file)
-                ylegend_size = ylegend.get("size", size)
-                if ylegend_font_file != font_file or ylegend_size != size:
-                    ylegend_abs_font_file = os.path.join(os.path.dirname(__file__), ylegend_font_file)
-                    ylegend_font = ImageFont.truetype(ylegend_abs_font_file, ylegend_size)
-                else:
-                    ylegend_font = font
-            # The value axis
-            yaxis = element.get("yaxis", dict())
-            if yaxis is None:
-                yaxis_width = 0
-                yaxis_tick_width = 0
-            else:
-                yaxis_width = yaxis.get("width", 1)
-                yaxis_color = yaxis.get("color", "black")
-                yaxis_tick_width = yaxis.get("tick_width", 2)
-                yaxis_tick_every = float(yaxis.get("tick_every", 1))
-                yaxis_grid = yaxis.get("grid", 5)
-                yaxis_grid_color = yaxis.get("grid_color", "black")
-            # The minimum and maximum values that are always shown
-            min_v = element.get("low", None)
-            max_v = element.get("high", None)
-
-            # Direct data from the YAML configuration
-            _LOGGER.info("Data type: %s, Content: %s", type(element["data"]), element["data"])
-            _LOGGER.info(element["data"])
-            x_values = element["data"]["x"]
-            y_values = element["data"]["y"]
-            raw_data = list(zip(x_values, y_values))
-
-            # Determine bounds
-            min_v = min(y_values)
-            max_v = max(y_values)
-            max_v = math.ceil(max_v)
-            min_v = math.floor(min_v)
-            if max_v == min_v:
-                min_v -= 1
-            spread = max_v - min_v
-
-            # calculate ylenged_width if it should be automatically determined
-            if ylegend_width == -1:
-                ylegend_width = math.ceil(max(
-                    img_draw.textlength(str(max_v), font=ylegend_font),
-                    img_draw.textlength(str(min_v), font=ylegend_font),
-                ))
-
-            # effective diagram dimensions
-            diag_x = x_start + (ylegend_width if ylegend_pos == "left" else 0)
-            diag_y = y_start
-            diag_width = width - ylegend_width
-            diag_height = height
-
-            if element.get("debug", False):
-                img_draw.rectangle([(x_start, y_start), (x_end, y_end)], fill=None, outline=getIndexColor("black"), width=1)
-                img_draw.rectangle([(diag_x, diag_y), (diag_x + diag_width - 1, diag_y + diag_height - 1)], fill=None, outline=getIndexColor("red"), width=1)
-
-            # print y grid
-            if yaxis is not None:
-                if yaxis_grid is not None:
-                    grid_points = []
-                    curr = min_v
-                    while curr <= max_v:
-                        curr_y = round(diag_y + (1 - ((curr - min_v) / spread)) * (diag_height - 1))
-                        grid_points.extend((x, curr_y) for x in range(diag_x, diag_x + diag_width, yaxis_grid))
-                        curr += yaxis_tick_every
-                    img_draw.point(grid_points, fill=getIndexColor(yaxis_grid_color))
-
-            # Scaling data to fit the plot area
-            scaled_data = []
-            for x, y in raw_data:
-                rel_x = (x - min(x_values)) / (max(x_values) - min(x_values))
-                rel_y = (y - min_v) / spread
-                scaled_x = round(diag_x + rel_x * (diag_width - 1))
-                scaled_y = round(diag_y + (1 - rel_y) * (diag_height - 1))
-                scaled_data.append((scaled_x, scaled_y))
-
-            _LOGGER.info("Data scaled. Next line shows scaled data.")
-            _LOGGER.info(scaled_data)
-            # Drawing the line
-            img_draw.line(scaled_data, fill=getIndexColor(element["data"].get("color", "black")), width=element["data"].get("width", 1), joint=element["data"].get("joint", None)) # Adjust color and width as needed
-
-            # print y legend
-            if ylegend_pos == "left":
-                img_draw.text((x_start, y_start), str(max_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="lt")
-                img_draw.text((x_start, y_end), str(min_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="ls")
-            elif ylegend_pos == "right":
-                img_draw.text((x_end, y_start), str(max_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="rt")
-                img_draw.text((x_end, y_end), str(min_v), fill=getIndexColor(ylegend_color), font=ylegend_font, anchor="rs")
-            # print y axis
-            if yaxis is not None:
-                img_draw.rectangle([(diag_x, diag_y), (diag_x + yaxis_width - 1, diag_y + diag_height - 1)], width=0, fill=getIndexColor(yaxis_color))
-                if yaxis_tick_width > 0:
-                    curr = min_v
-                    while curr <= max_v:
-                        curr_y = round(diag_y + (1 - ((curr - min_v) / spread)) * (diag_height - 1))
-                        img_draw.rectangle([(diag_x + yaxis_width, curr_y), (diag_x + yaxis_width + yaxis_tick_width - 1, curr_y)], width=0, fill=getIndexColor(yaxis_color))
-                        curr += yaxis_tick_every
-
     #post processing
     img = img.rotate(rotate, expand=True)
     rgb_image = img.convert('RGB')
@@ -591,7 +459,6 @@ def customimage(entity_id, service, hass):
     rgb_image.save(buf, format='JPEG', quality="maximum")
     byte_im = buf.getvalue()
     return byte_im
-
 # adds an image to the queue
 def queueimg(url, content):
     queue.append([url,content])
