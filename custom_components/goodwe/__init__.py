@@ -1,14 +1,14 @@
 """The Goodwe inverter component."""
 
 from goodwe import InverterError, connect
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_PROTOCOL
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.entity import DeviceInfo
 
 from .const import (
+    CONF_KEEP_ALIVE,
     CONF_MODEL_FAMILY,
     CONF_NETWORK_RETRIES,
     CONF_NETWORK_TIMEOUT,
@@ -27,8 +27,10 @@ from .services import async_setup_services, async_unload_services
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the Goodwe components from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-    host = entry.data[CONF_HOST]
-    model_family = entry.data[CONF_MODEL_FAMILY]
+    host = entry.options.get(CONF_HOST, entry.data[CONF_HOST])
+    protocol = entry.options.get(CONF_PROTOCOL, entry.data.get(CONF_PROTOCOL, "UDP"))
+    keep_alive = entry.options.get(CONF_KEEP_ALIVE, protocol != "TCP")
+    model_family = entry.options.get(CONF_MODEL_FAMILY, entry.data[CONF_MODEL_FAMILY])
     network_retries = entry.options.get(CONF_NETWORK_RETRIES, DEFAULT_NETWORK_RETRIES)
     network_timeout = entry.options.get(CONF_NETWORK_TIMEOUT, DEFAULT_NETWORK_TIMEOUT)
 
@@ -36,11 +38,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         inverter = await connect(
             host=host,
+            port=502 if protocol == "TCP" else 8899,
             family=model_family,
             comm_addr=0,
             timeout=network_timeout,
             retries=network_retries,
         )
+        inverter.keep_alive = keep_alive
     except InverterError as err:
         raise ConfigEntryNotReady from err
 
@@ -51,6 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         manufacturer="GoodWe",
         model=inverter.model_name,
         sw_version=f"{inverter.firmware} / {inverter.arm_firmware}",
+        hw_version=f"{inverter.serial_number[5:8]} {inverter.serial_number[0:5]}",
     )
 
     # Create update coordinator

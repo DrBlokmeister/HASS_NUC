@@ -59,7 +59,6 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         parameter = call.data[ATTR_PARAMETER]
         entity_id = call.data[ATTR_ENTITY_ID]
 
-        _LOGGER.info("Returned data '%s'", call.data) #added this line myself at 20240406 to see what the data looks like.
         _LOGGER.debug("Reading inverter parameter '%s'", parameter)
         inverter = await _get_inverter_by_device_id(hass, device_id)
         value = await inverter.read_setting(parameter)

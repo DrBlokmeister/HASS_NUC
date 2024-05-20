@@ -10,7 +10,6 @@ import logging
 from typing import Any
 
 from goodwe import Inverter, Sensor, SensorKind
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -175,7 +174,6 @@ async def async_setup_entry(
     entities.extend(
         InverterSensor(coordinator, device_info, inverter, sensor)
         for sensor in inverter.sensors()
-        if not sensor.id_.startswith("xx")
     )
 
     async_add_entities(entities)
