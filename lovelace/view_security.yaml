@@ -23,16 +23,9 @@ cards:
         tap_action:
           action: toggle
   - cards:
-      # - type: entities
-      #   entities:
-      #     - entity: sensor.last_triggered_motion_sensor
-      #     - entity: sensor.last_triggered_motion_sensor
-      #       type: attribute
-      #       attribute: timestamp
-      #       format: relative
-      #       name: Detection time
-      #       icon: mdi:history
-      #     - type: divider
+        # Use template below to find all motion and door sensors. For a full list of device classes, seee: https://www.home-assistant.io/integrations/binary_sensor/
+        # - {{ states | selectattr('attributes.device_class', 'eq', 'motion') | map(attribute='entity_id') | list | join('\n- ') }}
+        # - {{ states | selectattr('attributes.device_class', 'eq', 'door') | map(attribute='entity_id') | list | join('\n- ') }}
       - entities:
           - entity: binary_sensor.entry_motion_1
             name: Entry 1
@@ -155,8 +148,8 @@ cards:
       - entity: binary_sensor.motion_sensor_balcony
         name: Balcony
         secondary_info: last-changed
-      - entity: binary_sensor.kitchen_door_window_sensor
-        name: Kitchen door
+      - entity: binary_sensor.back_door_sensor
+        name: Back door
         secondary_info: last-changed
       - entity: binary_sensor.front_door_sensor
         name: Front door
@@ -164,11 +157,24 @@ cards:
       - entity: binary_sensor.stairs_cabinet_door_sensor
         name: Cabinet door
         secondary_info: last-changed
+      - entity: binary_sensor.washroom_door_sensor
+        name: Washroom door
+        secondary_info: last-changed
+      - entity: binary_sensor.meterkast_door_sensor
+        name: Utility Cabinet door
+        secondary_info: last-changed
     title: Active motion sensors
     type: entity-filter
-    state_filter:
-      - operator: "=="
-        value: "on"
+    conditions:
+      - condition: or
+        conditions:
+          - condition: state
+            state: "on"
+          - condition: state
+            state: "open"
+    # state_filter:
+    #   - operator: "=="
+    #     value: "on"
 
   - type: entities
     title: Presence Detectors
