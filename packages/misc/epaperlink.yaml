@@ -118,7 +118,7 @@ automation:
             - condition: time
               before: "15:00:00"
           sequence:
-            - service: script.update_energy_price_today_display
+            #- service: script.update_energy_price_today_display
             - service: script.update_energy_price_today_larger_display
               data:
                 display_entity_id:
@@ -126,13 +126,28 @@ automation:
                   - open_epaper_link.00007e22b1b2b29a
                   - open_epaper_link.00007e225dc2b29f
         default:
-          - service: script.update_energy_price_transition_display
+          #- service: script.update_energy_price_transition_display
           - service: script.update_energy_price_transition_larger_display
             data:
               display_entity_id:
                 - open_epaper_link.00007E22B1D7B299
                 - open_epaper_link.00007e22b1b2b29a
                 - open_epaper_link.00007e225dc2b29f
+
+  - alias: "[misc|epaperlink] Timed Update Moeke Water Tank Display"
+    id: misc_epaperlink_timed_update_moeke_water_tank_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"  # Triggers every 30 minutes
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "23:30:00"
+    action:
+      - service: script.update_moeke_water_tank_display
+        data:
+          display_entity_id: open_epaper_link.0000021DBCA73412  # Assuming this is your target e-paper display's entity_id
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
     trigger:
@@ -2706,3 +2721,74 @@ script:
                 joint: None
                 x: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='timestamp') | join(',') }}"
                 y: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='precipitation') | join(',') }}"
+
+  update_moeke_water_tank_display:
+    alias: "Update Moeke Water Tank Display"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated"
+        example: "open_epaper_link.0000021DBCA73412"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: "{{ display_entity_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: rectangle
+              fill: >
+                {{ 'white' if is_state('sensor.moeke_low_water_warning', 'no_warning') else 'red' }}
+              outline: white
+              width: 0
+              x_start: 0
+              y_start: 0
+              x_end: 151
+              y_end: 75
+            - type: text
+              value: "Dreame Status"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 10
+              size: 16
+              color: >
+                {{ 'black' if is_state('sensor.moeke_low_water_warning', 'no_warning') else 'white' }}
+            - type: text
+              value: "{{ 'OK' if is_state('sensor.moeke_low_water_warning', 'no_warning') else 'NOK' }}"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 30
+              size: 40
+              color: >
+                {{ 'black' if is_state('sensor.moeke_low_water_warning', 'no_warning') else 'white' }}
+            - type: rectangle
+              fill: >
+                {{ 'white' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'black' }}
+              outline: white
+              width: 0
+              x_start: 0
+              y_start: 76
+              x_end: 151
+              y_end: 151
+            - type: text
+              value: "Leak Status:"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 80
+              size: 16
+              color: >
+                {{ 'black' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'white' }}
+            - type: text
+              value: "{{ 'WET' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'DRY' }}"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 100
+              size: 40
+              color: >
+                {{ 'black' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'white' }}
