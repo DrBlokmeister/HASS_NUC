@@ -9,15 +9,6 @@ esp32:
   #   board_build.mcu: esp32
   #   board_build.f_cpu: 240000000L
 
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Epapercontroller"
-    password: !secret esphome_fallback_pass
-
 substitutions:
   devicename: AQI Display
   gpio_led_status: GPIO2
@@ -36,21 +27,10 @@ substitutions:
   gpio_led_green: GPIO23
   gpio_led_blue: GPIO18
 
-captive_portal:
-
-# Enable logging
-logger:
-  level: VERBOSE
-# Enable Home Assistant API
-api:
-
-ota:
-
-# esp32_ble_tracker:
-# scan_parameters:
-#   interval: 1020ms
-#   window: 32ms
-#   active: false
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
 
 # UART for MH-Z19C CO2 sensor
 uart:
@@ -72,12 +52,6 @@ binary_sensor:
   - platform: status
     name: "Board connected"
     id: connection
-  # - platform: ble_presence
-  #   mac_address: !secret miband_mac
-  #   name: "Mi Band BLE tracker"
-  # - platform: ble_presence
-  #   mac_address: 64:a2:f9:28:dc:9f
-  #   name: "Sander's Phone BLE tracker"
 
 sensor:
   - platform: mhz19
@@ -142,16 +116,6 @@ sensor:
           - throttle_average: 60s
           - delta: 1
 
-  - platform: uptime
-    name: "Epaperdisplay Uptime Sec"
-    id: uptime_sec
-    internal: true
-
-  - platform: wifi_signal
-    name: "Epaperdisplay WiFi Signal"
-    id: wifisignal
-    update_interval: 60s
-
   - platform: homeassistant
     id: bedroomtemp
     entity_id:  sensor.temperature_bedroom
@@ -189,14 +153,6 @@ sensor:
     id: bedweightbalanceleftright
     entity_id: sensor.bed_weight_balance_leftright
 
-
-  # - platform: ble_rssi
-  #   mac_address: !secret phone_mac
-  #   name: "Sander's Phone BLE strength"
-  # - platform: ble_rssi
-  #   mac_address: !secret miband_mac
-  #   name: "Mi Band"
-
 time:
   - platform: sntp
     timezone: Europe/Amsterdam
@@ -205,8 +161,6 @@ time:
       - 0.nl.pool.ntp.org
       - ntp1.time.nl
       - 193.79.237.14
-  - platform: homeassistant
-    id: homeassistant_time
 
 sun:
   latitude: !secret home_latitude
@@ -216,20 +170,12 @@ text_sensor:
   - platform: version
     name: "Epaperdisplay Version"
 
-  - platform: wifi_info
-    ip_address:
-      name: "Epaperdisplay IPv4"
-      icon: "mdi:server-network"
-    ssid:
-      name: "Epaperdisplay Connected SSID"
-      icon: "mdi:wifi"
-
   - platform: template
     name: "Epaperdisplay Uptime"
     icon: "mdi:timer"
     update_interval: 60s
     lambda: |-
-      int seconds = id(uptime_sec).state;
+      int seconds = id(uptime_sensor).state;
       int days = seconds / (24 * 3600);
       seconds = seconds % (24 * 3600);
       int hours = seconds / 3600;
@@ -264,6 +210,7 @@ button:
     on_press:
       then:
         - mhz19.calibrate_zero: mhz19_sensor
+
 switch:
   - platform: template
     name: "Calibrate MH-Z19"
@@ -364,20 +311,20 @@ display:
 
           /* WiFi Signal Strength */
           x = 80, y = 20;
-          if(id(wifisignal).has_state()) {
-            if (id(wifisignal).state >= -50) {
+          if(id(wifi_signal_sensor).has_state()) {
+            if (id(wifi_signal_sensor).state >= -50) {
                 //Excellent
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤨");
                 //ESP_LOGI("WiFi", "Exellent");
-            } else if (id(wifisignal).state  >= -62) {
+            } else if (id(wifi_signal_sensor).state  >= -62) {
                 //Good
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤥");
                 //ESP_LOGI("WiFi", "Good");
-            } else if (id(wifisignal).state  >= -67) {
+            } else if (id(wifi_signal_sensor).state  >= -67) {
                 //Fair
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤢");
                 //ESP_LOGI("WiFi", "Fair");
-            } else if (id(wifisignal).state  >= -75) {
+            } else if (id(wifi_signal_sensor).state  >= -75) {
                 //Weak
                 it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤟");
                 //ESP_LOGI("WiFi", "Weak");
