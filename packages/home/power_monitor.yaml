@@ -379,13 +379,20 @@ sensor:
       #   unit_of_measurement: "currency"  # Adjust this based on your currency
       #   value_template: "{{ states('sensor.projected_total_cost_per_day') | float - (states('sensor.current_total_usage') | float * states('sensor.current_electricity_price') | float) }}"
 
-      # Production benefits per hour sensor
-      solar_panels_production_benefits_hourly:
-        friendly_name: "Solar Panels Production Benefits per Hour"
+      # Production earnings per hour sensor
+      solar_panels_production_earnings_hourly:
+        friendly_name: "Solar Panels Production Earnings per Hour"
         unique_id: "yaml_template_sensor_solar_panel_benefit_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.solar_panel_power_production_available')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.solar_panel_power_production_available') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+
+      net_electricity_cost_per_hour:
+        friendly_name: "Net Electricity Cost per Hour"
+        unique_id: "yaml_template_sensor_net_electricity_cost_per_hour"
+        unit_of_measurement: "€/h"
+        availability_template: "{{ states('sensor.current_electricity_cost_per_hour')|is_number and states('sensor.solar_panels_production_earnings_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.current_electricity_cost_per_hour')|float(0) - states('sensor.solar_panels_production_earnings_hourly')|float(0))|round(3) }}"
 
       # Device cost per hour sensors
       blitzwolf_10gb_switch_energy_cost_hourly:
@@ -484,6 +491,12 @@ sensor:
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.ventilation_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.ventilation_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+      electric_car_estimate_energy_cost_hourly:
+        friendly_name: "Electric Car Estimate Electricity Cost per Hour"
+        unique_id: "yaml_template_sensor_electric_car_estimate_energy_cost_hourly"
+        unit_of_measurement: "€/h"
+        availability_template: "{{ states('sensor.plug_electric_car_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.plug_electric_car_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
 
       alfred_power_estimate_energy_cost_hourly:
         friendly_name: "Alfred Power Estimate Electricity Cost per Hour"
@@ -514,15 +527,6 @@ sensor:
           {% else %}
             {{ states('sensor.pv_power') }}
           {% endif %}
-
-  # Production benefits per hour sensor
-  - platform: integration
-    source: sensor.solar_panel_power_production_available
-    name: Solar Panel Total Production Benefits
-    unique_id: yaml_integration_solar_panel_total_production_benefits
-    unit_time: h
-    method: left
-    round: 2
 
   #Total cost sensors for above template cost per hour sensors
   - platform: integration
@@ -678,8 +682,16 @@ sensor:
     round: 2
 
   - platform: integration
-    source: sensor.solar_panels_production_benefits_hourly
-    name: Solar Panels Total Electricity Benefits
+    source: sensor.electric_car_estimate_energy_cost_hourly
+    name: Electric Car Total Electricity Cost
+    unique_id: yaml_integration_electric_car_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+
+  - platform: integration
+    source: sensor.solar_panels_production_earnings_hourly
+    name: Solar Panels Total Electricity Earnings
     unique_id: yaml_integration_solar_panel_total_electricity_benefits
     unit_time: h
     method: left
@@ -789,6 +801,16 @@ sensor:
     method: left
     unit_time: h
     round: 2
+
+  # New integration sensor for total net electricity cost
+  - platform: integration
+    source: sensor.net_electricity_cost_per_hour
+    name: Total Net Electricity Cost
+    unique_id: yaml_integration_sensor_total_net_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+
 
   - platform: min_max
     name: Phase 1 Known Power
@@ -1215,6 +1237,7 @@ group:
       - sensor.plug_3d_printer_power
       - sensor.plug_nas_power
       - sensor.plug_tv_plug_tv_power
+      - sensor.plug_electric_car_power
       - sensor.blitzwolf_10gb_switch_energy_power
       - sensor.blitzwolf_ambilight_amplifier_power
       - sensor.blitzwolf_computer_energy_power

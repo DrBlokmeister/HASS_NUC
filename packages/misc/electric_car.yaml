@@ -1,0 +1,117 @@
+homeassistant:
+  customize: {}
+
+input_datetime:
+  car_charging_start:
+    name: 'Car Charging Start Time'
+    has_date: true
+    has_time: true
+    icon: mdi:power-plug
+
+  car_charging_stop:
+    name: 'Car Charging Stop Time'
+    has_date: true
+    has_time: true
+    icon: mdi:power-plug-off
+
+#######################
+#    INPUT NUMBERS    #
+#######################
+input_number:
+  charging_price_threshold:
+    name: Charging Price Threshold
+    icon: mdi:currency-usd
+    min: 0
+    max: 1
+    step: 0.01
+    unit_of_measurement: '€/kWh'
+    mode: box
+
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[misc|electriccar] Plan Car Charging'
+    mode: single
+    trigger:
+      - platform: time
+        at: input_datetime.car_charging_start
+        id: start_charging
+      - platform: time
+        at: input_datetime.car_charging_stop
+        id: stop_charging
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'start_charging' }}"
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.plug_electric_car_switch
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'stop_charging' }}"
+            sequence:
+              - service: switch.turn_off
+                entity_id: switch.plug_electric_car_switch
+
+  - alias: '[misc|electriccar] Control Charging Based on Electricity Price'
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        below: input_number.charging_price_threshold
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        above: input_number.charging_price_threshold
+    action:
+      - choose:
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.nordpool_energy_price
+                below: input_number.charging_price_threshold
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.plug_electric_car_switch
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.nordpool_energy_price
+                above: input_number.charging_price_threshold
+            sequence:
+              - service: switch.turn_off
+                entity_id: switch.plug_electric_car_switch
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
