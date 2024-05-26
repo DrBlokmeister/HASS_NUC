@@ -59,7 +59,7 @@ class AlphaInnotecCoordinator(DataUpdateCoordinator):
                     #_LOGGER.info("Current temp: {}, battery: {}".format(current_temperature, battery_percentage))
 
             if room.get('status', 'problem') == 'problem':
-                _LOGGER.error("According to the API there is a problem with: %s", room['name'])
+                _LOGGER.info("According to the API there is a problem with: %s", room['name'])
 
             thermostat = Thermostat(
                 identifier=room_id,
