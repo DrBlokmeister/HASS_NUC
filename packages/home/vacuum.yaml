@@ -88,10 +88,10 @@ camera:
       scale: 2
       rotate: 90
       trim:
-        top: 15
-        bottom: 15
-        left: 25
-        right: 25
+        top: 20
+        bottom: 22
+        left: 33
+        right: 28
     colors:
       color_path: [10, 10, 10]
   - platform: xiaomi_cloud_map_extractor
@@ -108,10 +108,10 @@ camera:
       scale: 2
       rotate: 0
       trim:
-        top: 0
-        bottom: 20
-        left: 0
-        right: 0
+        top: 30
+        bottom: 8
+        left: 5
+        right: 15
     colors:
       color_path: [10, 10, 10]
 
@@ -672,6 +672,51 @@ automation:
           message: "clear_notification"
           data:
             tag: vacuumerror
+
+  - alias: "[home|vacuum] Update Argus Map When Running"
+    description: Update Argus Map every 5 minutes when Argus vacuum is running
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: vacuum.argus
+        to: 'cleaning'
+    condition: []
+    action:
+      - alias: "Start updating Argus map"
+        repeat:
+          while:
+            - condition: state
+              entity_id: vacuum.argus
+              state: 'cleaning'
+          sequence:
+            - service: homeassistant.update_entity
+              target:
+                entity_id: camera.argus_map
+            - delay:
+                minutes: 5
+
+  - alias: "[home|vacuum] Update Alfred Map When Running"
+    description: Update Alfred Map every 5 minutes when Alfred vacuum is running
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: vacuum.alfred
+        to: 'cleaning'
+    condition: []
+    action:
+      - alias: "Start updating Alfred map"
+        repeat:
+          while:
+            - condition: state
+              entity_id: vacuum.alfred
+              state: 'cleaning'
+          sequence:
+            - service: homeassistant.update_entity
+              target:
+                entity_id: camera.alfred_map
+            - delay:
+                minutes: 5
+
 
 ################
 #    SCENES    #
