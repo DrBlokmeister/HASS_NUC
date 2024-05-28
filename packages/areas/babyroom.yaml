@@ -1,0 +1,56 @@
+homeassistant:
+  customize: {}
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: '[babyroom|light]Toggle lights when switch is pressed'
+    id: babyroom_light_toggle_lights_when_switch_is_pressed
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: "Shelly Baby Room"
+    action:
+      service: light.toggle
+      data:
+        entity_id: light.babyroom
+        brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+        kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
