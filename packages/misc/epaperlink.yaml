@@ -140,6 +140,10 @@ automation:
     trigger:
       - platform: time_pattern
         minutes: "/30"  # Triggers every 30 minutes
+      - platform: state
+        entity_id:
+          - sensor.moeke_low_water_warning
+          - binary_sensor.moeke_reservoir_leak_sensor
     condition:
       - condition: time
         after: "06:00:00"
@@ -147,7 +151,25 @@ automation:
     action:
       - service: script.update_moeke_water_tank_display
         data:
-          display_entity_id: open_epaper_link.0000021DBCA73412  # Assuming this is your target e-paper display's entity_id
+          display_entity_id: open_epaper_link.0000021DBCA73412
+
+  - alias: "[misc|epaperlink] Update Pixel Litterbox Display"
+    id: misc_epaperlink_update_pixel_litterbox_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"  # Triggers every 30 minutes
+      - platform: state
+        entity_id:
+          - sensor.litterbox_counts_today
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "23:30:00"
+    action:
+      - service: script.update_litterbox_display
+        data:
+          display_entity_id: open_epaper_link.0000021D26A23414
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
     trigger:
@@ -2741,8 +2763,8 @@ script:
             - type: rectangle
               fill: >
                 {{ 'white' if is_state('sensor.moeke_low_water_warning', 'no_warning') else 'red' }}
-              outline: white
-              width: 0
+              outline: black
+              width: 2
               x_start: 0
               y_start: 0
               x_end: 151
@@ -2767,9 +2789,9 @@ script:
                 {{ 'black' if is_state('sensor.moeke_low_water_warning', 'no_warning') else 'white' }}
             - type: rectangle
               fill: >
-                {{ 'white' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'black' }}
-              outline: white
-              width: 0
+                {{ 'white' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'red' }}
+              outline: black
+              width: 2
               x_start: 0
               y_start: 76
               x_end: 151
@@ -2779,7 +2801,7 @@ script:
               font: ppb.ttf
               anchor: mt
               x: 75
-              y: 80
+              y: 85
               size: 16
               color: >
                 {{ 'black' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'white' }}
@@ -2788,7 +2810,69 @@ script:
               font: ppb.ttf
               anchor: mt
               x: 75
-              y: 100
+              y: 110
               size: 40
               color: >
                 {{ 'black' if is_state('binary_sensor.moeke_reservoir_leak_sensor', 'on') else 'white' }}
+
+  update_litterbox_display:
+    alias: "Update Litterbox Display"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated"
+        example: "open_epaper_link.0000021D26A23414"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: "{{ display_entity_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            - type: rectangle
+              fill: >
+                {{ 'red' if states('sensor.litterbox_total_counts') | int > 15 else 'white' }}
+              outline: white
+              width: 0
+              x_start: 0
+              y_start: 0
+              x_end: 151
+              y_end: 151
+            - type: text
+              value: "Total"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 10
+              size: 20
+              color: >
+                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+            - type: text
+              value: "{{ states('sensor.litterbox_total_counts') }}"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 40
+              size: 30
+              color: >
+                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+            - type: text
+              value: "Today"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 80
+              size: 20
+              color: >
+                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+            - type: text
+              value: "{{ states('sensor.litterbox_counts_today') }}"
+              font: ppb.ttf
+              anchor: mt
+              x: 75
+              y: 110
+              size: 40
+              color: >
+                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
