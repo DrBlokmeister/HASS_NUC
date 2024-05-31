@@ -168,7 +168,7 @@ cards:
   - type: map
     aspect_ratio: 16:10
     default_zoom: 12
-    hours_to_show: 168
+    hours_to_show: 120 #5 days
     entities:
       - person.sander_blok
       - person.tamara
@@ -388,3 +388,33 @@ cards:
               duration: 15min
             show:
               datalabels: False
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.litterbox_counts_today
+            aggregate_func: max
+            name: Max Daily Counts
+        name: Litterbox Usage Daily (Last Week)
+        hours_to_show: 168  # 7 days
+        group_by: date
+        lower_bound: 0
+        icon: mdi:cat
+        show:
+          graph: bar
+
+      - type: entities
+        title: Litterbox Statistics
+        entities:
+          - entity: sensor.litterbox_total_counts
+            name: Total Litterbox Counts
+          - type: button
+            name: Reset Total Counts
+            tap_action:
+              action: call-service
+              service: utility_meter.calibrate
+              service_data:
+                entity_id: sensor.litterbox_total_counts
+                value: 0
+            icon: mdi:restart
