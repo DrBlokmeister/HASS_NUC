@@ -1,75 +1,44 @@
-#See config here: https://devices.esphome.io/devices/Shelly-Plus-1-Mini
-
 esphome:
   name: "${espname}"
-  comment: 'Shelly 1 Plus Mini'
-  platformio_options:
-    board_build.flash_mode: dio
+  comment: 'Shelly 1'
   on_boot:
     priority: 100
     then:
       - binary_sensor.template.publish:
           id: switch_clicker
           state: OFF
+      - switch.template.publish:
+          id: detached_switch
+          state: ${detached_mode}
 
-esp32:
-  board: esp32-c3-devkitm-1
+esp8266:
+  board: esp01_1m
   framework:
-    type: esp-idf
-    #version: latest
-    # sdkconfig_options:
-    #   CONFIG_FREERTOS_UNICORE: y
-    #   CONFIG_ESP32_DEFAULT_CPU_FREQ_160: y
-    #   CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "160"
-    #   CONFIG_ESP_TASK_WDT_TIMEOUT_S: "20"
-    #   CONFIG_BT_BLE_50_FEATURES_SUPPORTED: n
-    #   CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
+    version: recommended
 
 packages:
   wifi: !include /config/esphome/common/wifi.yaml
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
 
-sensor:
-  - platform: ntc
-    sensor: temp_resistance_reading
-    name: "${device_name} Temperature"
-    unit_of_measurement: "°C"
-    accuracy_decimals: 1
-    icon: "mdi:thermometer"
-    calibration:
-      b_constant: ${ntc_b_constant}
-      reference_resistance: ${ntc_reference_resistance}
-      reference_temperature: ${ntc_reference_temperature}
-  - platform: resistance
-    id: temp_resistance_reading
-    sensor: temp_analog_reading
-    configuration: DOWNSTREAM
-    resistor: 10kOhm
-  - platform: adc
-    id: temp_analog_reading
-    pin: GPIO3
-    attenuation: 11db
-
-status_led:
-  pin:
-    number: GPIO0
-    inverted: true
-
-# Shelly 1 detached switch config with fallback in case of wifi or api fail
+# Shelly 1 detached switch config
 switch:
   - platform: gpio
     name: ${device_name}
-    pin: GPIO7
+    pin: GPIO4
     id: shelly_relay
     # After reboot, restore to ON
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: ALWAYS_ON
+  - platform: template
+    name: ${device_name} Detached Mode
+    id: detached_switch
+    entity_category: config
 
 binary_sensor:
   - platform: gpio
     name: ${device_name} Input
     pin:
-      number: GPIO10
+      number: GPIO5
     # small delay to prevent debouncing
     filters:
       - delayed_on_off: 50ms
@@ -79,20 +48,11 @@ binary_sensor:
           - binary_sensor.template.publish:
               id: switch_clicker
               state: ON
-          - delay: 10ms
+          - delay: 100ms
           - binary_sensor.template.publish:
               id: switch_clicker
               state: OFF
-  - platform: gpio
-    name: "${device_name} Button"
-    pin:
-      number: 1
-      inverted: yes
-      mode:
-        input: true
-        pullup: true
-    filters:
-      - delayed_on_off: 5ms
+    id: shelly_switch
   - platform: template
     name: ${device_name} Momentary Switch
     id: switch_clicker
@@ -157,7 +117,7 @@ binary_sensor:
                       click_count: "2"
       - timing:
           - ON for at most 1s
-          - OFF for at least 0.5s
+          - OFF for at least 0.3s
         then:
           - if:
               condition:

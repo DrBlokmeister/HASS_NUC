@@ -1,5 +1,6 @@
 esphome:
   name: "${espname}"
+  comment: 'Shelly 1'
   on_boot:
     priority: 100
     then:
@@ -49,6 +50,43 @@ binary_sensor:
     name: ${device_name} Momentary Switch
     id: switch_clicker
     on_multi_click:
+      # quintuple click
+      - timing:
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - button.press: restart_button
+      # triple click
+      - timing:
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - if:
+              condition:
+                and:
+                  - wifi.connected:
+                  - api.connected:
+                  - switch.is_on: shelly_relay
+              then:
+                - homeassistant.event:
+                    event: esphome.button_pressed
+                    data:
+                      title: ${device_name} triple click
+                      device_name: ${device_name}
+                      click_type: triple
+                      click_count: "3"
       # double click
       - timing:
           - ON for at most 1s
