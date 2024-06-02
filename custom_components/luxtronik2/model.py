@@ -28,7 +28,7 @@ from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.typing import StateType
 
 from .const import (
-    UPDATE_INTERVAL_VERY_SLOW,
+    UPDATE_INTERVAL_SLOW,
     DeviceKey,
     FirmwareVersionMinor,
     LuxCalculation,
@@ -114,7 +114,7 @@ class LuxtronikNumberDescription(
     """Class describing Luxtronik number sensor entities."""
 
     platform = Platform.NUMBER
-    update_interval = UPDATE_INTERVAL_VERY_SLOW
+    update_interval = UPDATE_INTERVAL_SLOW
     factor: float | None = None
     native_precision: int | None = None
     mode: NumberMode = NumberMode.AUTO
@@ -142,7 +142,7 @@ class LuxtronikSwitchDescription(
     """Class describing Luxtronik switch entities."""
 
     platform = Platform.SWITCH
-    update_interval = UPDATE_INTERVAL_VERY_SLOW
+    update_interval = UPDATE_INTERVAL_SLOW
     on_state: str | bool = True
     on_states: list[str] | None = None
     off_state: str | bool = False

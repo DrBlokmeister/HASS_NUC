@@ -15,6 +15,7 @@ from homeassistant.helpers.entity import EntityCategory
 from .const import (
     LUX_STATE_ICON_MAP,
     SECOUND_TO_HOUR_FACTOR,
+    UPDATE_INTERVAL_FAST,
     UPDATE_INTERVAL_NORMAL,
     UPDATE_INTERVAL_SLOW,
     UPDATE_INTERVAL_VERY_SLOW,
@@ -53,7 +54,7 @@ SENSORS_STATUS: list[descr] = [
             attr(SA.EVU_SECOND_END_TIME, LC.UNSET, None, True),
         ),
         options=[e.value for e in LuxOperationMode],
-        update_interval=UPDATE_INTERVAL_NORMAL,
+        update_interval=UPDATE_INTERVAL_FAST,
     ),
 ]
 
@@ -134,7 +135,7 @@ SENSORS: list[descr] = [
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_registry_enabled_default=False,
-        update_interval=UPDATE_INTERVAL_NORMAL,
+        update_interval=UPDATE_INTERVAL_FAST,
     ),
     descr(
         key=SensorKey.OUTDOOR_TEMPERATURE,
@@ -143,7 +144,7 @@ SENSORS: list[descr] = [
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        update_interval=UPDATE_INTERVAL_SLOW,
+        update_interval=UPDATE_INTERVAL_NORMAL,
     ),
     descr(
         key=SensorKey.OUTDOOR_TEMPERATURE_AVERAGE,
@@ -219,7 +220,7 @@ SENSORS: list[descr] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         native_precision=1,
-        update_interval=UPDATE_INTERVAL_VERY_SLOW,
+        update_interval=UPDATE_INTERVAL_SLOW,
     ),
     descr(
         key=SensorKey.HEAT_AMOUNT_FLOW_RATE,
@@ -231,7 +232,7 @@ SENSORS: list[descr] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=UnitOfVolumeFlowRateExt.LITER_PER_HOUR,
         native_precision=1,
-        update_interval=UPDATE_INTERVAL_NORMAL,
+        update_interval=UPDATE_INTERVAL_FAST,
     ),
     descr(
         key=SensorKey.HEAT_SOURCE_FLOW_RATE,
@@ -243,7 +244,7 @@ SENSORS: list[descr] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=UnitOfVolumeFlowRateExt.LITER_PER_HOUR,
         native_precision=1,
-        update_interval=UPDATE_INTERVAL_NORMAL,
+        update_interval=UPDATE_INTERVAL_FAST,
     ),
     descr(
         key=SensorKey.HOT_GAS_TEMPERATURE,
@@ -341,7 +342,7 @@ SENSORS: list[descr] = [
         visibility=LV.V0324_ADDITIONAL_HEAT_GENERATOR_AMOUNT_COUNTER,
         factor=0.1,
         native_precision=1,
-        update_interval=UPDATE_INTERVAL_VERY_SLOW,
+        update_interval=UPDATE_INTERVAL_SLOW,
     ),
     descr(
         key=SensorKey.ANALOG_OUT1,
@@ -511,7 +512,7 @@ SENSORS: list[descr] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         native_precision=1,
-        update_interval=UPDATE_INTERVAL_VERY_SLOW,
+        update_interval=UPDATE_INTERVAL_NORMAL,
     ),
     descr(
         key=SensorKey.HEAT_ENERGY_INPUT,
@@ -525,7 +526,7 @@ SENSORS: list[descr] = [
         native_precision=2,
         factor=0.01,
         min_firmware_version_minor=FirmwareVersionMinor.minor_88,
-        update_interval=UPDATE_INTERVAL_VERY_SLOW,
+        update_interval=UPDATE_INTERVAL_NORMAL,
     ),
     descr(
         key=SensorKey.FLOW_OUT_TEMPERATURE_EXTERNAL,

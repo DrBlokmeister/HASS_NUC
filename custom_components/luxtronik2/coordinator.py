@@ -30,7 +30,7 @@ from .const import (
     LOGGER,
     LUX_PARAMETER_MK_SENSORS,
     UPDATE_INTERVAL_FAST,
-    UPDATE_INTERVAL_NORMAL,
+    UPDATE_INTERVAL_FAST,
     DeviceKey,
     LuxCalculation as LC,
     LuxMkTypes,
@@ -126,7 +126,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             self.update_interval = (
                 UPDATE_INTERVAL_FAST
                 if bool(self.get_value(LC.C0044_COMPRESSOR))
-                else UPDATE_INTERVAL_NORMAL
+                else UPDATE_INTERVAL_FAST
             )
             self.update_reason_write = False
         return data
