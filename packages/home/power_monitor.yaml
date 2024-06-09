@@ -536,7 +536,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_3dprinter_energy_cost_hourly
     name: Blitzwolf 3D Printer Total Electricity Cost
@@ -544,7 +543,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_ambilight_amplifier_energy_cost_hourly
     name: Blitzwolf Ambilight Amplifier Total Electricity Cost
@@ -552,7 +550,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_computer_energy_cost_hourly
     name: Blitzwolf Computer Total Electricity Cost
@@ -560,7 +557,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_dishwasher_energy_cost_hourly
     name: Blitzwolf Dishwasher Total Electricity Cost
@@ -568,7 +564,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_nas_energy_cost_hourly
     name: Blitzwolf NAS Total Electricity Cost
@@ -576,7 +571,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_nuc_energy_cost_hourly
     name: Blitzwolf NUC Total Electricity Cost
@@ -584,7 +578,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_poe_switch_energy_cost_hourly
     name: Blitzwolf POE Switch Total Electricity Cost
@@ -592,7 +585,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_router_energy_cost_hourly
     name: Blitzwolf Router Total Electricity Cost
@@ -600,7 +592,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_washingmachine_energy_cost_hourly
     name: Blitzwolf Washing Machine Total Electricity Cost
@@ -608,7 +599,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_watercooker_energy_cost_hourly
     name: Blitzwolf Water Cooker Total Electricity Cost
@@ -616,7 +606,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.blitzwolf_heatpump_energy_cost_hourly
     name: Blitzwolf Heat Pump Total Electricity Cost
@@ -632,7 +621,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.heatpump_heating_energy_cost_hourly
     name: Heat Pump Heating Total Electricity Cost
@@ -640,7 +628,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.heatpump_tapwater_energy_cost_hourly
     name: Heat Pump Tap Water Total Electricity Cost
@@ -648,7 +635,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.ventilation_power_estimate_energy_cost_hourly
     name: Ventilation Power Estimate Total Electricity Cost
@@ -656,7 +642,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.alfred_power_estimate_energy_cost_hourly
     name: Alfred Power Estimate Total Electricity Cost
@@ -664,7 +649,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.argus_power_estimate_energy_cost_hourly
     name: Argus Power Estimate Total Electricity Cost
@@ -672,7 +656,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.moeke_power_estimate_energy_cost_hourly
     name: Moeke Power Estimate Total Electricity Cost
@@ -680,7 +663,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.electric_car_estimate_energy_cost_hourly
     name: Electric Car Total Electricity Cost
@@ -688,7 +670,6 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
   - platform: integration
     source: sensor.solar_panels_production_earnings_hourly
     name: Solar Panels Total Electricity Earnings
@@ -696,7 +677,7 @@ sensor:
     unit_time: h
     method: left
     round: 2
-
+  
   - platform: integration
     source: sensor.total_power_consumption_watt
     name: Total Energy Usage
@@ -915,8 +896,8 @@ automation:
       - platform: numeric_state
         entity_id: sensor.unknown_power
         above: 1500
-        # for:
-        #   minutes: 1
+        for:
+          minutes: 1
       - platform: state
         entity_id: binary_sensor.house_occupied
         to: 'off'
@@ -933,13 +914,36 @@ automation:
       - service: notify.mobile_app_blokmeisters21u
         data:
           title: "Warning: Power Usage!"
-          message: "Unknown power is <b>{{ states( 'sensor.unknown_power' )}} W</b> for a total of <b>{{ states('sensor.home_power_consumption') }}</b>"
+          message: "Unknown power is <b>{{ states('sensor.unknown_power') }} W</b> for a total of <b>{{ states('sensor.total_power_consumption_watt') }} W</b>"
           data:
             group: notification
             tag: powerwarning
             clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
             ledColor: "orange"
             channel: warning
+      - delay:
+          minutes: 1
+      - repeat:
+          while:
+            - condition: state
+              entity_id: binary_sensor.house_occupied
+              state: 'off'
+            - condition: numeric_state
+              entity_id: sensor.unknown_power
+              above: 1500
+          sequence:
+            - service: notify.mobile_app_blokmeisters21u
+              data:
+                title: "Warning: Power Usage!"
+                message: "Unknown power is <b>{{ states('sensor.unknown_power') }} W</b> for a total of <b>{{ states('sensor.total_power_consumption_watt') }} W</b>"
+                data:
+                  group: notification
+                  tag: powerwarning
+                  clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
+                  ledColor: "orange"
+                  channel: warning
+            - delay:
+                minutes: 1
 
   - alias: "[home|power] Turn off solar panels if energy price is below zero"
     mode: single
