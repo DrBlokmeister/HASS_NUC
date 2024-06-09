@@ -981,26 +981,49 @@ automation:
         entity_id: person.sander_blok
         zone: zone.work
         event: enter
+      - platform: state
+        entity_id:
+          - device_tracker.worklaptop_dock
+          - device_tracker.worklaptop_wifi
+        from: "not_home"
+        to: "home"
+        for:
+          minutes: 2
+      #can also be used to trigger container start/stop
+      # - platform: state
+      #   entity_id: device_tracker.worklaptop_wifi
+      #   to: home
+      # - platform: state
+      #   entity_id: device_tracker.worklaptop_dock
+      #   to: home
     action:
       - service: switch.turn_on
         target:
           entity_id:
-            - switch.unifi_network_guac_http
+            # - switch.unifi_network_guac_http
             - switch.apache_guacamole_container
             - switch.firefox_container
+            - switch.unifi_network_swag_http_https
+            - switch.unifi_network_swag_https
       - wait_for_trigger:
           - platform: zone
             entity_id: person.sander_blok
             zone: zone.work
             event: leave
+          - platform: template
+            value_template: "{{ is_state('device_tracker.worklaptop_dock', 'not_home') and is_state('device_tracker.worklaptop_wifi', 'not_home') }}"
+            for:
+              minutes: 15
         timeout:
           hours: 12
         continue_on_timeout: false
       - service: switch.turn_off
         entity_id:
-          - switch.unifi_network_guac_http
+          # - switch.unifi_network_guac_http
           - switch.apache_guacamole_container
           - switch.firefox_container
+          - switch.unifi_network_swag_http_https
+          - switch.unifi_network_swag_https
     mode: single
 
   - alias: "[system|network]Query NAS sensors"
