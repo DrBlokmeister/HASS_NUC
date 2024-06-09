@@ -5,7 +5,15 @@ homeassistant:
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: group
+    type: mean
+    name: "Babyroom Average Illuminance"
+    device_class: illuminance
+    unit_of_measurement: lx
+    entities:
+      - sensor.babyroom_motion_1_illuminance
+      - sensor.babyroom_light_1
+      - sensor.babyroom_light_1
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -39,6 +47,44 @@ automation:
         entity_id: light.babyroom
         brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
         kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+  - alias: "[babyroom|lights]Babyroom Rotary Knob Control"
+    mode: queued
+    description: Controls the lights in the baby room based on rotary knob actions.
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: babyroom_tap_dial
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1000 }}" #single press
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.babyroom
+                  brightness: 255
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 5001 }}" #rotate CW
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.babyroom
+                  transition: 0.1
+                  brightness_step_pct: 10
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 6001 }}" #rotate CCW
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.babyroom
+                  transition: 0.1
+                  brightness_step_pct: -10
 
 ################
 #    SCENES    #
