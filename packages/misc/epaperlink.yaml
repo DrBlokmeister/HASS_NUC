@@ -180,14 +180,15 @@ automation:
         value_template: >
           {%- set outdated = namespace(found=false) -%}
           {%- for sensor in [
-            "sensor.0000021f86d83b1e_last_seen",
-            "sensor.0000021e6b5b3b17_last_seen",
-            "sensor.0000039223703418_last_seen",
-            "sensor.840b2d9179570131_last_seen",
-            "sensor.840b2d917bad0131_last_seen",
-            "sensor.garbage_monitor_tag_last_seen",
-            "sensor.00000218736e3b1e_last_seen",
-            "sensor.0000021c3bc6341b_last_seen"
+              "sensor.00007e22b1d7b299_last_seen",
+              "sensor.00007e22b1b2b29a_last_seen",
+              "sensor.00007e225dc2b29f_last_seen",
+              "sensor.00000218736e3b1e_last_seen",
+              "sensor.0000021dbca73412_last_seen",
+              "sensor.0000021d26a23414_last_seen",
+              "sensor.0000021f86d83b1e_last_seen",
+              "sensor.0000039223703418_last_seen",
+              "sensor.garbage_monitor_tag_last_seen"
             ] -%}
               {%- set last_seen = states(sensor) -%}
               {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
@@ -205,18 +206,23 @@ automation:
           message: >
             One or more tags have not been seen for more than 5 minutes:
             {% for sensor in [
-              "sensor.0000021f86d83b1e_last_seen",
-              "sensor.0000021e6b5b3b17_last_seen",
-              "sensor.0000039223703418_last_seen",
-              "sensor.840b2d9179570131_last_seen",
-              "sensor.840b2d917bad0131_last_seen",
-              "sensor.garbage_monitor_tag_last_seen",
-              "sensor.00000218736e3b1e_last_seen",
-              "sensor.0000021c3bc6341b_last_seen"
+                "sensor.00007e22b1d7b299_last_seen",
+                "sensor.00007e22b1b2b29a_last_seen",
+                "sensor.00007e225dc2b29f_last_seen",
+                "sensor.00000218736e3b1e_last_seen",
+                "sensor.0000021dbca73412_last_seen",
+                "sensor.0000021d26a23414_last_seen",
+                "sensor.0000021f86d83b1e_last_seen",
+                "sensor.0000039223703418_last_seen",
+                "sensor.garbage_monitor_tag_last_seen"
               ] %}
                 {%- set last_seen = states(sensor) -%}
                 {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
-                  {{- state_attr(sensor, 'friendly_name') -}}
+                  {%- if not state_attr(sensor, 'friendly_name') == None -%}
+                    {{ state_attr(sensor, 'friendly_name') }}{% if not loop.last %}, {% endif %}
+                  {%- else -%}
+                    {{ state_attr(sensor, 'entity_id') }}{% if not loop.last %}, {% endif %}
+                  {%- endif -%}
                 {%- endif -%}
             {%- endfor -%}
       - wait_for_trigger:
@@ -224,14 +230,15 @@ automation:
             value_template: >
               {% set recent_seen = true %}
               {% for sensor in [
-                "sensor.0000021f86d83b1e_last_seen",
-                "sensor.0000021e6b5b3b17_last_seen",
-                "sensor.0000039223703418_last_seen",
-                "sensor.840b2d9179570131_last_seen",
-                "sensor.840b2d917bad0131_last_seen",
-                "sensor.garbage_monitor_tag_last_seen",
-                "sensor.00000218736e3b1e_last_seen",
-                "sensor.0000021c3bc6341b_last_seen"
+                  "sensor.00007e22b1d7b299_last_seen",
+                  "sensor.00007e22b1b2b29a_last_seen",
+                  "sensor.00007e225dc2b29f_last_seen",
+                  "sensor.00000218736e3b1e_last_seen",
+                  "sensor.0000021dbca73412_last_seen",
+                  "sensor.0000021d26a23414_last_seen",
+                  "sensor.0000021f86d83b1e_last_seen",
+                  "sensor.0000039223703418_last_seen",
+                  "sensor.garbage_monitor_tag_last_seen"
                 ] %}
                   {%- set last_seen = states(sensor) -%}
                   {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
