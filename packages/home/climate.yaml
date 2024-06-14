@@ -195,6 +195,38 @@ sensor:
         value_template: "{{ (100 * (states('sensor.heatpump_current_heat_output')|float(0)) / states('sensor.tasmota_energy_power')|float(1))|round(0) }}"
         availability_template: "{{ states.sensor.heatpump_current_heat_output not in ['unavailable', 'unknown', 'none', None] and states.sensor.tasmota_energy_power not in ['unavailable', 'unknown', 'none', None] }}"
 
+  # CO2 calibration notification helpers
+  - platform: statistics
+    name: "Guest Room CO2 Seven Day Moving Range"
+    entity_id: sensor.guest_room_co2
+    state_characteristic: distance_absolute
+    max_age:
+      days: 7
+  - platform: statistics
+    name: "Living Room CO2 Seven Day Moving Range"
+    entity_id: sensor.livingroom_co2
+    state_characteristic: distance_absolute
+    max_age:
+      days: 7
+  - platform: statistics
+    name: "Bedroom CO2 Seven Day Moving Range"
+    entity_id: sensor.mh_z19_co2_value
+    state_characteristic: distance_absolute
+    max_age:
+      days: 7
+  - platform: statistics
+    name: "Shed CO2 Seven Day Moving Range"
+    entity_id: sensor.shed_co2
+    state_characteristic: distance_absolute
+    max_age:
+      days: 7
+  - platform: statistics
+    name: "Study CO2 Seven Day Moving Range"
+    entity_id: sensor.study_co2
+    state_characteristic: distance_absolute
+    max_age:
+      days: 7
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -394,7 +426,34 @@ automation:
             The water heatup has not been performed since {{ strptime(states('input_datetime.last_heat_up'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
           notification_id: regular_heatup_overdue
 
-
+  - alias: "[home|climate] CO2 Sensor Calibration Notification"
+    mode: restart
+    trigger:
+      - platform: numeric_state
+        entity_id:
+          - sensor.guest_room_co2_seven_day_moving_range
+          - sensor.living_room_co2_seven_day_moving_range
+          - sensor.bedroom_co2_seven_day_moving_range
+          - sensor.shed_co2_seven_day_moving_range
+          - sensor.study_co2_seven_day_moving_range
+        below: 50
+    action:
+      - service: notify.persistent_notification
+        data_template:
+          message: >
+            {% if trigger.entity_id == 'sensor.guest_room_co2_seven_day_moving_range' %}
+              Calibration may be needed for the Guest Room CO2 sensor.
+            {% elif trigger.entity_id == 'sensor.living_room_co2_seven_day_moving_range' %}
+              Calibration may be needed for the Living Room CO2 sensor.
+            {% elif trigger.entity_id == 'sensor.bedroom_co2_seven_day_moving_range' %}
+              Calibration may be needed for the Bedroom CO2 sensor.
+            {% elif trigger.entity_id == 'sensor.shed_co2_seven_day_moving_range' %}
+              Calibration may be needed for the Shed CO2 sensor.
+            {% elif trigger.entity_id == 'sensor.study_co2_seven_day_moving_range' %}
+              Calibration may be needed for the Study CO2 sensor.
+            {% else %}
+              Calibration is needed for an unknown sensor, triggered by: {{ trigger.entity_id }}
+            {% endif %}
   # - alias: '[climate|temperature] Poll Alpha Home Temperatures'
   #   trigger:
   #     platform: time_pattern
