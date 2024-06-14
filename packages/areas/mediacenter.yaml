@@ -449,21 +449,27 @@ script:
       # Turn on software LED devices with retries
       - repeat:
           until:
-            # - condition: state
-            #   entity_id: switch.hyperion_apa102_component_led_device
-            #   state: 'on'
-            - condition: state
-              entity_id: switch.tv_apa102_universe_1_component_led_device
-              state: 'on'
-            - condition: state
-              entity_id: switch.tv_apa102_universe_2_component_led_device
-              state: 'on'
-            - condition: state
-              entity_id: switch.hyperion_atmoorb_right_component_led_device
-              state: 'on'
-            - condition: state
-              entity_id: switch.hyperion_atmoorb_left_component_led_device
-              state: 'on'
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
+                    # - condition: state
+                    #   entity_id: switch.hyperion_apa102_component_led_device
+                    #   state: 'on'
+                    - condition: state
+                      entity_id: switch.tv_apa102_universe_1_component_led_device
+                      state: 'on'
+                    - condition: state
+                      entity_id: switch.tv_apa102_universe_2_component_led_device
+                      state: 'on'
+                    - condition: state
+                      entity_id: switch.hyperion_atmoorb_right_component_led_device
+                      state: 'on'
+                    - condition: state
+                      entity_id: switch.hyperion_atmoorb_left_component_led_device
+                      state: 'on'
+                - condition: template
+                  value_template: "{{ repeat.index > 10 }}"
           sequence:
             - service: switch.turn_on
               continue_on_error: true
@@ -479,15 +485,21 @@ script:
           seconds: 0.5
       - repeat:
           until:
-            - condition: state
-              entity_id: light.livingroom_tv_ambilight
-              state: 'on'
-            - condition: state
-              entity_id: light.atmoorb_left
-              state: 'on'
-            - condition: state
-              entity_id: light.atmoorb_right
-              state: 'on'
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
+                    - condition: state
+                      entity_id: light.livingroom_tv_ambilight
+                      state: 'on'
+                    - condition: state
+                      entity_id: light.atmoorb_left
+                      state: 'on'
+                    - condition: state
+                      entity_id: light.atmoorb_right
+                      state: 'on'
+                - condition: template
+                  value_template: "{{ repeat.index > 10 }}"
           sequence:
             - service: light.turn_on
               continue_on_error: true
@@ -515,21 +527,27 @@ script:
           seconds: 5
       - repeat:
           until:
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
             # - condition: state
             #   entity_id: light.hyperion_apa102
             #   state: 'off'
-            - condition: state
-              entity_id: light.tv_apa102_universe_1
-              state: 'off'
-            - condition: state
-              entity_id: light.tv_apa102_universe_2
-              state: 'off'
-            - condition: state
-              entity_id: light.hyperion_atmoorb_left
-              state: 'off'
-            - condition: state
-              entity_id: light.hyperion_atmoorb_right
-              state: 'off'
+                    - condition: state
+                      entity_id: light.tv_apa102_universe_1
+                      state: 'off'
+                    - condition: state
+                      entity_id: light.tv_apa102_universe_2
+                      state: 'off'
+                    - condition: state
+                      entity_id: light.hyperion_atmoorb_left
+                      state: 'off'
+                    - condition: state
+                      entity_id: light.hyperion_atmoorb_right
+                      state: 'off'
+                - condition: template
+                  value_template: "{{ repeat.index > 10 }}"
           sequence:
             - service: light.turn_off
               continue_on_error: true
@@ -559,7 +577,7 @@ script:
             #- light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
-          effect: "System Shutdown"
+          effect: "Cinema dim lights"
       # Wait for the effect to complete
       - delay:
           seconds: 5
