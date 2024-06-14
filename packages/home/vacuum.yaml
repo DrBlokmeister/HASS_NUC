@@ -629,15 +629,28 @@ group:
 #    SCRIPTS    #
 #################
 script:
-  # vacuum_around_litterbox_twice:
-  #   alias: "Clean around litterbox"
-  #   sequence:
-  #   - service: xiaomi_miio.vacuum_clean_zone
-  #     data:
-  #       entity_id: vacuum.xiaomi_vacuum_cleaner
-  #       repeats: 2
-  #       zone: [[16618,28223,18568,29623]]
-
+  vacuum_around_litterbox_twice:
+    alias: "Clean around litterbox"
+    sequence:
+      - service: vacuum.set_fan_speed
+        entity_id: vacuum.moeke
+        data:
+          fan_speed: Strong
+      - service: select.select_option
+        target:
+          entity_id: select.moeke_cleaning_mode
+        data:
+          option: "sweeping"
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.moeke
+          repeats: 2
+          zone: [[-7685,1931,-6422,2860]]
+      - service: select.select_option
+        target:
+          entity_id: select.moeke_cleaning_mode
+        data:
+          option: "sweeping_and_mopping"
   vacuum_entry_twice:
     alias: "Clean Entry"
     sequence:
@@ -654,6 +667,14 @@ script:
         entity_id: vacuum.argus
         repeats: 2
         zone: [[20637,25649,23590,27964]]
+  vacuum_kitchen_around_counter_twice:
+    alias: "Clean Kitchen Around Counter"
+    sequence:
+    - service: xiaomi_miio.vacuum_clean_zone
+      data:
+        entity_id: vacuum.moeke
+        repeats: 2
+        zone: [[-7742,-441,-6036,1379]]
   vacuum_study_twice:
     alias: "Clean study"
     sequence:
