@@ -1,0 +1,80 @@
+substitutions:
+  device_name: "Doorbell"
+  espname: "doorbell"
+
+esphome:
+  name: '${espname}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: arduino
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+status_led:
+  pin: GPIO15
+
+logger:
+  level: VERBOSE
+
+wifi:
+  power_save_mode: none
+
+switch:
+  - platform: gpio
+    pin: GPIO18
+    name: "${device_name} Ringer"
+    id: relay
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      then:
+        - delay: 3s
+        - switch.turn_off: relay
+
+  - platform: template
+    name: "${device_name} Enable Ringer"
+    id: ringer_enabled
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+
+binary_sensor:
+  - platform: gpio
+    name: "${device_name} Button"
+    id: gpio_button
+    pin:
+      number: GPIO16
+      mode: INPUT_PULLUP
+      inverted: True
+    filters:
+      - delayed_off: 50ms
+    on_press:
+      then:
+        - homeassistant.event:
+            event: esphome.doorbell_pressed
+            data:
+              title: ${device_name} pressed
+              device_name: ${device_name}
+              click_type: single
+              click_count: "1"
+        - if:
+            condition:
+              switch.is_on: ringer_enabled
+            then:
+              - switch.turn_on: relay
+              - delay: 1.5s
+              - switch.turn_off: relay
+    on_release:
+      then:
+        - switch.turn_off: relay

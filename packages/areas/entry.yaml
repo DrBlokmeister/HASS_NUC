@@ -256,6 +256,90 @@ automation:
             clickAction: '/lovelace/8'
             icon_url: /local/icons/email-alert.png
 
+  - alias: "[entry|doorbell] Smart Doorbell Notification"
+    description: "Send notifications when the doorbell is pressed and repeat alerts if the house is occupied."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.doorbell_button
+        to: 'on'
+    condition:
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 3) }}"
+    action:
+      - service: notify.mobile_app_blokmeisters21u
+        data:
+          message: "Someone's at the door!"
+          title: "Doorbell Alert"
+          data:
+            tag: "doorbell"
+            group: "doorbell_alert"
+            notification_icon: "mdi:bell-ring"
+      - service: notify.mobile_app_tamaraphone
+        data:
+          message: "Someone's at the door!"
+          title: "Doorbell Alert"
+          data:
+            tag: "doorbell"
+            group: "doorbell_alert"
+            notification_icon: "mdi:bell-ring"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.house_occupied
+                state: 'on'
+            sequence:
+              - service: light.turn_on
+                entity_id: light.shelly_porch_light
+              - repeat:
+                  until:
+                    - condition: or
+                      conditions:
+                        - condition: state
+                          entity_id: binary_sensor.front_door_sensor
+                          state: 'on'
+                        - condition: template
+                          value_template: "{{ repeat.index > 5 }}"
+                  sequence:
+                    - service: tts.cloud_say
+                      target:
+                        entity_id: media_player.living_room_speaker
+                      data:
+                        message: "Someone is at the door. Please check!"
+                        language: "en-IE"
+                    - service: notify.mobile_app_blokmeisters21u
+                      data:
+                        message: "Reminder: Doorbell was pressed. Please check the door."
+                        title: "Doorbell Reminder"
+                        data:
+                          tag: "doorbell"
+                          group: "doorbell_alert"
+                          notification_icon: "mdi:bell-ring"
+                    - service: notify.mobile_app_tamaraphone
+                      data:
+                        message: "Reminder: Doorbell was pressed. Please check the door."
+                        title: "Doorbell Reminder"
+                        data:
+                          tag: "doorbell"
+                          group: "doorbell_alert"
+                          notification_icon: "mdi:bell-ring"
+                    - delay:
+                        seconds: 4
+              - wait_for_trigger:
+                  - platform: state
+                    entity_id: binary_sensor.front_door_sensor
+                    to: 'off'
+                    for:
+                      minutes: 5
+                timeout:
+                  minutes: 10
+              - delay:
+                  minutes: 5
+              - service: light.turn_off
+                entity_id: light.shelly_porch_light
+
+
 ################
 #    SCENES    #
 ################
