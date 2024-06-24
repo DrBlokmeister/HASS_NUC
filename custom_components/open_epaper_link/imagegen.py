@@ -26,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 white =  (255, 255, 255,255)
 black = (0, 0, 0,255)
 red = (255, 0, 0,255)
+yellow = (255, 255, 0,255)
 queue = []
 notsetup = True;
 running = False;
@@ -98,6 +99,8 @@ def getIndexColor(color):
         return black
     elif color_str == "red" or color_str == "r":
         return red
+    elif color_str == "yellow" or color_str == "y":
+        return yellow
     else:
         return white
 # should_show_element
@@ -253,6 +256,7 @@ def customimage(entity_id, service, hass):
                 imgdl = Image.open(io.BytesIO(data))
             else:
                 imgdl = Image.open(url)
+
             if rotate2 != 0:
                 imgdl = imgdl.rotate(-rotate2, expand=1)
             width2, height2 = imgdl.size
@@ -337,7 +341,7 @@ def customimage(entity_id, service, hass):
             height = y_end - y_start + 1
             # The duration of history to look at (default 1 day)
             duration = timedelta(seconds=element.get("duration", 60*60*24))
-
+            
             end = dt.utcnow()
             start = end - duration
             # The label font and size
@@ -379,7 +383,7 @@ def customimage(entity_id, service, hass):
             max_v = element.get("high", None)
             # Obtain all states of all given entities in the given duration
             all_states = get_significant_states(hass, start_time=start, entity_ids=[plot["entity"] for plot in element["data"]], significant_changes_only=False, minimal_response=True, no_attributes=False)
-
+            
             # prepare data and obtain min_v and max_v with it
             raw_data = []
             for plot in element["data"]:
