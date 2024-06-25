@@ -27,6 +27,33 @@ homeassistant:
 #   host: !secret luxtronik_gateway_IP
 #   port: !secret luxtronik_gateway_port
 
+input_number:
+  tapwater_disinfection_temperature:
+    name: "Tapwater Disinfection Temperature"
+    icon: mdi:thermometer
+    min: 55  # Minimum temperature in °C
+    max: 60  # Maximum temperature in °C
+    step: 0.1  # Adjust the temperature in 1°C steps
+    unit_of_measurement: "°C"
+    mode: "box"
+  tapwater_heat_up_temperature:
+    name: "Tapwater Heat-Up Temperature"
+    icon: mdi:thermometer-plus
+    min: 40
+    max: 60
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: "box"
+  tapwater_set_back_temperature:
+    name: "Tapwater Set-Back Temperature"
+    icon: mdi:thermometer-minus
+    min: 30
+    max: 50
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: "box"
+
+
 input_datetime:
   last_heat_up:
     name: Last Heat Up
@@ -67,8 +94,20 @@ sensor:
 
   - platform: derivative
     source: sensor.heatpump_tapwater_temperature
-    name: Tapwater Temperature Change
+    name: Tapwater Temperature Change 1min
     time_window: "00:05:00"
+    unit_time: h
+    unit: °C
+  - platform: derivative
+    source: sensor.heatpump_tapwater_temperature
+    name: Tapwater Temperature Change 5min
+    time_window: "00:05:00"
+    unit_time: h
+    unit: °C
+  - platform: derivative
+    source: sensor.heatpump_tapwater_temperature
+    name: Tapwater Temperature Change 10min
+    time_window: "00:10:00"
     unit_time: h
     unit: °C
 
@@ -312,9 +351,9 @@ automation:
                 data_template: # Cheapest time and a sunday
                   value: >
                     {% if (now().isoweekday() == 7) and (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) %}
-                      60
+                      {{ states('input_number.tapwater_disinfection_temperature') }}
                     {% else %}
-                      55
+                      {{ states('input_number.tapwater_heat_up_temperature') }}
                     {% endif %}
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
@@ -335,7 +374,7 @@ automation:
                       minutes: 30
               - service: number.set_value
                 data:
-                  value: 45
+                  value: "{{ states('input_number.tapwater_set_back_temperature') }}"
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
@@ -350,7 +389,7 @@ automation:
             sequence:
               - service: number.set_value
                 data:
-                  value: 45
+                  value: "{{ states('input_number.tapwater_set_back_temperature') }}"
                 target:
                   entity_id: number.heatpump_tapwater_target_temperature
               - service: number.set_value
@@ -364,7 +403,7 @@ automation:
     trigger:
       - platform: numeric_state
         entity_id: sensor.heatpump_tapwater_temperature
-        above: '50'
+        above: "{{ states('input_number.tapwater_heat_up_temperature') }}"
         for:
           minutes: 30
     action:

@@ -51,7 +51,7 @@ sensor:
           {% set light_on = is_state("light.bathroom", "on") %}
           {% set humidity_increase = (states('sensor.humidity_bathroom')|float - states('sensor.home_mean_humidity_without_bathroom')|float) > 20 %}
           {% set water_usage = states('sensor.water_usage')|float > 1 %}
-          {% set temperature_change = states('sensor.tapwater_temperature_change')|float < -5 %}
+          {% set temperature_change = states('sensor.tapwater_temperature_change_1min')|float < -5 %}
 
           {% set prob_light_given_shower = 0.8 if light_on else 0.08 %}
           {% set prob_humidity_given_shower = 0.80 if humidity_increase else 0.05 %}
@@ -70,7 +70,7 @@ sensor:
               states('sensor.humidity_bathroom') in [None, 'unavailable', 'unknown'] or
               states('sensor.home_mean_humidity_without_bathroom') in [None, 'unavailable', 'unknown'] or
               states('sensor.water_usage') in [None, 'unavailable', 'unknown'] or
-              states('sensor.tapwater_temperature_change') in [None, 'unavailable', 'unknown']
+              states('sensor.tapwater_temperature_change_1min') in [None, 'unavailable', 'unknown']
             ) }}
 
 ########################
@@ -118,7 +118,7 @@ binary_sensor:
         prob_given_true: 0.95 #When we shower, water usage is almost never under 1 l/min
         prob_given_false: 0.10 #However, water is also being used when we don't shower.
       - platform: numeric_state
-        entity_id: sensor.tapwater_temperature_change
+        entity_id: sensor.tapwater_temperature_change_1min
         prob_given_true: 0.80 #When we shower, tapwater is cooling down, but this is not immediately seen.
         prob_given_false: 0.02 #Tapwater almost never cools down this fast if we don't shower.
         below: -5
