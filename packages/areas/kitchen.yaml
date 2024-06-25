@@ -145,14 +145,18 @@ automation:
           - condition: numeric_state
             entity_id: sensor.temperature_fridge
             above: 13
+            for:
+              minutes: 10
           - condition: numeric_state
             entity_id: sensor.fridge_temperature_change_per_minute
             above: 0.2
+            for:
+              minutes: 10
     action:
       - service: notify.mobile_app_blokmeisters21u
         data_template:
           title: Fridge temperature warning
-          message: "Fridge temperature too high! Current temperature: {{ states('sensor.temperature_fridge') }}."
+          message: "Fridge temperature too high! Current temperature: {{ states('sensor.temperature_fridge') }} °C, changing at {{ states('sensor.fridge_temperature_change_per_minute') }} °C/min."
           data:
             group: Warning
             tag: fridgetempwarning
