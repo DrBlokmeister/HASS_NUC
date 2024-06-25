@@ -171,6 +171,43 @@ automation:
         data:
           display_entity_id: open_epaper_link.0000021D26A23414
 
+  - alias: "[misc|epaperlink] Tag Button Update of Displays"
+    id: automation_yaml_misc_epaperlink_tag_button_update_of_displays
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: open_epaper_link_event
+        event_data:
+          type: 'BUTTON1'
+      - platform: event
+        event_type: open_epaper_link_event
+        event_data:
+          type: 'BUTTON2'
+    condition:
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.device_id == '00007E225DC2B29F' }}"
+            sequence:
+              - service: script.update_energy_price_today_larger_display
+                data:
+                  display_entity_id: open_epaper_link.00007e225dc2b29f
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.device_id == '00007E22B1D7B299' }}"
+            sequence:
+              - service: script.update_energy_price_today_larger_display
+                data:
+                  display_entity_id: open_epaper_link.00007E22B1D7B299
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.device_id == '00007E22B1B2B29A' }}"
+            sequence:
+              - service: script.update_energy_price_today_larger_display
+                data:
+                  display_entity_id: open_epaper_link.00007e22b1b2b29a
+
   - alias: "[misc|epaperlink]Notify if tag not seen"
     trigger:
       - platform: time_pattern
@@ -1761,7 +1798,7 @@ script:
               font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
 
             - type: text
-              value: "Max: €{{ states.sensor.nordpool_energy_price.attributes.max }}"
+              value: "Max: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price', 'max')|float()) }}"
               x: 373
               "y": 3
               size: 16
@@ -1771,7 +1808,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Min: €{{ states.sensor.nordpool_energy_price.attributes.min }}"
+              value: "Min: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price', 'min')|float()) }}"
               x: 373
               "y": 19
               size: 16
@@ -1781,7 +1818,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Current: €{{ states.sensor.nordpool_energy_price.attributes.raw_today[now().hour].value }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price')|float()) }}"
               x: 373
               "y": 35
               size: 16
@@ -2134,7 +2171,7 @@ script:
               font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
 
             - type: text
-              value: "Max: €{{ states.sensor.nordpool_energy_price.attributes.max }}"
+              value: "Max: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price', 'max')|float()) }}"
               x: 373
               "y": 3
               size: 16
@@ -2144,7 +2181,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Min: €{{ states.sensor.nordpool_energy_price.attributes.min }}"
+              value: "Min: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price', 'min')|float()) }}"
               x: 373
               "y": 19
               size: 16
@@ -2154,7 +2191,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Current: €{{ states.sensor.nordpool_energy_price.attributes.raw_today[now().hour].value }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price')|float()) }}"
               x: 373
               "y": 35
               size: 16
