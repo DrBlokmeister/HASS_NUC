@@ -301,6 +301,108 @@ cards:
     decimals: 0
     show:
       labels_secondary: false
+
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    span:
+      start: day
+      offset: +0h
+    header:
+      show: true
+      title: CO2 Levels Over the Last 7 Days
+      show_states: false
+      colorize_states: false
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    chart_type: line
+    update_interval: 1m
+    yaxis:
+      - min: 400
+        max: ~1000
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+    all_series_config:
+      stroke_width: 2
+      float_precision: 0
+      transform: "return Math.round(x);"
+      unit: ppm
+      group_by:
+        func: avg
+        duration: 15min
+    series:
+      # Living Room CO2 levels for the past 3 days
+      - entity: sensor.livingroom_co2
+        offset: '-2d'
+        name: Living Room - 2 Days Ago
+        color: '#FF6347'
+        opacity: 0.3
+      - entity: sensor.livingroom_co2
+        offset: '-1d'
+        name: Living Room - Yesterday
+        color: '#FF6347'
+        opacity: 0.6
+      - entity: sensor.livingroom_co2
+        name: Living Room - Today
+        color: '#FF6347'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # MH-Z19 CO2 levels for the past 3 days
+      - entity: sensor.mh_z19_co2_value
+        offset: '-2d'
+        name: MH-Z19 - 2 Days Ago
+        color: '#4682B4'
+        opacity: 0.3
+      - entity: sensor.mh_z19_co2_value
+        offset: '-1d'
+        name: MH-Z19 - Yesterday
+        color: '#4682B4'
+        opacity: 0.6
+      - entity: sensor.mh_z19_co2_value
+        name: MH-Z19 - Today
+        color: '#4682B4'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Study CO2 levels for the past 3 days
+      - entity: sensor.study_co2
+        offset: '-2d'
+        name: Study - 2 Days Ago
+        color: '#32CD32'
+        opacity: 0.3
+      - entity: sensor.study_co2
+        offset: '-1d'
+        name: Study - Yesterday
+        color: '#32CD32'
+        opacity: 0.6
+      - entity: sensor.study_co2
+        name: Study - Today
+        color: '#32CD32'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Guest Room CO2 levels for the past 3 days
+      - entity: sensor.guest_room_co2
+        offset: '-2d'
+        name: Guest Room - 2 Days Ago
+        color: '#FFD700'
+        opacity: 0.3
+      - entity: sensor.guest_room_co2
+        offset: '-1d'
+        name: Guest Room - Yesterday
+        color: '#FFD700'
+        opacity: 0.6
+      - entity: sensor.guest_room_co2
+        name: Guest Room - Today
+        color: '#FFD700'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+
   # - type: vertical-stack
   #   cards:
   #     - type: entities
