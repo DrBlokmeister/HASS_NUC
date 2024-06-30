@@ -192,8 +192,21 @@ automation:
         minutes: "/30"  # Triggers every 30 minutes
       - platform: state
         entity_id:
-          - sensor.moeke_low_water_warning
           - binary_sensor.moeke_reservoir_leak_sensor
+      - platform: state
+        entity_id: sensor.moeke_low_water_warning
+        to:
+          - "No warning"
+          - no_warning
+        for:
+          minutes: 5
+      - platform: state
+        entity_id: sensor.moeke_low_water_warning
+        not_to:
+          - "No warning"
+          - no_warning
+        for:
+          minutes: 5
     condition:
       - condition: time
         after: "06:00:00"
