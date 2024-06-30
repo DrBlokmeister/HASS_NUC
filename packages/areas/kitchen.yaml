@@ -139,41 +139,44 @@ automation:
       - platform: numeric_state
         entity_id: sensor.temperature_fridge
         above: 13
+      - platform: numeric_state
+        entity_id: sensor.fridge_temperature_change_per_minute
+        above: 0.2
     condition:
       - condition: or
         conditions:
           - condition: numeric_state
             entity_id: sensor.temperature_fridge
             above: 13
-            for:
-              minutes: 10
           - condition: numeric_state
             entity_id: sensor.fridge_temperature_change_per_minute
             above: 0.2
-            for:
-              minutes: 10
     action:
-      - service: notify.mobile_app_blokmeisters21u
-        data_template:
-          title: Fridge temperature warning
-          message: "Fridge temperature too high! Current temperature: {{ states('sensor.temperature_fridge') }} °C, changing at {{ states('sensor.fridge_temperature_change_per_minute') }} °C/min."
-          data:
-            group: Warning
-            tag: fridgetempwarning
-            clickAction: '/lovelace/8'
-            icon_url: /local/icons/thermometer-alert.png
-      - wait_for_trigger:
-          - platform: numeric_state
-            entity_id: sensor.temperature_fridge
-            below: 13
-          - platform: numeric_state
-            entity_id: sensor.fridge_temperature_change_per_minute
-            below: 0
-      - service: notify.mobile_app_blokmeisters21u
+      - repeat:
+          sequence:
+            - service: notify.sander_and_tamara_phones
+              data_template:
+                title: Fridge temperature warning
+                message: "Fridge temperature too high! Current temperature: {{ states('sensor.temperature_fridge') }} °C, changing at {{ states('sensor.fridge_temperature_change_per_minute') }} °C/min."
+                data:
+                  group: Warning
+                  tag: fridgetempwarning
+                  clickAction: '/lovelace/10'
+                  icon_url: /local/icons/thermometer-alert.png
+            - delay:
+                minutes: 5
+          until:
+            - condition: numeric_state
+              entity_id: sensor.temperature_fridge
+              below: 13
+            - condition: numeric_state
+              entity_id: sensor.fridge_temperature_change_per_minute
+              below: 0.1
+      - service: notify.sander_and_tamara_phones
         data:
           message: "clear_notification"
           data:
-            tag: fridgetemperaturewarning
+            tag: fridgetempwarning
 
   - alias: '[kitchen|light] Update illumination limit'
     id: kitchen_light_update_illumination_limit
