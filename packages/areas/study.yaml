@@ -40,28 +40,15 @@ input_select:
 sensor:
   - platform: template
     sensors:
-      # average_illumination_study:
-      #   device_class: illuminance
-      #   unit_of_measurement: 'lx'
-      #   value_template: "{{ (states('sensor.illumination_study')|round(1)+states('sensor.illumination_study2')|round(1))/2 }}"
-      #   availability_template: "{{ states('sensor.illumination_study')|is_number and states('sensor.illumination_study2')|is_number }}"
-      # average_illumination_study_2:
-      #   device_class: illuminance
-      #   unit_of_measurement: 'lx'
-      #   value_template: >-
-      #     {{ (states('sensor.illumination_study')|round(1) / 2 + states('sensor.illumination_study2')|round(1) + states('sensor.lightlevel_11')|round(1))/2.5 }}
-      #   availability_template: "{{ states('sensor.illumination_study')|is_number and states('sensor.illumination_study2')|is_number and states('sensor.lightlevel_11')|is_number }}"
       vibration_sensor_attributes:
         value_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation'), state_attr('binary_sensor.vibration_sensor', 'tiltangle') }}"
         availability_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation')|is_number and state_attr('binary_sensor.vibration_sensor', 'tiltangle')|is_number }}"
-  # - platform: statistics
-  #   name: average_illumination_study_stats
-  #   entity_id: sensor.average_illumination_study
-  #   max_age:
-  #     minutes: 30
   - platform: group
-    type: mean
     name: "Study Average Illuminance"
+    unique_id: yaml_sensor_group_study_average_illuminance
+    type: mean
+    ignore_non_numeric: true
+    state_class: measurement
     device_class: illuminance
     unit_of_measurement: lx
     entities:

@@ -33,31 +33,12 @@ input_select:
 #    SENSORS    #
 #################
 sensor:
-  # - platform: template
-  #   sensors:
-  #     average_illumination_livingroom:
-  #       friendly_name: "Average Illumination Livingroom"
-  #       device_class: illuminance
-  #       unit_of_measurement: 'lx'
-  #       value_template: >-
-  #         {% if states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list and states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
-  #           {{ ((states('sensor.livingroom_motion_1_illuminance')|float + states('sensor.livingroom_motion_2_illuminance')|float) / 2)|round(1) }}
-  #         {% elif states('sensor.livingroom_motion_1_illuminance') not in [None, 'unknown', 'unavailable']|list %}
-  #           {{ states('sensor.livingroom_motion_1_illuminance')|round(1) }}
-  #         {% elif states('sensor.livingroom_motion_2_illuminance') not in [None, 'unknown', 'unavailable']|list %}
-  #           {{ states('sensor.livingroom_motion_2_illuminance')|round(1) }}
-  #         {% else %}
-  #           unavailable
-  #         {% endif %}
-  #       availability_template: "{{ states('sensor.livingroom_motion_1_illuminance') not in ['unknown', 'unavailable', 'none'] or states('sensor.livingroom_motion_2_illuminance') not in ['unknown', 'unavailable', 'none'] }}"
-  # - platform: statistics
-  #   name: average_illumination_livingroom_stats
-  #   entity_id: sensor.average_illumination_livingroom
-  #   max_age:
-  #     minutes: 30
   - platform: group
-    type: mean
     name: "Livingroom Average Illuminance"
+    unique_id: yaml_sensor_group_livingroom_average_illuminance
+    type: mean
+    ignore_non_numeric: true
+    state_class: measurement
     device_class: illuminance
     unit_of_measurement: lx
     entities:
