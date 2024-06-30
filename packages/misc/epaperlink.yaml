@@ -1,5 +1,55 @@
+########## REFERENCES ##########
+# 00000218736e3b1e #Study Climate
+# 0000021dbca73412 #Moeke Water Reservoir
+# 0000039223703418 #Study Energy
+# garbage_monitor_tag #Garbage Monitor
+# 0000021c3bc6341b #Washing Machine Energy
+# 0000021d26a23414 #Litterbox
+# 00007e22b1d7b299 #Washroom Electricity Price
+# 00007e225dc2b29f #Study Electricity Price
+# 00007e22b1b2b29a #Kitchen Electricity Price
+
 homeassistant:
   customize: {}
+
+template:
+  - trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: "Median Epaper Tag Last Check-In Time"
+        device_class: timestamp
+        unique_id: yaml_template_sensor_median_epaper_tag_last_check_in_time
+        icon: mdi:clock-in
+        state: >
+          {% set ns = namespace(times=[]) %}
+          {%- for sensor in [
+            'sensor.00000218736e3b1e_last_seen',
+            'sensor.0000021dbca73412_last_seen',
+            'sensor.0000039223703418_last_seen',
+            'sensor.garbage_monitor_tag_last_seen',
+            'sensor.0000021c3bc6341b_last_seen',
+            'sensor.0000021d26a23414_last_seen',
+            'sensor.00007e22b1d7b299_last_seen',
+            'sensor.00007e225dc2b29f_last_seen',
+            'sensor.00007e22b1b2b29a_last_seen'
+          ] -%}
+            {%- set timestamp = as_timestamp(states(sensor)) -%}
+            {%- if timestamp is not none -%}
+              {%- set ns.times = ns.times + [timestamp] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.times | length > 0 -%}
+            {%- set ns.times = ns.times | sort -%}
+            {%- set mid = ns.times | length // 2 -%}
+            {%- if ns.times | length is odd -%}
+              {{ (ns.times[mid] | as_datetime | as_local).isoformat() }}
+            {%- else -%}
+              {{ (((ns.times[mid - 1] + ns.times[mid]) / 2) | as_datetime | as_local).isoformat() }}
+            {%- endif -%}
+          {%- else -%}
+            'undefined'
+          {%- endif -%}
 
 #################
 #    SENSORS    #
@@ -209,6 +259,7 @@ automation:
                   display_entity_id: open_epaper_link.00007e22b1b2b29a
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
+    mode: restart
     trigger:
       - platform: time_pattern
         minutes: "/5"  # Check every 5 minutes
@@ -288,6 +339,21 @@ automation:
       - service: persistent_notification.dismiss
         data:
           notification_id: tag_not_seen_alert
+
+  - alias: "[misc|epaperlink]Trigger Reload When Last Seen Exceeds 5 Minutes"
+    description: "Reloads config entry if the median last check-in time is more than 5 minutes. In this case, it is likely that the integration has failed and needs a restart."
+    mode: restart
+    id: yaml_automation_misc_epaperlink_trigger_reload_when_last_seen_exceeds_5_minutes
+    trigger:
+      - platform: template
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_tag_last_check_in_time'))) > 300 }}
+    condition: []
+    action:
+      - service: homeassistant.reload_config_entry
+        data:
+          entry_id: dcd0a828896007b5be2b87a699bb028f
+
 
 ################
 #    SCENES    #
