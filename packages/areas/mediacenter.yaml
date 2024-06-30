@@ -85,40 +85,12 @@ command_line:
 #    SENSORS    #
 #################
 sensor:
-  # - platform: tautulli
-  #   api_key: !secret tautulli_api_key
-  #   host: 10.0.0.252
 
-  # - platform: command_line
-  #   name: 'LibreELEC CPU temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-  #     root@10.0.20.51
-  #     cputemp | awk '{print $1}'
-
-  # - platform: command_line
-  #   name: 'LibreELEC GPU temp'
-  #   unit_of_measurement: '°C'
-  #   scan_interval: 60
-  #   command: >-
-  #     ssh -i /config/.ssh/id_rsa -o StrictHostKeyChecking=no -q
-  #     root@10.0.20.51
-  #     gputemp | awk '{print $1}'
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  # - platform: template
-  #   sensors:
-  #     mediacenter_on:
-  #       device_class: power
-  #       value_template: >-
-  #         {{
-  #           states( 'sensor.blitzwolf_mediacenter_energy_power' )|float > 200
-  #         }}
-  #       availability_template: "{{ states('sensor.blitzwolf_mediacenter_energy_power')|is_number }}"
+
 ##################
 #    SWITCHES    #
 ##################
@@ -161,10 +133,13 @@ automation:
         to: 'playing'
     action:
       - service: switch.turn_on
+        continue_on_error: true
         entity_id: switch.amplifier_power
       - service: switch.turn_on
+        continue_on_error: true
         entity_id: switch.ambilight
       - service: button.press
+        continue_on_error: true
         target:
           entity_id: button.set_livingroom_channel_to_tv
       - wait_for_trigger:
@@ -195,10 +170,12 @@ automation:
             for:
               minutes: 2
       - service: switch.turn_off
+        continue_on_error: true
         entity_id: switch.ambilight
       - delay:
           seconds: 2
       - service: switch.turn_off
+        continue_on_error: true
         entity_id: switch.amplifier_power
 
   - alias: "Kodi: turn on"
