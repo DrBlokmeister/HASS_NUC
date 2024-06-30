@@ -210,6 +210,169 @@ automation:
             sequence:
               - service: input_number.decrement
                 entity_id: input_number.kitchen_illumination_limit
+
+
+  - alias: "[kitchen|switch] Kitchen Multiswitch Automation"
+    id: yaml_automation_kitchen_switch_kitchen_multiswitch_automation
+    description: >
+      Automations for toggling kitchen lights, setting full brightness, vacuuming, 
+      mopping the kitchen, and controlling ground floor activities using the Hue 
+      multiswitch.
+    mode: queued
+    trigger:
+      platform: event
+      event_type: deconz_event
+      event_data:
+        id: kitchen_multiswitch
+    condition: []
+    action:
+      - choose:
+          # Short press button 1 - Toggle kitchen lights
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}"
+            sequence:
+              - service: light.toggle
+                target:
+                  entity_id: light.kitchen
+                data:
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+          # Long press button 1 - Full brightness kitchen lights
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1003 }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.kitchen
+                data:
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  brightness_pct: 100
+
+          # Short press button 2 - Vacuum the kitchen
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2002 }}"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+            sequence:
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: "sweeping"
+              - delay: "00:00:02"
+              - service: dreame_vacuum.vacuum_clean_zone
+                data:
+                  entity_id: vacuum.moeke
+                  repeats: 2
+                  zone: [[-7781,-464,-5148,1452]]
+          - conditions: # Pause if vacuum is running
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2002 }}"
+              - condition: state
+                entity_id: vacuum.moeke
+                state: cleaning
+            sequence:
+              - service: vacuum.pause
+                entity_id: vacuum.moeke
+          # Long press button 2 - Mop the kitchen
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2003 }}"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+            sequence:
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: "sweeping_and_mopping"
+              - delay: "00:00:02"
+              - service: dreame_vacuum.vacuum_clean_zone
+                data:
+                  entity_id: vacuum.moeke
+                  repeats: 2
+                  zone: [[-7781,-464,-5148,1452]]
+          - conditions: # Pause if vacuum is running
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 2003 }}"
+              - condition: state
+                entity_id: vacuum.moeke
+                state: cleaning
+            sequence:
+              - service: vacuum.pause
+                entity_id: vacuum.moeke
+
+          # Short press button 3 - Vacuum the entire ground floor
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3002 }}"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+            sequence:
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: "sweeping"
+              - delay: "00:00:02"
+              - service: vacuum.start
+                target:
+                  entity_id: vacuum.moeke
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3002 }}"
+              - condition: state
+                entity_id: vacuum.moeke
+                state: cleaning
+            sequence:
+              - service: vacuum.pause
+                entity_id: vacuum.moeke
+          # Long press button 3 - Mop the entire ground floor
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3002 }}"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+            sequence:
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: "sweeping_and_mopping"
+              - delay: "00:00:02"
+              - service: vacuum.start
+                target:
+                  entity_id: vacuum.moeke
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 3002 }}"
+              - condition: state
+                entity_id: vacuum.moeke
+                state: cleaning
+            sequence:
+              - service: vacuum.pause
+                entity_id: vacuum.moeke
+
+          # Short press button 4 - Toggle all ground floor lights
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 4002 }}"
+            sequence:
+              # Uncomment and specify the lights in the ground floor
+              - service: light.toggle
+                target:
+                  entity_id:
+                    - light.living_room
+                    - light.kitchen
+                    - light.hallway
+                    - light.bathroom
 ################
 #    SCENES    #
 ################
