@@ -1,4 +1,5 @@
 """Coordinator for transmssion integration."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -92,46 +93,44 @@ class TransmissionDataUpdateCoordinator(DataUpdateCoordinator[SessionStats]):
 
     def check_completed_torrent(self) -> None:
         """Get completed torrent functionality."""
-        old_completed_torrent_names = {
-            torrent.name for torrent in self._completed_torrents
-        }
+        old_completed_torrents = {torrent.id for torrent in self._completed_torrents}
 
         current_completed_torrents = [
             torrent for torrent in self.torrents if torrent.status == "seeding"
         ]
 
         for torrent in current_completed_torrents:
-            if torrent.name not in old_completed_torrent_names:
+            if torrent.id not in old_completed_torrents:
                 self.hass.bus.fire(
-                    EVENT_DOWNLOADED_TORRENT, {"name": torrent.name, "id": torrent.id, "path": torrent.download_dir}
+                    EVENT_DOWNLOADED_TORRENT, {"name": torrent.name, "id": torrent.id, "download_path": torrent.download_dir}
                 )
 
         self._completed_torrents = current_completed_torrents
 
     def check_started_torrent(self) -> None:
         """Get started torrent functionality."""
-        old_started_torrent_names = {torrent.name for torrent in self._started_torrents}
+        old_started_torrents = {torrent.id for torrent in self._started_torrents}
 
         current_started_torrents = [
             torrent for torrent in self.torrents if torrent.status == "downloading"
         ]
 
         for torrent in current_started_torrents:
-            if torrent.name not in old_started_torrent_names:
+            if torrent.id not in old_started_torrents:
                 self.hass.bus.fire(
-                    EVENT_STARTED_TORRENT, {"name": torrent.name, "id": torrent.id}
+                    EVENT_STARTED_TORRENT, {"name": torrent.name, "id": torrent.id, "download_path": torrent.download_dir}
                 )
 
         self._started_torrents = current_started_torrents
 
     def check_removed_torrent(self) -> None:
         """Get removed torrent functionality."""
-        current_torrent_names = {torrent.name for torrent in self.torrents}
+        current_torrents = {torrent.id for torrent in self.torrents}
 
         for torrent in self._all_torrents:
-            if torrent.name not in current_torrent_names:
+            if torrent.id not in current_torrents:
                 self.hass.bus.fire(
-                    EVENT_REMOVED_TORRENT, {"name": torrent.name, "id": torrent.id}
+                    EVENT_REMOVED_TORRENT, {"name": torrent.name, "id": torrent.id, "download_path": torrent.download_dir}
                 )
 
         self._all_torrents = self.torrents.copy()

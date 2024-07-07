@@ -24,6 +24,7 @@ from .types import (
     DreameVacuumMopPadSwing,
     DreameVacuumSecondCleaning,
     DreameVacuumCleaningRoute,
+    DreameVacuumCustomMoppingRoute,
     DreameVacuumSelfCleanFrequency,
     DreameVacuumAutoEmptyMode,
     DreameVacuumCleanGenius,
@@ -89,6 +90,11 @@ STATE_SECOND_CLEANING: Final = "second_cleaning"
 STATE_HUMAN_FOLLOWING: Final = "human_following"
 STATE_SPOT_CLEANING: Final = "spot_cleaning"
 STATE_RETURNING_AUTO_EMPTY: Final = "returning_auto_empty"
+STATE_WAITING_FOR_TASK: Final = "waiting_for_task"
+STATE_STATION_CLEANING: Final = "station_cleaning"
+STATE_RETURNING_TO_DRAIN: Final = "returning_to_drain"
+STATE_DRAINING: Final = "draining"
+STATE_AUTO_WATER_DRAINING: Final = "auto_water_draining"
 STATE_SHORTCUT: Final = "shortcut"
 STATE_MONITORING: Final = "monitoring"
 STATE_MONITORING_PAUSED: Final = "monitoring_paused"
@@ -197,6 +203,8 @@ CARPET_CLEANING_AVOIDANCE: Final = "avoidance"
 CARPET_CLEANING_ADAPTATION: Final = "adaptation"
 CARPET_CLEANING_REMOVE_MOP: Final = "remove_mop"
 CARPET_CLEANING_ADAPTATION_WITHOUT_ROUTE: Final = "adaptation_without_route"
+CARPET_CLEANING_VACUUM_AND_MOP: Final = "vacuum_and_mop"
+CARPET_CLEANING_IGNORE: Final = "ignore"
 
 WIDER_CORNER_COVERAGE_LOW_FREQUENCY: Final = "low_frequency"
 WIDER_CORNER_COVERAGE_HIGH_FREQUENCY: Final = "high_frequency"
@@ -208,10 +216,11 @@ MOP_PAD_SWING_WEEKLY: Final = "weekly"
 SECOND_CLEANING_IN_DEEP_MODE: Final = "in_deep_mode"
 SECOND_CLEANING_IN_ALL_MODES: Final = "in_all_modes"
 
-CLEANING_ROUTE_QUICK: Final = "quick"
-CLEANING_ROUTE_STANDARD: Final = "standard"
-CLEANING_ROUTE_INTENSIVE: Final = "intensive"
-CLEANING_ROUTE_DEEP: Final = "deep"
+ROUTE_QUICK: Final = "quick"
+ROUTE_STANDARD: Final = "standard"
+ROUTE_INTENSIVE: Final = "intensive"
+ROUTE_DEEP: Final = "deep"
+ROUTE_OFF: Final = "off"
 
 CLEANGENIUS_ROUTINE_CLEANING: Final = "routine_cleaning"
 CLEANGENIUS_DEEP_CLEANING: Final = "deep_cleaning"
@@ -246,7 +255,7 @@ LOW_WATER_WARNING_NO_WATER_FOR_CLEAN: Final = "no_water_for_clean"
 LOW_WATER_WARNING_LOW_WATER: Final = "low_water"
 LOW_WATER_WARNING_TANK_NOT_INSTALLED: Final = "tank_not_installed"
 
-TASK_TYPE_NOT_SUPPORTED: Final = "not_supported"
+TASK_TYPE_IDLE: Final = "idle"
 TASK_TYPE_STANDARD: Final = "standard"
 TASK_TYPE_STANDARD_PAUSED: Final = "standard_paused"
 TASK_TYPE_CUSTOM: Final = "custom"
@@ -261,6 +270,8 @@ TASK_TYPE_PARTIAL: Final = "partial"
 TASK_TYPE_PARTIAL_PAUSED: Final = "partial_paused"
 TASK_TYPE_SUMMON: Final = "summon"
 TASK_TYPE_SUMMON_PAUSED: Final = "summon_paused"
+TASK_TYPE_WATER_STAIN: Final = "water_stain"
+TASK_TYPE_WATER_STAIN_PAUSED: Final = "water_stain_paused"
 
 ERROR_NO_ERROR: Final = "no_error"
 ERROR_DROP: Final = "drop"
@@ -343,6 +354,7 @@ ERROR_DIRTY_TANK_LEVEL: Final = "dirty_tank_level"
 ERROR_WASHBOARD_LEVEL: Final = "washboard_level"
 ERROR_NO_MOP_IN_STATION: Final = "no_mop_in_station"
 ERROR_DUST_BAG_FULL: Final = "dust_bag_full"
+ERROR_SELF_TEST_FAILED: Final = "self_test_failed"
 ERROR_WASHBOARD_NOT_WORKING: Final = "washboard_not_working"
 ERROR_RETURN_TO_CHARGE_FAILED: Final = "return_to_charge_failed"
 
@@ -354,6 +366,11 @@ ATTR_RUNNING: Final = "running"
 ATTR_RETURNING_PAUSED: Final = "returning_paused"
 ATTR_RETURNING: Final = "returning"
 ATTR_MAPPING: Final = "mapping"
+ATTR_MAPPING_AVAILABLE: Final = "mapping_available"
+ATTR_WASHING_AVAILABLE: Final = "washing_available"
+ATTR_DRYING_AVAILABLE: Final = "drying_available"
+ATTR_DRAINING_AVAILABLE: Final = "draining_available"
+ATTR_DUST_COLLECTION_AVAILABLE: Final = "dust_collection_available"
 ATTR_ROOMS: Final = "rooms"
 ATTR_CURRENT_SEGMENT: Final = "current_segment"
 ATTR_SELECTED_MAP: Final = "selected_map"
@@ -367,19 +384,27 @@ ATTR_CLEANING_MODE: Final = "cleaning_mode"
 ATTR_SUCTION_LEVEL: Final = "suction_level"
 ATTR_WATER_TANK: Final = "water_tank"
 ATTR_COMPLETED: Final = "completed"
+ATTR_TIMESTAMP: Final = "timestamp"
 ATTR_CLEANING_TIME: Final = "cleaning_time"
 ATTR_CLEANED_AREA: Final = "cleaned_area"
 ATTR_MOP_PAD_HUMIDITY: Final = "mop_pad_humidity"
 ATTR_SELF_CLEAN_AREA: Final = "self_clean_area"
+ATTR_SELF_CLEAN_AREA_MIN: Final = "self_clean_area_min"
+ATTR_SELF_CLEAN_AREA_MAX: Final = "self_clean_area_max"
+ATTR_PREVIOUS_SELF_CLEAN_AREA: Final = "previous_self_clean_area"
 ATTR_SELF_CLEAN_TIME: Final = "self_clean_time"
+ATTR_PREVIOUS_SELF_CLEAN_TIME: Final = "previous_self_clean_time"
+ATTR_SELF_CLEAN_TIME_MIN: Final = "self_clean_time_min"
+ATTR_SELF_CLEAN_TIME_MAX: Final = "self_clean_time_max"
 ATTR_MOP_PAD: Final = "mop_pad"
 ATTR_CLEANING_SEQUENCE: Final = "cleaning_sequence"
 ATTR_WASHING: Final = "washing"
 ATTR_WASHING_PAUSED: Final = "washing_paused"
 ATTR_DRYING: Final = "drying"
 ATTR_DRAINING: Final = "draining"
-ATTR_CLEANGENIUS: Final = "cleangenius"
+ATTR_CLEANGENIUS: Final = "cleangenius_cleaning"
 ATTR_LOW_WATER: Final = "low_water"
+ATTR_VACUUM_STATE: Final = "vacuum_state"
 ATTR_DND: Final = "dnd"
 ATTR_SHORTCUTS: Final = "shortcuts"
 ATTR_CRUISING_TIME: Final = "cruising_time"
@@ -387,12 +412,24 @@ ATTR_CRUISING_TYPE: Final = "cruising_type"
 ATTR_MAP_INDEX: Final = "map_index"
 ATTR_MAP_NAME: Final = "map_name"
 ATTR_CALIBRATION: Final = "calibration_points"
+ATTR_SELECTED: Final = "selected"
 ATTR_CLEANING_HISTORY_PICTURE: Final = "cleaning_history_picture"
 ATTR_CRUISING_HISTORY_PICTURE: Final = "cruising_history_picture"
 ATTR_OBSTACLE_PICTURE: Final = "obstacle_picture"
 ATTR_RECOVERY_MAP_PICTURE: Final = "recovery_map_picture"
 ATTR_RECOVERY_MAP_FILE: Final = "recovery_map_file"
 ATTR_WIFI_MAP_PICTURE: Final = "wifi_map_picture"
+ATTR_NEGLECTED_SEGMENTS: Final = "neglected_rooms"
+ATTR_INTERRUPT_REASON: Final = "interrupt_reason"
+ATTR_CLEANUP_METHOD: Final = "cleanup_method"
+ATTR_SEGMENT_CLEANING: Final = "segment_cleaning"
+ATTR_ZONE_CLEANING: Final = "zone_cleaning"
+ATTR_SPOT_CLEANING: Final = "spot_cleaning"
+ATTR_CRUSING: Final = "cruising"
+ATTR_HAS_SAVED_MAP: Final = "has_saved_map"
+ATTR_HAS_TEMPORARY_MAP: Final = "has_temporary_map"
+ATTR_AUTO_EMPTY_MODE: Final = "auto_empty_mode"
+ATTR_CAPABILITIES: Final = "capabilities"
 
 MAP_PARAMETER_NAME: Final = "name"
 MAP_PARAMETER_VALUE: Final = "value"
@@ -451,8 +488,15 @@ MAP_DATA_JSON_PARAMETER_FLOOR: Final = "floor"
 MAP_DATA_JSON_PARAMETER_WALL: Final = "wall"
 MAP_DATA_JSON_PARAMETER_SEGMENT: Final = "segment"
 
-DEVICE_KEY: Final = "H4sICAAAAAAEAGtleXN0b3JlLmpzb24APZLJVsIwFIbfpWsXGTu4o3BqFVogVhQ9LlpKgSIdZNbju9skN6z+L/nvdJL7a4l4zBrKMzIdpvUp7Fv3H1ZDMPNq6/POaoPh+lT3WhEkk2IY29L9JgR50syrXEzpj9vrl4N8ENVgYqxS2b5/olPiH7LXmf/oE+Payq3Ly0NVr8JidlwWs+ICLkPSrAr6viFR65YD3uuNd2ByZZ7FFfFiPpo+RSK0o9KYTJqxOFd+yYN9PFn5cZZok3Ju3UmlRCu2GwBqLpQSuzurajdNDWQGFgZyA2cNDgWFpK6vVgztbaTVc+GMb9V3Bg4wEDKaanAQqKrlUYRBCSgDBR9j+R7BrirSR9Jkyx3aOvxg3oOtuygFUJ7xtQG4wQ6M5NQA+AYQ4tqyBw1QuWHHwo/SECfrCHoQF+qQ1IBOZxSyXZntttWzl7erhPab5mGJzf6h7oc0qH2xJ8FmNJlH4ej61ThCQBiW82tQYePgZbT1kpo6rcjf5lSGLTAiiwp+oluhv39flc0z9QIAAA=="
-DREAME_STRINGS: Final = "H4sICAAAAAAEAGNsb3VkX3N0cmluZ3MuanNvbgBdUltv2jAU/iuoUtEmjZCEljBVPDAQgu0hK5eudJrQwXaIV18y24yyX79jm45tebDPd67f+ZyvVwnXLqGGgWSJY6S+eneV9fJ+gfdidBKb8XUll5+a4nr1A12TkLhdSjCu1pJ1s+Q2uX3fesM/11qxuxYvl62sn6R3rSUBwbq9JE3f+p5kkO56xaDY5Xm/XxT9HaHkZpBVvYIOKrjJd5Cl0EuhGmTQp1Unw6IPYDlpPc0+is2XTDzm0yOZbV7K5+n9o1zk97NmtM6mTw+qLsvJfogFafjQsA7cwaIhwTpm1pyiveOKTrQErhA0RjfMuBOaqMCcepcAV2kjh/Ny2bYE40MQor03oNzWnRBikmGVYbbeOv3MVPsf5MMNWHvUhrYPlhkFMtS0X70BhE5AiD4oh7gbxe/AwdVdHc7QDUOYxKyNzS+j/2D20nB0bHkM7rn2hmPK8w0bn1t7Lh3cMu7qkZcioqjUJULBga9kPzlhaAhu3UPu46rSMVCuxvMItCPeCnsbkPacH/DeV0tNmQjsCK5vL5RwWodo6Z+KKTrWUsIro4oLX+ovL+D5rXytVw6vGkdo419uz9wkEJ1E1vY/PInDRigqorWXYbRnyl1CC0EQ+ARt+C9wUcNV0LAT/oqxVo4hWMXh0DSCk5DY/W5DdrPFY3umo49KaKBrI6KjtDajf3u//QbhJuZXdAMAAA=="
+DEVICE_KEY: Final = (
+    "H4sIAAAAAAAACj2TyZLaMBCGXyXl8xwsqW1LubGUhwmYxSEkJJUDmwEDXgYYZpLKu0dWd/v0f3K3elP7r1fHw8Nb2anTeD7NhuPQ+/zpl/cqpW+830/eJP42Opl5qaI63f5YKrYK33vyNsKXm4Jgf278t8U2nak/utPL+9t+Urb+omzM4/RRdPMgvo6n++54PW/N0kZpNEBVpIFiXTNsGLYMF4Ybw53hgRBSmKjVlQPl2nDafsBEFjC+hR1DxrAnwHBKhKwVgsJ2lNKsFD6gfAH2p0I6hz5WqkJBnmGEGpFnRGdNZx2Qo4EWqD4DOcOJ4cxwZcAZKYMlgi9Q6SWAerKK4S3g5C0cGAoESXclkNJdekUAQzHAYEEQ+PhoQIOAkNKG1BZonC1Qv6Cxf9BUr6GcRtIFI/HlwLgbRmFHVl1oq646q2zHqowS5IitW8UGGzgRROhKU7LqOjQg8QpI3Ww3XHtvaia7t/X3RfelK9vtDt3yl/n7c1HuB9nivssW2TubwW+sKvbzI9yzbrIaiPkhaa28ZLRTghpWNiduAu2Q9l8JaERYXKOrJkGRqZ9HmdQ67wedzuTCCexOWmt8KbLVi6zWu4t/ioJba6WFtFASRAh2KqjAqwgBboai/80qbzNuhlX6oLkLLblq9tW0PZFo6nqkH36QLUezL0k6CJO8rQsaazqeQKWCtZwNV+XboOeslRRg3MTDaXwcTZfJYPRxrqI0ZbNwZThwfrouvpptvZ+rXlU970QbphmtU/IHv2ZofnUHNsK//+u61l1HBQAA"
+)
+DREAME_STRINGS: Final = (
+    "H4sICAAAAAAEAGNsb3VkX3N0cmluZ3MuanNvbgBdUltv2jAU/iuoUtEmjZCEljBVPDAQgu0hK5eudJrQwXaIV18y24yyX79jm45tebDPd67f+ZyvVwnXLqGGgWSJY6S+eneV9fJ+gfdidBKb8XUll5+a4nr1A12TkLhdSjCu1pJ1s+Q2uX3fesM/11qxuxYvl62sn6R3rSUBwbq9JE3f+p5kkO56xaDY5Xm/XxT9HaHkZpBVvYIOKrjJd5Cl0EuhGmTQp1Unw6IPYDlpPc0+is2XTDzm0yOZbV7K5+n9o1zk97NmtM6mTw+qLsvJfogFafjQsA7cwaIhwTpm1pyiveOKTrQErhA0RjfMuBOaqMCcepcAV2kjh/Ny2bYE40MQor03oNzWnRBikmGVYbbeOv3MVPsf5MMNWHvUhrYPlhkFMtS0X70BhE5AiD4oh7gbxe/AwdVdHc7QDUOYxKyNzS+j/2D20nB0bHkM7rn2hmPK8w0bn1t7Lh3cMu7qkZcioqjUJULBga9kPzlhaAhu3UPu46rSMVCuxvMItCPeCnsbkPacH/DeV0tNmQjsCK5vL5RwWodo6Z+KKTrWUsIro4oLX+ovL+D5rXytVw6vGkdo419uz9wkEJ1E1vY/PInDRigqorWXYbRnyl1CC0EQ+ARt+C9wUcNV0LAT/oqxVo4hWMXh0DSCk5DY/W5DdrPFY3umo49KaKBrI6KjtDajf3u//QbhJuZXdAMAAA=="
+)
+DREAME_MODEL_CAPABILITIES: Final = (
+    "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"
+)
 
 PROPERTY_TO_NAME: Final = {
     DreameVacuumProperty.STATE.name: ["state", "State"],
@@ -597,13 +641,13 @@ PROPERTY_TO_NAME: Final = {
         "sensor_dirty_time_left",
         "Sensor Dirty Time Left",
     ],
-    DreameVacuumProperty.SECONDARY_FILTER_LEFT.name: [
-        "secondary_filter_left",
-        "Secondary Filter Left",
+    DreameVacuumProperty.TANK_FILTER_LEFT.name: [
+        "tank_filter_left",
+        "Tank Filter Left",
     ],
-    DreameVacuumProperty.SECONDARY_FILTER_TIME_LEFT.name: [
-        "secondary_filter_time_left",
-        "Secondary Filter Time Left",
+    DreameVacuumProperty.TANK_FILTER_TIME_LEFT.name: [
+        "tank_filter_time_left",
+        "Tank Filter Time Left",
     ],
     DreameVacuumProperty.MOP_PAD_LEFT.name: ["mop_pad_left", "Mop Pad Left"],
     DreameVacuumProperty.MOP_PAD_TIME_LEFT.name: [
@@ -798,6 +842,11 @@ STATE_CODE_TO_STATE: Final = {
     DreameVacuumState.HUMAN_FOLLOWING: STATE_HUMAN_FOLLOWING,
     DreameVacuumState.SPOT_CLEANING: STATE_SPOT_CLEANING,
     DreameVacuumState.RETURNING_AUTO_EMPTY: STATE_RETURNING_AUTO_EMPTY,
+    DreameVacuumState.WAITING_FOR_TASK: STATE_WAITING_FOR_TASK,
+    DreameVacuumState.STATION_CLEANING: STATE_STATION_CLEANING,
+    DreameVacuumState.RETURNING_TO_DRAIN: STATE_RETURNING_TO_DRAIN,
+    DreameVacuumState.DRAINING: STATE_DRAINING,
+    DreameVacuumState.AUTO_WATER_DRAINING: STATE_AUTO_WATER_DRAINING,
     DreameVacuumState.SHORTCUT: STATE_SHORTCUT,
     DreameVacuumState.MONITORING: STATE_MONITORING,
     DreameVacuumState.MONITORING_PAUSED: STATE_MONITORING_PAUSED,
@@ -852,6 +901,8 @@ CARPET_CLEANING_CODE_TO_NAME: Final = {
     DreameVacuumCarpetCleaning.ADAPTATION: CARPET_CLEANING_ADAPTATION,
     DreameVacuumCarpetCleaning.REMOVE_MOP: CARPET_CLEANING_REMOVE_MOP,
     DreameVacuumCarpetCleaning.ADAPTATION_WITHOUT_ROUTE: CARPET_CLEANING_ADAPTATION_WITHOUT_ROUTE,
+    DreameVacuumCarpetCleaning.VACUUM_AND_MOP: CARPET_CLEANING_VACUUM_AND_MOP,
+    DreameVacuumCarpetCleaning.IGNORE: CARPET_CLEANING_IGNORE,
 }
 
 FLOOR_MATERIAL_CODE_TO_NAME: Final = {
@@ -1042,6 +1093,7 @@ ERROR_CODE_TO_ERROR_NAME: Final = {
     DreameVacuumErrorCode.WASHBOARD_LEVEL: ERROR_WASHBOARD_LEVEL,
     DreameVacuumErrorCode.NO_MOP_IN_STATION: ERROR_NO_MOP_IN_STATION,
     DreameVacuumErrorCode.DUST_BAG_FULL: ERROR_DUST_BAG_FULL,
+    DreameVacuumErrorCode.SELF_TEST_FAILED: ERROR_SELF_TEST_FAILED,
     DreameVacuumErrorCode.UNKNOWN_WARNING_2: STATE_UNKNOWN,
     DreameVacuumErrorCode.WASHBOARD_NOT_WORKING: ERROR_WASHBOARD_NOT_WORKING,
     DreameVacuumErrorCode.RETURN_TO_CHARGE_FAILED: ERROR_RETURN_TO_CHARGE_FAILED,
@@ -1118,10 +1170,17 @@ SECOND_CLEANING_TO_NAME: Final = {
 }
 
 CLEANING_ROUTE_TO_NAME: Final = {
-    DreameVacuumCleaningRoute.QUICK: CLEANING_ROUTE_QUICK,
-    DreameVacuumCleaningRoute.STANDARD: CLEANING_ROUTE_STANDARD,
-    DreameVacuumCleaningRoute.INTENSIVE: CLEANING_ROUTE_INTENSIVE,
-    DreameVacuumCleaningRoute.DEEP: CLEANING_ROUTE_DEEP,
+    DreameVacuumCleaningRoute.QUICK: ROUTE_QUICK,
+    DreameVacuumCleaningRoute.STANDARD: ROUTE_STANDARD,
+    DreameVacuumCleaningRoute.INTENSIVE: ROUTE_INTENSIVE,
+    DreameVacuumCleaningRoute.DEEP: ROUTE_DEEP,
+}
+
+CUSTOM_MOPPING_ROUTE_TO_NAME: Final = {
+    DreameVacuumCustomMoppingRoute.OFF: ROUTE_OFF,
+    DreameVacuumCustomMoppingRoute.STANDARD: ROUTE_STANDARD,
+    DreameVacuumCustomMoppingRoute.INTENSIVE: ROUTE_INTENSIVE,
+    DreameVacuumCustomMoppingRoute.DEEP: ROUTE_DEEP,
 }
 
 CLEANGENIUS_TO_NAME = {
@@ -1164,7 +1223,7 @@ LOW_WATER_WARNING_TO_NAME: Final = {
 
 TASK_TYPE_TO_NAME: Final = {
     DreameVacuumTaskType.UNKNOWN: STATE_UNKNOWN,
-    DreameVacuumTaskType.NOT_SUPPORTED: TASK_TYPE_NOT_SUPPORTED,
+    DreameVacuumTaskType.IDLE: TASK_TYPE_IDLE,
     DreameVacuumTaskType.STANDARD: TASK_TYPE_STANDARD,
     DreameVacuumTaskType.STANDARD_PAUSED: TASK_TYPE_STANDARD_PAUSED,
     DreameVacuumTaskType.CUSTOM: TASK_TYPE_CUSTOM,
@@ -1179,6 +1238,8 @@ TASK_TYPE_TO_NAME: Final = {
     DreameVacuumTaskType.PARTIAL_PAUSED: TASK_TYPE_PARTIAL_PAUSED,
     DreameVacuumTaskType.SUMMON: TASK_TYPE_SUMMON,
     DreameVacuumTaskType.SUMMON_PAUSED: TASK_TYPE_SUMMON_PAUSED,
+    DreameVacuumTaskType.WATER_STAIN: TASK_TYPE_WATER_STAIN,
+    DreameVacuumTaskType.WATER_STAIN_PAUSED: TASK_TYPE_WATER_STAIN_PAUSED,
 }
 
 ERROR_CODE_TO_IMAGE_INDEX: Final = {
@@ -1202,6 +1263,7 @@ ERROR_CODE_TO_IMAGE_INDEX: Final = {
     DreameVacuumErrorCode.FILTER_BLOCKED: 9,
     DreameVacuumErrorCode.CHARGE_FAULT: 12,
     DreameVacuumErrorCode.CHARGE_NO_ELECTRIC: 16,
+    DreameVacuumErrorCode.BATTERY_LOW: 20,
     DreameVacuumErrorCode.BATTERY_FAULT: 29,
     DreameVacuumErrorCode.INFRARED_FAULT: 39,
     DreameVacuumErrorCode.LDS_ERROR: 48,
@@ -1239,6 +1301,12 @@ ERROR_CODE_TO_IMAGE_INDEX: Final = {
     DreameVacuumErrorCode.CLEAN_MOP_PAD: 114,
     DreameVacuumErrorCode.NO_MOP_IN_STATION: 69,
     DreameVacuumErrorCode.DUST_BAG_FULL: 102,
+    DreameVacuumErrorCode.DIRTY_TANK_NOT_INSTALLED: 76,
+    DreameVacuumErrorCode.CLEAN_TANK_LEVEL: 105,
+    DreameVacuumErrorCode.STATION_DISCONNECTED: 117,
+    DreameVacuumErrorCode.SELF_TEST_FAILED: 999,
+    DreameVacuumErrorCode.WASHBOARD_NOT_WORKING: 111,
+    DreameVacuumErrorCode.RETURN_TO_CHARGE_FAILED: 1000,
 }
 
 # Dreame Vacuum error descriptions
@@ -1602,6 +1670,10 @@ ERROR_CODE_TO_ERROR_DESCRIPTION: Final = {
         "Check whether the dust collection bag is full.",
         "If so, replace the bag. Please clean the auto-empty vents of the dust bin and the base station regularly.",
     ],
+    DreameVacuumErrorCode.SELF_TEST_FAILED: [
+        "Self test failed.",
+        "There is no water in the clean water tank of the upper and lower water modules.",
+    ],
     DreameVacuumErrorCode.WASHBOARD_NOT_WORKING: [
         "Washboard stops working. Please check.",
         "Washboard stops working. Please follow troubleshooting steps as below:\n1. Check if the washboard is tangled. Clean up before use\n2. Check if the washboard is installed properly\n3.如仍未解决请联系客服",
@@ -1675,14 +1747,14 @@ CONSUMABLE_TO_LIFE_WARNING_DESCRIPTION: Final = {
     DreameVacuumProperty.SENSOR_DIRTY_LEFT: [
         ["Sensors must be cleaned", "Please clean the sensors and reset the counter"]
     ],
-    DreameVacuumProperty.SECONDARY_FILTER_LEFT: [
+    DreameVacuumProperty.TANK_FILTER_LEFT: [
         [
-            "Secondary filter must be replaced",
-            "The secondary filter is worn out. Please replace it in time and reset the counter.",
+            "Tank filter must be replaced",
+            "The tank filter is worn out. Please replace it in time and reset the counter.",
         ],
         [
-            "Secondary filter needs to be replaced soon",
-            "The secondary filter is nearly worn out. Please replace it in time.",
+            "Tank filter needs to be replaced soon",
+            "The tank filter is nearly worn out. Please replace it in time.",
         ],
     ],
     DreameVacuumProperty.MOP_PAD_LEFT: [

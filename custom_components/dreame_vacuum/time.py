@@ -1,4 +1,5 @@
 """Support for Dreame Vacuum times."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,9 +24,7 @@ from .entity import DreameVacuumEntity, DreameVacuumEntityDescription
 
 
 @dataclass
-class DreameVacuumTimeEntityDescription(
-    DreameVacuumEntityDescription, TimeEntityDescription
-):
+class DreameVacuumTimeEntityDescription(DreameVacuumEntityDescription, TimeEntityDescription):
     """Describes Dreame Vacuum Time entity."""
 
     set_fn: Callable[[object, int]] = None
@@ -86,9 +85,7 @@ class DreameVacuumTimeEntity(DreameVacuumEntity, TimeEntity):
         description: DreameVacuumTimeEntityDescription,
     ) -> None:
         """Initialize Dreame Vacuum time."""
-        if description.set_fn is None and (
-            description.property_key is not None or description.key is not None
-        ):
+        if description.set_fn is None and (description.property_key is not None or description.key is not None):
             if description.property_key is not None:
                 prop = f"set_{description.property_key.name.lower()}"
             else:
@@ -125,9 +122,7 @@ class DreameVacuumTimeEntity(DreameVacuumEntity, TimeEntity):
 
         value = str(value)[0:-3]
         if self.entity_description.set_fn is not None:
-            await self._try_command(
-                "Unable to call: %s", self.entity_description.set_fn, self.device, value
-            )
+            await self._try_command("Unable to call: %s", self.entity_description.set_fn, self.device, value)
         elif self.entity_description.property_key is not None:
             await self._try_command(
                 "Unable to call: %s",

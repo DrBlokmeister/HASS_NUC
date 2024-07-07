@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import STORAGE_DIR, Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError  # type: ignore
 
 from .const import COORDINATOR_MIN_UPDATE_INTERVAL, DOMAIN, PLATFORMS
 from .exceptions import (
@@ -114,7 +114,7 @@ class YoufoneDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_config_entry_first_refresh(self) -> None:
         """Refresh data for the first time when a config entry is setup."""
         self.data = await self.store.async_load() or {}
-        if len(self.data) > 0:
+        if len(self.data) == 0:
             await super().async_config_entry_first_refresh()
 
     async def get_data(self) -> dict | None:
