@@ -28,6 +28,11 @@ badges: []
 cards:
   - cards:
     - type: custom:apexcharts-card
+      header:
+        title: Energy Usage Today
+        show: true
+        show_states: true
+        colorize_states: true
       graph_span: 10m
       update_interval: 1m
       yaxis:
@@ -41,7 +46,7 @@ cards:
         chart:
           height: 500px
         legend:
-          show: true
+          show: false
           floating: false
           position: bottom
           horizontalAlign: left
@@ -62,12 +67,14 @@ cards:
           func: avg
           duration: 1min
         float_precision: 2
+        show:
+          datalabels: false
       chart_type: donut
       series:
         - entity: sensor.plug_electric_car_energy_today
           name: Electric Car
           color: '#FFC107'  # Amber for visibility and relevance
-        - entity: sensor.blitzwolf_computer_energy_today
+        - entity: sensor.plug_study_desk_energy_today
           name: Computer
           color: '#4CAF50'  # Green but softer
         - entity: sensor.plug_nas_energy_today
@@ -125,6 +132,11 @@ cards:
           name: Unknown
           color: '#BDBDBD'  # Light grey, enigmatic and uncertain
     - type: custom:apexcharts-card
+      header:
+        title: Current Power Usage
+        show: true
+        show_states: true
+        colorize_states: true
       graph_span: 5m
       update_interval: 1m
       all_series_config:
@@ -132,7 +144,11 @@ cards:
           func: avg
           duration: 5min
         float_precision: 0
+        show:
+          datalabels: false
       apex_config:
+        legend:
+          show: false
         plotOptions:
           pie:
             donut:
@@ -155,7 +171,7 @@ cards:
         - decimals: 0
       chart_type: donut
       series:
-        - entity: sensor.blitzwolf_computer_energy_power
+        - entity: sensor.plug_study_desk_power
           name: Computer
           color: '#4CAF50'  # Computing Devices - Green
         - entity: sensor.plug_nas_power
@@ -207,6 +223,11 @@ cards:
           name: Unknown
           color: '#BDBDBD'  # Unknown category - Light grey
     - type: custom:apexcharts-card
+      header:
+        title: Power Phases
+        show: true
+        show_states: true
+        colorize_states: true
       graph_span: 24h
       update_interval: 1m
       all_series_config:
@@ -215,6 +236,8 @@ cards:
           duration: 1min
         float_precision: 0
       apex_config:
+        legend:
+          show: false
         plotOptions:
           pie:
             donut:
@@ -257,6 +280,11 @@ cards:
             func: avg
             duration: 1min
     - type: custom:apexcharts-card
+      header:
+        title: Power Phases
+        show: true
+        show_states: true
+        colorize_states: true
       graph_span: 24h
       update_interval: 1m
       stacked: true
@@ -271,12 +299,17 @@ cards:
         float_precision: 0
         transform: "return Math.round(x * 1000);"
         unit: W
+        show:
+          datalabels: false
         group_by:
           func: avg
           duration: 5min
       chart_type: line
       brush:
         selection_span: 10m
+      apex_config:
+        legend:
+          show: false
       series:
         - entity: sensor.electricity_meter_power_consumption_phase_l1
           name: Phase 1
@@ -290,7 +323,8 @@ cards:
           show:
             in_brush: true
             in_chart: false
-    - entities:
+    - type: custom:mini-graph-card
+      entities:
         - color: grey
           entity: sensor.total_power_consumption_watt
           name: Total
@@ -299,7 +333,7 @@ cards:
           show_points: false
           smoothing: false
           value_factor: 1000 #Convert kW of sensor to W
-        - entity: sensor.blitzwolf_computer_energy_power
+        - entity: sensor.plug_study_desk_power
           name: Computer
           color: '#4CAF50'  # Computing Devices - Green
         - entity: sensor.plug_nas_power
@@ -363,7 +397,6 @@ cards:
       show:
         labels: true
         average: false
-      type: custom:mini-graph-card
     - type: 'custom:apexcharts-card'
       graph_span: 24h
       yaxis:
@@ -514,7 +547,7 @@ cards:
           points: false
       - type: custom:mini-graph-card
         entities:
-          - sensor.blitzwolf_computer_energy_power
+          - sensor.plug_study_desk_power
         name: Computer
         line_color: '#d7b242'
         hours_to_show: 24
@@ -694,7 +727,7 @@ cards:
           - type: gauge
             name: Computer Power
             unit: 'W'
-            entity: sensor.blitzwolf_computer_energy_power
+            entity: sensor.plug_study_desk_power
             min: 0
             max: 1000
             segments:
@@ -854,7 +887,7 @@ cards:
                 color: "#ff5733"
           - type: custom:mini-graph-card
             entities:
-              - entity: sensor.blitzwolf_computer_energy_today
+              - entity: sensor.plug_study_desk_energy_today
                 aggregate_func: max
                 name: Max
             name: Computer

@@ -334,13 +334,13 @@ sensor:
         unique_id: "yaml_template_sensor_blitzwolf_ambilight_amplifier_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_ambilight_amplifier_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.blitzwolf_ambilight_amplifier_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        value_template: "{{ (states('sensor.blitzwolf_ambilight_amplifiaer_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_computer_energy_cost_hourly:
         friendly_name: "Blitzwolf Computer Electricity Cost per Hour"
         unique_id: "yaml_template_sensor_blitzwolf_computer_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.blitzwolf_computer_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.blitzwolf_computer_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_study_desk_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.plug_study_desk_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_dishwasher_energy_cost_hourly:
         friendly_name: "Blitzwolf Dishwasher Electricity Cost per Hour"
         unique_id: "yaml_template_sensor_blitzwolf_dishwasher_energy_cost_hourly"
@@ -683,7 +683,7 @@ sensor:
     time_window: "00:01:00"
 
   - platform: filter
-    entity_id: sensor.blitzwolf_computer_energy_power
+    entity_id: sensor.plug_study_desk_power
     name: Averaged Computer Power
     unique_id: filter_sensor_averaged_computer_power
     filters:
@@ -750,7 +750,7 @@ sensor:
     entity_ids:
       - sensor.blitzwolf_10gb_switch_energy_power #in W
       - sensor.plug_3d_printer_power #in W
-      - sensor.blitzwolf_computer_energy_power #in W
+      - sensor.plug_study_desk_power #in W
       - sensor.plug_nas_power #in W
       - sensor.blitzwolf_washingmachine_energy_power #in W
       - sensor.blitzwolf_watercooker_energy_power #in W
@@ -945,44 +945,84 @@ automation:
               - condition: template
                 value_template: "{{ trigger.id == 'negative_price' }}"
             sequence:
-              - service: number.set_value
-                data:
-                  value: 0
-                target:
-                  entity_id:
-                    - number.grid_export_limit
-              - service: number.set_value
-                data:
-                  value: 1
-                target:
-                  entity_id:
-                    - number.heatpump_tapwater_hysteresis
-              - service: number.set_value
-                data:
-                  value: 60
-                target:
-                  entity_id:
-                    - number.heatpump_tapwater_target_temperature
+              - parallel:
+                  - alias: "Turn off solar panels"
+                    sequence:
+                      - service: number.set_value
+                        continue_on_error: true
+                        data:
+                          value: 0
+                        target:
+                          entity_id:
+                            - number.grid_export_limit
+                      - delay:
+                          minutes: 1
+                      - service: button.press
+                        continue_on_error: true
+                        target:
+                          entity_id: button.goodwe_stop_inverter
+                  - alias: "Max Tapwater Heatup"
+                    sequence:
+                      - service: number.set_value
+                        continue_on_error: true
+                        data:
+                          value: 1
+                        target:
+                          entity_id:
+                            - number.heatpump_tapwater_hysteresis
+                      - service: number.set_value
+                        continue_on_error: true
+                        data:
+                          value: 60
+                        target:
+                          entity_id:
+                            - number.heatpump_tapwater_target_temperature
+                  - alias: "Max Ventilation Speed"
+                    sequence:
+                      - service: number.set_value
+                        data:
+                          value: "360"
+                        target:
+                          entity_id: number.override_fan_duration
+                      - service: number.set_value
+                        data:
+                          entity_id: number.override_fan_speed
+                          value: 100
+                      - service: switch.turn_on
+                        continue_on_error: true
+                        target:
+                          entity_id: switch.fan_speed_override
               - wait_for_trigger:
                   - platform: numeric_state
                     entity_id: sensor.nordpool_energy_price
                     above: 0
                     id: positive_price
               - service: number.set_value
+                continue_on_error: true
                 data:
                   value: 5
                 target:
                   entity_id:
                     - number.heatpump_tapwater_hysteresis
               - service: number.set_value
+                continue_on_error: true
                 data:
                   value: 45
                 target:
                   entity_id:
                     - number.heatpump_tapwater_target_temperature
+              - service: switch.turn_off
+                continue_on_error: true
+                target:
+                  entity_id: switch.fan_speed_override
+              - service: button.press
+                continue_on_error: true
+                target:
+                  entity_id: button.goodwe_start_inverter
               - service: number.set_value
+                continue_on_error: true
                 data:
-                  value: 3000
+                  value: 5000
                 target:
                   entity_id:
                     - number.grid_export_limit
@@ -1059,7 +1099,7 @@ group:
       - sensor.plug_electric_car_power
       - sensor.blitzwolf_10gb_switch_energy_power
       - sensor.blitzwolf_ambilight_amplifier_power
-      - sensor.blitzwolf_computer_energy_power
+      - sensor.plug_study_desk_power
       - sensor.blitzwolf_dishwasher_energy_power
       - sensor.blitzwolf_nuc_energy_power
       - sensor.blitzwolf_poe_switch_energy_power
