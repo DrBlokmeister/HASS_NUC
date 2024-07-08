@@ -34,9 +34,11 @@ template:
             'sensor.00007e225dc2b29f_last_seen',
             'sensor.00007e22b1b2b29a_last_seen'
           ] -%}
-            {%- set timestamp = as_timestamp(states(sensor)) -%}
-            {%- if timestamp is not none -%}
-              {%- set ns.times = ns.times + [timestamp] -%}
+            {%- if states(sensor) not in ['unknown', 'unavailable', 'none', ''] -%}
+              {%- set timestamp = as_timestamp(states(sensor)) -%}
+              {%- if timestamp is not none -%}
+                {%- set ns.times = ns.times + [timestamp] -%}
+              {%- endif -%}
             {%- endif -%}
           {%- endfor -%}
           {%- if ns.times | length > 0 -%}
@@ -48,8 +50,28 @@ template:
               {{ (((ns.times[mid - 1] + ns.times[mid]) / 2) | as_datetime | as_local).isoformat() }}
             {%- endif -%}
           {%- else -%}
-            'undefined'
+            'unavailable'
           {%- endif -%}
+        availability: >
+          {% set all_sensors = [
+            'sensor.00000218736e3b1e_last_seen',
+            'sensor.0000021dbca73412_last_seen',
+            'sensor.0000039223703418_last_seen',
+            'sensor.garbage_monitor_tag_last_seen',
+            'sensor.0000021c3bc6341b_last_seen',
+            'sensor.0000021d26a23414_last_seen',
+            'sensor.00007e22b1d7b299_last_seen',
+            'sensor.00007e225dc2b29f_last_seen',
+            'sensor.00007e22b1b2b29a_last_seen'
+          ] %}
+          {% set ns = namespace(available = false) %}
+          {% for sensor in all_sensors %}
+            {% if states(sensor) not in ['unknown', 'unavailable', 'none', ''] %}
+              {% set ns.available = true %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.available }}
 
 #################
 #    SENSORS    #
@@ -287,7 +309,6 @@ automation:
               "sensor.00000218736e3b1e_last_seen",
               "sensor.0000021dbca73412_last_seen",
               "sensor.0000021d26a23414_last_seen",
-              "sensor.0000021f86d83b1e_last_seen",
               "sensor.0000039223703418_last_seen",
               "sensor.garbage_monitor_tag_last_seen"
             ] -%}
@@ -313,14 +334,13 @@ automation:
                 "sensor.00000218736e3b1e_last_seen",
                 "sensor.0000021dbca73412_last_seen",
                 "sensor.0000021d26a23414_last_seen",
-                "sensor.0000021f86d83b1e_last_seen",
                 "sensor.0000039223703418_last_seen",
                 "sensor.garbage_monitor_tag_last_seen"
               ] %}
                 {%- set last_seen = states(sensor) -%}
                 {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
                   {%- if not state_attr(sensor, 'friendly_name') == None -%}
-                    {{ state_attr(sensor, 'friendly_name') }}{% if not loop.last %}, {% endif %}
+                    {{ state_attr(sensor, 'friendly_name') | replace(' Last Seen', '') }}{% if not loop.last %}, {% endif %}
                   {%- else -%}
                     {{ state_attr(sensor, 'entity_id') }}{% if not loop.last %}, {% endif %}
                   {%- endif -%}
@@ -337,7 +357,6 @@ automation:
                   "sensor.00000218736e3b1e_last_seen",
                   "sensor.0000021dbca73412_last_seen",
                   "sensor.0000021d26a23414_last_seen",
-                  "sensor.0000021f86d83b1e_last_seen",
                   "sensor.0000039223703418_last_seen",
                   "sensor.garbage_monitor_tag_last_seen"
                 ] %}
@@ -360,7 +379,7 @@ automation:
     trigger:
       - platform: template
         value_template: >
-          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_tag_last_check_in_time'))) > 300 }}
+          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 300 }}
     condition: []
     action:
       - service: homeassistant.reload_config_entry
