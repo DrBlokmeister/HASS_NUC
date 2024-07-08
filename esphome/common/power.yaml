@@ -15,9 +15,14 @@ sensor:
     name: "${device_name} Power Factor"
     lambda: |-
       if (round(id(power).state) == 0) {
-        return 0;
+        return 0.0;
       } else {
-        return id(power).state / id(voltage).state / id(current).state;
+        float pf = id(power).state / (id(voltage).state * id(current).state);
+        if (pf > 2.0) {
+          return 2.0;
+        } else {
+          return pf;
+        }
       }
     update_interval: 1s
     device_class: power_factor
