@@ -1,3 +1,6 @@
+substitutions:
+  hlw8012_sf1_pin: 'GPIO04' #Default for SP111. GPIO14 is default for SHP6
+
 esphome:
   name: ${espname}
   friendly_name: ${device_name}
@@ -23,44 +26,21 @@ packages:
   base_config: !include /config/esphome/common/base_config.yaml
   power: !include /config/esphome/common/power.yaml
 
-binary_sensor:
-  # toggle relay on/off
-  - platform: gpio
-    pin:
-      number: GPIO13
-      mode: INPUT_PULLUP
-      inverted: True
-    id: input_button
-    on_multi_click:
-      - timing:
-          - ON for at most 1s
-          - OFF for at least 0.3s
-        then:
-          - switch.toggle: relay
-      - timing:
-          - ON for at least 5s
-          #- OFF for at least 0.3s
-        then:
-          - output.turn_on: led_red
-          - delay: 500ms
-          - output.turn_off: led_red
-          - delay: 500ms
-          - output.turn_on: led_red
-          - delay: 500ms
-          - output.turn_off: led_red
-          - delay: 500ms
-          - output.turn_on: led_red
-          - delay: 500ms
-          - output.turn_off: led_red
-          - delay: 500ms
-          - button.press: restart_button
-    # on_press:
-    #   - switch.toggle: relay
+status_led:
+  pin:
+    number: GPIO02
+    inverted: True
+  id: led_blue
+
+binary_sensor: !include
+    file: /config/esphome/templates/plug_functions/plug_input_button.yaml
+    vars:
+      input_button_pin: GPIO13
 
 sensor:
   - platform: total_daily_energy
     name: "${device_name} Energy Today"
-    power_id: "power"
+    power_id: power
     filters:
       # Multiplication factor from W to kW is 0.001
       - multiply: 0.001
@@ -81,7 +61,7 @@ sensor:
       number: GPIO12
       inverted: True
     cf_pin: GPIO05
-    cf1_pin: GPIO04
+    cf1_pin: ${hlw8012_sf1_pin}
     change_mode_every: 4
     current_resistor: ${current_res}
     voltage_divider: ${voltage_div}
@@ -124,12 +104,6 @@ sensor:
             - delta: 20.0
             - delta: 5%
 
-status_led:
-  pin:
-    number: GPIO02
-    inverted: True
-  id: led_blue
-
 output:
   - platform: gpio
     pin:
@@ -138,23 +112,9 @@ output:
     id: led_red
 
 switch:
-#   - platform: template
-#     name: "${device_name} Switch"
-#     icon: mdi:power
-#     optimistic: true
-# # This is where the "restore_from_flash" comes in. I set it to try to restore from flash and, if that fails, set it to ON
-#     restore_mode: RESTORE_DEFAULT_ON
-#     lambda: 'return id(relay).state;'
-#     id: button_switch
-#     turn_on_action:
-#       - switch.turn_on: relay
-#       - output.turn_on: led_red
-#     turn_off_action:
-#       - switch.turn_off: relay
-#       - output.turn_off: led_red
   - platform: gpio
     name: "${device_name} Switch"
-    icon: mdi:power
+    icon: mdi:power-socket-de
     pin: GPIO15
     id: relay
     restore_mode: RESTORE_DEFAULT_ON

@@ -1,0 +1,28 @@
+  - platform: gpio
+    pin:
+      number: ${input_button_pin}
+      mode: INPUT_PULLUP
+      inverted: True
+    id: input_button
+    on_multi_click:
+      - timing:
+          - ON for at most 2s
+          - OFF for at least 0.1s
+        then:
+          - switch.toggle: relay
+      - timing:
+          - ON for at least 5s
+        then:
+          - output.turn_on: led_red
+          - delay: 500ms
+          - output.turn_off: led_red
+          - delay: 500ms
+          - output.turn_on: led_red
+          - delay: 500ms
+          - output.turn_off: led_red
+          - delay: 500ms
+          - output.turn_on: led_red
+          - delay: 500ms
+          - output.turn_off: led_red
+          - delay: 500ms
+          - button.press: restart_button
