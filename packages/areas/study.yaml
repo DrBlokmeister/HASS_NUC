@@ -433,63 +433,69 @@ automation:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1002 }}" #H2O2 socket
               # - condition: state
-              #   entity_id: switch.study_shp9_powerstrip_socket_pc
+              #   entity_id: switch.powerstrip_study_desk_socket_1
               #   state: 'off'
             sequence:
               - service: switch.turn_on
-                entity_id: switch.study_shp9_powerstrip_socket_pc
+                entity_id: switch.powerstrip_study_desk_socket_1
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 2002 }}" #Laptop Dock
               # - condition: state
-              #   entity_id: switch.study_shp9_powerstrip_socket_dock
+              #   entity_id: switch.powerstrip_study_desk_socket_2
               #   state: 'off'
             sequence:
               - service: switch.turn_on
-                entity_id: switch.study_shp9_powerstrip_socket_dock
+                entity_id: switch.powerstrip_study_desk_socket_2
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 3002 }}" #Peripherals
               # - condition: state
-              #   entity_id: switch.study_shp9_powerstrip_socket_peripherals
+              #   entity_id: switch.powerstrip_study_desk_socket_3
               #   state: 'off'
             sequence:
               - service: switch.turn_on
-                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+                entity_id: switch.powerstrip_study_desk_socket_3
+              - delay:
+                  seconds: 1
+              - service: switch.turn_on
+                entity_id: switch.powerstrip_study_desk_socket_4
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 4002 }}" #USB
               # - condition: state
-              #   entity_id: switch.study_shp9_powerstrip_usb_socket
+              #   entity_id: switch.powerstrip_study_desk_socket_usb
               #   state: 'off'
             sequence:
               - service: switch.turn_on
-                entity_id: switch.study_shp9_powerstrip_usb_socket
+                entity_id: switch.powerstrip_study_desk_socket_usb
           - conditions: ################## CONDITIONS BELOW ARE FOR LONG PRESS RELEASE ##################
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1003 }}" #H2O2 socket
+                value_template: "{{ trigger.event.data.event == 1001 }}" #H2O2 socket
             sequence:
               - choose:
                   - conditions:
                       - condition: state
-                        entity_id: switch.study_shp9_powerstrip_socket_pc
+                        entity_id: switch.powerstrip_study_desk_socket_1
                         state: 'on'
                     sequence:
                       - condition: numeric_state
-                        entity_id: sensor.blitzwolf_computer_energy_power
+                        entity_id: sensor.plug_study_desk_power
                         below: 250
                       - service: switch.turn_off
-                        entity_id: switch.study_shp9_powerstrip_socket_pc
+                        entity_id: switch.powerstrip_study_desk_socket_1
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 2003 }}" #Laptop Dock
+                value_template: "{{ trigger.event.data.event == 2001 }}" #Laptop Dock
             sequence:
               - service: switch.turn_off
-                entity_id: switch.study_shp9_powerstrip_socket_dock
+                entity_id: switch.powerstrip_study_desk_socket_2
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 3003 }}" #Peripherals
+                value_template: "{{ trigger.event.data.event == 3001 }}" #Peripherals
             sequence:
+              - service: switch.turn_off
+                entity_id: switch.powerstrip_study_desk_socket_4
               - service: light.turn_off
                 entity_id:
                   - light.study_candle
@@ -520,13 +526,13 @@ automation:
                       value_template: >
                         {{ (now() - start_time).total_seconds() < 10 }}
               - service: switch.turn_off
-                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+                entity_id: switch.powerstrip_study_desk_socket_3
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 4003 }}" # USB
+                value_template: "{{ trigger.event.data.event == 4001 }}" # USB
             sequence:
               - service: switch.turn_off
-                entity_id: switch.study_shp9_powerstrip_usb_socket
+                entity_id: switch.powerstrip_study_desk_socket_usb
 
 #################
 #    SCRIPTS    #
@@ -538,7 +544,16 @@ script:
       - choose:
           - conditions:
               - condition: state
-                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+                entity_id: switch.powerstrip_study_desk_socket_4
+                state: 'on'
+            sequence:
+              - service: switch.turn_off
+                entity_id: switch.powerstrip_study_desk_socket_4
+              - delay:
+                  seconds: 1
+          - conditions:
+              - condition: state
+                entity_id: switch.powerstrip_study_desk_socket_3
                 state: 'on'
             sequence:
               - service: light.turn_off
@@ -558,23 +573,23 @@ script:
                       for:
                         seconds: 2
               - service: switch.turn_off
-                entity_id: switch.study_shp9_powerstrip_socket_peripherals
+                entity_id: switch.powerstrip_study_desk_socket_3
               - delay:
                   seconds: 3
       - choose:
           - conditions:
               - condition: state
-                entity_id: switch.study_shp9_powerstrip_socket_dock
+                entity_id: switch.powerstrip_study_desk_socket_2
                 state: 'on'
             sequence:
               - service: switch.turn_off
-                entity_id: switch.study_shp9_powerstrip_socket_dock
+                entity_id: switch.powerstrip_study_desk_socket_2
               - delay:
                   seconds: 3
       - choose:
         - conditions:
             - condition: state
-              entity_id: switch.study_shp9_powerstrip_socket_pc
+              entity_id: switch.powerstrip_study_desk_socket_1
               state: 'on'
           sequence:
             - repeat:
@@ -588,7 +603,7 @@ script:
                     for:
                       seconds: 5
             - service: switch.turn_off
-              entity_id: switch.study_shp9_powerstrip_socket_pc
+              entity_id: switch.powerstrip_study_desk_socket_1
 
 ################
 #    SCENES    #

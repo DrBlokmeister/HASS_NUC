@@ -1,0 +1,129 @@
+substitutions:
+  device_name: "Powerstrip Study Desk"
+  espname: "powerstrip-study-desk"
+
+esphome:
+  name: '${espname}'
+  friendly_name: '${device_name}'
+  comment: 'ZLD-44EU-W' #See https://kvvhost.ru/2019/11/25/wifi-powerstrip-zld-44eu-w/
+
+preferences:
+  flash_write_interval: 60min
+
+esp8266:
+  board: esp8285 #ESP-02S
+  restore_from_flash: true
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+light:
+  - platform: status_led
+    name: "${device_name} Status"
+    pin:
+      number: GPIO01
+      inverted: true
+    id: led_status
+    internal: true
+
+binary_sensor:
+  - platform: gpio
+    pin: 3
+    name: "${device_name} Button"
+    filters:
+      - invert
+    on_multi_click:
+    - timing:
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Quadruple Click - socket 4"
+        - switch.toggle: zld_44eu_w_relay4
+    - timing:
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Triple Click - socket 3"
+        - switch.toggle: zld_44eu_w_relay3
+    - timing:
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Double Click - socket 2"
+        - switch.toggle: zld_44eu_w_relay2
+    - timing:
+        - ON for at most 0.5s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Single Click - socket 1"
+        - switch.toggle: zld_44eu_w_relay1
+    - timing:
+        - ON for 0.8s to 2s
+        - OFF for at least 0.1s
+      then:
+        - logger.log: "Long Click - USB"
+        - switch.toggle: zld_44eu_w_relay_usb
+    - timing:
+        - ON for at least 5s
+      then:
+        - light.turn_on: led_status
+        - delay: 500ms
+        - light.turn_off: led_status
+        - delay: 500ms
+        - light.turn_on: led_status
+        - delay: 500ms
+        - light.turn_off: led_status
+        - delay: 500ms
+        - light.turn_on: led_status
+        - delay: 500ms
+        - light.turn_off: led_status
+        - delay: 500ms
+        - button.press: restart_button
+
+switch:
+  - platform: gpio
+    pin: 5
+    name: "${device_name} Socket 1"
+    icon: mdi:power-socket-de
+    id: zld_44eu_w_relay1
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin: 4
+    name: "${device_name} Socket 2"
+    icon: mdi:power-socket-de
+    id: zld_44eu_w_relay2
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin: 12
+    name: "${device_name} Socket 3"
+    icon: mdi:power-socket-de
+    id: zld_44eu_w_relay3
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin: 13
+    name: "${device_name} Socket 4"
+    icon: mdi:power-socket-de
+    id: zld_44eu_w_relay4
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin:
+      number: 14
+      inverted: true
+    name: "${device_name} Socket USB"
+    icon: mdi:usb
+    id: zld_44eu_w_relay_usb
+    restore_mode: RESTORE_DEFAULT_ON
