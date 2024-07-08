@@ -83,6 +83,21 @@ command_line:
       unit_of_measurement: ''
       scan_interval: 60
       command: "grep -c 'ERROR' /config/home-assistant.log"
+
+######################
+#    COMMAND LINE    #
+######################
+command_line:
+  - sensor:
+      name: "NUC Available Package Updates"
+      icon: mdi:package-variant-closed
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 '/home/drblokmeister/Documents/check_updates.sh'"
+      command_timeout: 30
+      scan_interval: 3600  # Adjust the scan interval as needed
+      value_template: "{{ value_json.available_updates }}"
+      json_attributes:
+        - updatable_packages
+
 #################
 #    SENSORS    #
 #################
