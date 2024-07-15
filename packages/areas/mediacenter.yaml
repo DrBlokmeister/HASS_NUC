@@ -109,6 +109,27 @@ switch:
           service: script.turn_on_ambilight
         turn_off:
           service: script.turn_off_ambilight
+      tv_json_cec:
+        friendly_name: "TV json CEC"
+        icon_template: mdi:television
+        value_template: "{{ is_state('device_tracker.tv', 'home') }}"
+        availability_template: "{{ is_state('device_tracker.coreelec', 'home') and not is_state('media_player.coreelec', 'unavailable') }}"
+        turn_on:
+          service: kodi.call_method
+          data:
+            entity_id: media_player.coreelec
+            method: Addons.ExecuteAddon
+            addonid: script.json-cec
+            params:
+              command: activate
+        turn_off:
+          service: kodi.call_method
+          data:
+            entity_id: media_player.coreelec
+            method: Addons.ExecuteAddon
+            addonid: script.json-cec
+            params:
+              command: standby
 #####################
 #    AUTOMATIONS    #
 #####################
@@ -585,6 +606,64 @@ script:
       - service: switch.turn_off
         continue_on_error: true
         entity_id: switch.ambilight_power
+
+  toggle_tv_ledstrip:
+    alias: "[home|mediacenter] Toggle TV LED Strip"
+    icon: mdi:television-ambient-light
+    # id: script_yaml_home_mediacenter_toggle_tv_led_strip #Scripts do not support unique_id or id (yet).
+    mode: queued
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: switch.ambilight_power
+                state: 'off'
+            sequence:
+              - service: switch.turn_on
+                continue_on_error: true
+                entity_id: switch.ambilight_power
+              - delay:
+                  seconds: 1
+              - service: light.turn_on
+                continue_on_error: true
+                data:
+                  entity_id:
+                    - light.livingroom_tv_ambilight
+                  brightness: 255
+                  effect: Rainbow
+              - delay:
+                  seconds: 5
+              - service: light.turn_off
+                continue_on_error: true
+                data:
+                  entity_id:
+                    - light.livingroom_tv_ambilight
+              - delay:
+                  seconds: 2
+              - service: light.turn_on
+                continue_on_error: true
+                data:
+                  entity_id:
+                    - light.livingroom_tv_ambilight
+                  brightness: 255
+                  effect: E1.31
+          - conditions:
+              - condition: state
+                entity_id: switch.ambilight_power
+                state: 'on'
+            sequence:
+              - service: light.turn_off
+                continue_on_error: true
+                data:
+                  entity_id:
+                    - light.livingroom_tv_ambilight
+                    - light.tv_apa102_universe_1
+                    - light.tv_apa102_universe_2
+              - delay:
+                  seconds: 3
+              - service: switch.turn_off
+                continue_on_error: true
+                entity_id: switch.ambilight_power
 
 ################
 #    LIGHTS    #
