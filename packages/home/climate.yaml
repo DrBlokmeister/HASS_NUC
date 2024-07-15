@@ -202,6 +202,21 @@ sensor:
       - sensor.study_co2
       - sensor.guest_room_co2
 
+  - platform: min_max
+    type: mean
+    name: Home Median Room Temperature
+    unique_id: sensor_min_max_home_median_room_temperature
+    entity_ids:
+      - sensor.temperature_livingroom
+      - sensor.livingroom_aqm_temperature
+      - sensor.study_multi_sensor_temperature
+      - sensor.study_multi_sensor_2_temperature
+      - sensor.study_aqm_temperature
+      - sensor.temperature_bedroom
+      - sensor.bedroom_aqm_temperature
+      - sensor.temperature_bathroom
+      - sensor.guest_room_aqm_temperature
+
   - platform: template
     sensors:
       warmtebron_in_uit_delta:
@@ -403,7 +418,7 @@ automation:
     trigger:
       - platform: numeric_state
         entity_id: sensor.heatpump_tapwater_temperature
-        above: "{{ states('input_number.tapwater_heat_up_temperature') }}"
+        above: input_number.tapwater_heat_up_temperature
         for:
           minutes: 30
     action:
@@ -493,12 +508,51 @@ automation:
             {% else %}
               Calibration is needed for an unknown sensor, triggered by: {{ trigger.entity_id }}
             {% endif %}
-  # - alias: '[climate|temperature] Poll Alpha Home Temperatures'
-  #   trigger:
-  #     platform: time_pattern
-  #     minutes: "/1"
-  #   action:
-  #     - service: shell_command.poll_alphahome_sensors
+
+  - alias: "[home|climate] Ventilation Control based on Temperature"
+    description: >
+      Turns on ventilation to the max when the outside temperature drops below the 
+      mean home temperature. Keeps checking every 30 minutes and maintains the state 
+      if the condition is still met. Turns off the fan speed override afterwards.
+    mode: single
+    initial_state: off
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.shed_aqm_temperature
+        below: sensor.home_median_room_temperature
+    condition:
+      - condition: time
+        after: '22:00:00'
+        before: '06:00:00'
+    action:
+      - service: number.set_value
+        data:
+          entity_id: number.override_fan_speed
+          value: 100
+      - service: number.set_value
+        data:
+          entity_id: number.override_fan_duration
+          value: 600
+      - delay:
+          seconds: 1
+      - service: switch.turn_on
+        target:
+          entity_id: switch.fan_speed_override
+      - alias: Repeat ventilation check
+        repeat:
+          while:
+            - condition: numeric_state
+              entity_id: sensor.shed_aqm_temperature
+              below: sensor.home_median_room_temperature
+          sequence:
+            - delay: "00:30:00"
+            - service: switch.turn_on
+              target:
+                entity_id: switch.fan_speed_override
+      - service: switch.turn_off
+        target:
+          entity_id: switch.fan_speed_override
+
 ################
 #    SCENES    #
 ################
