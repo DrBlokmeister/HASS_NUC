@@ -252,6 +252,7 @@ automation:
             icon_url: /local/icons/email-alert.png
 
   - alias: "[entry|doorbell] Smart Doorbell Notification"
+    id: automation_yaml_entry_doorbell_smart_doorbell_notification
     description: "Send notifications when the doorbell is pressed and repeat alerts if the house is occupied."
     mode: single
     max_exceeded: silent
@@ -263,7 +264,7 @@ automation:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 3) }}"
     action:
-      - service: notify.mobile_app_blokmeisters21u
+      - service: notify.sander_and_tamara_phones
         data:
           message: "Someone's at the door!"
           title: "Doorbell Alert"
@@ -303,7 +304,7 @@ automation:
                       data:
                         message: "Someone is at the door. Please check!"
                         language: "en-IE"
-                    - service: notify.mobile_app_blokmeisters21u
+                    - service: notify.sander_and_tamara_phones
                       data:
                         message: "Reminder: Doorbell was pressed. Please check the door."
                         title: "Doorbell Reminder"
@@ -329,6 +330,16 @@ automation:
                       minutes: 5
                 timeout:
                   minutes: 10
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wait.completed }}"
+                    sequence:
+                      - service: notify.sander_and_tamara_phones
+                        data:
+                          message: "clear_notification"
+                          data:
+                            tag: doorbell
               - delay:
                   minutes: 5
               - service: light.turn_off
