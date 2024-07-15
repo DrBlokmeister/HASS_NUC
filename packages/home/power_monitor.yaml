@@ -166,19 +166,27 @@ sensor:
   - platform: template
     sensors:
       net_energy_usage:
+        friendly_name: "Net Energy Usage"
+        icon: mdi:flash
         unit_of_measurement: 'kW'
         value_template: >-
           {{ states( 'sensor.electricity_meter_power_consumption' )|float(0) - states( 'sensor.electricity_meter_power_production' )|float(0) }}
         availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       electricity_meter_power_watt:
+        friendly_name: "Electricity Meter Power (W)"
+        icon: mdi:flash-outline
         value_template: "{{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 | float | round(2) }}"
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
       electricity_meter_power_production_watt:
+        friendly_name: "Electricity Meter Power Production (W)"
+        icon: mdi:flash-outline
         value_template: "{{ states('sensor.electricity_meter_power_production') | float * 1000 }}"
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.electricity_meter_power_production')|is_number }}"
       total_power_consumption_watt:
+        friendly_name: "Total Power Consumption (W)"
+        icon: mdi:flash-outline
         value_template: >-
           {% if states('sensor.pv_power')|is_number %}
             {{ (states('sensor.electricity_meter_power_consumption')|float - states('sensor.electricity_meter_power_production')|float + states('sensor.pv_power')|float/1000)*1000 }}
@@ -188,9 +196,12 @@ sensor:
         unit_of_measurement: "W"
         availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       total_power_consumption_kilowatt:
+        friendly_name: "Total Power Consumption (kW)"
+        icon: mdi:flash-outline
         value_template: "{{ states('sensor.total_power_consumption_watt')|float/1000 }}"
         unit_of_measurement: "kW"
         availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number }}"
+
 
     #Fitted powers using model based on temperatures
       heatpump_tapwater_power_estimate:
@@ -250,23 +261,27 @@ sensor:
       # Template sensor for projected costs per hour
       current_electricity_cost_per_hour:
         friendly_name: "Current Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unit_of_measurement: "€/h"  # Adjust this based on your currency
         value_template: "{{ ((states('sensor.total_power_consumption_watt') | float)/1000 * states('sensor.nordpool_energy_price') | float) | round(3) }}"
         availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
       # Template sensor for lowest possible costs based on lowest price
       potential_electricity_usage_cost_lowest_price:
         friendly_name: "Potential Electricity Usage Costs (Lowest Price)"
+        icon: mdi:currency-eur
         unit_of_measurement: "€"  # Adjust this based on your currency
         value_template: "{{ (states('sensor.daily_energy_use') | float * state_attr('sensor.nordpool_energy_price', 'min') | float ) | round(3) }}"
         availability_template: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'min')|is_number }}"
       # Template sensor for lowest possible costs based on lowest price
       potential_electricity_usage_cost_highest_price:
         friendly_name: "Potential Electricity Usage Costs (Highest Price)"
+        icon: mdi:currency-eur
         unit_of_measurement: "€"  # Adjust this based on your currency
         value_template: "{{ (states('sensor.daily_energy_use') | float * state_attr('sensor.nordpool_energy_price', 'max') | float ) | round(3) }}"
         availability_template: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'max')|is_number }}"
       potential_electricity_usage_cost_mean_price:
         friendly_name: "Potential Electricity Usage Costs (Mean Price)"
+        icon: mdi:currency-eur
         unit_of_measurement: "€"  # Adjust this based on your currency
         value_template: "{{ (states('sensor.daily_energy_use') | float * state_attr('sensor.nordpool_energy_price', 'mean') | float ) | round(3) }}"
         availability_template: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'mean')|is_number }}"
@@ -289,6 +304,7 @@ sensor:
       # Production earnings per hour sensor
       solar_panels_production_earnings_hourly:
         friendly_name: "Solar Panels Production Earnings per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_solar_panel_benefit_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.solar_panel_power_production_available')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
@@ -296,6 +312,7 @@ sensor:
 
       net_electricity_cost_per_hour:
         friendly_name: "Net Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_net_electricity_cost_per_hour"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.current_electricity_cost_per_hour')|is_number and states('sensor.solar_panels_production_earnings_hourly')|is_number }}"
@@ -304,102 +321,119 @@ sensor:
       # Device cost per hour sensors
       blitzwolf_10gb_switch_energy_cost_hourly:
         friendly_name: "Blitzwolf 10GB Switch Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_10gb_switch_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_10gb_switch_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_10gb_switch_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_3dprinter_energy_cost_hourly:
         friendly_name: "Blitzwolf 3D Printer Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_3dprinter_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.plug_3d_printer_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.plug_3d_printer_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_ambilight_amplifier_energy_cost_hourly:
         friendly_name: "Blitzwolf Ambilight Amplifier Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_ambilight_amplifier_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_ambilight_amplifier_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_ambilight_amplifier_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_computer_energy_cost_hourly:
         friendly_name: "Blitzwolf Computer Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_computer_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.plug_study_desk_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.plug_study_desk_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_dishwasher_energy_cost_hourly:
         friendly_name: "Blitzwolf Dishwasher Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_dishwasher_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.plug_dishwasher_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.plug_dishwasher_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_nas_energy_cost_hourly:
         friendly_name: "Blitzwolf NAS Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_nas_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.plug_nas_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.plug_nas_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_nuc_energy_cost_hourly:
         friendly_name: "Blitzwolf NUC Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_nuc_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_nuc_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_nuc_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_poe_switch_energy_cost_hourly:
         friendly_name: "Blitzwolf POE Switch Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_poe_switch_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_poe_switch_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_poe_switch_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_router_energy_cost_hourly:
         friendly_name: "Blitzwolf Router Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_router_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_router_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_router_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_washingmachine_energy_cost_hourly:
         friendly_name: "Blitzwolf Washing Machine Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_washingmachine_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_washingmachine_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_watercooker_energy_cost_hourly:
         friendly_name: "Blitzwolf Water Cooker Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_watercooker_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_watercooker_energy_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_watercooker_energy_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_heatpump_energy_cost_hourly:
         friendly_name: "Blitzwolf Heat Pump Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_heatpump_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_heatpump_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_heatpump_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       all_lights_power_estimate_energy_cost_hourly:
         friendly_name: "All Lights Power Estimate Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_all_lights_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.all_lights_power_estimate_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.all_lights_power_estimate_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       heatpump_heating_energy_cost_hourly:
         friendly_name: "Heat Pump Heating Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_heatpump_heating_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.heatpump_heating_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.heatpump_heating_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       heatpump_tapwater_energy_cost_hourly:
         friendly_name: "Heat Pump Tap Water Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_heatpump_tapwater_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.heatpump_tapwater_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.heatpump_tapwater_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       ventilation_power_estimate_energy_cost_hourly:
         friendly_name: "Ventilation Power Estimate Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_ventilation_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.ventilation_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.ventilation_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       electric_car_estimate_energy_cost_hourly:
         friendly_name: "Electric Car Estimate Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_electric_car_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.plug_electric_car_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
@@ -407,18 +441,21 @@ sensor:
 
       alfred_power_estimate_energy_cost_hourly:
         friendly_name: "Alfred Power Estimate Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_alfred_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.alfred_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.alfred_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       argus_power_estimate_energy_cost_hourly:
         friendly_name: "Argus Power Estimate Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_argus_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.argus_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.argus_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       moeke_power_estimate_energy_cost_hourly:
         friendly_name: "Moeke Power Estimate Electricity Cost per Hour"
+        icon: mdi:currency-eur
         unique_id: "yaml_template_sensor_moeke_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.moeke_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
