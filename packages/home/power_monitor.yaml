@@ -170,19 +170,9 @@ sensor:
         value_template: >-
           {{ states( 'sensor.electricity_meter_power_consumption' )|float(0) - states( 'sensor.electricity_meter_power_production' )|float(0) }}
         availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
-  # - platform: filter
-  #   name: "filtered unknown power"
-  #   entity_id: sensor.unknown_power
-  #   filters:
-  #     - filter: lowpass
-  #       time_constant: 10
       electricity_meter_power_watt:
         value_template: "{{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 | float | round(2) }}"
         unit_of_measurement: "W"
-        availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
-      current_costs_per_hour:
-        value_template: "{{ ( states('sensor.electricity_meter_power_consumption') | float(0) * ( 0.2221 | float) | float ) | round(2) }}"
-        unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
       electricity_meter_power_production_watt:
         value_template: "{{ states('sensor.electricity_meter_power_production') | float * 1000 }}"
@@ -201,11 +191,6 @@ sensor:
         value_template: "{{ states('sensor.total_power_consumption_watt')|float/1000 }}"
         unit_of_measurement: "kW"
         availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number }}"
-
-      total_energy_consumption_kilowatt:
-        value_template: "{{ states('sensor.electricity_meter_energy_consumption_tarif_1')|float(0) + states('sensor.electricity_meter_energy_consumption_tarif_2')|float(0) }}"
-        unit_of_measurement: "kW"
-        availability_template: "{{ states('sensor.electricity_meter_energy_consumption_tarif_1')|is_number and states('sensor.electricity_meter_energy_consumption_tarif_2')|is_number }}"
 
     #Fitted powers using model based on temperatures
       heatpump_tapwater_power_estimate:
