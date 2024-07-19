@@ -184,7 +184,8 @@ async def async_setup_entry(hass, entry):
                 await entity.set_start_datetime(datetime.now(hass.config.time_zone))
             except Exception as e:
                 try:
-                    await entity.set_start_datetime(datetime.now(pytz.timezone(hass.config.time_zone)))
+                    presence_timezone = await hass.async_add_executor_job(pytz.timezone, hass.config.time_zone)
+                    await entity.set_start_datetime(datetime.now(presence_timezone))
                 except Exception as e:
                     _LOGGER.warning("Start datetime could not be set to HA timezone: ", e)
                     await entity.set_start_datetime(datetime.now())
@@ -462,11 +463,9 @@ async def async_remove_entry(hass, entry):
 
 async def update_listener(hass, entry):
     """Update listener after an update in the UI"""
-    _LOGGER.debug("Updating listener");
+    _LOGGER.debug("Updating listener entry id %s, %s, %s", entry.entry_id, entry.data, entry.options);
     # The OptionsFlow saves data to options.
     if len(entry.options) > 0:
-        entry.data = entry.options
-        entry.options = {}
         switch_id = SWITCH_PLATFORM+"."+re.sub("[^0-9a-zA-Z]", "_", entry.data["switch"].lower())
         try:
             entity = hass.data[DOMAIN][SWITCH_PLATFORM][switch_id]
@@ -474,6 +473,7 @@ async def update_listener(hass, entry):
             _LOGGER.debug("Switch with id %s not known", switch_id);
             return
         entity.update_config(entry)
+        hass.config_entries.async_update_entry(entry, data=entry.options)
 
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
     _LOGGER.debug("Migrating from version %s", config_entry.version)
