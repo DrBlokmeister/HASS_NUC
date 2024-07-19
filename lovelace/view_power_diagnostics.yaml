@@ -453,9 +453,6 @@ cards:
         show:
           graph: bar
 
-
-
-
   - type: custom:apexcharts-card
     graph_span: 24h
     update_interval: 1m
@@ -484,6 +481,102 @@ cards:
         name: Phase 2
       - entity: sensor.electricity_meter_power_consumption_phase_l3
         name: Phase 3
+
+  - type: custom:apexcharts-card
+    header:
+      title: Voltage Overview
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    update_interval: 1m
+    yaxis:
+      - min: ~220
+        max: ~240
+        decimals: 0
+        apex_config:
+          tickAmount: 4
+          forceNiceScale: True
+    all_series_config:
+      stroke_width: 2
+      opacity: 0.5
+      float_precision: 0
+      unit: V
+      group_by:
+        func: avg
+        duration: 1min
+    apex_config:
+      chart:
+        height: 500px
+      legend:
+        show: false
+    chart_type: line
+    series:
+      # Phase 1 (Yellow and Red)
+      - entity: sensor.blitzwolf_10gb_switch_energy_voltage
+        name: 10GB Switch
+        color: '#ffdd57'  # Yellow shade
+      - entity: sensor.plug_3d_printer_voltage
+        name: 3D Printer
+        color: '#ffaa00'  # Darker yellow shade
+      - entity: sensor.plug_study_desk_voltage
+        name: Study Desk
+        color: '#ff6666'  # Light red shade
+      - entity: sensor.plug_study_workbench_voltage
+        name: Study Workbench
+        color: '#ff3333'  # Darker red shade
+      - entity: sensor.plug_nas_voltage
+        name: NAS
+        color: '#ff9999'  # Very light red shade
+      - entity: sensor.blitzwolf_washingmachine_energy_voltage
+        name: Washing Machine
+        color: '#ff6666'  # Light red shade
+      - entity: sensor.blitzwolf_watercooker_energy_voltage
+        name: Water Cooker
+        color: '#ff3333'  # Darker red shade
+      - entity: sensor.blitzwolf_ambilight_amplifier_voltage
+        name: Ambilight Amplifier
+        color: '#ffdd57'  # Yellow shade
+      - entity: sensor.plug_tv_plug_tv_voltage
+        name: TV Plug
+        color: '#ffaa00'  # Darker yellow shade
+
+      # Phase 2 (Green)
+      - entity: sensor.plug_dishwasher_voltage
+        name: Dishwasher
+        color: '#98df8a'  # Light green shade
+      - entity: sensor.shelly_heatpump_energy_voltage
+        name: Heatpump
+        color: '#2ca02c'  # Darker green shade
+
+      # Phase 3 (Blue)
+      - entity: sensor.blitzwolf_poe_switch_energy_voltage
+        name: PoE Switch
+        color: '#1f77b4'  # Blue shade
+      - entity: sensor.blitzwolf_router_energy_voltage
+        name: Router
+        color: '#aec7e8'  # Lighter blue shade
+      - entity: sensor.blitzwolf_nuc_energy_voltage
+        name: NUC
+        color: '#5dade2'  # Medium blue shade
+
+      # Mains
+      - entity: sensor.electricity_meter_voltage_phase_l1
+        name: Mains Phase 1
+        color: '#FFA500'
+        stroke_width: 3
+        opacity: 1
+      - entity: sensor.electricity_meter_voltage_phase_l2
+        name: Mains Phase 2
+        color: '#800080'
+        stroke_width: 3
+        opacity: 1
+      - entity: sensor.electricity_meter_voltage_phase_l3
+        name: Mains Phase 3
+        color: '#00FFFF'
+        stroke_width: 3
+        opacity: 1
+
 
   - type: custom:apexcharts-card
     header:
