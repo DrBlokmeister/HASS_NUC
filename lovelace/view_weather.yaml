@@ -73,46 +73,46 @@ cards:
               return entity.attributes.precipitation_raw.map(item => {
                 return [new Date(item.datetime).getTime(), item.precipitation];
               });
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.entry_average_illuminance
-            name: Entry
-          - entity: sensor.hallway_1st_floor_average_illuminance
-            name: Hallway 1st Floor
-          - entity: sensor.hallway_2nd_floor_average_illuminance
-            name: Hallway 2nd Floor
-          - entity: sensor.study_average_illuminance
-            name: Study
-          - entity: sensor.kitchen_average_illuminance
-            name: Kitchen
-          - entity: sensor.livingroom_average_illuminance
-            name: Living Room
-          - entity: sensor.babyroom_average_illuminance
-            name: Baby Room
-          - entity: sun.sun
-            name: Night
-            color: gray
-            show_line: false
-            show_points: false
-            show_legend: false
-            y_axis: secondary
-        state_map:
-          - value: "below_horizon"
-            label: Night
-          - value: "above_horizon"
-            label: Day
-        icon: mdi:weather-sunny
-        name: Light
-        smoothing: false
-        hours_to_show: 24
-        points_per_hour: 5
-        hour24: true
-        font_size: 70
-        height: 250
-        line_width: 2.5
-        show:
-          labels_secondary: false
-        lower_bound: 0
+      # - type: custom:mini-graph-card
+      #   entities:
+      #     - entity: sensor.entry_average_illuminance
+      #       name: Entry
+      #     - entity: sensor.hallway_1st_floor_average_illuminance
+      #       name: Hallway 1st Floor
+      #     - entity: sensor.hallway_2nd_floor_average_illuminance
+      #       name: Hallway 2nd Floor
+      #     - entity: sensor.study_average_illuminance
+      #       name: Study
+      #     - entity: sensor.kitchen_average_illuminance
+      #       name: Kitchen
+      #     - entity: sensor.livingroom_average_illuminance
+      #       name: Living Room
+      #     - entity: sensor.babyroom_average_illuminance
+      #       name: Baby Room
+      #     - entity: sun.sun
+      #       name: Night
+      #       color: gray
+      #       show_line: false
+      #       show_points: false
+      #       show_legend: false
+      #       y_axis: secondary
+      #   state_map:
+      #     - value: "below_horizon"
+      #       label: Night
+      #     - value: "above_horizon"
+      #       label: Day
+      #   icon: mdi:weather-sunny
+      #   name: Light
+      #   smoothing: false
+      #   hours_to_show: 24
+      #   points_per_hour: 5
+      #   hour24: true
+      #   font_size: 70
+      #   height: 250
+      #   line_width: 2.5
+      #   show:
+      #     labels_secondary: false
+      #   lower_bound: 0
       - type: custom:apexcharts-card
         header:
           title: Room Illuminance
@@ -141,11 +141,13 @@ cards:
         yaxis:
           - show: true
             decimals: 0
-            min: 0
+            min: 1
             max: ~1000
             apex_config:
               tickAmount: 3
               forceNiceScale: true
+              logarithmic: true
+              logBase: 10
         series:
           - entity: sensor.entry_average_illuminance
             name: Entry
@@ -274,40 +276,40 @@ cards:
         upper_bound: 100
         lower_bound: 0
         hour24: true
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.temperature_outside
-            name: Outside
-            color: '#33ff61'
-            show_fill: false
-          - entity: sensor.temperature_livingroom
-            name: Living room
-            color: '#ffc733'
-            show_fill: false
-          - entity: sensor.study_multi_sensor_temperature
-            name: Study Up
-            color: '#f8ff33'
-            show_fill: false
-          - entity: sensor.study_multi_sensor_2_temperature
-            name: Study Down
-            color: '#ffe433'
-            show_fill: false
-          - entity: sensor.temperature_bedroom
-            name: Bedroom
-            color: '#ff7a33'
-            show_fill: false
-          - entity: sensor.temperature_bathroom
-            name: Bathroom
-            color: '#ff3c33'
-            show_fill: false
-        hours_to_show: 24
-        points_per_hour: 5
-        hour24: true
-        font_size: 70
-        height: 250
-        line_width: 4
-        show:
-          labels_secondary: false
+      # - type: custom:mini-graph-card
+      #   entities:
+      #     - entity: sensor.temperature_outside
+      #       name: Outside
+      #       color: '#33ff61'
+      #       show_fill: false
+      #     - entity: sensor.temperature_livingroom
+      #       name: Living room
+      #       color: '#ffc733'
+      #       show_fill: false
+      #     - entity: sensor.study_multi_sensor_temperature
+      #       name: Study Up
+      #       color: '#f8ff33'
+      #       show_fill: false
+      #     - entity: sensor.study_multi_sensor_2_temperature
+      #       name: Study Down
+      #       color: '#ffe433'
+      #       show_fill: false
+      #     - entity: sensor.temperature_bedroom
+      #       name: Bedroom
+      #       color: '#ff7a33'
+      #       show_fill: false
+      #     - entity: sensor.temperature_bathroom
+      #       name: Bathroom
+      #       color: '#ff3c33'
+      #       show_fill: false
+      #   hours_to_show: 24
+      #   points_per_hour: 5
+      #   hour24: true
+      #   font_size: 70
+      #   height: 250
+      #   line_width: 4
+      #   show:
+      #     labels_secondary: false
 
       - type: custom:apexcharts-card
         header:
@@ -344,8 +346,10 @@ cards:
         yaxis:
           - show: true
             decimals: 1
+            min: ~15
+            max: ~30
             apex_config:
-              tickAmount: 3
+              tickAmount: 5
               forceNiceScale: true
               labels:
                 offsetX: -15
@@ -361,38 +365,123 @@ cards:
         series:
           - entity: sensor.temperature_outside
             name: Outside
-            color: '#33ff61'
-          - entity: sensor.temperature_livingroom
-            name: Living Room
-            color: '#ffc733'
-          - entity: sensor.livingroom_aqm_temperature
-            name: Living Room AQM
-            color: '#ffc733'
-          - entity: sensor.study_multi_sensor_temperature
-            name: Study Up
-            color: '#f8ff33'
-          - entity: sensor.study_multi_sensor_2_temperature
-            name: Study Down
-            color: '#ffe433'
-          - entity: sensor.study_aqm_temperature
-            name: Study AQM
-            color: '#f8ff33'
-          - entity: sensor.temperature_bedroom
-            name: Bedroom
-            color: '#ff7a33'
-          - entity: sensor.bedroom_aqm_temperature
-            name: Bedroom AQM
-            color: '#ff7a33'
-          - entity: sensor.temperature_bathroom
-            name: Bathroom
-            color: '#ff3c33'
-          - entity: sensor.guest_room_aqm_temperature
-            name: Guest Room AQM
-            color: '#ff3c33'
+            color: '#33CC33'  # Vibrant green
           - entity: sensor.shed_aqm_temperature
             name: Shed AQM
-            color: '#33ff63'
+            color: '#66FF66'  # Lighter vibrant green
+          - entity: sensor.temperature_livingroom
+            name: Living Room
+            color: '#FFCC00'  # Bold yellow
+          - entity: sensor.livingroom_aqm_temperature
+            name: Living Room AQM
+            color: '#FFDD55'  # Soft bold yellow
+          - entity: sensor.study_multi_sensor_temperature
+            name: Study Up
+            color: '#00CCCC'  # Teal blue
+          - entity: sensor.study_multi_sensor_2_temperature
+            name: Study Down
+            color: '#33FFFF'  # Light teal blue
+          - entity: sensor.study_aqm_temperature
+            name: Study AQM
+            color: '#66FFFF'  # Very light teal blue
+          - entity: sensor.temperature_bedroom
+            name: Bedroom
+            color: '#FF6699'  # Pink
+          - entity: sensor.bedroom_aqm_temperature
+            name: Bedroom AQM
+            color: '#FF99CC'  # Light pink
+          - entity: sensor.temperature_bathroom
+            name: Bathroom
+            color: '#9933FF'  # Purple
+          - entity: sensor.guest_room_aqm_temperature
+            name: Guest Room AQM
+            color: '#B266FF'  # Light purple
 
+      - type: custom:apexcharts-card
+        header:
+          title: Home Humidities
+          show: true
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        apex_config:
+          chart:
+            #height: 250px
+            type: line
+            # toolbar:
+            #   show: false
+          grid:
+            show: false
+            padding:
+              left: 0
+              right: 0
+              bottom: 0
+              top: -10
+          legend:
+            show: false
+          xaxis:
+            # show: false
+            floating: true
+            labels:
+              show: true
+              offsetY: -8
+            axisTicks:
+              show: true
+            axisBorder:
+              show: false
+        yaxis:
+          - show: true
+            decimals: 1
+            min: ~50
+            max: ~80
+            apex_config:
+              tickAmount: 5
+              forceNiceScale: true
+              labels:
+                offsetX: -15
+        all_series_config:
+          stroke_width: 4
+          curve: smooth
+          show:
+            datalabels: false
+          #fill_raw: last
+          group_by:
+            func: median
+            duration: 10min
+        series:
+          - entity: sensor.humidity_outside
+            name: Outside
+            color: '#33CC33'  # Vibrant green
+          - entity: sensor.shed_aqm_humidity
+            name: Shed AQM
+            color: '#66FF66'  # Lighter vibrant green
+          - entity: sensor.humidity_livingroom
+            name: Living Room
+            color: '#FFCC00'  # Bold yellow
+          - entity: sensor.livingroom_aqm_humidity
+            name: Living Room AQM
+            color: '#FFDD55'  # Soft bold yellow
+          - entity: sensor.study_multi_sensor_humidity
+            name: Study Up
+            color: '#00CCCC'  # Teal blue
+          - entity: sensor.study_multi_sensor_2_humidity
+            name: Study Down
+            color: '#33FFFF'  # Light teal blue
+          - entity: sensor.study_aqm_humidity
+            name: Study AQM
+            color: '#66FFFF'  # Very light teal blue
+          - entity: sensor.humidity_bedroom
+            name: Bedroom
+            color: '#FF6699'  # Pink
+          - entity: sensor.bedroom_aqm_humidity
+            name: Bedroom AQM
+            color: '#FF99CC'  # Light pink
+          - entity: sensor.humidity_bathroom
+            name: Bathroom
+            color: '#9933FF'  # Purple
+          - entity: sensor.guest_room_aqm_humidity
+            name: Guest Room AQM
+            color: '#B266FF'  # Light purple
 
       - type: custom:mini-graph-card
         entities:

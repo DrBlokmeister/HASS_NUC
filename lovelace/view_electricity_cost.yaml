@@ -76,6 +76,10 @@ cards:
           title: Current Usage Costs
           show: true
         graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
         hours_12: false
         update_interval: 1m
         apex_config:
@@ -88,21 +92,36 @@ cards:
             apex_config:
               tickAmount: 5
               forceNiceScale: True
+        all_series_config:
+          extend_to: now
+          group_by:
+            func: avg
+            duration: 10min
         series:
           - entity: sensor.current_electricity_cost_per_hour
             name: Cost Per Hour
+            color: '#f9d423'
             type: line
             float_precision: 3
-            group_by:
-              func: avg
-              duration: 10min
-          - entity: sensor.solar_panels_production_earnings_hourly
+          - entity: sensor.current_electricity_cost_per_hour
+            name: Cost Per Hour
+            color: '#f48642'
+            type: line
+            float_precision: 3
+            offset: '-1d'
+            opacity: 0.3
+          - entity: sensor.solar_panels_production_earnings_per_hour
             name: Production Per Hour
+            color: '#0da035'
             type: line
             float_precision: 3
-            group_by:
-              func: avg
-              duration: 10min
+          - entity: sensor.solar_panels_production_earnings_per_hour
+            name: Production Per Hour
+            color: '#0da035'
+            type: line
+            float_precision: 3
+            offset: '-1d'
+            opacity: 0.3
       - type: entity
         entity: sensor.current_electricity_cost_per_hour
         name: Current Cost per Hour
@@ -128,6 +147,137 @@ cards:
           - type: entity
             entity: sensor.potential_electricity_usage_cost_mean_price
             name: Potential Mean Cost
+
+  - type: 'custom:apexcharts-card'
+    graph_span: 24h
+    yaxis:
+      - min: ~0
+        max: ~0.50
+        decimals: 3
+        apex_config:
+          tickAmount: 5
+          forceNiceScale: True
+    header:
+      title: Energy price today (€/kWh)
+      show: true
+    span:
+      start: day
+    now:
+      show: true
+      label: Now
+    experimental:
+      color_threshold: true
+    series:
+      - entity: sensor.nordpool_energy_price
+        float_precision: 3
+        color_threshold:
+            # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
+            # default is: the default color of the serie
+            # Used this gradient generator: https://colordesigner.io/gradient-generator
+          - value: -1
+            color: '#5963c0'
+          - value: -0.66
+            color: '#2681cb'
+          - value: -0.33
+            color: '#2599c8'
+          - value: 0.0
+            color: '#59adc0'
+          - value: 0.033
+            color: '#39afb4'
+          - value: 0.066
+            color: '#2bb09e'
+          - value: 0.1
+            color: '#3faf81'
+          - value: 0.133
+            color: '#5eab5f'
+          - value: 0.166
+            color: '#7ea53b'
+          - value: 0.2
+            color: '#9f9b13'
+          - value: 0.233
+            color: '#c18c00'
+          - value: 0.266
+            color: '#e27609'
+          - value: 0.3
+            color: '#ff5833'
+          - value: 0.333
+            color: '#ed4323'
+          - value: 0.366
+            color: '#db2b12'
+          - value: 0.4
+            color: '#c90000'
+        type: column
+        data_generator: |
+          return entity.attributes.raw_today.map((start, index) => {
+            return [new Date(start["start"]).getTime(), entity.attributes.raw_today[index]["value"]];
+          });
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.after_15_00
+        state: "on"
+    card:
+      type: custom:apexcharts-card
+      graph_span: 1d
+      yaxis:
+        - min: ~0
+          max: ~0.50
+          decimals: 3
+          apex_config:
+            tickAmount: 5
+            forceNiceScale: True
+      header:
+        title: Energy price tomorrow (€/kWh)
+        show: true
+      span:
+        start: day
+        offset: +1d
+      experimental:
+        color_threshold: true
+      series:
+        - entity: sensor.nordpool_energy_price
+          float_precision: 3
+          type: column
+          color_threshold:
+              # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
+              # default is: the default color of the serie
+              # Used this gradient generator: https://colordesigner.io/gradient-generator
+            - value: -1
+              color: '#5963c0'
+            - value: -0.66
+              color: '#2681cb'
+            - value: -0.33
+              color: '#2599c8'
+            - value: 0.0
+              color: '#59adc0'
+            - value: 0.033
+              color: '#39afb4'
+            - value: 0.066
+              color: '#2bb09e'
+            - value: 0.1
+              color: '#3faf81'
+            - value: 0.133
+              color: '#5eab5f'
+            - value: 0.166
+              color: '#7ea53b'
+            - value: 0.2
+              color: '#9f9b13'
+            - value: 0.233
+              color: '#c18c00'
+            - value: 0.266
+              color: '#e27609'
+            - value: 0.3
+              color: '#ff5833'
+            - value: 0.333
+              color: '#ed4323'
+            - value: 0.366
+              color: '#db2b12'
+            - value: 0.4
+              color: '#c90000'
+          data_generator: |
+            return entity.attributes.raw_tomorrow.map((start, index) => {
+              return [new Date(start["start"]).getTime(), entity.attributes.raw_tomorrow[index]["value"]];
+            });
 
   # Individual Appliance Electricity Costs
   # - type: grid
