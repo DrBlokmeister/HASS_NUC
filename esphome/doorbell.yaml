@@ -27,7 +27,7 @@ status_led:
   pin: GPIO15
 
 logger:
-  level: VERBOSE
+  level: DEBUG
 
 wifi:
   power_save_mode: none
@@ -37,16 +37,16 @@ switch:
     pin: GPIO18
     name: "${device_name} Ringer"
     id: relay
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: ALWAYS_OFF
     on_turn_on:
       then:
-        - delay: 3s
+        - delay: 2s
         - switch.turn_off: relay
 
   - platform: template
-    name: "${device_name} Enable Ringer"
-    id: ringer_enabled
-    restore_mode: RESTORE_DEFAULT_ON
+    name: "${device_name} Do Not Disturb Mode"
+    id: dnd_mode
+    restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
 
 binary_sensor:
@@ -70,7 +70,7 @@ binary_sensor:
               click_count: "1"
         - if:
             condition:
-              switch.is_on: ringer_enabled
+              switch.is_off: dnd_mode
             then:
               - switch.turn_on: relay
               - delay: 1.5s
