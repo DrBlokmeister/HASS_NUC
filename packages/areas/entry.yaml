@@ -312,14 +312,6 @@ automation:
                           tag: "doorbell"
                           group: "doorbell_alert"
                           notification_icon: "mdi:bell-ring"
-                    - service: notify.mobile_app_tamaraphone
-                      data:
-                        message: "Reminder: Doorbell was pressed. Please check the door."
-                        title: "Doorbell Reminder"
-                        data:
-                          tag: "doorbell"
-                          group: "doorbell_alert"
-                          notification_icon: "mdi:bell-ring"
                     - delay:
                         seconds: 4
               - wait_for_trigger:
@@ -339,11 +331,30 @@ automation:
                         data:
                           message: "clear_notification"
                           data:
-                            tag: doorbell
+                            tag: "doorbell"
               - delay:
                   minutes: 5
               - service: light.turn_off
                 entity_id: light.shelly_porch_light
+
+  - alias: "[entry|litterbox] Reset Litterbox Count"
+    id: automation_yaml_entry_litterbox_reset_litterbox_count
+    description: "Resets the litterbox utility meter to zero."
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: litterbox_button
+          event: 1001
+    action:
+      - service: utility_meter.calibrate
+        target:
+          entity_id: sensor.litterbox_total_counts
+        data:
+          value: "0"
+
 
 
 ################
