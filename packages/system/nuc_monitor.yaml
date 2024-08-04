@@ -114,15 +114,16 @@ sensor:
       - type: processor_use
       - type: processor_temperature
 
+  # - platform: sql
+  #   db_url: !secret mariadb_URL
+  #   queries:
+  #     - name: MariaDB size
+  #       query: >
+  #           SELECT SUM(data_length + index_length) / 1024 / 1024 AS db_size_mb FROM information_schema.TABLES WHERE table_schema = 'homeassistant';
+  #       column: 'value'
+  #       device_class: data_size
+  #       unit_of_measurement: MB
 
-  - platform: sql
-    db_url: !secret mariadb_URL
-    queries:
-      - name: MariaDB size
-        query: >
-            SELECT table_schema "database", Round(Sum(data_length + index_length) / POWER(1024,2), 1) "value" FROM information_schema.tables WHERE table_schema="homeassistant" GROUP BY table_schema;
-        column: 'value'
-        unit_of_measurement: MB
       # - name: MariaDB most recorded entities
       #   query: >
       #       SELECT
@@ -314,7 +315,7 @@ automation:
     mode: single
     trigger:
       platform: time_pattern
-      minutes: 5
+      minutes: /5
     action:
       - service: homeassistant.update_entity
         entity_id: sensor.mariadb_size
@@ -325,10 +326,43 @@ automation:
       - platform: time
         at: "01:00:00"
     action:
-      - service: recorder.purge
+      - service: recorder.purge_entities
         data:
-          keep_days: 14
-          repack: true
+          entity_id:
+            - sensor.unknown_power
+            - sensor.averages_unknown_power
+            - sensor.known_power
+            - sensor.averaged_known_power
+            - sensor.total_power_consumption_watt
+            - sensor.total_power_consumption_kilowatt
+            - sensor.udmpro_cpu_utilization
+            - sensor.phase_1_known_power
+            - sensor.phase_2_known_power
+            - sensor.phase_3_known_power
+            - sensor.udmpro_memory_utilization
+          keep_days: 7
+      - delay:
+          seconds: 20
+      - wait_for_trigger:
+          - platform: numeric_state
+            entity_id: sensor.mariadb_cpu_percent
+            below: 2
+            for:
+              minutes: 5
+      - if:
+          - condition: time
+            weekday:
+              - sun
+        then:
+          - service: recorder.purge
+            data:
+              keep_days: 14
+              repack: true
+        else:
+          - service: recorder.purge
+            data:
+              keep_days: 14
+              repack: false
 
   - alias: "[System Monitor] Monitor log for errors"
     id: yaml_automation_system_monitor_monitor_log_for_errors
