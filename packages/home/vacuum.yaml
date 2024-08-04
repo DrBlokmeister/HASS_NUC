@@ -121,7 +121,7 @@ sensor:
         availability_template: "{{ states('vacuum.moeke') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
       argus_power_estimate:
         value_template: >-
-          {% if states.vacuum.argus in ['unknown', 'unavailable', None] %}
+          {% if states.vacuum.argus == None or states.vacuum.argus.state in ['unknown', 'unavailable', None] %}
             0
           {% elif is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int < 100 %}
             20
@@ -135,7 +135,7 @@ sensor:
         availability_template: "{{ states('vacuum.argus') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
       alfred_power_estimate:
         value_template: >-
-          {% if states.vacuum.alfred in ['unknown', 'unavailable', None] %}
+          {% if states.vacuum.alfred == None or states.vacuum.alfred.state in ['unknown', 'unavailable', None] %}
             0
           {% elif is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int < 100 %}
             20
