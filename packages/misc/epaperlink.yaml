@@ -128,6 +128,8 @@ automation:
       - condition: time
         after: "6:00:00"
         before: "23:30:00"
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_washing_machine_energy_display
 
@@ -153,6 +155,8 @@ automation:
       - condition: time
         after: "6:00:00"
         before: "23:30:00"
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       # - service: open_epaper_link.lines4
       #   target:
@@ -184,6 +188,8 @@ automation:
       - condition: time
         after: "6:00:00"
         before: "23:30:00"
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - choose:
         - conditions:
@@ -194,17 +200,17 @@ automation:
             - service: script.update_energy_price_today_larger_display
               data:
                 display_entity_id:
-                  - open_epaper_link.00007E22B1D7B299
-                  - open_epaper_link.00007e22b1b2b29a
-                  - open_epaper_link.00007e225dc2b29f
+                  - open_epaper_link.00007E22B1D7B299 #Study
+                  #- open_epaper_link.00007e22b1b2b29a #Washroom
+                  - open_epaper_link.00007e225dc2b29f #Kitchen
         default:
           #- service: script.update_energy_price_transition_display
           - service: script.update_energy_price_transition_larger_display
             data:
               display_entity_id:
-                - open_epaper_link.00007E22B1D7B299
-                - open_epaper_link.00007e22b1b2b29a
-                - open_epaper_link.00007e225dc2b29f
+                - open_epaper_link.00007E22B1D7B299 #Study
+                #- open_epaper_link.00007e22b1b2b29a #Washroom
+                - open_epaper_link.00007e225dc2b29f #Kitchen
 
   - alias: "[misc|epaperlink] Timed Update Moeke Water Tank Display"
     id: misc_epaperlink_timed_update_moeke_water_tank_display
@@ -233,6 +239,8 @@ automation:
       - condition: time
         after: "06:00:00"
         before: "23:30:00"
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_moeke_water_tank_display
         data:
@@ -251,6 +259,8 @@ automation:
       - condition: time
         after: "06:00:00"
         before: "23:30:00"
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_litterbox_display
         data:
@@ -379,7 +389,7 @@ automation:
     trigger:
       - platform: template
         value_template: >
-          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 300 }}
+          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) > 300 }} #default of 3000000000 is Saturday, January 24, 2065 6:20:00 AM
     condition: []
     action:
       - service: homeassistant.reload_config_entry
