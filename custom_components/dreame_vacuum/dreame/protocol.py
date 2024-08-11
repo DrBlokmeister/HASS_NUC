@@ -11,7 +11,6 @@ import queue
 from threading import Thread, Timer
 from time import sleep
 import time, locale
-from datetime import datetime
 from paho.mqtt.client import Client
 from typing import Any, Dict, Optional, Tuple
 from Crypto.Cipher import ARC4
@@ -558,7 +557,7 @@ class DreameVacuumDreameHomeCloudProtocol:
                     url,
                     headers=headers,
                     data=data,
-                    timeout=5,
+                    timeout=3,
                 )
                 break
             except requests.exceptions.Timeout:
@@ -566,7 +565,7 @@ class DreameVacuumDreameHomeCloudProtocol:
                 response = None
                 if self._connected:
                     _LOGGER.warning(
-                        "Error while executing request: Read timed out. (read timeout=5): %s",
+                        "Error while executing request: Read timed out. (read timeout=3): %s",
                         data,
                     )
             except Exception as ex:
@@ -636,7 +635,9 @@ class DreameVacuumMiHomeCloudProtocol:
         self._connected = False
         try:
             offset = (time.timezone if (time.localtime().tm_isdst == 0) else time.altzone) / 60 * -1
-            self._timezone = "GMT{}{:02d}:{:02d}".format('+' if offset >= 0 else '-', abs(int(offset / 60)), int(offset % 60))
+            self._timezone = "GMT{}{:02d}:{:02d}".format(
+                "+" if offset >= 0 else "-", abs(int(offset / 60)), int(offset % 60)
+            )
         except:
             self._timezone = "GMT+00:00"
 
@@ -796,19 +797,27 @@ class DreameVacuumMiHomeCloudProtocol:
 
     def get_file_url(self, object_name: str = "") -> Any:
         api_response = self._api_call(f'home/getfileurl{("_v3" if self._v3 else "")}', {"obj_name": object_name})
-        _LOGGER.debug("Get file url result: %s", api_response)
+        _LOGGER.debug("Get file url result: %s = %s", object_name, api_response)
         if api_response is None or "result" not in api_response or "url" not in api_response["result"]:
+            if api_response and api_response.get("code") == -8 and self._v3:
+                _LOGGER.info("get_file_url fallback to V2")
+                self._v3 = False
+                return self.get_file_url(object_name)
             return None
 
         return api_response["result"]["url"]
 
     def get_interim_file_url(self, object_name: str = "") -> str:
-        _LOGGER.debug("Get interim file url: %s", object_name)
         api_response = self._api_call(
             f'v2/home/get_interim_file_url{("_pro" if self._v3 else "")}',
             {"obj_name": object_name},
         )
+        _LOGGER.debug("Get interim file url result: %s = %s", object_name, api_response)
         if api_response is None or not api_response.get("result") or "url" not in api_response["result"]:
+            if api_response and api_response.get("code") == -8 and self._v3:
+                _LOGGER.info("get_interim_file_url fallback to V2")
+                self._v3 = False
+                return self.get_interim_file_url(object_name)
             return None
 
         return api_response["result"]["url"]

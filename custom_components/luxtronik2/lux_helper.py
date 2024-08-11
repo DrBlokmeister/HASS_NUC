@@ -276,7 +276,7 @@ class Luxtronik:
         # Flush queue after writing all values
         self.parameters.queue = {}
         # Give the heatpump a short time to handle the value changes/calculations:
-        time.sleep(WAIT_TIME_WRITE_PARAMETER)
+        # time.sleep(WAIT_TIME_WRITE_PARAMETER)
 
     def _read_parameters(self):
         data = []
