@@ -109,6 +109,37 @@ template:
             {{- ns.cheapest.start.hour if ns.cheapest else 'Unavailable' -}}
           whole_night_included: >
             {{- 'Yes' if now().hour >= 15 else 'No' -}}
+
+  - sensor:
+      - name: "Lowest Quartile Electricity Price Today"
+        #unique_id: "cheapest_night_price_sensor"
+        unit_of_measurement: '€'
+        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[5] }}"
+        attributes:
+          difference_to_minimum: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[5] - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
+          ratio_to_minimum: "{{ ((state_attr('sensor.nordpool_energy_price','today') | sort())[5] / (state_attr('sensor.nordpool_energy_price','today') | min())) | round(3) }}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+      - name: "Highest Quartile Electricity Price Today"
+        #unique_id: "cheapest_night_price_sensor"
+        unit_of_measurement: '€'
+        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[17] }}"
+        attributes:
+          difference_to_maximum: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | sort())[17] }}"
+          ratio_to_maximum: "{{ ((state_attr('sensor.nordpool_energy_price','today') | sort())[17] / (state_attr('sensor.nordpool_energy_price','today') | max())) | round(3) }}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+      - name: "Interquartile Range Electricity Price Today"
+        #unique_id: "cheapest_night_price_sensor"
+        unit_of_measurement: '€'
+        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5] }}"
+        attributes:
+          difference_to_range: "{{ (((state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min())) - ((state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5])) | round(3) }}"
+          ratio_to_range: "{{ (((state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5]) / ((state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()))) | round(3)}}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+      - name: "Total Range Electricity Price Today"
+        #unique_id: "cheapest_night_price_sensor"
+        unit_of_measurement: '€'
+        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
 #######################
 #    INPUT NUMBERS    #
 #######################
@@ -319,6 +350,13 @@ sensor:
         value_template: "{{ (states('sensor.current_electricity_cost_per_hour')|float(0) - states('sensor.solar_panels_production_earnings_hourly')|float(0))|round(3) }}"
 
       # Device cost per hour sensors
+      unknown_power_energy_cost_hourly:
+        friendly_name: "Unknown Electricity Cost per Hour"
+        icon_template: mdi:currency-eur
+        unique_id: "yaml_template_sensor_unknown_power_energy_cost_hourly"
+        unit_of_measurement: "€/h"
+        availability_template: "{{ states('sensor.unknown_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.unknown_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       blitzwolf_10gb_switch_energy_cost_hourly:
         friendly_name: "Blitzwolf 10GB Switch Electricity Cost per Hour"
         icon_template: mdi:currency-eur
@@ -473,6 +511,13 @@ sensor:
           {% endif %}
 
   #Total cost sensors for above template cost per hour sensors
+  - platform: integration
+    source: sensor.unknown_power_energy_cost_per_hour
+    name: Unknown Power Total Electricity Cost
+    unique_id: yaml_integration_unknown_power_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
   - platform: integration
     source: sensor.blitzwolf_10gb_switch_electricity_cost_per_hour
     name: Blitzwolf 10GB Switch Total Electricity Cost
