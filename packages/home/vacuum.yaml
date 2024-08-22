@@ -280,6 +280,7 @@ automation:
               entity_id: select.moeke_cleaning_mode
             data:
               option: "sweeping_and_mopping"
+              #option: "sweeping"
           - delay:
               seconds: 3
           - service: vacuum.start
@@ -339,6 +340,7 @@ automation:
           entity_id: select.moeke_cleaning_mode
         data:
           option: "sweeping_and_mopping"
+          #option: "sweeping"
       - delay:
           seconds: 2
       - service: vacuum.start
@@ -385,6 +387,7 @@ automation:
                   entity_id: select.moeke_cleaning_mode
                 data:
                   option: "sweeping_and_mopping"
+                  #option: "sweeping"
               - delay:
                   seconds: 2
               - service: vacuum.start
@@ -421,7 +424,7 @@ automation:
         to: "error"
         id: "Alfred"
       - platform: template
-        value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad']) and (states('vacuum.moeke') in ['docked', 'paused']) }}"
+        value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'unavailable']) and (states('vacuum.moeke') in ['docked', 'paused', 'unavailable']) }}"
         id: "Moeke"
     action:
       - variables:
@@ -489,11 +492,14 @@ automation:
         not_to:
           - "No warning"
           - no_warning
+          - unavailable
         for:
           minutes: 5
       - platform: state
         entity_id: binary_sensor.moeke_reservoir_leak_sensor
         to: 'off'
+        for:
+          minutes: 5
     action:
       - service: notify.mobile_app_blokmeisters21u
         continue_on_error: true
@@ -593,20 +599,42 @@ automation:
       - platform: state
         entity_id: vacuum.alfred
         to: 'cleaning'
+        id: vacuum_cleaning
+      - platform: state
+        entity_id: vacuum.alfred
+        to: 'error'
+        id: vacuum_error
     condition: []
     action:
-      - alias: "Start updating Alfred map"
-        repeat:
-          while:
-            - condition: state
-              entity_id: vacuum.alfred
-              state: 'cleaning'
-          sequence:
-            - service: homeassistant.update_entity
-              target:
-                entity_id: camera.alfred_map
-            - delay:
-                minutes: 5
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'vacuum_cleaning' }}"
+            sequence:
+              - alias: "Start updating Alfred map"
+                repeat:
+                  while:
+                    - condition: state
+                      entity_id: vacuum.alfred
+                      state: 'cleaning'
+                  sequence:
+                    - service: homeassistant.update_entity
+                      target:
+                        entity_id: camera.alfred_map
+                    - delay:
+                        minutes: 5
+              - service: homeassistant.update_entity
+                target:
+                  entity_id: camera.alfred_map
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'vacuum_error' }}"
+            sequence:
+              - delay:
+                  minutes: 1
+              - service: homeassistant.update_entity
+                target:
+                  entity_id: camera.alfred_map
 
 
 ################
@@ -753,6 +781,7 @@ script:
                   entity_id: select.moeke_cleaning_mode
                 data:
                   option: "sweeping_and_mopping"
+                  #option: "sweeping"
               - delay:
                   seconds: 2
               - service: vacuum.start
