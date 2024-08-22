@@ -3,7 +3,8 @@ title: Weather
 icon: 'mdi:weather-cloudy'
 badges: []
 cards:
-  - cards:
+  - type: vertical-stack
+    cards:
       - type: weather-forecast
         entity: weather.home
       - type: picture-glance
@@ -73,167 +74,7 @@ cards:
               return entity.attributes.precipitation_raw.map(item => {
                 return [new Date(item.datetime).getTime(), item.precipitation];
               });
-      # - type: custom:mini-graph-card
-      #   entities:
-      #     - entity: sensor.entry_average_illuminance
-      #       name: Entry
-      #     - entity: sensor.hallway_1st_floor_average_illuminance
-      #       name: Hallway 1st Floor
-      #     - entity: sensor.hallway_2nd_floor_average_illuminance
-      #       name: Hallway 2nd Floor
-      #     - entity: sensor.study_average_illuminance
-      #       name: Study
-      #     - entity: sensor.kitchen_average_illuminance
-      #       name: Kitchen
-      #     - entity: sensor.livingroom_average_illuminance
-      #       name: Living Room
-      #     - entity: sensor.babyroom_average_illuminance
-      #       name: Baby Room
-      #     - entity: sun.sun
-      #       name: Night
-      #       color: gray
-      #       show_line: false
-      #       show_points: false
-      #       show_legend: false
-      #       y_axis: secondary
-      #   state_map:
-      #     - value: "below_horizon"
-      #       label: Night
-      #     - value: "above_horizon"
-      #       label: Day
-      #   icon: mdi:weather-sunny
-      #   name: Light
-      #   smoothing: false
-      #   hours_to_show: 24
-      #   points_per_hour: 5
-      #   hour24: true
-      #   font_size: 70
-      #   height: 250
-      #   line_width: 2.5
-      #   show:
-      #     labels_secondary: false
-      #   lower_bound: 0
-      - type: custom:apexcharts-card
-        header:
-          title: Room Illuminance
-          show: true
-          show_states: true
-          colorize_states: true
-        graph_span: 24h
-        span:
-          start: day
-        apex_config:
-          chart:
-            height: 300px
-            type: line
-          legend:
-            show: false
-        now:
-          show: true
-        all_series_config:
-          stroke_width: 3
-          curve: smooth
-          fill_raw: last
-          extend_to: now
-          group_by:
-            func: avg
-            duration: 10min
-        yaxis:
-          - show: true
-            decimals: 0
-            min: 1
-            max: ~1000
-            apex_config:
-              tickAmount: 3
-              forceNiceScale: true
-              logarithmic: true
-              logBase: 10
-        series:
-          - entity: sensor.entry_average_illuminance
-            name: Entry
-            color: '#9cdb70' # More saturated green
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.entry_average_illuminance
-            offset: '-1d'
-            name: Entry Yesterday
-            color: '#89c159'
-            opacity: 0.5
-            show:
-              in_header: false
-          - entity: sensor.hallway_1st_floor_average_illuminance
-            name: Hallway 1st Floor
-            color: '#ffb3a7' # Richer coral
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.hallway_1st_floor_average_illuminance
-            offset: '-1d'
-            name: Hallway 1st Floor Yesterday
-            color: '#ff9689'
-            opacity: 0.5
-            show:
-              in_header: false
-          - entity: sensor.hallway_2nd_floor_average_illuminance
-            name: Hallway 2nd Floor
-            color: '#ff8da3' # Brighter pink
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.hallway_2nd_floor_average_illuminance
-            offset: '-1d'
-            name: Hallway 2nd Floor Yesterday
-            color: '#ff7691'
-            opacity: 0.5
-            show:
-              in_header: false
-          - entity: sensor.study_average_illuminance
-            name: Study
-            color: '#bf9cdf' # Deeper lavender
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.study_average_illuminance
-            offset: '-1d'
-            name: Study Yesterday
-            color: '#ac85cf'
-            opacity: 0.5
-            show:
-              in_header: false
-          - entity: sensor.kitchen_average_illuminance
-            name: Kitchen
-            color: '#82cfff' # More vivid blue
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.kitchen_average_illuminance
-            offset: '-1d'
-            name: Kitchen Yesterday
-            color: '#70b9ff'
-            opacity: 0.5
-            show:
-              in_header: false
-          - entity: sensor.livingroom_average_illuminance
-            name: Living Room
-            color: '#66ffba' # Brighter mint
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.livingroom_average_illuminance
-            offset: '-1d'
-            name: Living Room Yesterday
-            color: '#52d9a4'
-            opacity: 0.5
-            show:
-              in_header: false
-          - entity: sensor.babyroom_average_illuminance
-            name: Baby Room
-            color: '#ffad42' # Vivid orange
-            stroke_width: 4
-            extend_to: now
-          - entity: sensor.babyroom_average_illuminance
-            offset: '-1d'
-            name: Baby Room Yesterday
-            color: '#e69537'
-            opacity: 0.5
-            show:
-              in_header: false
-    type: vertical-stack
+
   - cards:
       - type: glance
         name: CO2
@@ -625,3 +466,124 @@ cards:
         show:
           labels_secondary: false
     type: vertical-stack
+
+  - type: custom:apexcharts-card
+    header:
+      title: Room Illuminance
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    apex_config:
+      chart:
+        height: 300px
+        type: line
+      legend:
+        show: false
+    now:
+      show: true
+    all_series_config:
+      stroke_width: 3
+      curve: smooth
+      fill_raw: last
+      extend_to: now
+      group_by:
+        func: avg
+        duration: 10min
+    yaxis:
+      - show: true
+        decimals: 0
+        min: 1
+        max: ~1000
+        apex_config:
+          tickAmount: 3
+          forceNiceScale: true
+          logarithmic: true
+          logBase: 10
+    series:
+      - entity: sensor.entry_average_illuminance
+        name: Entry
+        color: '#9cdb70' # More saturated green
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.entry_average_illuminance
+        offset: '-1d'
+        name: Entry Yesterday
+        color: '#89c159'
+        opacity: 0.5
+        show:
+          in_header: false
+      - entity: sensor.hallway_1st_floor_average_illuminance
+        name: Hallway 1st Floor
+        color: '#ffb3a7' # Richer coral
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.hallway_1st_floor_average_illuminance
+        offset: '-1d'
+        name: Hallway 1st Floor Yesterday
+        color: '#ff9689'
+        opacity: 0.5
+        show:
+          in_header: false
+      - entity: sensor.hallway_2nd_floor_average_illuminance
+        name: Hallway 2nd Floor
+        color: '#ff8da3' # Brighter pink
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.hallway_2nd_floor_average_illuminance
+        offset: '-1d'
+        name: Hallway 2nd Floor Yesterday
+        color: '#ff7691'
+        opacity: 0.5
+        show:
+          in_header: false
+      - entity: sensor.study_average_illuminance
+        name: Study
+        color: '#bf9cdf' # Deeper lavender
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.study_average_illuminance
+        offset: '-1d'
+        name: Study Yesterday
+        color: '#ac85cf'
+        opacity: 0.5
+        show:
+          in_header: false
+      - entity: sensor.kitchen_average_illuminance
+        name: Kitchen
+        color: '#82cfff' # More vivid blue
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.kitchen_average_illuminance
+        offset: '-1d'
+        name: Kitchen Yesterday
+        color: '#70b9ff'
+        opacity: 0.5
+        show:
+          in_header: false
+      - entity: sensor.livingroom_average_illuminance
+        name: Living Room
+        color: '#66ffba' # Brighter mint
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.livingroom_average_illuminance
+        offset: '-1d'
+        name: Living Room Yesterday
+        color: '#52d9a4'
+        opacity: 0.5
+        show:
+          in_header: false
+      - entity: sensor.babyroom_average_illuminance
+        name: Baby Room
+        color: '#ffad42' # Vivid orange
+        stroke_width: 4
+        extend_to: now
+      - entity: sensor.babyroom_average_illuminance
+        offset: '-1d'
+        name: Baby Room Yesterday
+        color: '#e69537'
+        opacity: 0.5
+        show:
+          in_header: false
