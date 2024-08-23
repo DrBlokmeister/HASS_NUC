@@ -562,6 +562,40 @@ automation:
         target:
           entity_id: switch.fan_speed_override
 
+  - alias: "[home|climate] Heat Pump Cooling Control based on Electricity Price"
+    description: >
+      Turns off the heat pump cooling when the electricity price is higher than the highest quartile.
+      Turns it back on when the price drops below the highest quartile. This automation triggers on
+      both rising above and dropping below the quartile threshold.
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        value_template: "{{ state.state | float() - 0.001 }}"
+        above: sensor.highest_quartile_electricity_price_today
+        id: "high_price"
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        below: sensor.highest_quartile_electricity_price_today
+        id: "low_price"
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'high_price' }}"
+            sequence:
+              - service: switch.turn_off
+                target:
+                  entity_id: switch.heatpump_cooling
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'low_price' }}"
+            sequence:
+              - service: switch.turn_on
+                target:
+                  entity_id: switch.heatpump_cooling
+        # default: []
+
 ################
 #    SCENES    #
 ################
