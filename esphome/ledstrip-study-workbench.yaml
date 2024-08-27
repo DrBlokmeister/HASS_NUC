@@ -1,0 +1,97 @@
+substitutions:
+  device_name: "Ledstrip Study Workbench"
+
+esphome:
+  name: "ledstrip-study-workbench"
+  comment: ESP32C3
+  platformio_options:
+    board_build.f_cpu: 80000000L  # Set CPU frequency to 80MHz
+
+esp32:
+  board: esp32-c3-devkitm-1
+
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
+
+e131:
+  method: unicast
+
+status_led:
+  pin: GPIO2
+
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812X
+    pin: GPIO06
+    num_leds: 91
+    gamma_correct: 2.0
+    color_correct: [100%, 80%, 80%]
+    name: "${device_name}"
+    effects:
+      - e131:
+          universe: 1
+          channels: RGB
+      - addressable_rainbow:
+          name: Rainbow Swirl
+          speed: 10
+          width: 154
+      - addressable_color_wipe:
+          name: "Colorful Wipe"
+          colors:
+            - red: 100%
+              green: 0%
+              blue: 0%
+              white: 0%
+              num_leds: 91
+            - red: 0%
+              green: 100%
+              blue: 0%
+              white: 0%
+              num_leds: 91
+            - red: 0%
+              green: 0%
+              blue: 100%
+              white: 0%
+              num_leds: 91
+          add_led_interval: 100ms
+      - addressable_scan:
+          name: "Ping Pong"
+          move_interval: 100ms
+          scan_width: 10
+      - addressable_lambda:
+          name: "Simple Color Wipe"
+          update_interval: 100ms
+          lambda: |-
+            for (int i = it.size() - 1; i > 0; i--) {
+              it[i] = it[i - 1].get();
+            }
+            it[0] = ESPColor::random_color();  // Correct random color function
+      - addressable_lambda:
+          name: "Random Sparkle"
+          update_interval: 50ms
+          lambda: |-
+            it.all().fade_to_black(50);  // Correct fading method
+            if (random_uint32() % 10 > 8) {
+              it[random_uint32() % it.size()] = ESPColor::random_color();  // Correct random color function
+            }
+      - addressable_lambda:
+          name: "Gradient Shift"
+          update_interval: 50ms
+          lambda: |-
+            static uint16_t start_index = 0;
+            it.shift_right(1);
+            start_index++;
+            if (start_index >= it.size()) {
+              start_index = 0;
+            }
+            float hue = float(start_index) / it.size();
+            int hue_deg = int(hue * 360);  // Convert to degrees
+            int saturation = 255;  // Maximum saturation
+            int value = 255;       // Maximum brightness
+            // Create an HSV color and set it to the first LED
+            ESPHSVColor hsv_color(hue_deg, saturation, value);
+            it[0].set_hsv(hsv_color);
+
