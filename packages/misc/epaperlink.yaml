@@ -15,7 +15,7 @@ homeassistant:
 template:
   - trigger:
       - platform: time_pattern
-        minutes: "/1"
+        seconds: "/20"
     sensor:
       - name: "Median Epaper Tag Last Check-In Time"
         device_class: timestamp
@@ -72,12 +72,58 @@ template:
             {% endif %}
           {% endfor %}
           {{ ns.available }}
+      - name: "Total Pending Epaperlink Transfers"
+        unique_id: yaml_template_sensor_epaperlink_total_pending_transfers
+        icon: mdi:transfer
+        unit_of_measurement: transfers
+        state: >
+          {{ states.sensor
+              | selectattr('entity_id', 'search', '_pending_transfer$')
+              | map(attribute='state')
+              | map('float', default=0)
+              | sum }}
 
 #################
 #    SENSORS    #
 #################
 sensor:
-
+  - platform: group
+    name: "Epaperlink Pending Transfer Sensors"
+    unique_id: yaml_group_sensor_epaperlink_pending_transfer_sensors
+    type: sum
+    ignore_non_numeric: true
+    #unit_of_measurement: transfers
+    entities: # Use template code:  - {{ states.sensor | selectattr('entity_id', 'search', '_pending_transfer$') | map(attribute='entity_id') | list | join('\n - ') }}
+      - sensor.00007e1f7f9fb299_pending_transfer
+      - sensor.00007e1f8b30b297_pending_transfer
+      - sensor.780105561c92b300_pending_transfer
+      - sensor.0000039223703418_pending_transfer
+      - sensor.00007e225dceb293_pending_transfer
+      - sensor.0000021c3bc6341b_pending_transfer
+      - sensor.00007e225dd0b29c_pending_transfer
+      - sensor.780105561a342201_pending_transfer
+      - sensor.00007e22cc92b292_pending_transfer
+      - sensor.780105561c817600_pending_transfer
+      - sensor.780105561c294d00_pending_transfer
+      - sensor.0000021e6b5b3b17_pending_transfer
+      - sensor.00000218736e3b1e_pending_transfer
+      - sensor.0000c87b913bdaec_pending_transfer
+      - sensor.00007e1f8186b290_pending_transfer
+      - sensor.garbage_monitor_tag_pending_transfer
+      - sensor.0000021f86d83b1e_pending_transfer
+      - sensor.780105561a2ce800_pending_transfer
+      - sensor.00007e22b1d7b299_pending_transfer
+      - sensor.00007e1f75f1b29b_pending_transfer
+      - sensor.00007e225dc2b29f_pending_transfer
+      - sensor.00007e22b1b2b29a_pending_transfer
+      - sensor.000040866ce6fc84_pending_transfer
+      - sensor.fd600b561a2ce800_pending_transfer
+      - sensor.fd600bb900090900_pending_transfer
+      - sensor.0000021dbca73412_pending_transfer
+      - sensor.0000021d26a23414_pending_transfer
+      - sensor.0000021d2ef23419_pending_transfer
+      - sensor.fd600bd70007074d_pending_transfer
+      - sensor.7801055600817600_pending_transfer
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -120,7 +166,7 @@ automation:
           - condition: not
             conditions:
               - condition: template
-                value_template: "{{ states('sensor.blitzwolf_washingmachine_energy_power')|int < 5 }}"
+                value_template: "{{ states('sensor.plug_washing_machine_power')|int < 5 }}"
                 # for:
                 #   minutes: 15
           - condition: template
@@ -200,17 +246,21 @@ automation:
             - service: script.update_energy_price_today_larger_display
               data:
                 display_entity_id:
-                  - open_epaper_link.00007E22B1D7B299 #Study
+                  # - open_epaper_link.00007E22B1D7B299 #Study
                   #- open_epaper_link.00007e22b1b2b29a #Washroom
                   - open_epaper_link.00007e225dc2b29f #Kitchen
+                  - open_epaper_link.00007e22cc92b292 #New Display 1
+                  - open_epaper_link.00007e1f8b30b297 #New Display 2
         default:
           #- service: script.update_energy_price_transition_display
           - service: script.update_energy_price_transition_larger_display
             data:
               display_entity_id:
-                - open_epaper_link.00007E22B1D7B299 #Study
+                # - open_epaper_link.00007E22B1D7B299 #Study
                 #- open_epaper_link.00007e22b1b2b29a #Washroom
                 - open_epaper_link.00007e225dc2b29f #Kitchen
+                - open_epaper_link.00007e22cc92b292 #New Display 1
+                - open_epaper_link.00007e1f8b30b297 #New Display 2
 
   - alias: "[misc|epaperlink] Timed Update Moeke Water Tank Display"
     id: misc_epaperlink_timed_update_moeke_water_tank_display
@@ -438,7 +488,7 @@ script:
               size: 18
               color: 'black'
             - type: text
-              value: "{{ states('sensor.blitzwolf_washingmachine_energy_today') | string }}"
+              value: "{{ states('sensor.plug_washing_machine_energy_today') | string }}"
               font: ppb.ttf
               x: 10
               "y": 38
