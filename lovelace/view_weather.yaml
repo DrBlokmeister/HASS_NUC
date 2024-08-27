@@ -74,7 +74,30 @@ cards:
               return entity.attributes.precipitation_raw.map(item => {
                 return [new Date(item.datetime).getTime(), item.precipitation];
               });
-
+      - type: 'custom:apexcharts-card'
+        graph_span: 24h
+        yaxis:
+          - min: ~0
+            max: ~30
+            decimals: 1
+            apex_config:
+              tickAmount: 5
+              forceNiceScale: True
+        header:
+          title: Temperature Forecast
+          show: true
+        span:
+          start: hour
+        experimental:
+          color_threshold: true
+        series:
+          - entity: sensor.weather_forecast_hourly
+            float_precision: 1
+            type: line
+            data_generator: |
+              return entity.attributes.forecast.map(item => {
+                return [new Date(item.datetime).getTime(), item.temperature];
+              });
   - cards:
       - type: glance
         name: CO2
@@ -237,6 +260,16 @@ cards:
           - entity: sensor.guest_room_aqm_temperature
             name: Guest Room AQM
             color: '#B266FF'  # Light purple
+          # - entity: sensor.weather_forecast_hourly
+          #   float_precision: 1
+          #   name: Forecast
+          #   type: line
+          #   #opacity: 1
+          #   stroke_width: 3
+          #   data_generator: |
+          #     return entity.attributes.forecast.map(item => {
+          #       return [new Date(item.datetime).getTime(), item.temperature];
+          #     });
 
       - type: custom:apexcharts-card
         header:

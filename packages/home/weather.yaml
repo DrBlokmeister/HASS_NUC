@@ -28,55 +28,37 @@ command_line:
           printf "{\"time\":\"%s\",\"timestamp\":%d,\"precipitation\":%.1f,\"datetime\":\"%sT%s:00\"}", $2, ts, 10^(($1-109)/32), date, $2
         } 
         END {print "]}"}'
-      scan_interval: 60  # Updates every minute; adjust as needed.
+      scan_interval: 300  # Updates every 5 minutes; adjust as needed.
       value_template: "{{ value_json['precipitation_raw'][0]['precipitation'] }}"
       unit_of_measurement: "mm/h"
       device_class: precipitation_intensity
       json_attributes:
         - precipitation_raw
 
+template:
+  - trigger:
+      - platform: state
+        entity_id: weather.home
+      - platform: time_pattern
+        minutes: /10
+    action:
+      - service: weather.get_forecasts
+        data:
+          type: hourly
+        target:
+          entity_id: weather.home
+        response_variable: forecast
+    sensor:
+      - name: Weather Forecast Hourly
+        state: "{{ state_attr('weather.home', 'temperature') }}"
+        attributes:
+          forecast: "{{ forecast['weather.home']['forecast'] }}"
+          last_update: "{{ now().isoformat() }}"
+
 #################
 #    SENSORS    #
 #################
 sensor:
-  # - platform: buienradar
-  #   timeframe: 120
-  #   monitored_conditions:
-  #     #current conditions:
-  #     - condition
-  #     - symbol
-  #     - humidity
-  #     - temperature
-  #     - windspeed
-  #     - winddirection
-  #     - pressure
-  #     - precipitation
-  #     - irradiance
-
-  #     #conditions for forecasted data:
-  #     - symbol_1d
-  #     - symbol_2d
-  #     - symbol_3d
-  #     - symbol_4d
-  #     - symbol_5d
-  #     - temperature_1d
-  #     - temperature_2d
-  #     - temperature_3d
-  #     - temperature_4d
-  #     - temperature_5d
-  #     - mintemp_1d
-  #     - rainchance_1d
-  #     - rainchance_2d
-  #     - sunchance_1d
-  #     - sunchance_2d
-  #     - rain_1d
-  #     - rain_2d
-  #     - minrain_1d
-  #     - maxrain_1d
-  #     - windforce_1d
-  #     - windforce_2d
-  #     - windspeed_1d
-  #     - windspeed_2d
 
 ########################
 #    BINARY SENSORS    #
