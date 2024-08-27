@@ -1,0 +1,49 @@
+button:
+  - platform: template
+    name: "${location} Calibrate MH-Z19"
+    id: software_calibrate_button
+    on_press:
+      then:
+        - mhz19.calibrate_zero: mh_sensor
+
+switch:
+  - platform: template
+    name: "${location} MH-Z19 ABC"
+    optimistic: true
+    on_turn_on:
+      mhz19.abc_enable: mh_sensor
+    on_turn_off:
+      mhz19.abc_disable: mh_sensor
+
+sensor:
+  - platform: mhz19
+    update_interval: 10s
+    automatic_baseline_calibration: false
+    uart_id: mh
+    id: mh_sensor
+    update_interval: 5s
+    co2:
+      name: "${location} CO2"
+      icon: mdi:molecule-co2
+      id: co2
+      unit_of_measurement: "ppm"
+      device_class: "carbon_dioxide"
+      accuracy_decimals: 0
+      filters:
+        - sliding_window_moving_average:
+            window_size: 2
+            send_every: 2
+        - or:
+          - throttle_average: 60s
+          - delta: 10.0
+    temperature:
+      name: "${location} MH-Z19 Temperature"
+      icon: mdi:thermometer
+      id: mhz19_temp
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      accuracy_decimals: 1
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 1

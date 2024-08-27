@@ -1,0 +1,33 @@
+sensor:
+  - platform: sgp30
+    update_interval: 1s
+    address: 0x58 #0x58 is default
+    # https://esphome.io/components/sensor/sgp30.html#calibrating-baseline
+    baseline:
+      eco2_baseline: 0x92B7
+      tvoc_baseline: 0x935A
+    compensation:
+      temperature_source: temp
+      humidity_source: hum
+    eco2:
+      name: "${location} eCO2"
+      icon: mdi:molecule-co2
+      id: eco2
+      unit_of_measurement: "ppm"
+      device_class: "carbon_dioxide"
+      accuracy_decimals: 0
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 20
+    tvoc:
+      name: "${location} TVOC"
+      icon: mdi:molecule
+      id: tvoc
+      unit_of_measurement: "ppb"
+      device_class: volatile_organic_compounds_parts
+      accuracy_decimals: 0
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 2500

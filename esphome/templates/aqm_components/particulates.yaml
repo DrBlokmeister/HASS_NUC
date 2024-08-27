@@ -1,0 +1,47 @@
+sensor:
+  - platform: pmsx003
+    type: PMSX003
+    uart_id: pms
+    update_interval: 1s
+    pm_1_0:
+      name: "${location} PM 1 Concentration"
+      icon: mdi-grain
+      id: pm1
+      unit_of_measurement: "µg/m³"
+      device_class: "pm1"
+      accuracy_decimals: 0
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 5
+        - or:
+          - throttle_average: 60s
+          - delta: 10
+    pm_2_5:
+      name: "${location} PM 2.5 Concentration"
+      icon: mdi-grain
+      id: pm2_5
+      unit_of_measurement: "µg/m³"
+      device_class: "pm25"
+      accuracy_decimals: 0
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 5
+        - or:
+          - throttle_average: 60s
+          - delta: 10
+    pm_10_0:
+      name: "${location} PM 10 Concentration"
+      icon: mdi-grain
+      id: pm10
+      unit_of_measurement: "µg/m³"
+      device_class: "pm10"
+      accuracy_decimals: 0
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 5
+        - or:
+          - throttle_average: 60s
+          - delta: 10

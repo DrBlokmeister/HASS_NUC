@@ -1,0 +1,42 @@
+sensor:
+  - platform: bme280_i2c
+    address: 0x76
+    update_interval: 10s
+    temperature:
+      name: "${location} AQM Temperature"
+      icon: mdi:thermometer
+      id: temp
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      accuracy_decimals: 2
+      oversampling: 16x
+      filters:
+        - offset: -1.5
+        - or:
+          - throttle_average: 60s
+          - delta: 1.0
+    pressure:
+      name: "${location}  AQM Pressure"
+      icon: mdi:gauge
+      id: press
+      unit_of_measurement: "hPa"
+      device_class: "pressure"
+      accuracy_decimals: 1
+      oversampling: 16x
+      iir_filter: 4x
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 1
+    humidity:
+      name: "${location} AQM Humidity"
+      icon: mdi:water-percent
+      id: hum
+      unit_of_measurement: "%"
+      device_class: "humidity"
+      accuracy_decimals: 1
+      oversampling: 16x
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 5
