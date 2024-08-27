@@ -36,6 +36,7 @@ ALL_METRICS=$($SSH_CMD "
     echo cpu_temperature \$(sensors | grep 'CPU Temp:' | awk '{print \$3}' | sed 's/+//g; s/°C//g');
     free -m | awk '/Mem:/ {print \"total_memory \"\$2\"\\nused_memory \"\$3}';
     echo used_disk_space \$(df -h | grep /mnt/user/ | awk '{print \$3}' | sed 's/T//g' | awk '{print \$1 * 1024}');
+    echo link_speed \$(ethtool eth0 | grep 'Speed:' | awk '{print \$2}');
     echo nvme_composite_temperature \$(sensors | grep 'Composite:' | awk '{print \$2}' | sed 's/+//g; s/°C//g');
     echo parity_temperature \$(smartctl -A /dev/sdb | grep Temperature_Celsius | awk '{print \$10}');
     echo disk_1_temperature \$(smartctl -A /dev/sdc | grep Temperature_Celsius | awk '{print \$10}');
