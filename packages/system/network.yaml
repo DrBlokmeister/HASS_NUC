@@ -159,48 +159,6 @@ homeassistant:
 sensor:
   - platform: template
     sensors:
-      ping_router_avg:
-        value_template: "{{ state_attr('binary_sensor.udm_pro', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Router ping average"
-        availability_template: "{{ state_attr('binary_sensor.udm_pro', 'round_trip_time_avg')|is_number }}"
-
-      ping_blokmeisternas_avg:
-        value_template: "{{ state_attr('binary_sensor.blokmeisternas', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "BlokmeisterNAS ping average"
-        availability_template: "{{ state_attr('binary_sensor.blokmeisternas', 'round_trip_time_avg')|is_number }}"
-
-      ping_phone_avg:
-        value_template: "{{ state_attr('binary_sensor.phone', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Phone ping average"
-        availability_template: "{{ state_attr('binary_sensor.phone', 'round_trip_time_avg')|is_number }}"
-
-      ping_odroid_c2_avg:
-        value_template: "{{ state_attr('binary_sensor.odroid_c2', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Odroid C2 ping average"
-        availability_template: "{{ state_attr('binary_sensor.odroid_c2', 'round_trip_time_avg')|is_number }}"
-
-      ping_ambilight_rpi_avg:
-        value_template: "{{ state_attr('binary_sensor.ambilight_rpi', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Ambilight RPI ping average"
-        availability_template: "{{ state_attr('binary_sensor.ambilight_rpi', 'round_trip_time_avg')|is_number }}"
-
-      ping_snlr_avg:
-        value_template: "{{ state_attr('binary_sensor.snlr', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Plinq ping average"
-        availability_template: "{{ state_attr('binary_sensor.snlr', 'round_trip_time_avg')|is_number }}"
-
-      ping_google_dns_avg:
-        value_template: "{{ state_attr('binary_sensor.google_dns', 'round_trip_time_avg')|round(2) }}"
-        unit_of_measurement: ms
-        friendly_name: "Google DNS ping average"
-        availability_template: "{{ state_attr('binary_sensor.google_dns', 'round_trip_time_avg')|is_number }}"
-
       udmp_download_speed_mbs:
         value_template: "{{ (states('sensor.unifi_dream_machine_kib_s_received')|float/1024)|round(1) }}"
         unit_of_measurement: MB/s
@@ -246,14 +204,22 @@ sensor:
   - platform: min_max
     name: USW Lite 16 Total PoE Power
     entity_ids:
-      - sensor.usw_lite_16_poe_port_1_poe_power
-      - sensor.usw_lite_16_poe_port_2_poe_power
-      - sensor.usw_lite_16_poe_port_3_poe_power
-      - sensor.usw_lite_16_poe_port_4_poe_power
-      - sensor.usw_lite_16_poe_port_5_poe_power
-      - sensor.usw_lite_16_poe_port_6_poe_power
-      - sensor.usw_lite_16_poe_port_7_poe_power
-      - sensor.usw_lite_16_poe_port_8_poe_power
+      - sensor.usw_pro_max_16_poe_port_1_poe_power
+      - sensor.usw_pro_max_16_poe_port_2_poe_power
+      - sensor.usw_pro_max_16_poe_port_3_poe_power
+      - sensor.usw_pro_max_16_poe_port_4_poe_power
+      - sensor.usw_pro_max_16_poe_port_5_poe_power
+      - sensor.usw_pro_max_16_poe_port_6_poe_power
+      - sensor.usw_pro_max_16_poe_port_7_poe_power
+      - sensor.usw_pro_max_16_poe_port_8_poe_power
+      - sensor.usw_pro_max_16_poe_port_9_poe_power
+      - sensor.usw_pro_max_16_poe_port_10_poe_power
+      - sensor.usw_pro_max_16_poe_port_11_poe_power
+      - sensor.usw_pro_max_16_poe_port_12_poe_power
+      - sensor.usw_pro_max_16_poe_port_13_poe_power
+      - sensor.usw_pro_max_16_poe_port_14_poe_power
+      - sensor.usw_pro_max_16_poe_port_15_poe_power
+      - sensor.usw_pro_max_16_poe_port_16_poe_power
     type: sum
     round_digits: 2
 
@@ -261,97 +227,6 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  # - platform: ping
-  #   name: BlokmeisterNAS
-  #   host: tower.local
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: UDM Pro
-  #   host: 10.0.0.1
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: "10 Gbe Switch"
-  #   host: 10.0.0.74
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: PoE Switch
-  #   host: 10.0.0.212
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: USW Switch Mini
-  #   host: 10.0.0.48
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: AP Ground Floor
-  #   host: 10.0.0.251
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: AP 1st Floor
-  #   host: 10.0.0.197
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: AP 2nd Floor
-  #   host: 10.0.0.155
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: AP Outside
-  #   host: 10.0.0.186
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Phone
-  #   host: 10.0.0.100
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Odroid_C2
-  #   host: CoreELEC.local
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Ambilight_RPI
-  #   host: HyperBian.local
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: SNLR
-  #   host: 45.145.109.105
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Google_DNS
-  #   host: 8.8.8.8
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Blokmeisterdesktop
-  #   host: 10.0.0.101
-  #   count: 5
-  #   scan_interval: 60
-
-  # - platform: ping
-  #   name: Heatpump Controller
-  #   host: 10.0.20.10
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Alpha Home Gateway
-  #   host: 10.0.20.11
-  #   count: 5
-  #   scan_interval: 60
-  # - platform: ping
-  #   name: Alpha Home Control Box
-  #   host: 10.0.20.12
-  #   count: 5
-  #   scan_interval: 60
 
 ##################
 #    SWITCHES    #
