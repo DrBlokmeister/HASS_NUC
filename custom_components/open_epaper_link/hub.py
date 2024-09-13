@@ -222,9 +222,21 @@ class Hub:
             try:
                 ws_url = "ws://" + self._host + "/ws"
                 ws = websocket.WebSocketApp(
-                    ws_url, on_message=self.on_message, on_error=self.on_error,
-                    on_close=self.on_close, on_open=self.on_open)
-                ws.run_forever(reconnect=_RECONNECT_SECONDS)
+                    ws_url,
+                    on_message=self.on_message,
+                    on_error=self.on_error,
+                    on_close=self.on_close,
+                    on_open=self.on_open
+                )
+                ws.run_forever(
+                    reconnect=_RECONNECT_SECONDS,
+                )
+                # ws.run_forever(
+                #     ping_interval=30,
+                #     ping_timeout=10,
+                #     ping_payload="ping",
+                #     reconnect=_RECONNECT_SECONDS
+                # )
             except Exception as e:
                 _LOGGER.exception(e)
 
