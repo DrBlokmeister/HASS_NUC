@@ -1,0 +1,276 @@
+select:
+  - platform: template
+    name: "Default Page Select"
+    id: default_page_select
+    options:
+      - "default_page_0"
+      - "default_page_1"
+    initial_option: "default_page_0"
+    internal: true
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            if (x == "default_page_0") {
+              id(display1).show_page(id(default_page_0));
+            } else if (x == "default_page_1") {
+              id(display1).show_page(id(default_page_1));
+            }
+        - component.update: display1
+
+  - platform: template
+    name: "Diagnostic Page Select"
+    id: diagnostic_page_select
+    options:
+      - "diagnostic_page_0"
+      - "diagnostic_page_1"
+      - "diagnostic_page_2"
+      - "diagnostic_page_3"
+    initial_option: "diagnostic_page_0"
+    internal: true
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            if (x == "diagnostic_page_0") {
+              id(display1).show_page(id(diagnostic_page_0));
+            } else if (x == "diagnostic_page_1") {
+              id(display1).show_page(id(diagnostic_page_1));
+            } else if (x == "diagnostic_page_2") {
+              id(display1).show_page(id(diagnostic_page_2));
+            } else if (x == "diagnostic_page_3") {
+              id(display1).show_page(id(diagnostic_page_3));
+            }
+        - component.update: display1
+
+globals:
+  - id: in_diagnostic_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: diagnostic_page_index
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(in_diagnostic_mode);
+          then:
+            - select.next:
+                id: default_page_select
+
+binary_sensor:
+  - platform: gpio
+    id: gpio_button
+    name: 'GPIO Button'
+    internal: true
+    pin:
+      number: GPIO23
+      mode: INPUT_PULLUP
+      inverted: True
+    filters:
+      - delayed_on_off: 50ms
+    on_press:
+      then:
+        - lambda: |-
+            id(in_diagnostic_mode) = true;
+            id(diagnostic_page_index) += 1;
+            if (id(diagnostic_page_index) >= 4) {
+              id(diagnostic_page_index) = 0;
+            }
+            auto page_name = "diagnostic_page_" + to_string(id(diagnostic_page_index));
+            id(diagnostic_page_select).publish_state(page_name);
+        - script.execute: diagnostic_mode_timer
+
+script:
+  - id: diagnostic_mode_timer
+    mode: restart
+    then:
+      - delay: 30s
+      - lambda: |-
+          id(in_diagnostic_mode) = false;
+          id(diagnostic_page_index) = 0;
+          // Return to default page rotation
+
+font:
+  - file: "fonts/Roboto-Medium.ttf"
+    id: arial10
+    size: 10
+    glyphs: &font_glyphs >
+      ! "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~°µ³
+  - file: "fonts/Roboto-Medium.ttf"
+    id: arial15
+    size: 15
+    glyphs: *font_glyphs
+  - file: "fonts/Roboto-Medium.ttf"
+    id: arial22
+    size: 22
+    glyphs: *font_glyphs
+  - file: "fonts/Roboto-Medium.ttf"
+    id: arial30
+    size: 30
+    glyphs: *font_glyphs
+  - file: "fonts/materialdesignicons-webfont.ttf"
+    id: icon_font_22
+    size: 22
+    glyphs: [
+      "\U000F0055",   # Thermometer
+      "\U000F012C",   # Water Percent (Humidity)
+      "\U000F07C8",   # Molecule CO2
+      "\U000F0493",   # Gauge (Pressure)
+      "\U000F01A5",   # Wi-Fi
+      "\U000F033E",   # Network
+      "\U000F0A60",   # IP Network
+      "\U000F0064"    # Information
+    ]
+  - file: "fonts/materialdesignicons-webfont.ttf"
+    id: icon_font_15
+    size: 15
+    glyphs: [
+      "\U000F0055",   # Thermometer
+      "\U000F012C",   # Water Percent (Humidity)
+      "\U000F07C8",   # Molecule CO2
+      "\U000F0493",   # Gauge (Pressure)
+      "\U000F01A5",   # Wi-Fi
+      "\U000F033E",   # Network
+      "\U000F0A60",   # IP Network
+      "\U000F0064"    # Information
+    ]
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    brightness: 100%
+    rotation: 180
+    id: display1
+    pages:
+      # Default Page 1: Temperature and Humidity
+      - id: default_page_0
+        lambda: |-
+          int x_icon = 0;
+          int x_value = 30;
+          int y_temp = 0;
+          int y_hum = 30;
+          // Temperature
+          it.print(x_icon, y_temp, id(icon_font_22), "\U000F0055");  // Thermometer icon
+          if (id(temp).has_state()) {
+            it.printf(x_value, y_temp, id(arial22), "%.1f", id(temp).state);
+            it.print(x_value + 45, y_temp + 5, id(arial15), "°C");
+          } else {
+            it.print(x_value, y_temp, id(arial22), "N/A");
+          }
+          // Humidity
+          it.print(x_icon, y_hum, id(icon_font_22), "\U000F012C");  // Water Percent icon
+          if (id(hum).has_state()) {
+            it.printf(x_value, y_hum, id(arial22), "%.0f", id(hum).state);
+            it.print(x_value + 45, y_hum + 5, id(arial15), "%");
+          } else {
+            it.print(x_value, y_hum, id(arial22), "N/A");
+          }
+
+      # Default Page 2: PM2.5 and CO2
+      - id: default_page_1
+        lambda: |-
+          int x_label = 0;
+          int x_value = 60;
+          int y_pm = 0;
+          int y_co2 = 30;
+          // PM2.5
+          it.print(x_label, y_pm, id(arial22), "PM2.5:");
+          if (id(pm2_5).has_state()) {
+            it.printf(x_value, y_pm, id(arial22), "%.0f", id(pm2_5).state);
+            it.print(x_value + 40, y_pm + 5, id(arial15), "µg/m³");
+          } else {
+            it.print(x_value, y_pm, id(arial22), "N/A");
+          }
+          // CO₂
+          it.print(x_label, y_co2, id(icon_font_22), "\U000F07C8");  // Molecule CO₂ icon
+          if (id(co2).has_state()) {
+            it.printf(x_value, y_co2, id(arial22), "%.0f", id(co2).state);
+            it.print(x_value + 40, y_co2 + 5, id(arial15), "ppm");
+          } else {
+            it.print(x_value, y_co2, id(arial22), "N/A");
+          }
+
+      # Diagnostic Page 1: Pressure and TVOC
+      - id: diagnostic_page_0
+        lambda: |-
+          int x_icon = 0;
+          int x_value = 30;
+          int y_pressure = 0;
+          int y_tvoc = 25;
+          // Pressure
+          it.print(x_icon, y_pressure, id(icon_font_15), "\U000F0493");  // Gauge icon
+          if (id(press).has_state()) {
+            it.printf(x_value, y_pressure, id(arial15), "%.0f", id(press).state);
+            it.print(x_value + 40, y_pressure + 4, id(arial10), "hPa");
+          } else {
+            it.print(x_value, y_pressure, id(arial15), "N/A");
+          }
+          // TVOC (no icon available, using text label)
+          it.print(x_icon, y_tvoc, id(arial15), "TVOC:");
+          if (id(tvoc).has_state()) {
+            it.printf(x_value, y_tvoc, id(arial15), "%.1f", id(tvoc).state);
+            it.print(x_value + 40, y_tvoc + 4, id(arial10), "ppb");
+          } else {
+            it.print(x_value, y_tvoc, id(arial15), "N/A");
+          }
+
+      # Diagnostic Page 2: PM1 and PM10
+      - id: diagnostic_page_1
+        lambda: |-
+          int x_label = 0;
+          int x_value = 50;
+          int y_pm1 = 0;
+          int y_pm10 = 25;
+          // PM1
+          it.print(x_label, y_pm1, id(arial15), "PM1:");
+          if (id(pm1).has_state()) {
+            it.printf(x_value, y_pm1, id(arial15), "%.0f", id(pm1).state);
+            it.print(x_value + 35, y_pm1 + 4, id(arial10), "µg/m³");
+          } else {
+            it.print(x_value, y_pm1, id(arial15), "N/A");
+          }
+          // PM10
+          it.print(x_label, y_pm10, id(arial15), "PM10:");
+          if (id(pm10).has_state()) {
+            it.printf(x_value, y_pm10, id(arial15), "%.0f", id(pm10).state);
+            it.print(x_value + 35, y_pm10 + 4, id(arial10), "µg/m³");
+          } else {
+            it.print(x_value, y_pm10, id(arial15), "N/A");
+          }
+
+      # Diagnostic Page 3: eCO2
+      - id: diagnostic_page_2
+        lambda: |-
+          int x_icon = 0;
+          int x_value = 35;
+          int y_eco2 = 15;
+          // eCO₂ (using Molecule CO₂ icon)
+          it.print(x_icon, y_eco2, id(icon_font_22), "\U000F07C8");
+          if (id(eco2).has_state()) {
+            it.printf(x_value, y_eco2, id(arial30), "%.0f", id(eco2).state);
+            it.print(x_value + 65, y_eco2 + 10, id(arial15), "ppm");
+          } else {
+            it.print(x_value, y_eco2, id(arial30), "N/A");
+          }
+
+      # Diagnostic Page 4: ESPHome Version, IP, SSID
+      - id: diagnostic_page_3
+        lambda: |-
+          int y = 0;
+          it.printf(0, y, id(arial10), "ESPHome: %s", ESPHOME_VERSION);
+          y += 12;
+          if (id(ip).has_state()) {
+            it.printf(0, y, id(arial10), "IP: %s", id(ip).state.c_str());
+            y += 12;
+          }
+          if (id(ssid).has_state()) {
+            it.printf(0, y, id(arial10), "SSID: %s", id(ssid).state.c_str());
+          }

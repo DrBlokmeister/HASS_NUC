@@ -80,6 +80,15 @@ globals:
     type: bool
     initial_value: 'false'
 
+button:
+  - platform: template
+    name: "${location} Next Page"
+    id: next_page_button
+    icon: "mdi:page-next"
+    on_press:
+      then:
+        - display.page.show_next: display1
+
 binary_sensor:
   - platform: gpio
     id: gpio_button
@@ -151,33 +160,6 @@ binary_sensor:
               value: 'false'
 
 sensor:
-  # - platform: sgp30
-  #   eco2:
-  #     name: "${location} eCO2"
-  #     accuracy_decimals: 1
-  #     id: eco2
-  #     filters:
-  #       - or:
-  #         - throttle_average: 60s
-  #         - delta: 20
-  #   tvoc:
-  #     name: "${location} TVOC"
-  #     accuracy_decimals: 1
-  #     id: tvoc
-  #     filters:
-  #       - or:
-  #         - throttle_average: 60s
-  #         - delta: 20
-  #   update_interval: 1s
-  #   address: 0x58
-  #   # https://esphome.io/components/sensor/sgp30.html#calibrating-baseline
-  #   baseline:
-  #     eco2_baseline: 0x92B7
-  #     tvoc_baseline: 0x935A
-  #   compensation:
-  #     temperature_source: temp
-  #     humidity_source: hum
-
   - platform: template
     name: "${location} PM2.5 24h average"
     id: pm2_5_avg
@@ -453,7 +435,6 @@ display:
       - id: page7
         lambda: |-
           // Version Information Display
-          it.print(0, 0, id(arial10), "YAML ver: $yaml_version");
           it.line(0, 12, 128, 12);
           it.printf(0, 15, id(arial10), "ESPHome ver: %s", ESPHOME_VERSION);
           std::string ip_ = id(ip).state;
@@ -461,3 +442,16 @@ display:
           std::string ssid_ = id(ssid).state;
           it.printf(0, 35, id(arial10), "Connected to: %s", ssid_.c_str());
           it.printf(0, 45, id(arial10), "LED brightness: +%.0f %%", id(brightness_correction)*100);
+      - id: streamlined_page
+        lambda: |-
+          // Display all PM readings in one column
+          it.printf(0, 0, id(arial10), "P1: %.0f µg/m3", id(pm1).state);
+          it.printf(0, 12, id(arial10), "P2: %.0f µg/m3", id(pm2_5).state);
+          it.printf(0, 24, id(arial10), "P10: %.0f µg/m3", id(pm10).state);
+          // Display TVOC, Pressure, and eCO2 in another column
+          it.printf(64, 0, id(arial10), "TVOC: %.0f ppb", id(tvoc).state);
+          it.printf(64, 12, id(arial10), "P: %.0f hPa", id(press).state);
+          it.printf(64, 24, id(arial10), "CO2: %.0f ppm", id(co2).state);
+          // Display Temperature and Humidity at the bottom
+          it.printf(0, 36, id(arial10), "T: %.1f°C", id(temp).state);
+          it.printf(64, 36, id(arial10), "H: %.0f%%", id(hum).state);
