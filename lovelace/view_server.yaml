@@ -76,15 +76,6 @@ cards:
       - entity: sensor.usw_pro_max_16_poe_port_16_poe_power
         name: P16-U6-Pro #U6-Pro 2nd Floor
         color: '#1E90FF'  # Dodger blue
-      # - entity: sensor.usw_lite_16_total_poe_power
-      #   name: Total PoE Power (Max)
-      #   color: '#FF6347'  # Distinct terra cotta
-      # - entity: sensor.usw_lite_16_total_poe_power
-      #   name: Total PoE Power (Mean)
-      #   color: '#FF6347'  # Highlighting yellow
-      #   group_by:
-      #     func: avg
-      #     duration: 10min
 
   - type: vertical-stack
     cards:
@@ -117,6 +108,10 @@ cards:
           legend:
             show: false
         graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
         yaxis:
           - min: 0
             max: ~50
@@ -128,24 +123,51 @@ cards:
           group_by:
             func: avg
             duration: 10min
-          stroke_width: 3
-          #opacity: 0.5
-          #type: line
+          show:
+            in_header: false
+            legend_value: false
         series:
           - entity: sensor.airvpn_data_uploaded
             name: Data Uploaded
+            color: "#FFA500"  # Nice orange for upload
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
           - entity: sensor.airvpn_data_downloaded
             name: Data Downloaded
+            color: "#008FFB"  # ApexCharts default blue for download
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
+          # Yesterday's data
+          - entity: sensor.airvpn_data_uploaded
+            name: Data Uploaded (Yesterday)
+            color: "#FFCC99"  # Less saturated orange for yesterday
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
+          - entity: sensor.airvpn_data_downloaded
+            name: Data Downloaded (Yesterday)
+            color: "#99CCFF"  # Less saturated blue for yesterday
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
       - type: custom:apexcharts-card
         header:
           title: AirVPN Current Down/Up Speed
-          show: True
+          show: true
           show_states: true
           colorize_states: true
         apex_config:
           legend:
             show: false
         graph_span: 24h
+        span:
+          start: day
         yaxis:
           - min: 0
             max: ~10
@@ -157,14 +179,40 @@ cards:
           group_by:
             func: avg
             duration: 10min
+          show:
+            in_header: false
+            legend_value: false
           stroke_width: 3
-          #opacity: 0.5
-          #type: line
         series:
           - entity: sensor.airvpn_upload_speed
             name: Upload Speed
+            color: "#FFA500"  # Orange for upload
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
           - entity: sensor.airvpn_download_speed
             name: Download Speed
+            color: "#008FFB"  # Blue for download
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
+          # Yesterday's data
+          - entity: sensor.airvpn_upload_speed
+            name: Upload Speed (Yesterday)
+            color: "#FFCC99"  # Less saturated orange for yesterday
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
+          - entity: sensor.airvpn_download_speed
+            name: Download Speed (Yesterday)
+            color: "#99CCFF"  # Less saturated blue for yesterday
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
 
   - type: custom:apexcharts-card
     header:
@@ -220,23 +268,20 @@ cards:
         func: median
         duration: 10min
       stroke_width: 3
-      transform: "return (x / 1024).toFixed(2);"
+      # transform: "return (x / 1024).toFixed(2);"
     yaxis:
       - min: 0
-        max: 32
+        max: 32000
         decimals: 1
         apex_config:
           forceNiceScale: True
           tickAmount: 4
-          labels:
-            formatter: |
-              EVAL:function(value) {
-                return `${value} GB`;
-              }
+          # labels:
+          #   formatter: |
+          #     EVAL:function(value) {
+          #       return `${value} GB`;
+          #     }
     series:
-      - entity: sensor.nas_total_memory_file
-        name: Total Memory
-        color: '#FFCE56'
       - entity: sensor.nas_used_memory_file
         name: Used Memory
         color: '#FF9F40'
@@ -253,6 +298,9 @@ cards:
         height: 350px
       legend:
         show: false
+      yaxis:
+        forceNiceScale: True
+        decimals: 0
     all_series_config:
       group_by:
         func: median
@@ -260,10 +308,12 @@ cards:
       stroke_width: 3
     yaxis:
       - min: ~20
-        max: ~40
+        max: ~50
+        decimals: 0
+        align_to: 10
         apex_config:
           forceNiceScale: True
-          tickAmount: 4
+          tickAmount: 3
           labels:
             formatter: |
               EVAL:function(value) {
@@ -321,6 +371,7 @@ cards:
       - min: 0
         max: ~80
         decimals: 0
+        align_to: 10
         apex_config:
           forceNiceScale: True
           tickAmount: 5
@@ -520,7 +571,8 @@ cards:
         yaxis:
           - min: 0
             max: ~25
-            decimals: 2
+            decimals: 0
+            align_to: 10
             apex_config:
               #tickAmount: 4
               forceNiceScale: True
