@@ -5,6 +5,8 @@ import os
 import pprint
 import math
 import json
+from math import radians
+
 import requests
 import qrcode
 import shutil
@@ -132,23 +134,78 @@ def customimage(entity_id, service, hass):
         _LOGGER.debug("type: " + element["type"])
         if not should_show_element(element):
             continue
-        #line
+        # line
         if element["type"] == "line":
-            img_line = ImageDraw.Draw(img)
-            if not "y_start" in element:
+            check_for_missing_required_arguments(element, ["x_start", "x_end"], "line")
+            img_line = ImageDraw.Draw(img)  
+            if "y_start" not in element:
                 y_start = pos_y + element.get("y_padding", 0)
                 y_end = y_start
             else:
                 y_start = element["y_start"]
                 y_end = element["y_end"]
-            img_line.line([(element['x_start'],y_start),(element['x_end'],y_end)],fill = getIndexColor(element['fill']), width=element['width'])
+
+            fill = getIndexColor(element['fill']) if 'fill' in element else black
+            width = element['width'] if 'width' in element else 1
+
+            img_line.line([(element['x_start'], y_start), (element['x_end'], y_end)], fill=fill, width=width)
             pos_y = y_start
-        #rectangle
+        # rectangle
         if element["type"] == "rectangle":
+            check_for_missing_required_arguments(element, ["x_start", "x_end", "y_start", "y_end"], "rectangle")
             img_rect = ImageDraw.Draw(img)
-            img_rect.rectangle([(element['x_start'],element['y_start']),(element['x_end'],element['y_end'])],fill = getIndexColor(element['fill']), outline=getIndexColor(element['outline']), width=element['width'])
-        #text
+            rect_fill = getIndexColor(element['fill']) if 'fill' in element else None
+            rect_outline = getIndexColor(element['outline']) if 'outline' in element else "black"
+            rect_width = element['width'] if 'width' in element else 1
+            radius = element['radius'] if 'radius' in element else 10 if 'corners' in element else 0
+            corners = rounded_corners(element['corners']) if 'corners' in element else rounded_corners("all") if 'radius' in element else (False, False, False, False)
+
+            img_rect.rounded_rectangle([(element['x_start'], element['y_start']), (element['x_end'], element['y_end'])],
+                               fill=rect_fill, outline=rect_outline, width=rect_width, radius=radius, corners=corners)
+        # rectangle pattern
+        if element["type"] == "rectangle_pattern":
+            check_for_missing_required_arguments(element, ["x_start", "x_size",
+                                                           "y_start", "y_size",
+                                                           "x_repeat", "y_repeat",
+                                                           "x_offset", "y_offset"], "rectangle_pattern")
+            img_rect_pattern = ImageDraw.Draw(img)
+            fill = getIndexColor(element['fill']) if 'fill' in element else None
+            outline = getIndexColor(element['outline']) if 'outline' in element else "black"
+            width = element['width'] if 'width' in element else 1
+            radius = element['radius'] if 'radius' in element else 10 if 'corners' in element else 0
+            corners = rounded_corners(element['corners']) if 'corners' in element else rounded_corners("all") if 'radius' in element else (False, False, False, False)
+
+            for x in range(element["x_repeat"]):
+                for y in range(element["y_repeat"]):
+                    img_rect_pattern.rounded_rectangle([(element['x_start'] + x * (element['x_offset'] + element['x_size']),
+                                                 element['y_start'] + y * (element['y_offset'] + element['y_size'])),
+                                                (element['x_start'] + x * (element['x_offset'] + element['x_size'])
+                                                 + element['x_size'], element['y_start'] + y * (element['y_offset']
+                                                 + element['y_size'])+element['y_size'])],
+                                               fill=fill, outline=outline, width=width, radius=radius, corners=corners)
+
+        # circle
+        if element["type"] == "circle":
+            check_for_missing_required_arguments(element, ["x", "y", "radius"], "circle")
+            img_circle = ImageDraw.Draw(img)
+            fill = getIndexColor(element['fill']) if 'fill' in element else None
+            outline = getIndexColor(element['outline']) if 'outline' in element else "black"
+            width = element['width'] if 'width' in element else 1
+            img_circle.circle((element['x'], element['y']), element['radius'], fill=fill, outline=outline, width=width)
+
+        # ellipse
+        if element["type"] == "ellipse":
+            check_for_missing_required_arguments(element, ["x_start", "x_end", "y_start", "y_end"], "ellipse")
+            img_ellipse = ImageDraw.Draw(img)
+            fill = getIndexColor(element['fill']) if 'fill' in element else None
+            outline = getIndexColor(element['outline']) if 'outline' in element else "black"
+            width = element['width'] if 'width' in element else 1
+            img_ellipse.ellipse([(element['x_start'], element['y_start']), (element['x_end'], element['y_end'])],
+                                fill=fill, outline=outline, width=width)
+
+        # text
         if element["type"] == "text":
+            check_for_missing_required_arguments(element, ["x", "value"], "text")
             d = ImageDraw.Draw(img)
             d.fontmode = "1"
             size = element.get('size', 20)
@@ -174,6 +231,7 @@ def customimage(entity_id, service, hass):
             textbbox = d.textbbox((element['x'],  akt_pos_y), text, font=font, anchor=anchor, align=align, spacing=spacing, stroke_width=stroke_width)
             pos_y = textbbox[3]
         if element["type"] == "multiline":
+            check_for_missing_required_arguments(element, ["x", "value", "delimiter"], "multiline")
             d = ImageDraw.Draw(img)
             d.fontmode = "1"
             size = element.get('size', 20)
@@ -192,8 +250,9 @@ def customimage(entity_id, service, hass):
                 d.text((element['x'], pos ), str(elem), fill=getIndexColor(color), font=font, anchor=anchor, stroke_width=stroke_width, stroke_fill=stroke_fill)
                 pos = pos + element['offset_y']
             pos_y = pos
-        #icon
+        # icon
         if element["type"] == "icon":
+            check_for_missing_required_arguments(element, ["x", "y", "value", "size"], "icon")
             d = ImageDraw.Draw(img)
             d.fontmode = "1"
             # ttf from https://github.com/Templarian/MaterialDesign-Webfont/blob/master/fonts/materialdesignicons-webfont.ttf
@@ -220,15 +279,19 @@ def customimage(entity_id, service, hass):
             stroke_fill = element.get('stroke_fill', 'white')
             font = ImageFont.truetype(font_file, element['size'])
             anchor = element['anchor'] if 'anchor' in element else "la"
-            d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=getIndexColor(element['color']), font=font, anchor=anchor, stroke_width=stroke_width, stroke_fill=stroke_fill)
-       #dlimg
+            fill = getIndexColor(element['color']) if 'color' in element \
+                else getIndexColor(element['fill']) if 'fill' in element else "black"
+            d.text((element['x'],  element['y']), chr(int(chr_hex, 16)), fill=fill, font=font,
+                   anchor=anchor, stroke_width=stroke_width, stroke_fill=stroke_fill)
+        # dlimg
         if element["type"] == "dlimg":
+            check_for_missing_required_arguments(element, ["x", "y", "url", "xsize", "ysize"], "dlimg")
             url = element['url']
             pos_x = element['x']
             pos_y = element['y']
             xsize = element['xsize']
             ysize = element['ysize']
-            rotate2 = element['rotate']
+            rotate2 = element['rotate'] if 'rotate' in element else 0
             res = [xsize,ysize]
             imgdl = ""
             if "http://" in url or "https://" in url:
@@ -256,7 +319,7 @@ def customimage(entity_id, service, hass):
                 imgdl = Image.open(io.BytesIO(data))
             else:
                 imgdl = Image.open(url)
-
+                
             if rotate2 != 0:
                 imgdl = imgdl.rotate(-rotate2, expand=1)
             width2, height2 = imgdl.size
@@ -267,15 +330,16 @@ def customimage(entity_id, service, hass):
             temp_image.paste(imgdl, (pos_x,pos_y), imgdl)
             img = Image.alpha_composite(img, temp_image)
             img.convert('RGBA')
-        #qrcode
+        # qrcode
         if element["type"] == "qrcode":
+            check_for_missing_required_arguments(element, ["x", "y", "data"], "qrcode")
             data = element['data']
             pos_x = element['x']
             pos_y = element['y']
-            color = element['color']
-            bgcolor = element['bgcolor']
-            border = element['border']
-            boxsize = element['boxsize']
+            color = element['color'] if 'color' in element else "black"
+            bgcolor = element['bgcolor'] if 'bgcolor' in element else "white"
+            border = element['border'] if 'border' in element else 1
+            boxsize = element['boxsize'] if 'boxsize' in element else 2
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -289,7 +353,7 @@ def customimage(entity_id, service, hass):
             imgqr = imgqr.convert("RGBA")
             img.paste(imgqr, position, imgqr)
             img.convert('RGBA')
-        #diagram
+        # diagram
         if element["type"] == "diagram":
             img_draw = ImageDraw.Draw(img)
             d = ImageDraw.Draw(img)
@@ -330,6 +394,7 @@ def customimage(entity_id, service, hass):
                     bar_pos = bar_pos + 1
         # plot
         if element["type"] == "plot":
+            check_for_missing_required_arguments(element, ["data"], "plot")
             img_draw = ImageDraw.Draw(img)
             img_draw.fontmode = "1"
             # Obtain drawing region, assume whole canvas if nothing is given
@@ -474,7 +539,7 @@ def customimage(entity_id, service, hass):
                         curr_y = round(diag_y + (1 - ((curr - min_v) / spread)) * (diag_height - 1))
                         img_draw.rectangle([(diag_x + yaxis_width, curr_y), (diag_x + yaxis_width + yaxis_tick_width - 1, curr_y)], width=0, fill=getIndexColor(yaxis_color))
                         curr += yaxis_tick_every
-
+        # Plot custom
         if element["type"] == "plot_custom":
             _LOGGER.info("Started rendering custom plot.")
             img_draw = ImageDraw.Draw(img)
@@ -600,6 +665,72 @@ def customimage(entity_id, service, hass):
                         curr_y = round(diag_y + (1 - ((curr - min_v) / spread)) * (diag_height - 1))
                         img_draw.rectangle([(diag_x + yaxis_width, curr_y), (diag_x + yaxis_width + yaxis_tick_width - 1, curr_y)], width=0, fill=getIndexColor(yaxis_color))
                         curr += yaxis_tick_every
+
+        # progress_bar
+        if element["type"] == "progress_bar":
+            check_for_missing_required_arguments(element, ["x_start", "x_end", "y_start", "y_end", "progress"], "progress_bar")
+            img_draw = ImageDraw.Draw(img)
+
+            x_start = element['x_start']
+            y_start = element['y_start']
+            x_end = element['x_end']
+            y_end = element['y_end']
+            progress = element['progress']
+            direction = element.get('direction', 'right')
+            background = getIndexColor(element.get('background', 'white'))
+            fill = getIndexColor(element.get('fill', 'red'))
+            outline = getIndexColor(element.get('outline', 'black'))
+            width = element.get('width', 1)
+            show_percentage = element.get('show_percentage', False)
+
+            # background
+            img_draw.rectangle([(x_start, y_start), (x_end, y_end)], fill=background, outline=outline, width=width)
+
+            # Calculate progress dimensions
+            if direction in ['right', 'left']:
+                progress_width = int((x_end - x_start) * (progress / 100))
+                progress_height = y_end - y_start
+            else:  # up or down
+                progress_width = x_end - x_start
+                progress_height = int((y_end - y_start) * (progress / 100))
+
+            # Draw progress
+            if direction == 'right':
+                img_draw.rectangle([(x_start, y_start), (x_start + progress_width, y_end)], fill=fill)
+            elif direction == 'left':
+                img_draw.rectangle([(x_end - progress_width, y_start), (x_end, y_end)], fill=fill)
+            elif direction == 'up':
+                img_draw.rectangle([(x_start, y_end - progress_height), (x_end, y_end)], fill=fill)
+            elif direction == 'down':
+                img_draw.rectangle([(x_start, y_start), (x_end, y_start + progress_height)], fill=fill)
+
+            img_draw.rectangle([(x_start, y_start), (x_end, y_end)], fill=None, outline=outline, width=width)
+
+            # display percentage text if enabled
+            if show_percentage:
+                font_size = min(y_end - y_start - 4, x_end - x_start - 4, 20)  # Adjust max font size as needed
+                font = ImageFont.truetype(os.path.join(os.path.dirname(__file__), 'ppb.ttf'), font_size)
+                percentage_text = f"{progress}%"
+
+                # Calculate text position
+                text_bbox = img_draw.textbbox((0, 0), percentage_text, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
+                text_x = (x_start + x_end - text_width) / 2
+                text_y = (y_start + y_end - text_height) / 2
+
+                # text color based on progress
+                if progress > 50:
+                    text_color = background
+                else:
+                    text_color = fill
+
+                # Draw text
+                img_draw.text((text_x, text_y), percentage_text, font=font, fill=text_color, anchor='lt') # TODO anchor is still off
+
+
+
+
 
     #post processing
     img = img.rotate(rotate, expand=True)
@@ -814,3 +945,31 @@ def textgen2(d, text, col, just, yofs):
     else:
         d.text((x, 15 + yofs), text, fill=col, anchor=just + "m", font=rbm)
     return d
+
+
+def check_for_missing_required_arguments(element, required_keys, func_name):
+    missing_keys = []
+    for key in required_keys:
+        if key not in element:
+            missing_keys.append(key)
+    if missing_keys:
+        raise HomeAssistantError(f"Missing required argument(s) '{', '.join(missing_keys)}' in '{func_name}'")
+
+def rounded_corners(corner_string):
+    if corner_string == "all":
+        return True, True, True, True
+
+    corners = corner_string.split(",")
+    corner_map = {
+        "top_left": 0,
+        "top_right": 1,
+        "bottom_right": 2,
+        "bottom_left": 3
+    }
+    result = [False] * 4
+    for corner in corners:
+        corner = corner.strip()
+        if corner in corner_map:
+            result[corner_map[corner]] = True
+
+    return tuple(result)
