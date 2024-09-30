@@ -1,0 +1,207 @@
+title: Electricity Costs
+icon: mdi:shield-bug-outline
+cards:
+  - type: glance
+    title: Shelly Device Overview
+    columns: 4
+    entities:
+      # Ground Floor
+      - entity: binary_sensor.ping_shelly_closet
+        name: Closet
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_dinnertable
+        name: Dinner Table
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_kitchen
+        name: Kitchen
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_livingroom
+        name: Living Room
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_porch
+        name: Porch
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_entry
+        name: Entry
+        show_last_changed: true
+
+      # 1st Floor
+      - entity: binary_sensor.ping_shelly_bathroom
+        name: Bathroom
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_bedroom
+        name: Bedroom
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_baby_room
+        name: Baby Room
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_hallway_1st_floor
+        name: Hallway 1st Floor
+        show_last_changed: true
+
+      # 2nd Floor
+      - entity: binary_sensor.ping_shelly_guest_room
+        name: Guest Room
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_hallway_2nd_floor
+        name: Hallway 2nd Floor
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_study
+        name: Study
+        show_last_changed: true
+      - entity: binary_sensor.ping_shelly_washroom
+        name: Washroom
+        show_last_changed: true
+
+  - type: custom:apexcharts-card
+    header:
+      title: Shelly Devices - Avg Round Trip Time
+      show: True
+      show_states: true
+      colorize_states: true
+    update_interval: 1m
+    apex_config:
+      legend:
+        show: false
+    graph_span: 1d
+    yaxis:
+      - min: 0
+        max: ~1000  # You can adjust this depending on expected RTT values
+        decimals: 0
+        align_to: 100
+        apex_config:
+          tickAmount: 4
+          forceNiceScale: False
+    all_series_config:
+      group_by:
+        func: max
+        duration: 10min
+      stroke_width: 2
+    series:
+      # Ground Floor
+      - entity: sensor.ping_shelly_closet_round_trip_time_average
+        name: Closet
+        color: '#4BC0C0'  # Teal
+      - entity: sensor.ping_shelly_dinnertable_round_trip_time_average
+        name: Dinner Table
+        color: '#008080'  # Dark teal
+      - entity: sensor.ping_shelly_kitchen_round_trip_time_average
+        name: Kitchen
+        color: '#2E8B57'  # Sea green
+      - entity: sensor.ping_shelly_livingroom_round_trip_time_average
+        name: Living Room
+        color: '#8A2BE2'  # Blue violet
+      - entity: sensor.ping_shelly_entry_round_trip_time_average
+        name: Entry
+        color: '#C9CBCF'  # Light grey
+      - entity: sensor.ping_shelly_porch_round_trip_time_average
+        name: Porch
+        color: '#FFD700'  # Gold
+      - entity: sensor.ping_shelly_backgarden_round_trip_time_average
+        name: Backgarden
+        color: '#FF6384'  # Vibrant pink
+
+      # 1st Floor
+      - entity: sensor.ping_shelly_bedroom_round_trip_time_average
+        name: Bedroom
+        color: '#36A2EB'  # Bright blue
+      - entity: sensor.ping_shelly_bathroom_round_trip_time_average
+        name: Bathroom
+        color: '#FFCE56'  # Sunflower yellow
+      - entity: sensor.ping_shelly_baby_room_round_trip_time_average
+        name: Baby Room
+        color: '#8FBC8F'  # Dark sea green (unique color for Baby Room)
+      - entity: sensor.ping_shelly_hallway_1st_floor_round_trip_time_average
+        name: Hallway 1st Floor
+        color: '#990099'  # Magenta
+
+      # 2nd Floor
+      - entity: sensor.ping_shelly_hallway_2nd_floor_round_trip_time_average
+        name: Hallway 2nd Floor
+        color: '#FF4500'  # Orange-red
+      - entity: sensor.ping_shelly_guest_room_round_trip_time_average
+        name: Guest Room
+        color: '#003366'  # Deep blue
+      - entity: sensor.ping_shelly_study_round_trip_time_average
+        name: Study
+        color: '#DC143C'  # Crimson
+      - entity: sensor.ping_shelly_washroom_round_trip_time_average
+        name: Washroom
+        color: '#00CED1'  # Dark turquoise
+
+
+  - type: custom:apexcharts-card
+    header:
+      title: Shelly Devices - Wi-Fi Signal Strength
+      show: True
+      show_states: true
+      colorize_states: true
+    update_interval: 1m
+    apex_config:
+      legend:
+        show: false
+    graph_span: 1d
+    yaxis:
+      - min: -100  # WiFi signals are negative dBm values (e.g., -50, -70)
+        max: -30  # 0 is the theoretical max signal
+        decimals: 0
+        align_to: 10
+        apex_config:
+          tickAmount: 5
+          forceNiceScale: False
+    all_series_config:
+      group_by:
+        func: max
+        duration: 10min
+      stroke_width: 2
+    series:
+      # Ground Floor
+      - entity: sensor.shelly_closet_2_wifi_signal
+        name: Closet
+        color: '#4BC0C0'  # Teal
+      - entity: sensor.shelly_dinner_table_d2_wifi_signal
+        name: Dinner Table
+        color: '#008080'  # Dark teal
+      - entity: sensor.shelly_kitchen_wifi_signal
+        name: Kitchen
+        color: '#2E8B57'  # Sea green
+      - entity: sensor.shelly_living_room_wifi_signal
+        name: Living Room
+        color: '#8A2BE2'  # Blue violet
+      - entity: sensor.shelly_entry_wifi_signal
+        name: Entry
+        color: '#C9CBCF'  # Light grey
+      - entity: sensor.shelly_porch_wifi_signal
+        name: Porch
+        color: '#FFD700'  # Gold
+      - entity: sensor.shelly_back_garden_wifi_signal
+        name: Backgarden
+        color: '#FF6384'  # Vibrant pink
+
+      # 1st Floor
+      - entity: sensor.shelly_bedroom_wifi_signal
+        name: Bedroom
+        color: '#36A2EB'  # Bright blue
+      - entity: sensor.shelly_bathroom_wifi_signal
+        name: Bathroom
+        color: '#FFCE56'  # Sunflower yellow
+      - entity: sensor.shelly_baby_room_wifi_signal
+        name: Baby Room
+        color: '#8FBC8F'  # Dark sea green (unique color for Baby Room)
+      - entity: sensor.shelly_hallway_1st_floor_wifi_signal
+        name: Hallway 1st Floor
+        color: '#990099'  # Magenta
+
+      # 2nd Floor
+      - entity: sensor.shelly_hallway_2nd_floor_wifi_signal
+        name: Hallway 2nd Floor
+        color: '#FF4500'  # Orange-red
+      - entity: sensor.shelly_guest_room_wifi_signal
+        name: Guest Room
+        color: '#003366'  # Deep blue
+      - entity: sensor.shelly_study_wifi_signal
+        name: Study
+        color: '#DC143C'  # Crimson
+      - entity: sensor.shelly_washroom_wifi_signal
+        name: Washroom
+        color: '#00CED1'  # Dark turquoise
