@@ -98,7 +98,7 @@ cards:
         name: Bedroom
       - entity: sensor.study_co2
         name: Study
-      - entity: sensor.livingroom_co2
+      - entity: sensor.living_room_co2
         name: Living Room
       - entity: sensor.shed_co2
         name: Shed
@@ -126,13 +126,13 @@ cards:
           data:
             entity_id: button.study_calibrate_mh_z19
       - type: button
-        entity: button.livingroom_calibrate_mh_z19
+        entity: button.living_room_calibrate_mh_z19
         name: Living Room
         tap_action:
           action: call-service
           service: button.press
           data:
-            entity_id: button.livingroom_calibrate_mh_z19
+            entity_id: button.living_room_calibrate_mh_z19
       - type: button
         entity: button.shed_calibrate_mh_z19
         name: Shed
@@ -168,7 +168,7 @@ cards:
         name: Study CO2
         color: '#ff9c33'
         show_fill: false
-      - entity: sensor.livingroom_co2
+      - entity: sensor.living_room_co2
         name: Livingroom CO2
         color: '#337aff'
         show_fill: false
@@ -216,15 +216,15 @@ cards:
   - type: custom:mini-graph-card
     name: Livingroom Air Quality
     entities:
-      - entity: sensor.livingroom_pm_1_concentration
+      - entity: sensor.living_room_pm_1_concentration
         name: PM 1
         color: '#33ff61'
         show_fill: false
-      - entity: sensor.livingroom_pm_2_5_concentration
+      - entity: sensor.living_room_pm_2_5_concentration
         name: PM 2.5
         color: '#ff9c33'
         show_fill: false
-      - entity: sensor.livingroom_pm_10_concentration
+      - entity: sensor.living_room_pm_10_concentration
         name: PM 10
         color: '#337aff'
         show_fill: false
@@ -298,7 +298,7 @@ cards:
         name: Study
         color: '#33ff61'
         show_fill: false
-      - entity: sensor.livingroom_pm_2_5_concentration
+      - entity: sensor.living_room_pm_2_5_concentration
         name: Living Room
         color: '#ff9c33'
         show_fill: false
@@ -355,14 +355,14 @@ cards:
         duration: 15min
     series:
       # Living Room CO2 levels for the past 2 days
-      - entity: sensor.livingroom_co2
+      - entity: sensor.living_room_co2
         offset: '-1d'
         name: Living Room - Yesterday
         color: '#FF6347'
         opacity: 0.6
         show:
           in_header: false
-      - entity: sensor.livingroom_co2
+      - entity: sensor.living_room_co2
         name: Living Room - Today
         color: '#FF6347'
         extend_to: now
@@ -438,6 +438,124 @@ cards:
         extend_to: now
         opacity: 1
         stroke_width: 4
+
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    span:
+      start: day
+      offset: +0h
+    header:
+      show: true
+      title: PM2.5 Levels Over the Last 7 Days
+      show_states: true
+      colorize_states: true
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    chart_type: line
+    update_interval: 1m
+    yaxis:
+      - min: 0
+        max: ~50
+        decimals: 1
+        apex_config:
+          tickAmount: 4
+    all_series_config:
+      stroke_width: 2
+      float_precision: 1
+      #transform: "return Math.round(x * 10) / 10;"  # Round to one decimal place
+      unit: µg/m³
+      group_by:
+        func: avg
+        duration: 15min
+    series:
+      # Living Room PM2.5 levels for the past 2 days
+      - entity: sensor.living_room_pm_2_5_concentration
+        offset: '-1d'
+        name: Living Room - Yesterday
+        color: '#FF6347'
+        opacity: 0.6
+        show:
+          in_header: false
+      - entity: sensor.living_room_pm_2_5_concentration
+        name: Living Room - Today
+        color: '#FF6347'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Bedroom PM2.5 levels for the past 2 days
+      - entity: sensor.bedroom_pm_2_5_concentration
+        offset: '-1d'
+        name: Bedroom - Yesterday
+        color: '#4682B4'
+        opacity: 0.6
+        show:
+          in_header: false
+      - entity: sensor.bedroom_pm_2_5_concentration
+        name: Bedroom - Today
+        color: '#4682B4'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Study PM2.5 levels for the past 2 days
+      - entity: sensor.study_pm_2_5_concentration
+        offset: '-1d'
+        name: Study - Yesterday
+        color: '#32CD32'
+        opacity: 0.6
+        show:
+          in_header: false
+      - entity: sensor.study_pm_2_5_concentration
+        name: Study - Today
+        color: '#32CD32'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Guest Room PM2.5 levels for the past 2 days
+      - entity: sensor.guest_room_pm_2_5_concentration
+        offset: '-1d'
+        name: Guest Room - Yesterday
+        color: '#FFD700'
+        opacity: 0.6
+        show:
+          in_header: false
+      - entity: sensor.guest_room_pm_2_5_concentration
+        name: Guest Room - Today
+        color: '#FFD700'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Baby Room PM2.5 levels for the past 2 days
+      - entity: sensor.baby_room_pm_2_5_concentration
+        offset: '-1d'
+        name: Baby Room - Yesterday
+        color: '#FF69B4'  # Hot Pink for the Baby Room
+        opacity: 0.6
+        show:
+          in_header: false
+      - entity: sensor.baby_room_pm_2_5_concentration
+        name: Baby Room - Today
+        color: '#FF69B4'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+      # Shed PM2.5 levels for the past 2 days
+      - entity: sensor.shed_pm_2_5_concentration
+        offset: '-1d'
+        name: Shed - Yesterday
+        color: '#8A2BE2'  # BlueViolet for the Shed
+        opacity: 0.6
+        show:
+          in_header: false
+      - entity: sensor.shed_pm_2_5_concentration
+        name: Shed - Today
+        color: '#8A2BE2'
+        extend_to: now
+        opacity: 1
+        stroke_width: 4
+
 
   # - type: vertical-stack
   #   cards:
