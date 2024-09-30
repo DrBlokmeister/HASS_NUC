@@ -485,9 +485,17 @@ automation:
                 value_template: "{{ trigger.id == 'heat_up_total_cheapest' }}"
               - condition: template
                 value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
-              - condition: state
-                entity_id: binary_sensor.house_occupied
-                state: 'on'
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity_id: binary_sensor.house_occupied
+                    state: 'on'
+                  - condition: numeric_state
+                    entity_id: sensor.proximity_tamara_distance
+                    below: 50000
+                  - condition: numeric_state
+                    entity_id: sensor.proximity_sander_distance
+                    below: 50000
               - condition: not
                 conditions:
                   - condition: time
@@ -613,7 +621,7 @@ automation:
               - condition: template
                 value_template: "{{ trigger.id == 'cool_down' }}"
               - condition: template
-                value_template: "{{ state_attr('automation.home_climate_heat_up_tapwater_in_the_morning', 'current') == 0 }}"
+                value_template: "{{ state_attr('automation.home_climate_heat_up_tapwater_in_the_morning', 'current') != 0 }}"
             sequence:
               - service: number.set_value
                 data:
