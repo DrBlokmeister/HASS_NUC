@@ -175,7 +175,7 @@ automation:
         after: "6:00:00"
         before: "23:30:00"
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_washing_machine_energy_display
 
@@ -202,7 +202,7 @@ automation:
         after: "6:00:00"
         before: "23:30:00"
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       # - service: open_epaper_link.lines4
       #   target:
@@ -235,7 +235,7 @@ automation:
         after: "6:00:00"
         before: "23:30:00"
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - choose:
         - conditions:
@@ -290,7 +290,7 @@ automation:
         after: "06:00:00"
         before: "23:30:00"
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_moeke_water_tank_display
         data:
@@ -310,7 +310,7 @@ automation:
         after: "06:00:00"
         before: "23:30:00"
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_litterbox_display
         data:
@@ -440,20 +440,140 @@ automation:
       - platform: template
         value_template: >
           {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) > 300 }} #default of 3000000000 is Saturday, January 24, 2065 6:20:00 AM
-    condition: []
+    condition:
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: sensor.epaperlink_study_ap_round_trip_time_average
+            state: 'unavailable'
+      - condition: template
+        value_template: >
+          {{ state_attr('automation.misc_epaperlink_power_cycle_ap_when_ap_is_unavailable_and_devices_haven_t_checked_in', 'current') == 0 }}
     action:
-      - service: homeassistant.reload_config_entry
-        data:
-          entry_id: dcd0a828896007b5be2b87a699bb028f
+      # Attempt to reload the integration until devices have checked in or max attempts reached
+      - alias: "Reload Integration Until Devices Check In or Max Attempts"
+        repeat:
+          sequence:
+            # Reload the OpenEPaperLink integration
+            - service: homeassistant.reload_config_entry
+              data:
+                entry_id: dcd0a828896007b5be2b87a699bb028f
+            # Wait for devices to check in
+            - wait_template: >
+                {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 300 }}
+              timeout: '00:01:00'  # Wait up to 1 minute
+              continue_on_timeout: true
+          until:
+            # Exit loop if devices have checked in or maximum attempts reached
+            - condition: or
+              conditions:
+                - condition: template
+                  value_template: >
+                    {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 300 }}
+                - condition: template
+                  value_template: >
+                    {{ repeat.index >= 3 }}
+      # Check if devices have checked in
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 300 }}
+            sequence:
+              # Devices have checked in, trigger display updates
+              - service: automation.trigger
+                entity_id:
+                  - automation.misc_epaperlink_timed_update_electricity_price_display
+                  - automation.misc_epaperlink_timed_update_moeke_water_tank_display
+                  - automation.misc_epaperlink_update_pixel_litterbox_display
+                  - automation.misc_epaperlink_update_study_displays
+        default:
+          # Devices haven't checked in, send a notification
+          - service: notify.mobile_app_your_android_phone
+            data:
+              title: "OpenEPaperLink Integration Issue"
+              message: "Devices haven't checked in after multiple integration reloads."
+
+  - alias: "[misc|epaperlink] Power Cycle AP When AP is Unavailable and Devices Haven't Checked In"
+    description: "Power cycles the AP and reloads the integration when the AP is unavailable and devices haven't checked in."
+    id: yaml_automation_misc_epaperlink_power_cycle_ap_when_ap_is_unavailable_and_devices_havent_checked_in
+    mode: single
+    trigger:
+      # Trigger when the ping sensor becomes 'unavailable' for more than 1 minute
+      - platform: state
+        entity_id: sensor.epaperlink_study_ap_round_trip_time_average
+        to: 'unavailable'
+        for:
+          minutes: 2
+    condition:
+      # Condition: Median check-in time is 'unavailable' or exceeds 10 minutes
+      - condition: template
+        value_template: >
+          {{
+            states('sensor.median_epaper_tag_last_check_in_time') == 'unavailable' or
+            (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 600
+          }}
+    action:
+      # Repeat power cycling the AP until it becomes available or maximum attempts reached
+      - alias: "Power Cycle AP Until Available or Max Attempts"
+        repeat:
+          sequence:
+            # Power off the AP
+            - service: switch.turn_off
+              entity_id: switch.plug_epaper_ap_switch
+            # Wait for 5 seconds
+            - delay:
+                seconds: 5
+            # Power on the AP
+            - service: switch.turn_on
+              entity_id: switch.plug_epaper_ap_switch
+            # Wait for the AP to boot up
+            - delay:
+                seconds: 60
+          until:
+            # Exit loop if AP is pingable or maximum attempts reached
+            - condition: or
+              conditions:
+                - condition: template
+                  value_template: >
+                    {{ not is_state('sensor.epaperlink_study_ap_round_trip_time_average', 'unavailable') }}
+                - condition: template
+                  value_template: >
+                    {{ repeat.index >= 3 }}
       - delay:
           minutes: 5
+      # Check if the AP is now available
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('sensor.median_epaper_tag_last_check_in_time', 'unavailable') }}
+            sequence:
+              # Reload the OpenEPaperLink integration
+              - service: homeassistant.reload_config_entry
+                data:
+                  entry_id: dcd0a828896007b5be2b87a699bb028f
+              # Wait for 1 minute to allow devices to check in
+              - delay:
+                  minutes: 1
+              # Trigger the display update automations
       - service: automation.trigger
         entity_id:
           - automation.misc_epaperlink_timed_update_electricity_price_display
           - automation.misc_epaperlink_timed_update_moeke_water_tank_display
           - automation.misc_epaperlink_update_pixel_litterbox_display
           - automation.misc_epaperlink_update_study_displays
-          - automation.misc_epaperlink_timed_update_moeke_water_tank_display
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ is_state('sensor.median_epaper_tag_last_check_in_time', 'unavailable') }}
+            sequence:
+              # If AP is still unavailable, send a notification
+              - service: notify.mobile_app_blokmeisters21u
+                data:
+                  title: "OpenEPaperLink AP Issue"
+                  message: "AP did not come back online after multiple power cycles."
 
 
 ################
