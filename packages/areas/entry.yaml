@@ -9,11 +9,19 @@ input_number:
     max: 200
     mode: box
   entry_light_timeout: #in minutes
-    name: Hallway 1st Floor light timeout
+    name: Entry light timeout
     step: 1
     min: 0
     max: 30
     mode: box
+  entry_light_illumination_difference:
+    name: Entry Light Illumination Difference
+    min: 0
+    max: 500
+    step: 1
+    unit_of_measurement: "lx"
+    mode: box
+    icon: mdi:brightness-auto
 
 utility_meter:
   litterbox_total_counts:
@@ -91,6 +99,10 @@ binary_sensor:
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
+  entry_light_level_calibration_switch:
+    name: Entry Light Level Calibration
+    initial: off
+    icon: mdi:lightbulb-on-outline  # Nice icon for the UI
 
 ##################
 #    SWITCHES    #
@@ -164,7 +176,7 @@ automation:
           }}
     condition:
       - condition: template
-        value_template: "{{ states('sensor.entry_average_illuminance')|int < states('input_number.entry_illumination_limit')|int }}"
+        value_template: "{{ (states('sensor.entry_light_1')|int(1000) ) < states('input_number.entry_illumination_limit')|int }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -181,14 +193,14 @@ automation:
             for:
       #         minutes: 3
       #     - platform: template
-      #       value_template: "{{ states('sensor.entry_average_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
+      #       value_template: "{{ states('sensor.entry_light_1')|int > states('input_number.entry_illumination_limit')|int }}"
       #       for:
       #         minutes: 10
       # - service: light.turn_off
       #   entity_id: light.entry
               minutes: "{{ states('input_number.entry_light_timeout')|int }}"
           - platform: template
-            value_template: "{{ states('sensor.entry_average_illuminance')|int > states('input_number.entry_illumination_limit')|int }}"
+            value_template: "{{ (states('sensor.entry_light_1')|int(0) - states('input_number.entry_light_illumination_difference')|int(0)) > states('input_number.entry_illumination_limit')|int }}"
             for:
               minutes: "{{ states('input_number.entry_light_timeout')|int }}"
       - service: light.turn_on
@@ -384,7 +396,51 @@ automation:
         target:
           entity_id: light.entry
 
-
+  - alias: '[areas|entry] Light Calibration Automation'
+    description: Automates light on/off cycle for entry calibration and resets input boolean
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_boolean.entry_light_level_calibration_switch
+        to: 'on'  # Starts the automation when the boolean is turned on
+    variables:
+      repeat_count: 20  # Number of on/off cycles
+    action:
+      - service: adaptive_lighting.set_manual_control
+        data:
+          entity_id: switch.adaptive_lighting_adapt_brightness_adaptive_lighting
+          manual_control: true
+      - service: adaptive_lighting.set_manual_control
+        data:
+          entity_id: switch.adaptive_lighting_adapt_color_adaptive_lighting
+          manual_control: true
+      - repeat:
+          count: '{{ repeat_count }}'
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: light.entry
+              data_template:
+                brightness_pct: "{{ range(20, 101) | random }}"  # Random brightness between 20% and 100%
+                color_temp: "{{ range(2000, 6536) | random }}"  # Random color temperature between 2000K and 6535K
+            - delay:
+                minutes: 15  # Wait 15 minutes with the lights on
+            - service: light.turn_off
+              target:
+                entity_id: light.entry
+            - delay:
+                minutes: 15  # Wait 15 minutes with the lights off
+      - service: adaptive_lighting.set_manual_control
+        data:
+          entity_id: switch.adaptive_lighting_adapt_brightness_adaptive_lighting
+          manual_control: false
+      - service: adaptive_lighting.set_manual_control
+        data:
+          entity_id: switch.adaptive_lighting_adapt_color_adaptive_lighting
+          manual_control: false
+      - service: input_boolean.turn_off  # Turn off the boolean to reset
+        target:
+          entity_id: input_boolean.entry_light_level_calibration_switch
 ################
 #    SCENES    #
 ################
