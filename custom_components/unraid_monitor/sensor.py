@@ -2,9 +2,8 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import (
-    TEMP_CELSIUS,
     PERCENTAGE,
-    DATA_MEGABYTES,
+    UnitOfTemperature,
     UnitOfInformation
 )
 from .const import DOMAIN
@@ -34,28 +33,28 @@ class UnraidSensor(SensorEntity):
 
     def _determine_sensor_attributes(self):
         """Determine the device class, unit, and icon based on the sensor type."""
-        # Default to None
         device_class = None
         unit = None
         icon = "mdi:chip"  # Default icon for generic sensors
 
         if "temperature" in self.key:
-            device_class = "temperature"
-            unit = TEMP_CELSIUS
+            device_class = SensorDeviceClass.TEMPERATURE
+            unit = UnitOfTemperature.CELSIUS
             icon = "mdi:thermometer"
 
         elif "cpu_usage" in self.key or "cpu" in self.key:
-            device_class = "power"
+            # CPU usage should not use 'power' device class; we use percentage
+            device_class = None  # No device class
             unit = PERCENTAGE
-            icon = "mdi:chip"  # Use a chip icon for CPU-related sensors
+            icon = "mdi:chip"
 
         elif "mem_usage" in self.key or "memory" in self.key:
-            device_class = "data_size"
+            device_class = SensorDeviceClass.DATA_SIZE
             unit = UnitOfInformation.MEGABYTES
             icon = "mdi:memory"
 
         elif "disk_space" in self.key:
-            device_class = "data_size"
+            device_class = SensorDeviceClass.DATA_SIZE
             unit = UnitOfInformation.MEGABYTES
             icon = "mdi:harddisk"
 
@@ -69,6 +68,9 @@ class UnraidSensor(SensorEntity):
     def native_value(self):
         """Return the state of the sensor with any necessary conversions."""
         raw_value = self.coordinator.data.get(self.key)
+
+        if raw_value is None:
+            return None  # Indicate that the sensor is unavailable
 
         # Perform conversions based on sensor type
         if "mem_usage" in self.key or "memory" in self.key:
