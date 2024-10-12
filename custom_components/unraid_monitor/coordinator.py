@@ -162,4 +162,4 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_disconnect(self):
         """Disconnect the SSH session."""
         await self.connection.disconnect()
-        _LOGGER.debug("SSH connection disconnected.")
+        _LOGGER.info("SSH connection disconnected.")
