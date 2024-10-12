@@ -37,7 +37,7 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             if not await self.connection.is_connected():
                 await self.connection.connect()
-                _LOGGER.debug("SSH connection established.")
+                _LOGGER.info("New SSH connection established.")
             else:
                 _LOGGER.debug("SSH connection already established.")
 
@@ -60,20 +60,14 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _fetch_system_metrics(self):
         """Fetch system metrics via SSH."""
+        # Basic system commands
         commands = {
             "cpu_usage": "top -bn1 | grep 'Cpu(s)' | awk '{print 100 - $8}'",
             "cpu_temperature": "sensors | grep 'CPU Temp:' | awk '{print $3}' | sed 's/+//g; s/°C//g'",
             "total_memory": "free -m | awk '/Mem:/ {print $2}'",
             "used_memory": "free -m | awk '/Mem:/ {print $3}'",
             "used_disk_space": "df -h | grep /mnt/user/ | awk '{print $3}' | sed 's/T//g' | awk '{print $1 * 1024}'",
-            "nvme_composite_temperature": "sensors | grep 'Composite:' | awk '{print $2}' | sed 's/+//g; s/°C//g'",
-            "parity_temperature": "smartctl -A /dev/sdb | grep Temperature_Celsius | awk '{print $10}'",
-            "disk_1_temperature": "smartctl -A /dev/sdc | grep Temperature_Celsius | awk '{print \$10}'",
-            "disk_2_temperature": "smartctl -A /dev/sde | grep Temperature_Celsius | awk '{print \$10}'",
-            "disk_3_temperature": "smartctl -A /dev/sdd | grep Temperature_Celsius | awk '{print \$10}'",
-            "dev_1_temperature": "smartctl -A /dev/sdg | grep Temperature_Celsius | awk '{print \$10}'",
-            "dev_2_temperature": "smartctl -A /dev/sdf | grep Temperature_Celsius | awk '{print \$10}'",
-            # Add more system metrics as needed
+            "nvme_composite_temperature": "sensors | grep 'Composite:' | awk '{print $2}' | sed 's/+//g; s/°C//g'"
         }
 
         results = {}
@@ -82,19 +76,70 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug(f"Command output for {key}: {output}")
             results[key] = self._parse_output(output)
 
+        # Dynamically check for available disks and fetch temperatures
+        disk_list_cmd = "ls /dev/sd* | grep -o '/dev/sd[a-z]' | sort -u"
+        disk_list_output = await self.connection.run_command(disk_list_cmd)
+        _LOGGER.debug(f"Disk list output: {disk_list_output}")
+
+        if disk_list_output:
+            disks = disk_list_output.strip().splitlines()
+            for disk in disks:
+                temperature_cmd = f"smartctl -A {disk} | grep Temperature_Celsius | awk '{{print $10}}'"
+                temperature_output = await self.connection.run_command(temperature_cmd)
+                if temperature_output:
+                    disk_temp_key = f"{disk.split('/')[-1]}_temperature"
+                    results[disk_temp_key] = self._parse_output(temperature_output)
+                    _LOGGER.debug(f"Temperature for {disk}: {temperature_output.strip()}")
+
         # Unraid array status
         array_status_cmd = "mdcmd status | grep 'mdState=' | cut -d'=' -f2 | awk '{print $1}'"
         array_status = await self.connection.run_command(array_status_cmd)
         _LOGGER.debug(f"Array status output: {array_status}")
         results["unraid_array_status"] = array_status.strip() == "STARTED"
 
-        # Wireguard service status
+        # Dynamically handle WireGuard interfaces
         wireguard_status_cmd = "wg"
         wireguard_status = await self.connection.run_command(wireguard_status_cmd)
         _LOGGER.debug(f"Wireguard status output: {wireguard_status}")
-        results["wireguard_service_status"] = bool(wireguard_status.strip())
+
+        # Parse WireGuard output with regular expressions
+        interfaces = re.findall(r"interface: (wg\d+)", wireguard_status)
+        peers = re.findall(
+            r"peer: ([A-Za-z0-9+/=]+)\n\s*endpoint: ([\d.]+:\d+).*\n\s*latest handshake: (\d+) seconds ago\n\s*transfer: ([\d.]+ \w+) received, ([\d.]+ \w+)",
+            wireguard_status
+        )
+        current_time = datetime.now()
+
+        for i, interface in enumerate(interfaces):
+            if i < len(peers):
+                peer_key, endpoint, latest_handshake, transfer_rx, transfer_tx = peers[i]
+
+                # Convert latest handshake to timestamp
+                handshake_timestamp = current_time - timedelta(seconds=int(latest_handshake))
+                results[f"{interface}_endpoint"] = endpoint
+                results[f"{interface}_latest_handshake"] = handshake_timestamp.isoformat()
+                results[f"{interface}_received"] = self._parse_data_size(transfer_rx)
+                results[f"{interface}_sent"] = self._parse_data_size(transfer_tx)
+
+                _LOGGER.debug(f"WireGuard {interface} - Endpoint: {endpoint}, "
+                            f"Handshake: {handshake_timestamp.isoformat()}, "
+                            f"Received: {transfer_rx}, Sent: {transfer_tx}")
 
         return results
+
+    def _parse_data_size(self, data):
+        """Convert data size string to a consistent unit (KiB)."""
+        size, unit = data.split()
+        size = float(size)
+        if unit == "GiB":
+            return size * 1024 * 1024
+        elif unit == "MiB":
+            return size * 1024
+        elif unit == "KiB":
+            return size
+        elif unit == "B":
+            return size / 1024
+        return size
 
     async def _fetch_container_stats(self):
         """Fetch Docker container stats via SSH."""
