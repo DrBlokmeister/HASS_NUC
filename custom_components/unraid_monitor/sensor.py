@@ -1,6 +1,11 @@
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfTemperature,
@@ -29,40 +34,53 @@ class UnraidSensor(SensorEntity):
         self.key = key
         self._attr_name = f"Unraid {key.replace('_', ' ').title()}"
         self._attr_unique_id = f"{coordinator.entry.entry_id}_{key}"
-        self._attr_device_class, self._attr_unit_of_measurement, self._attr_icon = self._determine_sensor_attributes()
+        self._attr_device_class, self._attr_unit_of_measurement, self._attr_icon, self._attr_state_class = self._determine_sensor_attributes()
 
     def _determine_sensor_attributes(self):
-        """Determine the device class, unit, and icon based on the sensor type."""
+        """Determine the device class, unit, icon, and state class based on the sensor type."""
         device_class = None
         unit = None
         icon = "mdi:chip"  # Default icon for generic sensors
+        state_class = SensorStateClass.MEASUREMENT  # Default to measurement
 
         if "temperature" in self.key:
             device_class = SensorDeviceClass.TEMPERATURE
             unit = UnitOfTemperature.CELSIUS
             icon = "mdi:thermometer"
+            state_class = SensorStateClass.MEASUREMENT
 
         elif "cpu_usage" in self.key or "cpu" in self.key:
             # CPU usage should not use 'power' device class; we use percentage
             device_class = None  # No device class
             unit = PERCENTAGE
             icon = "mdi:chip"
+            state_class = SensorStateClass.MEASUREMENT
 
         elif "mem_usage" in self.key or "memory" in self.key:
             device_class = SensorDeviceClass.DATA_SIZE
             unit = UnitOfInformation.MEGABYTES
             icon = "mdi:memory"
+            state_class = SensorStateClass.MEASUREMENT
 
         elif "disk_space" in self.key:
             device_class = SensorDeviceClass.DATA_SIZE
             unit = UnitOfInformation.MEGABYTES
             icon = "mdi:harddisk"
+            state_class = SensorStateClass.MEASUREMENT
 
         elif "link_speed" in self.key:
             unit = "Mb/s"
             icon = "mdi:speedometer"
+            state_class = SensorStateClass.MEASUREMENT
 
-        return device_class, unit, icon
+        elif "received" in self.key or "sent" in self.key:
+            # Data transfer is cumulative
+            device_class = SensorDeviceClass.DATA_SIZE
+            unit = UnitOfInformation.MEGABYTES
+            icon = "mdi:download" if "received" in self.key else "mdi:upload"
+            state_class = SensorStateClass.MEASUREMENT
+
+        return device_class, unit, icon, state_class
 
     @property
     def native_value(self):
