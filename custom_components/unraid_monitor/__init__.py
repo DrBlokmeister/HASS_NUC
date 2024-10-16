@@ -4,7 +4,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .coordinator import UnraidDataUpdateCoordinator
 
-PLATFORMS = ["sensor", "binary_sensor"]
+PLATFORMS = ["sensor", "binary_sensor", "switch"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):

@@ -192,6 +192,37 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
 
         return results
 
+    async def start_container(self, container_name):
+        """Start a Docker container."""
+        try:
+            start_cmd = f"docker start {container_name}"
+            await self.connection.run_command(start_cmd)
+            _LOGGER.info(f"Started container {container_name}")
+            # Perform fast polling to update state quickly
+            await self._fast_polling()
+        except Exception as e:
+            _LOGGER.error(f"Error starting container {container_name}: {e}")
+
+    async def stop_container(self, container_name):
+        """Stop a Docker container."""
+        try:
+            stop_cmd = f"docker stop {container_name}"
+            await self.connection.run_command(stop_cmd)
+            _LOGGER.info(f"Stopped container {container_name}")
+            # Perform fast polling to update state quickly
+            await self._fast_polling()
+        except Exception as e:
+            _LOGGER.error(f"Error stopping container {container_name}: {e}")
+
+    async def _fast_polling(self):
+        """Perform fast polling to update state quickly after an action."""
+        original_interval = self.update_interval
+        self.update_interval = timedelta(seconds=5)  # Set fast polling interval
+        for _ in range(3):  # Poll 3 times at 5-second intervals
+            await self.async_request_refresh()
+            await asyncio.sleep(5)
+        self.update_interval = original_interval  # Restore original polling interval
+
     def _parse_output(self, output):
         """Parse command output to appropriate data type."""
         output = output.strip()
