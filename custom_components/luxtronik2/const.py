@@ -91,6 +91,7 @@ class DeviceKey(StrEnum):
 class FirmwareVersionMinor(Enum):
     """Firmware minor versions."""
 
+    minor_80: Final = 80
     minor_88: Final = 88
 
 
@@ -378,8 +379,8 @@ class LuxParameter(StrEnum):
     P1136_HEAT_ENERGY_INPUT: Final = "parameters.Unknown_Parameter_1136"
     P1137_DHW_ENERGY_INPUT: Final = "parameters.Unknown_Parameter_1137"
     # ? P1138_SWIMMING_POOL_ENERGY_INPUT: Final = "parameters.Unknown_Parameter_1138" -->
-    # ? P1139_COOLING_ENERGY_INPUT: Final = "parameters.Unknown_Parameter_1139"
-    # ? P1140_SECOND_HEAT_SOURCE_DHW_ENERGY_INPUT: Final = "parameters.Unknown_Parameter_1140"
+    P1139_COOLING_ENERGY_INPUT: Final = "parameters.Unknown_Parameter_1139"
+    P1140_SECOND_HEAT_GENERATOR_AMOUNT_COUNTER: Final = "parameters.Unknown_Parameter_1140"
 
 
 # endregion Lux parameters
@@ -502,6 +503,7 @@ class LuxCalculation(StrEnum):
     # 254 Flow Rate
     C0257_CURRENT_HEAT_OUTPUT: Final = "calculations.Heat_Output"
     # 258 RBE Version
+    C0268_CURRENT_POWER_CONSUMPTION: Final = "calculations.Unknown_Calculation_268"
 
 
 # endregion Lux calculations
@@ -602,9 +604,11 @@ class SensorKey(StrEnum):
     ADDITIONAL_HEAT_GENERATOR_AMOUNT_COUNTER = (
         "additional_heat_generator_amount_counter"
     )
+    SECOND_HEAT_GENERATOR_AMOUNT_COUNTER= "second_heat_generator_amount_counter"
     ANALOG_OUT1 = "analog_out1"
     ANALOG_OUT2 = "analog_out2"
     CURRENT_HEAT_OUTPUT = "current_heat_output"
+    CURRENT_POWER_CONSUMPTION = "current_power_consumption"
     PUMP_FREQUENCY = "pump_frequency"
     PUMP_FLOW_DELTA_TARGET = "pump_flow_delta_target"
     PUMP_FLOW_DELTA = "pump_flow_delta"
@@ -624,6 +628,7 @@ class SensorKey(StrEnum):
     DHW_HEAT_AMOUNT = "dhw_heat_amount"
     HEAT_ENERGY_INPUT = "heat_energy_input"
     DHW_ENERGY_INPUT = "dhw_energy_input"
+    COOLING_ENERGY_INPUT = "cooling_energy_input"
     DHW_TEMPERATURE = "dhw_temperature"
     SOLAR_COLLECTOR_TEMPERATURE = "solar_collector_temperature"
     SOLAR_BUFFER_TEMPERATURE = "solar_buffer_temperature"
@@ -731,6 +736,7 @@ class SensorAttrKey(StrEnum):
     EVU_SECOND_START_TIME = "EVU_second_start_time"
     EVU_SECOND_END_TIME = "EVU_second_end_time"
     EVU_MINUTES_UNTIL_NEXT_EVENT = "EVU_minutes_until_next_event"
+    EVU_DAYS = "EVU_days"
     TIMESTAMP = "timestamp"
     CODE = "code"
     CAUSE = "cause"

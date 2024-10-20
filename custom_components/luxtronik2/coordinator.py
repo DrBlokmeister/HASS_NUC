@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from functools import wraps
 import threading
@@ -30,7 +31,7 @@ from .const import (
     LOGGER,
     LUX_PARAMETER_MK_SENSORS,
     UPDATE_INTERVAL_FAST,
-    UPDATE_INTERVAL_FAST,
+    UPDATE_INTERVAL_NORMAL,
     DeviceKey,
     LuxCalculation as LC,
     LuxMkTypes,
@@ -126,7 +127,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             self.update_interval = (
                 UPDATE_INTERVAL_FAST
                 if bool(self.get_value(LC.C0044_COMPRESSOR))
-                else UPDATE_INTERVAL_FAST
+                else UPDATE_INTERVAL_NORMAL
             )
             self.update_reason_write = False
         return data
@@ -319,7 +320,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         ver = self.firmware_version
         if ver is None:
             return 0
-        return int(ver.split(".")[1])
+        return int(re.sub('[^0-9]','', ver.split(".")[1]))
 
     def entity_visible(self, description: LuxtronikEntityDescription) -> bool:
         """Is description visible."""
