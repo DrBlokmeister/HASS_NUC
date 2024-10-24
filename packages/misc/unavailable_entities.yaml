@@ -98,118 +98,143 @@
     monitored_entities:
       entities:
         - device_tracker.google_home_mini
-        - device_tracker.plug_3d_printer
-        - device_tracker.plug_nas
-        - device_tracker.plug_study_workbench
-        - device_tracker.plug_tv
-        - device_tracker.plug_computer
-        - device_tracker.plug_dishwasher
-        - device_tracker.blitzwolf_router
-        - device_tracker.blitzwolf_ambilight_amplifier
-        - device_tracker.blitzwolf_10gb_switch
-        - device_tracker.blitzwolf_poe_switch
-        - device_tracker.blitzwolf_nuc
-        - device_tracker.blitzwolf_washingmachine
-        - device_tracker.plug_watercooker
         - device_tracker.blokmeisternuc
+        - device_tracker.tower
 
+        # Blitzwolf plugs:
+          # - {{ states.device_tracker | selectattr('entity_id', 'search', 'blitzwolf') | map(attribute='entity_id') | list | join('\n- ') }}
+          # - {{ states.device_tracker | selectattr('entity_id', 'search', 'plug') | map(attribute='entity_id') | list | join('\n- ') }}
+        - device_tracker.blitzwolf_10gb_switch
+        - device_tracker.blitzwolf_washingmachine
+        - device_tracker.blitzwolf_ambilight_amplifier
+        - device_tracker.plug_epaper_ap
+        - device_tracker.plug_poe_switch
+        - device_tracker.plug_electric_car
+        - device_tracker.plug_study_workbench
+        - device_tracker.plug_dishwasher
+        - device_tracker.plug_nuc
+        - device_tracker.plug_watercooker
+        - device_tracker.plug_3d_printer
+        - device_tracker.plug_tv
+        - device_tracker.plug_router
+        - device_tracker.plug_nas
+        - device_tracker.plug_computer
+
+        # Shelly devices:
+          # - {{ states.device_tracker | selectattr('entity_id', 'search', 'shelly') | map(attribute='entity_id') | list | join('\n- ') }}
+        - device_tracker.shelly_washroom
+        - device_tracker.shelly_kitchen
+        - device_tracker.shelly_heatpump_heatpump_power
+        - device_tracker.shelly_tamaras_room
+        - device_tracker.shelly_study
         - device_tracker.shelly_babyroom
-        - device_tracker.shelly_backgarden
+        - device_tracker.shelly_batrhoom_new
+        - device_tracker.shelly_livingroom
+        - device_tracker.shelly_hallway_1st_floor
+        - device_tracker.shelly_hallway_2nd_floor
         - device_tracker.shelly_bedroom
         - device_tracker.shelly_closet_plus1mini
         - device_tracker.shelly_dinnertable_dimmer2
-        - device_tracker.shelly_entry
-        - device_tracker.shelly_hallway_1st_floor
-        - device_tracker.shelly_hallway_2nd_floor
-        - device_tracker.shelly_kitchen
-        - device_tracker.shelly_livingroom
         - device_tracker.shelly_porch
-        - device_tracker.shelly_study
-        - device_tracker.shelly_tamaras_room
-        - device_tracker.shelly_washroom
-        - device_tracker.shelly_bathroom
+        - device_tracker.shelly_backgarden
+        - device_tracker.shelly_entry
 
-        # Motion sensors:
-        - binary_sensor.bathroom_motion_1
+        # Motion + door/window sensors:
+          # - {{ states | selectattr('attributes.device_class', 'eq', 'motion') | map(attribute='entity_id') | list | join('\n- ') }}
+          # - {{ states | selectattr('attributes.device_class', 'eq', 'door') | map(attribute='entity_id') | list | join('\n- ') }}
+        - binary_sensor.kitchen_motion_2
         - binary_sensor.bedroom_motion_1
+        - binary_sensor.study_motion_1
+        - binary_sensor.study_motion_2
+        - binary_sensor.bathroom_motion_1
+        - binary_sensor.kitchen_motion_1
         - binary_sensor.entry_motion_1
         - binary_sensor.entry_motion_2
-        - binary_sensor.kitchen_motion_1
-        - binary_sensor.kitchen_motion_2
         - binary_sensor.livingroom_motion_1
         - binary_sensor.livingroom_motion_2
         - binary_sensor.livingroom_motion_3
-        - binary_sensor.study_motion_1
-        - binary_sensor.study_motion_2
-        - binary_sensor.motion_sensor_toilet
-        - binary_sensor.study_motion_combined
-
-        - binary_sensor.back_door_sensor
-        - binary_sensor.entry_motion_combined
-        - binary_sensor.front_door_sensor
-        - binary_sensor.hallway_1st_floor_motion_1
-        - binary_sensor.hallway_1st_floor_motion_2
         - binary_sensor.hallway_2nd_floor_motion_1
+        - binary_sensor.stairs_upper_motion_1
+        - binary_sensor.hallway_1st_floor_motion_2
+        - binary_sensor.hallway_1st_floor_motion_1
         - binary_sensor.hallway_2nd_floor_motion_2
-        - binary_sensor.house_occupied
-        - binary_sensor.livingroom_motion_combined
-        - binary_sensor.meterkast_door_sensor
-        - binary_sensor.moeke_reservoir_leak_sensor
-        - binary_sensor.shower_occupied
+        - binary_sensor.stairs_lower_motion_1
+        - binary_sensor.babyroom_motion_1
+        - binary_sensor.outside_motion_1
+        - binary_sensor.babycam_motion
         - binary_sensor.stairs_cabinet_door_sensor
-        - binary_sensor.tamara_or_sander_downstairs
-        - binary_sensor.vibration_sensor_mailbox
+        - binary_sensor.front_door_sensor
+        - binary_sensor.bedroom_closet_door_sensor
+        - binary_sensor.meterkast_door_sensor
+        - binary_sensor.back_door_sensor
         - binary_sensor.washroom_door_sensor
 
         # Lights:
+          # Select all lights: - {{ states.light | map(attribute='entity_id') | list | join('\n- ') }}
+          # Remove AQM lights:
+              # - {{ states.light 
+              #   | rejectattr('entity_id', 'search', 'blitzwolf') 
+              #   | rejectattr('entity_id', 'search', 'rgb_strip') 
+              #   | reject('search', 'led[123]') 
+              #   | map(attribute='entity_id') 
+              #   | list 
+              #   | sort 
+              #   | join('\n- ') }}
+        - light.ambilight_left
+        - light.ambilight_right
         - light.atmoorb_left
         - light.atmoorb_right
-        - light.bedroom
+        - light.babyroom_1
+        - light.babyroom_2
+        - light.babyroom_3
+        - light.babyroom_4
+        - light.back_garden
+        - light.bathroom_1
+        - light.bathroom_2
+        - light.bathroom_3
+        - light.bedroom #Phoscon group
+        - light.bedroom_2 #Shelly
+        - light.bedside_left
+        - light.bedside_right
+        - light.closet
+        - light.dinner_table_d2
         - light.entry_1
         - light.entry_2
         - light.entry_3
+        - light.filament_lamp
+        - light.guest_room
         - light.hallway_1st_floor_1
         - light.hallway_1st_floor_2
         - light.hallway_1st_floor_3
         - light.hallway_2nd_floor_1
         - light.hallway_2nd_floor_2
         - light.hallway_2nd_floor_3
-        - light.study
+        - light.hallway_2nd_floor_lamp
+        - light.hyperion_atmoorb_left
+        - light.hyperion_atmoorb_right
+        - light.kitchen_1
+        - light.kitchen_2
+        - light.kitchen_3
+        - light.ledstrip_bed
+        - light.ledstrip_falcon
+        - light.ledstrip_study_workbench
+        - light.livingroom_1
+        - light.livingroom_2
+        - light.livingroom_3
+        - light.livingroom_4
+        - light.livingroom_tv_ambilight
+        - light.shelly_porch_light
         - light.study_1
         - light.study_2
         - light.study_3
         - light.study_4
         - light.study_5
-        - light.study_candle
-        - light.tamaras_room
-        # - light.bedside_left
-        # - light.bedside_right
-        - light.hyperion_ambilightleft
-        - light.hyperion_ambilightright
-        - light.hyperion_apa102
-        - light.kitchen
-        - light.kitchen_1
-        - light.kitchen_2
-        - light.kitchen_3
-        - light.shelly_closet
-        - light.shelly_dinner_table
-        - light.shelly_entry_light
-
-        - switch.blitzwolf_3dprinter
-        - switch.blitzwolf_ambilight
-        - switch.blitzwolf_router
-        - switch.blitzwolf_computer
-        - switch.blitzwolf_computer_2
-        - switch.blitzwolf_electricblanket
-        - switch.blitzwolf_mediacenter_2
-        - switch.blitzwolf_nuc
-        - switch.plug_washing_machine_switch
-        - switch.plug_watercooker_switch
-        - switch.plug_watercooker_switch_2
-        - switch.plug_3d_printer_switch
-        - switch.plug_electric_car_switch
-        - switch.plug_nas_plug_nas_switch
-        - switch.plug_tv_switch
+        - light.study_cabinet_a_rgb_ledstrip
+        # - light.study_candle
+        - light.study_desk_a_rgb_ledstrip
+        - light.tamara_s_room_2
+        #- light.tv_apa102_universe_1
+        #- light.tv_apa102_universe_2
 
         - sensor.humidity_bathroom
 
@@ -222,7 +247,7 @@
         - media_player.coreelec
         - media_player.plex_plexkodiconnect_kodi_coreelec
         - media_player.tv_samsung_led55
-        - sensor.last_triggered_motion_sensor
+        #- sensor.last_triggered_motion_sensor
         - sensor.samba_backup
         - sensor.unavailable_entities
         - switch.shelly_closet
@@ -241,12 +266,9 @@
         - sensor.speedtest_download
         - sensor.temperature_fridge
         - sensor.unknown_power
-        - sensor.last_triggered_motion_sensor
+        #- sensor.last_triggered_motion_sensor
         - sensor.samba_backup
-        - sensor.unavailable_entities
-
-        # New device trackers
-        - device_tracker.samsung_tv
+        #- sensor.unavailable_entities
 
         # New input booleans
         - input_boolean.garbagereminder
@@ -254,7 +276,7 @@
         - input_boolean.tamara_mode
 
         # New group
-        - group.study_motion_sensors
+        #- group.study_motion_sensors
 
         # Temperature Sensors
         - sensor.temperature_bathroom
