@@ -166,23 +166,23 @@ command_line:
       value_template: "{{ value == 'true' or value == true }}"
       availability: >-
         {{ states('binary_sensor.nas_ssh_reachability') }}
-  - switch: #Portainer
-      unique_id: "yaml_command_line_switch_portainer_ce_container"
-      name: "Portainer CE Container"
-      icon: "mdi:docker"
-      command_on: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker start Portainer-CE"
-      command_off: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-        root@10.0.0.250
-        "docker stop Portainer-CE"
-      command_state: >-
-        cat /config/www/nas_status.json | jq -r '."Portainer-CE_container_state"'
-      value_template: "{{ value == 'true' or value == true }}"
-      availability: >-
-        {{ states('binary_sensor.nas_ssh_reachability') }}
+  # - switch: #Portainer
+  #     unique_id: "yaml_command_line_switch_portainer_ce_container"
+  #     name: "Portainer CE Container"
+  #     icon: "mdi:docker"
+  #     command_on: >-
+  #       ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+  #       root@10.0.0.250
+  #       "docker start Portainer-CE"
+  #     command_off: >-
+  #       ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+  #       root@10.0.0.250
+  #       "docker stop Portainer-CE"
+  #     command_state: >-
+  #       cat /config/www/nas_status.json | jq -r '."Portainer-CE_container_state"'
+  #     value_template: "{{ value == 'true' or value == true }}"
+  #     availability: >-
+  #       {{ states('binary_sensor.nas_ssh_reachability') }}
   - switch: #Firefox
       unique_id: "yaml_command_line_switch_firefox_container"
       name: "Firefox Container"
@@ -539,51 +539,51 @@ command_line:
         {% endif %}
       icon: mdi:percent
       availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-  - sensor:
-      name: "Portainer-CE CPU Usage"
-      unit_of_measurement: '%'
-      command: "cat /config/www/nas_status.json"
-      value_template: >
-        {% if value_json.get('Portainer-CE_cpu_usage', 'Unavailable') is number %}
-          {{ value_json.get('Portainer-CE_cpu_usage', 'Unavailable') }}
-        {% else %}
-          -1
-        {% endif %}
-      icon: mdi:cpu-64-bit
-      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-  - sensor:
-      name: "Portainer-CE Memory Usage"
-      unit_of_measurement: 'GB'
-      command: "cat /config/www/nas_status.json"
-      value_template: >
-        {% set mem_usage = value_json.get('Portainer-CE_mem_usage', '0B') %}
-        {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
-        {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
-        {% if unit == 'MiB' %}
-          {{ '%0.3f' | format(value / 1024) }}
-        {% elif unit == 'GiB' %}
-          {{ '%0.3f' | format(value) }}
-        {% elif unit == 'KiB' %}
-          {{ '%0.3f' | format(value / (1024 * 1024)) }}
-        {% elif unit == 'B' %}
-          {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
-        {% else %}
-          {{ '-1' }}  # Fallback in case unit is not recognized
-        {% endif %}
-      icon: mdi:memory
-      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-  - sensor:
-      name: "Portainer-CE Memory Usage Percentage"
-      unit_of_measurement: '%'
-      command: "cat /config/www/nas_status.json"
-      value_template: >
-        {% if value_json.get('Portainer-CE_mem_perc', 'Unavailable') is number %}
-          {{ value_json.get('Portainer-CE_mem_perc', 'Unavailable') }}
-        {% else %}
-          -1
-        {% endif %}
-      icon: mdi:percent
-      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
+  # - sensor:
+  #     name: "Portainer-CE CPU Usage"
+  #     unit_of_measurement: '%'
+  #     command: "cat /config/www/nas_status.json"
+  #     value_template: >
+  #       {% if value_json.get('Portainer-CE_cpu_usage', 'Unavailable') is number %}
+  #         {{ value_json.get('Portainer-CE_cpu_usage', 'Unavailable') }}
+  #       {% else %}
+  #         -1
+  #       {% endif %}
+  #     icon: mdi:cpu-64-bit
+  #     availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
+  # - sensor:
+  #     name: "Portainer-CE Memory Usage"
+  #     unit_of_measurement: 'GB'
+  #     command: "cat /config/www/nas_status.json"
+  #     value_template: >
+  #       {% set mem_usage = value_json.get('Portainer-CE_mem_usage', '0B') %}
+  #       {% set value = mem_usage | regex_replace('([^0-9.]+)', '') | float(0) %}
+  #       {% set unit = mem_usage | regex_replace('([0-9.]+)', '') %}
+  #       {% if unit == 'MiB' %}
+  #         {{ '%0.3f' | format(value / 1024) }}
+  #       {% elif unit == 'GiB' %}
+  #         {{ '%0.3f' | format(value) }}
+  #       {% elif unit == 'KiB' %}
+  #         {{ '%0.3f' | format(value / (1024 * 1024)) }}
+  #       {% elif unit == 'B' %}
+  #         {{ '%0.3f' | format(value / (1024 * 1024 * 1024)) }}
+  #       {% else %}
+  #         {{ '-1' }}  # Fallback in case unit is not recognized
+  #       {% endif %}
+  #     icon: mdi:memory
+  #     availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
+  # - sensor:
+  #     name: "Portainer-CE Memory Usage Percentage"
+  #     unit_of_measurement: '%'
+  #     command: "cat /config/www/nas_status.json"
+  #     value_template: >
+  #       {% if value_json.get('Portainer-CE_mem_perc', 'Unavailable') is number %}
+  #         {{ value_json.get('Portainer-CE_mem_perc', 'Unavailable') }}
+  #       {% else %}
+  #         -1
+  #       {% endif %}
+  #     icon: mdi:percent
+  #     availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
   - sensor:
       name: "Firefox CPU Usage"
       unit_of_measurement: '%'
