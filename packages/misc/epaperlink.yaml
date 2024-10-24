@@ -5,9 +5,9 @@
 # garbage_monitor_tag #Garbage Monitor
 # 0000021c3bc6341b #Washing Machine Energy
 # 0000021d26a23414 #Litterbox
-# 00007e22b1d7b299 #Washroom Electricity Price
-# 00007e225dc2b29f #Study Electricity Price
-# 00007e22b1b2b29a #Kitchen Electricity Price
+# 00007e1f8b30b297 #Washroom Electricity Price
+# 00007e225dc2b29f #Kitchen Electricity Price
+# 00007e22cc92b292 #Study Electricity Price
 
 homeassistant:
   customize: {}
@@ -30,9 +30,9 @@ template:
             'sensor.garbage_monitor_tag_last_seen',
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.0000021d26a23414_last_seen',
-            'sensor.00007e22b1d7b299_last_seen',
+            'sensor.00007e1f8b30b297_last_seen',
             'sensor.00007e225dc2b29f_last_seen',
-            'sensor.00007e22b1b2b29a_last_seen'
+            'sensor.00007e22cc92b292_last_seen'
           ] -%}
             {%- if states(sensor) not in ['unknown', 'unavailable', 'none', ''] -%}
               {%- set timestamp = as_timestamp(states(sensor)) -%}
@@ -60,9 +60,9 @@ template:
             'sensor.garbage_monitor_tag_last_seen',
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.0000021d26a23414_last_seen',
-            'sensor.00007e22b1d7b299_last_seen',
+            'sensor.00007e1f8b30b297_last_seen',
             'sensor.00007e225dc2b29f_last_seen',
-            'sensor.00007e22b1b2b29a_last_seen'
+            'sensor.00007e22cc92b292_last_seen'
           ] %}
           {% set ns = namespace(available = false) %}
           {% for sensor in all_sensors %}
@@ -316,6 +316,29 @@ automation:
         data:
           display_entity_id: open_epaper_link.0000021D26A23414
 
+  - alias: "[misc|epaperlink] Update Study Powerstrip Display"
+    id: misc_epaperlink_update_study_powerstrip_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"  # Triggers every 30 minutes
+      - platform: state
+        entity_id:
+          - switch.powerstrip_study_desk_socket_1
+          - switch.powerstrip_study_desk_socket_2
+          - switch.powerstrip_study_desk_socket_3
+          - switch.powerstrip_study_desk_socket_4
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "23:30:00"
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 600 }}" #Checks if tags have checked in in the past 10 minutes. Only updates if it actually works
+    action:
+      - service: script.update_study_powerstrip_display
+        data:
+          display_entity_id: open_epaper_link.0000021D1C8E3413
+
   - alias: "[misc|epaperlink] Tag Button Update of Displays"
     id: automation_yaml_misc_epaperlink_tag_button_update_of_displays
     mode: queued
@@ -363,17 +386,19 @@ automation:
         value_template: >
           {%- set outdated = namespace(found=false) -%}
           {%- for sensor in [
-              "sensor.00007e22b1d7b299_last_seen",
-              "sensor.00007e22b1b2b29a_last_seen",
-              "sensor.00007e225dc2b29f_last_seen",
+              "sensor.0000021c3bc6341b_last_seen",
               "sensor.00000218736e3b1e_last_seen",
-              "sensor.0000021dbca73412_last_seen",
-              "sensor.0000021d26a23414_last_seen",
               "sensor.0000039223703418_last_seen",
-              "sensor.garbage_monitor_tag_last_seen"
+              "sensor.garbage_monitor_tag_last_seen",
+              "sensor.0000021dbca73412_last_seen",
+              "sensor.00007e225dc2b29f_last_seen",
+              "sensor.00007e22cc92b292_last_seen",
+              "sensor.00007e1f8b30b297_last_seen",
+              "sensor.0000021d26a23414_last_seen",
+              "sensor.0000021d1c8e3413_last_seen"
             ] -%}
               {%- set last_seen = states(sensor) -%}
-              {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
+              {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
                 {%- set outdated.found = true -%}
               {%- endif -%}
           {% endfor %}
@@ -388,17 +413,19 @@ automation:
           message: >
             One or more tags have not been seen for more than 5 minutes:
             {% for sensor in [
-                "sensor.00007e22b1d7b299_last_seen",
-                "sensor.00007e22b1b2b29a_last_seen",
-                "sensor.00007e225dc2b29f_last_seen",
+                "sensor.0000021c3bc6341b_last_seen",
                 "sensor.00000218736e3b1e_last_seen",
-                "sensor.0000021dbca73412_last_seen",
-                "sensor.0000021d26a23414_last_seen",
                 "sensor.0000039223703418_last_seen",
-                "sensor.garbage_monitor_tag_last_seen"
+                "sensor.garbage_monitor_tag_last_seen",
+                "sensor.0000021dbca73412_last_seen",
+                "sensor.00007e225dc2b29f_last_seen",
+                "sensor.00007e22cc92b292_last_seen",
+                "sensor.00007e1f8b30b297_last_seen",
+                "sensor.0000021d26a23414_last_seen",
+                "sensor.0000021d1c8e3413_last_seen"
               ] %}
                 {%- set last_seen = states(sensor) -%}
-                {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
+                {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
                   {%- if not state_attr(sensor, 'friendly_name') == None -%}
                     {{ state_attr(sensor, 'friendly_name') | replace(' Last Seen', '') }}{% if not loop.last %}, {% endif %}
                   {%- else -%}
@@ -411,17 +438,19 @@ automation:
             value_template: >
               {% set recent_seen = true %}
               {% for sensor in [
-                  "sensor.00007e22b1d7b299_last_seen",
-                  "sensor.00007e22b1b2b29a_last_seen",
-                  "sensor.00007e225dc2b29f_last_seen",
-                  "sensor.00000218736e3b1e_last_seen",
-                  "sensor.0000021dbca73412_last_seen",
-                  "sensor.0000021d26a23414_last_seen",
-                  "sensor.0000039223703418_last_seen",
-                  "sensor.garbage_monitor_tag_last_seen"
+                    "sensor.0000021c3bc6341b_last_seen",
+                    "sensor.00000218736e3b1e_last_seen",
+                    "sensor.0000039223703418_last_seen",
+                    "sensor.garbage_monitor_tag_last_seen",
+                    "sensor.0000021dbca73412_last_seen",
+                    "sensor.00007e225dc2b29f_last_seen",
+                    "sensor.00007e22cc92b292_last_seen",
+                    "sensor.00007e1f8b30b297_last_seen",
+                    "sensor.0000021d26a23414_last_seen",
+                    "sensor.0000021d1c8e3413_last_seen"
                 ] %}
                   {%- set last_seen = states(sensor) -%}
-                  {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 300) -%}
+                  {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
                     {% set recent_seen = false %}
                   {%- endif -%}
               {% endfor %}
@@ -439,7 +468,7 @@ automation:
     trigger:
       - platform: template
         value_template: >
-          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) > 300 }} #default of 3000000000 is Saturday, January 24, 2065 6:20:00 AM
+          {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) > 600 }} #default of 3000000000 is Saturday, January 24, 2065 6:20:00 AM
     condition:
       - condition: not
         conditions:
@@ -461,7 +490,7 @@ automation:
             # Wait for devices to check in
             - wait_template: >
                 {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 300 }}
-              timeout: '00:01:00'  # Wait up to 1 minute
+              timeout: '00:05:00'  # Wait up to 5 minutes
               continue_on_timeout: true
           until:
             # Exit loop if devices have checked in or maximum attempts reached
@@ -469,7 +498,7 @@ automation:
               conditions:
                 - condition: template
                   value_template: >
-                    {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 300 }}
+                    {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 600 }}
                 - condition: template
                   value_template: >
                     {{ repeat.index >= 3 }}
@@ -478,7 +507,7 @@ automation:
           - conditions:
               - condition: template
                 value_template: >
-                  {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 300 }}
+                  {{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'), default=3000000000)) < 600 }}
             sequence:
               # Devices have checked in, trigger display updates
               - service: automation.trigger
@@ -511,7 +540,8 @@ automation:
         value_template: >
           {{
             states('sensor.median_epaper_tag_last_check_in_time') == 'unavailable' or
-            (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 600
+            (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 900 or
+            is_state('device_tracker.openepaperlink_7bc8', 'off')
           }}
     action:
       # Repeat power cycling the AP until it becomes available or maximum attempts reached
@@ -529,14 +559,17 @@ automation:
               entity_id: switch.plug_epaper_ap_switch
             # Wait for the AP to boot up
             - delay:
-                seconds: 60
+                seconds: 120
           until:
             # Exit loop if AP is pingable or maximum attempts reached
             - condition: or
               conditions:
                 - condition: template
                   value_template: >
-                    {{ not is_state('sensor.epaperlink_study_ap_round_trip_time_average', 'unavailable') }}
+                    {{
+                      not is_state('sensor.epaperlink_study_ap_round_trip_time_average', 'unavailable') or
+                      is_state('device_tracker.openepaperlink_7bc8', 'on')
+                    }}
                 - condition: template
                   value_template: >
                     {{ repeat.index >= 3 }}
@@ -555,7 +588,7 @@ automation:
                   entry_id: dcd0a828896007b5be2b87a699bb028f
               # Wait for 1 minute to allow devices to check in
               - delay:
-                  minutes: 1
+                  minutes: 5
               # Trigger the display update automations
       - service: automation.trigger
         entity_id:
@@ -3207,3 +3240,100 @@ script:
               size: 40
               color: >
                 {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+
+  update_study_powerstrip_display:
+    alias: "Update Study Powerstrip Display"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated"
+        example: "open_epaper_link.0000021DBCA73412"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: "{{ display_entity_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: false
+          payload:
+            # Quadrant 1: PC
+            - type: rectangle
+              fill: >
+                {{ 'white' if is_state('switch.powerstrip_study_desk_socket_1', 'on')
+                  else 'red' if is_state('switch.powerstrip_study_desk_socket_1', 'off')
+                  else 'black' }}
+              outline: black
+              width: 2
+              x_start: 0
+              y_start: 0
+              x_end: 75
+              y_end: 75
+            - type: icon
+              value: desktop-tower
+              x: 37
+              y: 37
+              size: 36
+              color: >
+                {{ 'black' if is_state('switch.powerstrip_study_desk_socket_1', 'on')
+                  else 'white' }}
+            # Quadrant 2: Laptop Dock
+            - type: rectangle
+              fill: >
+                {{ 'white' if is_state('switch.powerstrip_study_desk_socket_2', 'on')
+                  else 'red' if is_state('switch.powerstrip_study_desk_socket_2', 'off')
+                  else 'black' }}
+              outline: black
+              width: 2
+              x_start: 76
+              y_start: 0
+              x_end: 151
+              y_end: 75
+            - type: icon
+              value: laptop
+              x: 113
+              y: 37
+              size: 36
+              color: >
+                {{ 'black' if is_state('switch.powerstrip_study_desk_socket_2', 'on')
+                  else 'white' }}
+            # Quadrant 3: Peripherals
+            - type: rectangle
+              fill: >
+                {{ 'white' if is_state('switch.powerstrip_study_desk_socket_3', 'on')
+                  else 'red' if is_state('switch.powerstrip_study_desk_socket_3', 'off')
+                  else 'black' }}
+              outline: black
+              width: 2
+              x_start: 0
+              y_start: 76
+              x_end: 75
+              y_end: 151
+            - type: icon
+              value: audio-video
+              x: 37
+              y: 113
+              size: 36
+              color: >
+                {{ 'black' if is_state('switch.powerstrip_study_desk_socket_3', 'on') 
+                  else 'white' }}
+            # Quadrant 4: Monitors
+            - type: rectangle
+              fill: >
+                {{ 'white' if is_state('switch.powerstrip_study_desk_socket_4', 'on') 
+                  else 'red' if is_state('switch.powerstrip_study_desk_socket_4', 'off') 
+                  else 'black' }}
+              outline: black
+              width: 2
+              x_start: 76
+              y_start: 76
+              x_end: 151
+              y_end: 151
+            - type: icon
+              value: monitor-multiple
+              x: 113
+              y: 113
+              size: 36
+              color: >
+                {{ 'black' if is_state('switch.powerstrip_study_desk_socket_4', 'on') 
+                  else 'white' }}

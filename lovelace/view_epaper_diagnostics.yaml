@@ -20,10 +20,26 @@ cards:
         entities:
           - entity: sensor.epaperlink_study_ap_round_trip_time_average
             name: Study AP Ping
+      - type: glance
+        entities:
+          - entity: device_tracker.openepaperlink_7bc8
+            name: Study AP Unifi
+            double_tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/8a57b6c9d98030cedeaa62163359a36d
       - type: entity
         entity: automation.misc_epaperlink_trigger_reload_when_last_seen_exceeds_5_minutes
         attribute: last_triggered
         name: Last Triggered
+      - type: glance
+        entities:
+          - entity: switch.plug_epaper_ap_switch
+            name: Plug
+            tap_action:
+              action: toggle
+            double_tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/ab2cc25333c1b320c6dcfe0e88048130
 
   # - type: vertical-stack
   #   cards:
@@ -424,3 +440,38 @@ cards:
               service: script.update_litterbox_display
               service_data:
                 display_entity_id: open_epaper_link.0000021d26a23414
+
+  - type: vertical-stack
+    cards:
+      - type: markdown
+        content: |
+          ### Study Powerstrip Diagnostics
+      - type: picture-entity
+        entity: camera.0000021d1c8e3413_content
+        camera_image: camera.0000021d1c8e3413_content
+        show_state: false
+        show_name: false
+        aspect_ratio: "2.31"
+        fit_mode: contain
+        tap_action:
+          action: navigate
+          navigation_path: /config/devices/device/fcf0279b783325a85401128ab88eefd4
+      - type: entities
+        entities:
+          - entity: sensor.0000021d1c8e3413_battery
+            name: Battery Percentage
+          - entity: sensor.0000021d1c8e3413_link_quality_index
+            name: Link Quality
+          - entity: sensor.0000021d1c8e3413_battery_voltage
+            name: Battery Voltage
+          - entity: sensor.0000021d1c8e3413_rssi
+            name: RSSI
+          - entity: sensor.0000021d1c8e3413_last_seen
+            name: Last Seen
+          - entity: script.update_study_powerstrip_display
+            name: Update Display
+            tap_action:
+              action: call-service
+              service: script.update_study_powerstrip_display
+              service_data:
+                display_entity_id: open_epaper_link.0000021D1C8E3413
