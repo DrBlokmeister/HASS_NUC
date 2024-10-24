@@ -1,0 +1,139 @@
+# For PCB v0.1.9 with dual core ESP32
+# See https://devices.esphome.io/devices/Shelly-Plus-2PM
+# substitutions:
+#   devicename: "shelly-plus-2pm"
+#   output_name_1: "Output 1"
+#   output_name_2: "Output 2"
+#   input_name_1: "Input 1"
+#   input_name_2: "Input 2"
+#   max_temp: 80.0
+#   ntc_b_constant: 3350
+#   ntc_reference_resistance: 4.7kOhm
+#   ntc_reference_temperature: 298.15K
+#   resistor_value: 5.6kOhm
+
+esphome:
+  name: ${espname}
+  comment: 'Shelly Plus 2 PM'
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: arduino
+
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
+  inputs_1: !include
+    file: /config/esphome/templates/shelly_functions/shelly_inputs.yaml
+    vars:
+      channel: '1'
+      input_device_name: "${device_name} 1"
+      relay_id: shelly_relay_1
+      clicker_id: switch_clicker_1
+      shelly_switch_id: shelly_switch_1
+      GPIO_pin: GPIO5
+      detached_mode_id: "detach_mode_1"
+  inputs_2: !include
+    file: /config/esphome/templates/shelly_functions/shelly_inputs.yaml
+    vars:
+      channel: '2'
+      input_device_name: "${device_name} 2"
+      relay_id: shelly_relay_2
+      clicker_id: switch_clicker_2
+      shelly_switch_id: shelly_switch_2
+      GPIO_pin: GPIO18
+      detached_mode_id: "detach_mode_2"
+  relay_1: !include
+    file: /config/esphome/templates/shelly_functions/shelly_relay.yaml
+    vars:
+      relay_id: shelly_relay_1
+      relay_device_name: "${device_name} 1"
+      GPIO_pin: GPIO12
+      detached_mode_id: "detach_mode_1"
+  relay_2: !include
+    file: /config/esphome/templates/shelly_functions/shelly_relay.yaml
+    vars:
+      relay_id: shelly_relay_2
+      relay_device_name: "${device_name} 2"
+      GPIO_pin: GPIO13
+      detached_mode_id: "detach_mode_2"
+  ntc_sensor: !include
+    file: /config/esphome/templates/shelly_functions/shelly_ntc_sensors.yaml
+    vars:
+      ntc_b_constant: "3350"
+      ntc_reference_temperature: "298.15K"
+      ntc_reference_resistance: "4.7kOhm"
+      resistor_value: "5.6kOhm"
+      adc_attenuation: "12db"
+      adc_pin: "GPIO35"
+  power_diagnostics_1: !include
+    file: /config/esphome/common/power.yaml
+    vars:
+      power_device_name: ${device_name} Channel 1
+      power_id: power_1
+      current_id: current_1
+      voltage_id: voltage
+      apparent_power_id: apparent_power_1
+      power_factor_id: power_factor_1
+      reactive_power_id: reactive_power_1
+  power_diagnostics_2: !include
+    file: /config/esphome/common/power.yaml
+    vars:
+      power_device_name: ${device_name} Channel 2
+      power_id: power_2
+      current_id: current_2
+      voltage_id: voltage
+      apparent_power_id: apparent_power_2
+      power_factor_id: power_factor_2
+      reactive_power_id: reactive_power_2
+
+status_led:
+  pin:
+    number: GPIO0
+    inverted: true
+
+i2c:
+  sda: GPIO26
+  scl: GPIO25
+
+binary_sensor:
+  # Button on device
+  - platform: gpio
+    name: "${device_name} Button"
+    pin:
+      number: GPIO4
+      inverted: yes
+      mode:
+        input: true
+        pullup: true
+    internal: true
+
+sensor:
+  # Power Sensor
+  - platform: ade7953_i2c
+    irq_pin: GPIO27
+    voltage:
+      name: "${device_name} Voltage"
+      entity_category: 'diagnostic'
+      id: voltage
+    current_a:
+      name: "${device_name} Channel 1 Current"
+      entity_category: 'diagnostic'
+      id: current_1
+    active_power_a:
+      name: "${device_name} Channel 1 Power"
+      id: power_1
+      entity_category: 'diagnostic'
+      filters:
+        - multiply: -1
+    current_b:
+      name: "${device_name} Channel 2 Current"
+      entity_category: 'diagnostic'
+      id: current_2
+    active_power_b:
+      name: "${device_name} Channel 2 Power"
+      id: power_2
+      entity_category: 'diagnostic'
+    update_interval: 10s
