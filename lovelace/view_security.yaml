@@ -30,81 +30,88 @@ cards:
         show_state: true
         tap_action:
           action: toggle
-  - cards:
-        # Use template below to find all motion and door sensors. For a full list of device classes, seee: https://www.home-assistant.io/integrations/binary_sensor/
-        # - {{ states | selectattr('attributes.device_class', 'eq', 'motion') | map(attribute='entity_id') | list | join('\n- ') }}
-        # - {{ states | selectattr('attributes.device_class', 'eq', 'door') | map(attribute='entity_id') | list | join('\n- ') }}
-      - entities:
-          - entity: binary_sensor.entry_motion_1
-            name: Entry 1
-          - entity: binary_sensor.entry_motion_2
-            name: Entry 2
-          - entity: binary_sensor.hallway_1st_floor_motion_1
-            name: 1st Floor 1
-          - entity: binary_sensor.hallway_1st_floor_motion_2
-            name: 1st Floor 2
-          - entity: binary_sensor.stairs_lower_motion_1
-            name: Stairs Lower
-          - entity: binary_sensor.hallway_2nd_floor_motion_1
-            name: 2nd Floor 1
-          - entity: binary_sensor.hallway_2nd_floor_motion_2
-            name: 2nd Floor 2
-          - entity: binary_sensor.stairs_upper_motion_1
-            name: Stairs Upper
-          - entity: binary_sensor.livingroom_motion_1
-            name: Livingroom 1
-          - entity: binary_sensor.livingroom_motion_2
-            name: Livingroom 2
-          - entity: binary_sensor.livingroom_motion_3
-            name: Livingroom 3
-          - entity: binary_sensor.kitchen_motion_1
-            name: Kitchen
-          - entity: binary_sensor.kitchen_motion_2
-            name: Kitchen 2
-          # - entity: binary_sensor.tapo_camera_d6d4_motion
-          #   name: Livingroom Camera
-          - entity: binary_sensor.bathroom_motion_1
-            name: Bathroom
-          - entity: binary_sensor.bedroom_motion_1
-            name: Bedroom
-          - entity: binary_sensor.babyroom_motion_1
-            name: Baby Room
-          - entity: binary_sensor.study_motion_1
-            name: Study 1
-          - entity: binary_sensor.study_motion_2
-            name: Study 2
-          # - entity: binary_sensor.motion_sensor_balcony
-          #   name: Balcony
-          - entity: binary_sensor.outside_motion_1
-            name: Outside
-          - entity: binary_sensor.vibration_sensor_desk_chair
-            name: Study Chair
-          - entity: binary_sensor.vibration_sensor_new_desk_chair
-            name: Study Chair New
-          - entity: binary_sensor.vibration_sensor_mailbox
-            name: Mailbox
-          - entity: binary_sensor.litterbox_vibration
-            name: Litter Box
-          - entity: binary_sensor.washroom_door_sensor
-            name: Washroom door
-          - entity: binary_sensor.stairs_cabinet_door_sensor
-            name: Cabinet door
-          - entity: binary_sensor.shed_door
-            name: Shed Door
-          - entity: binary_sensor.front_door_sensor
-            name: Front door
-          - entity: binary_sensor.back_door_sensor
-            name: Back Door
-          - entity: binary_sensor.meterkast_door_sensor
-            name: Utitlity Cabinet
-          - entity: binary_sensor.bedroom_closet_door_sensor
-            name: Bedroom Cabinet
-        hours_to_show: 12
-        title: Motion sensors
-        type: history-graph
-    type: vertical-stack
 
-  - entities:
+# Use template below to find all motion and door sensors. For a full list of device classes, seee: https://www.home-assistant.io/integrations/binary_sensor/
+# - {{ states | selectattr('attributes.device_class', 'eq', 'motion') | map(attribute='entity_id') | list | join('\n- ') }}
+# - {{ states | selectattr('attributes.device_class', 'eq', 'door') | map(attribute='entity_id') | list | join('\n- ') }}
+
+  - type: history-graph
+    title: Motion sensors
+    hours_to_show: 12
+    entities:
+      - entity: binary_sensor.entry_motion_1
+        name: Entry 1
+      - entity: binary_sensor.entry_motion_2
+        name: Entry 2
+      - entity: binary_sensor.hallway_1st_floor_motion_1
+        name: 1st Floor 1
+      - entity: binary_sensor.hallway_1st_floor_motion_2
+        name: 1st Floor 2
+      - entity: binary_sensor.stairs_lower_motion_1
+        name: Stairs Lower
+      - entity: binary_sensor.hallway_2nd_floor_motion_1
+        name: 2nd Floor 1
+      - entity: binary_sensor.hallway_2nd_floor_motion_2
+        name: 2nd Floor 2
+      - entity: binary_sensor.stairs_upper_motion_1
+        name: Stairs Upper
+      - entity: binary_sensor.livingroom_motion_1
+        name: Livingroom 1
+      - entity: binary_sensor.livingroom_motion_2
+        name: Livingroom 2
+      - entity: binary_sensor.livingroom_motion_3
+        name: Livingroom 3
+      - entity: binary_sensor.kitchen_motion_1
+        name: Kitchen
+      - entity: binary_sensor.kitchen_motion_2
+        name: Kitchen 2
+      - entity: binary_sensor.bathroom_motion_1
+        name: Bathroom
+      - entity: binary_sensor.bedroom_motion_1
+        name: Bedroom
+      - entity: binary_sensor.babyroom_motion_1
+        name: Baby Room
+      - entity: binary_sensor.study_motion_1
+        name: Study 1
+      - entity: binary_sensor.study_motion_2
+        name: Study 2
+      - entity: binary_sensor.babycam_motion
+        name: Baby Cam Motion
+      - entity: binary_sensor.outside_motion_1
+        name: Outside
+      - entity: binary_sensor.vibration_sensor_desk_chair
+        name: Study Chair
+      - entity: binary_sensor.vibration_sensor_new_desk_chair
+        name: Study Chair New
+      - entity: binary_sensor.vibration_sensor_mailbox
+        name: Mailbox
+      - entity: binary_sensor.litterbox_vibration
+        name: Litter Box
+      - entity: binary_sensor.washroom_door_sensor
+        name: Washroom door
+      - entity: binary_sensor.stairs_cabinet_door_sensor
+        name: Cabinet door
+      - entity: binary_sensor.shed_door
+        name: Shed Door
+      - entity: binary_sensor.front_door_sensor
+        name: Front door
+      - entity: binary_sensor.back_door_sensor
+        name: Back Door
+      - entity: binary_sensor.meterkast_door_sensor
+        name: Utility Cabinet
+      - entity: binary_sensor.bedroom_closet_door_sensor
+        name: Bedroom Cabinet
+
+  - title: Active motion sensors
+    type: entity-filter
+    conditions:
+      - condition: or
+        conditions:
+          - condition: state
+            state: "on"
+          - condition: state
+            state: "open"
+    entities:
       - entity: binary_sensor.bedroom_motion_1
         name: Bedroom
         secondary_info: last-changed
@@ -162,6 +169,9 @@ cards:
       - entity: binary_sensor.babyroom_motion_1
         name: Baby Room
         secondary_info: last-changed
+      - entity: binary_sensor.babycam_motion
+        name: Baby Cam Motion
+        secondary_info: last-changed
       - entity: binary_sensor.outside_motion_1
         name: Outside
         secondary_info: last-changed
@@ -183,18 +193,6 @@ cards:
       - entity: binary_sensor.meterkast_door_sensor
         name: Utility Cabinet door
         secondary_info: last-changed
-    title: Active motion sensors
-    type: entity-filter
-    conditions:
-      - condition: or
-        conditions:
-          - condition: state
-            state: "on"
-          - condition: state
-            state: "open"
-    # state_filter:
-    #   - operator: "=="
-    #     value: "on"
 
   - type: entities
     title: Presence Detectors
@@ -236,6 +234,9 @@ cards:
       - entity: binary_sensor.bathroom_motion_1
         secondary_info: last-changed
         name: Bathroom
+      - entity: binary_sensor.babyroom_motion_1
+        name: Baby Room
+        secondary_info: last-changed
       - entity: binary_sensor.bedroom_motion_1
         secondary_info: last-changed
         name: Bedroom
@@ -275,76 +276,3 @@ cards:
       - entity: binary_sensor.bedroom_closet_door_sensor
         secondary_info: last-changed
         name: Bedroom Cabinet
-        
-  # - type: picture-glance
-  #   title: Living Room
-  #   camera_image: camera.tapo_camera_d6d4_hd
-  #   camera_view: live
-  #   entities:
-  #     - entity: light.livingroom_lights
-  #       icon: 'mdi:lightbulb-group'
-  #       tap_action:
-  #         action: call-service
-  #         service: script.turn_on
-  #         service_data:
-  #           entity_id: script.toggle_lights_for_camera
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:arrow-left-drop-circle-outline'
-  #       tap_action:
-  #         action: call-service
-  #         service: tapo_control.ptz
-  #         service_data:
-  #           entity_id: camera.tapo_camera_d6d4_hd
-  #           pan: LEFT
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:arrow-up-drop-circle-outline'
-  #       tap_action:
-  #         action: call-service
-  #         service: tapo_control.ptz
-  #         service_data:
-  #           entity_id: camera.tapo_camera_d6d4_hd
-  #           tilt: UP
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:arrow-down-drop-circle-outline'
-  #       tap_action:
-  #         action: call-service
-  #         service: tapo_control.ptz
-  #         service_data:
-  #           entity_id: camera.tapo_camera_d6d4_hd
-  #           tilt: DOWN
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:arrow-right-drop-circle-outline'
-  #       tap_action:
-  #         action: call-service
-  #         service: tapo_control.ptz
-  #         service_data:
-  #           entity_id: camera.tapo_camera_d6d4_hd
-  #           pan: RIGHT
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:eye-outline'
-  #       tap_action:
-  #         action: call-service
-  #         service: script.turn_on
-  #         service_data:
-  #           entity_id: script.deactivate_livingroom_camera_privacy_mode
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:eye-off-outline'
-  #       tap_action:
-  #         action: call-service
-  #         service: script.turn_on
-  #         service_data:
-  #           entity_id: script.activate_livingroom_camera_privacy_mode
-  #     - entity: camera.tapo_camera_d6d4_hd
-  #       icon: 'mdi:power'
-  #       tap_action:
-  #         action: call-service
-  #         service: tapo_control.reboot
-  #         service_data:
-  #           entity_id: camera.tapo_camera_d6d4_hd
-  #   hold_action:
-  #     action: more-info
-  # - type: entities
-  #   entities:
-  #     - entity: switch.livingroom_camera_detect
-  #     - entity: sensor.livingroom_camera_person
-  #       secondary_info: last-changed
