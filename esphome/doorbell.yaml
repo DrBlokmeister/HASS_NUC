@@ -48,6 +48,22 @@ switch:
     id: dnd_mode
     restore_mode: RESTORE_DEFAULT_OFF
     optimistic: true
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              for:
+                time: 5s
+                condition:
+                  api.connected:
+            then:
+              - switch.turn_on: relay
+              - delay: 0.1s
+              - switch.turn_off: relay
+              - delay: 0.2s
+              - switch.turn_on: relay
+              - delay: 0.1s
+              - switch.turn_off: relay
 
 binary_sensor:
   - platform: gpio
