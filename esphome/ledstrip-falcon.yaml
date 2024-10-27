@@ -1,0 +1,86 @@
+substitutions:
+  device_name: "Ledstrip Falcon"
+  friendly_name: "Ledstrip Millennium Falcon"
+
+esphome:
+  name: "ledstrip-falcon"
+  comment: ESP32C3
+  platformio_options:
+    board_build.f_cpu: 80000000L  # Set CPU frequency to 80MHz
+
+esp32:
+  board: esp32-c3-devkitm-1
+  # framework:
+  #   type: arduino
+  #   version: 2.7.4
+
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
+
+e131:
+  method: unicast
+
+status_led:
+  pin: GPIO2
+
+spi:
+  mosi_pin: GPIO06
+  clk_pin: GPIO07
+
+light:
+  # - platform: neopixelbus
+  #   type: BGR
+  #   variant: DotStar
+  #   data_pin: GPIO06
+  #   clock_pin: GPIO07
+  #   num_leds: 25
+  #   default_transition_length: 2s
+  #   name: "${device_name}"
+  #   gamma_correct: 1
+  #   effects:
+  - platform: spi_led_strip
+    num_leds: 25
+    default_transition_length: 2s
+    name: "${device_name}"
+    gamma_correct: 1.8
+    effects:
+      - e131:
+          universe: 1
+          channels: RGB
+      - addressable_rainbow:
+          name: Rainbow Swirl
+          width: 25
+      - addressable_lambda:
+          name: "Slow Engine Pulse"
+          update_interval: 16ms  # 60 FPS for smooth animation
+          lambda: |-
+            static float time = 0;
+            time += 0.010;  // Slowly increase time for slow pulse effect
+            // Define the pulse intensity based on a sine wave for a smooth transition
+            float intensity = (0.5 * sin(time * 2 * M_PI) + 1.5) / 2;
+            // Adjust the colors (mix of red, green, blue)
+            uint8_t red = intensity * 100;  // Red component
+            uint8_t green = intensity * 100;  // Green component
+            uint8_t blue = intensity * 255;  // Blue component for Falcon's engine
+            // Set the color for each LED
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = Color(red, green, blue);
+            }
+      - addressable_lambda:
+          name: "Fast Engine Pulse"
+          update_interval: 8ms  # 120 FPS for faster pulse
+          lambda: |-
+            static float time = 0;
+            time += 0.050;  // Faster time increment for quicker pulses
+            // Pulse intensity, with a quicker sine wave for rapid pulse
+            float intensity = (0.5 * sin(time * 2 * M_PI) + 1.5) / 2;
+            // Adjust the colors (red, green, blue)
+            uint8_t red = intensity * 100;  // Red component
+            uint8_t green = intensity * 100;  // Green component
+            uint8_t blue = intensity * 255;  // Blue component for Falcon's engine
+            // Set the color for each LED
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = Color(red, green, blue);
+            }
