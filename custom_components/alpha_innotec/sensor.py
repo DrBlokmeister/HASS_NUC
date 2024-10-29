@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     _LOGGER.debug("Setting up sensors")
 
-    coordinator = AlphaInnotecCoordinator(hass)
+    coordinator = hass.data[DOMAIN][entry.entry_id]['coordinator']
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -68,11 +68,11 @@ class AlphaInnotecBatterySensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return unique ID for this device."""
-        return self.thermostat.identifier
+        return f"{self.thermostat.identifier}_battery"
 
     @property
     def name(self) -> str | UndefinedType | None:
-        return self.thermostat.name
+        return f"{self.thermostat.name} Battery"
 
     @property
     def native_value(self):

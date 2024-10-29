@@ -31,7 +31,7 @@ def validate_input(data: dict) -> dict:
 
         return system_information
     except Exception as exception:
-        _LOGGER.debug("Exception: %s", exception)
+        _LOGGER.error("Cannot connect during config flow: %s", exception)
         raise CannotConnect
 
 
@@ -57,7 +57,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception as exception:
-                _LOGGER.exception("Unexpected exception")
+                _LOGGER.exception("Unexpected exception during config flow: %s", exception)
                 errors["base"] = "unknown"
 
         return self.async_show_form(

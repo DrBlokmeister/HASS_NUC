@@ -30,79 +30,86 @@ class AlphaInnotecCoordinator(DataUpdateCoordinator):
         self.gateway_api = hass.data[DOMAIN][self.config_entry.entry_id]['gateway_api']
 
     async def _async_update_data(self) -> dict[str, list[Valve | Thermostat]]:
-        db_modules: dict = await self.hass.async_add_executor_job(self.gateway_api.db_modules)
-        all_modules: dict = await self.hass.async_add_executor_job(self.gateway_api.all_modules)
-        room_list: dict = await self.hass.async_add_executor_job(self.controller_api.room_list)
+        try:
+            db_modules: dict = await self.hass.async_add_executor_job(self.gateway_api.db_modules)
+            all_modules: dict = await self.hass.async_add_executor_job(self.gateway_api.all_modules)
+            room_list: dict = await self.hass.async_add_executor_job(self.controller_api.room_list)
 
-        thermostats: list[Thermostat] = []
-        valves: list[Valve] = []
+            thermostats: list[Thermostat] = []
+            valves: list[Valve] = []
 
-        for room_id in all_modules:
-            room_module = all_modules[room_id]
-            room = await self.hass.async_add_executor_job(self.controller_api.room_details, room_id, room_list)
+            for room_id in all_modules:
+                room_module = all_modules[room_id]
+                room = await self.hass.async_add_executor_job(self.controller_api.room_details, room_id, room_list)
 
-            current_temperature = None
-            battery_percentage = None
-
-            for module_id in room_module['modules']:
-                if module_id not in db_modules['modules']:
+                if room is None:
+                    _LOGGER.warning("Room details not found for room ID: %s", room_id)
                     continue
 
-                module_details = db_modules['modules'][module_id]
+                current_temperature = None
+                battery_percentage = None
 
-                if module_details["type"] == MODULE_TYPE_SENSOR:
-                    current_temperature = module_details["currentTemperature"]
-                    battery_percentage = module_details["battery"]
-                elif module_details["type"] == MODULE_TYPE_SENSE_CONTROL:
-                    current_temperature = module_details["currentTemperature"]
-                    battery_percentage = module_details["battery"]
-                    #_LOGGER.info("Current temp: {}, battery: {}".format(current_temperature, battery_percentage))
+                for module_id in room_module['modules']:
+                    if module_id not in db_modules['modules']:
+                        _LOGGER.warning("Module ID %s not found in DB modules", module_id)
+                        continue
 
-            if room.get('status', 'problem') == 'problem':
-                _LOGGER.info("According to the API there is a problem with: %s", room['name'])
+                    module_details = db_modules['modules'][module_id]
 
-            thermostat = Thermostat(
-                identifier=room_id,
-                name=room['name'],
-                current_temperature=current_temperature,
-                desired_temperature=room.get('desiredTemperature'),
-                minimum_temperature=room.get('minTemperature'),
-                maximum_temperature=room.get('maxTemperature'),
-                cooling=room.get('cooling'),
-                cooling_enabled=room.get('coolingEnabled'),
-                battery_percentage=battery_percentage
-            )
+                    if module_details["type"] == MODULE_TYPE_SENSOR or module_details["type"] == MODULE_TYPE_SENSE_CONTROL:
+                        current_temperature = module_details.get("currentTemperature", current_temperature)
+                        battery_percentage = module_details.get("battery", battery_percentage)
 
-            thermostats.append(thermostat)
+                if room.get('status', 'problem') == 'problem':
+                    _LOGGER.info("According to the API there is a problem with: %s", room['name'])
 
-        for module_id in db_modules["modules"]:
-            module = db_modules["modules"][module_id]
-
-            if module["productId"] != 3:
-                continue
-
-            for instance in module["instances"]:
-                valve_id = '0' + instance['instance'] + module['deviceid'][2:]
-
-                used = False
-
-                for room_id in all_modules:
-                    if used is not True:
-                        used = valve_id in all_modules[room_id]["modules"]
-
-                valve = Valve(
-                    identifier=valve_id,
-                    name=module["name"] + '-' + instance['instance'],
-                    instance=instance["instance"],
-                    device_id=module["deviceid"],
-                    device_name=module["name"],
-                    status=instance["status"],
-                    used=used
+                thermostat = Thermostat(
+                    identifier=room_id,
+                    name=room['name'],
+                    current_temperature=current_temperature,
+                    desired_temperature=room.get('desiredTemperature'),
+                    minimum_temperature=room.get('minTemperature'),
+                    maximum_temperature=room.get('maxTemperature'),
+                    cooling=room.get('cooling'),
+                    cooling_enabled=room.get('coolingEnabled'),
+                    battery_percentage=battery_percentage
                 )
 
-                valves.append(valve)
+                thermostats.append(thermostat)
 
-        return {
-            'valves': valves,
-            'thermostats': thermostats
-        }
+            for module_id in db_modules["modules"]:
+                module = db_modules["modules"][module_id]
+
+                if module["productId"] != 3:
+                    continue
+
+                for instance in module["instances"]:
+                    valve_id = '0' + instance['instance'] + module['deviceid'][2:]
+
+                    used = False
+
+                    for room_id in all_modules:
+                        if used is not True:
+                            used = valve_id in all_modules[room_id]["modules"]
+
+                    valve = Valve(
+                        identifier=valve_id,
+                        name=module["name"] + '-' + instance['instance'],
+                        instance=instance["instance"],
+                        device_id=module["deviceid"],
+                        device_name=module["name"],
+                        status=instance["status"],
+                        used=used
+                    )
+
+                    valves.append(valve)
+
+            _LOGGER.debug("Fetched %d thermostats and %d valves", len(thermostats), len(valves))
+
+            return {
+                'valves': valves,
+                'thermostats': thermostats
+            }
+        except Exception as e:
+            _LOGGER.exception("Exception in coordinator update: %s", e)
+            raise

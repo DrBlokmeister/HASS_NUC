@@ -52,9 +52,9 @@ class GatewayAPI(BaseAPI):
             _LOGGER.debug("[%s] - body: %s", endpoint, urlencoded_body)
 
             response = self.session.post("http://{hostname}/{endpoint}".format(hostname=self.api_host, endpoint=endpoint),
-                                     data=urlencoded_body,
-                                     headers={'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-                                     )
+                                         data=urlencoded_body,
+                                         headers={'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+                                         )
 
             self.request_count = self.request_count + 1
 
@@ -62,36 +62,56 @@ class GatewayAPI(BaseAPI):
 
             json_response = response.json()
         except Exception as exception:
-            _LOGGER.exception("Unable to fetch data from API: %s", exception)
+            _LOGGER.exception("Unable to fetch data from API [%s]: %s", endpoint, exception)
+            raise
 
         _LOGGER.debug("[%s] - response body: %s", endpoint, json_response)
 
-        if not json_response['success']:
-            raise Exception('Failed to get data')
+        if not json_response.get('success', False):
+            _LOGGER.error("[%s] - API call unsuccessful: %s", endpoint, json_response)
+            raise Exception('Failed to get data from API endpoint: {}'.format(endpoint))
         else:
             _LOGGER.debug('[%s] - successfully fetched data from API', endpoint)
 
         return json_response
 
     def login(self):
-        response = self.call("admin/login/check")
+        try:
+            response = self.call("admin/login/check")
 
-        if not response['success']:
-            raise Exception("Unable to login")
+            if not response.get('success', False):
+                _LOGGER.error("Gateway login check failed")
+                raise Exception("Unable to login")
+        except Exception as e:
+            _LOGGER.exception("Exception during gateway login: %s", e)
+            raise
 
+        _LOGGER.info("Successfully logged into Gateway API")
         return self
 
     def all_modules(self) -> dict:
-        response = self.call("api/gateway/allmodules")
-
-        return response['modules']['rooms']
+        try:
+            response = self.call("api/gateway/allmodules")
+            return response['modules']['rooms']
+        except Exception as e:
+            _LOGGER.error("Error fetching all modules: %s", e)
+            raise
 
     def db_modules(self) -> dict:
-        return self.call("api/gateway/dbmodules")
+        try:
+            return self.call("api/gateway/dbmodules")
+        except Exception as e:
+            _LOGGER.error("Error fetching DB modules: %s", e)
+            raise
 
     def get_module_details(self, module_id) -> dict | None:
-        response = self.db_modules()
-        if module_id in response['modules']:
-            return response['modules'][module_id]
-
-        return None
+        try:
+            response = self.db_modules()
+            if module_id in response['modules']:
+                return response['modules'][module_id]
+            else:
+                _LOGGER.warning("Module details not found for module ID: %s", module_id)
+                return None
+        except Exception as e:
+            _LOGGER.error("Error fetching module details for %s: %s", module_id, e)
+            raise

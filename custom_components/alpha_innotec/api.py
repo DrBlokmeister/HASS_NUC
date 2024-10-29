@@ -49,12 +49,16 @@ class BaseAPI:
         return a
 
     def encode_signature(self, value: str, salt: str) -> str:
-        value = self.string_to_charcodes(value)
-        salt = self.string_to_charcodes(salt)
+        try:
+            value = self.string_to_charcodes(value)
+            salt = self.string_to_charcodes(salt)
 
-        original = pbkdf2_hmac("sha512", value.encode(), salt.encode(), 1)
+            original = pbkdf2_hmac("sha512", value.encode(), salt.encode(), 1)
 
-        return original
+            return original
+        except Exception as e:
+            _LOGGER.error("Error encoding signature: %s", e)
+            raise
 
     @staticmethod
     def _prepare_request_body_for_hash(urlencoded_string: str) -> str:
@@ -66,10 +70,15 @@ class BaseAPI:
 
     @staticmethod
     def decrypt2(encrypted_data: str, key: str):
-        static_iv = 'D3GC5NQEFH13is04KD2tOg=='
-        crypt_key = SHA256.new()
-        crypt_key.update(bytes(key, 'utf-8'))
-        crypt_key = crypt_key.digest()
-        cipher = AES.new(crypt_key, AES.MODE_CBC, base64.b64decode(static_iv))
+        try:
+            static_iv = 'D3GC5NQEFH13is04KD2tOg=='
+            crypt_key = SHA256.new()
+            crypt_key.update(bytes(key, 'utf-8'))
+            crypt_key = crypt_key.digest()
+            cipher = AES.new(crypt_key, AES.MODE_CBC, base64.b64decode(static_iv))
 
-        return cipher.decrypt(base64.b64decode(encrypted_data)).decode('ascii').strip('\x10')
+            return cipher.decrypt(base64.b64decode(encrypted_data)).decode('ascii').strip('\x10')
+        except Exception as e:
+            _LOGGER.error("Error decrypting data: %s", e)
+            raise
+

@@ -27,7 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     _LOGGER.debug("Setting up climate sensors")
 
-    coordinator = AlphaInnotecCoordinator(hass)
+    coordinator = hass.data[DOMAIN][entry.entry_id]['coordinator']
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -84,11 +84,11 @@ class AlphaInnotecClimateSensor(CoordinatorEntity, ClimateEntity):
         for thermostat in self.coordinator.data['thermostats']:
             if thermostat.identifier == self.thermostat.identifier:
                 self.thermostat = thermostat
+                break
 
         _LOGGER.debug("Updating climate sensor: %s", self.thermostat.identifier)
 
         self.async_write_ha_state()
-
 
     @property
     def current_temperature(self) -> float | None:
@@ -103,8 +103,15 @@ class AlphaInnotecClimateSensor(CoordinatorEntity, ClimateEntity):
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
         if (temp := kwargs.get(ATTR_TEMPERATURE)) is not None:
-            await self.hass.async_add_executor_job(self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]['controller_api'].set_temperature, self.thermostat.identifier, temp)
-            self.thermostat.desired_temperature = temp
+            try:
+                await self.hass.async_add_executor_job(
+                    self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]['controller_api'].set_temperature,
+                    self.thermostat.identifier, temp)
+                self.thermostat.desired_temperature = temp
+                _LOGGER.debug("Set temperature for %s to %s", self.thermostat.identifier, temp)
+            except Exception as e:
+                _LOGGER.error("Error setting temperature for %s: %s", self.thermostat.identifier, e)
+                raise
 
     @property
     def hvac_mode(self) -> HVACMode | None:
