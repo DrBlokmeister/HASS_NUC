@@ -1,13 +1,14 @@
-"""Platform for sensor integration."""
+"""Platform for climate integration."""
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 
-from homeassistant.components.climate import (ClimateEntity,
-                                              ClimateEntityDescription,
-                                              ClimateEntityFeature, HVACAction,
-                                              HVACMode)
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityDescription,
+    ClimateEntityFeature,
+    HVACMode
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
@@ -16,45 +17,52 @@ from homeassistant.helpers.typing import UndefinedType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .controller_api import ControllerAPI, Thermostat
+from .controller_api import Thermostat
 from .coordinator import AlphaInnotecCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up the sensor platform."""
-
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities
+):
+    """Set up the climate platform."""
     _LOGGER.debug("Setting up climate sensors")
 
-    coordinator = hass.data[DOMAIN][entry.entry_id]['coordinator']
+    coordinator: AlphaInnotecCoordinator = hass.data[DOMAIN][entry.entry_id]['coordinator']
 
     await coordinator.async_config_entry_first_refresh()
 
-    entities = []
-
-    for thermostat in coordinator.data['thermostats']:
-        entities.append(AlphaInnotecClimateSensor(
+    entities = [
+        AlphaInnotecClimateSensor(
             coordinator=coordinator,
             description=ClimateEntityDescription(""),
             thermostat=thermostat
-        ))
+        )
+        for thermostat in coordinator.data.get("thermostats", [])
+    ]
 
     async_add_entities(entities)
 
 
 class AlphaInnotecClimateSensor(CoordinatorEntity, ClimateEntity):
-    """Representation of a Sensor."""
+    """Representation of a Climate Sensor."""
 
     _attr_precision = 0.1
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_supported_features = (
-        ClimateEntityFeature.TARGET_TEMPERATURE
-    )
+    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
+    _attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF]
 
-    def __init__(self, coordinator: AlphaInnotecCoordinator, description: ClimateEntityDescription, thermostat: Thermostat) -> None:
-        """Pass coordinator to CoordinatorEntity."""
-        super().__init__(coordinator, context=thermostat.identifier)
+    def __init__(
+        self,
+        coordinator: AlphaInnotecCoordinator,
+        description: ClimateEntityDescription,
+        thermostat: Thermostat
+    ) -> None:
+        """Initialize the climate sensor."""
+        super().__init__(coordinator)
         self.entity_description = description
         self.thermostat = thermostat
 
@@ -76,12 +84,18 @@ class AlphaInnotecClimateSensor(CoordinatorEntity, ClimateEntity):
 
     @property
     def name(self) -> str | UndefinedType | None:
+        """Return the name of the sensor."""
         return self.thermostat.name
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.is_available
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        for thermostat in self.coordinator.data['thermostats']:
+        for thermostat in self.coordinator.data.get('thermostats', []):
             if thermostat.identifier == self.thermostat.identifier:
                 self.thermostat = thermostat
                 break
@@ -96,7 +110,7 @@ class AlphaInnotecClimateSensor(CoordinatorEntity, ClimateEntity):
         return self.thermostat.current_temperature if isinstance(self.thermostat.current_temperature, (float, int)) else None
 
     @property
-    def target_temperature(self) -> float:
+    def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self.thermostat.desired_temperature if isinstance(self.thermostat.desired_temperature, (float, int)) else None
 
@@ -106,22 +120,21 @@ class AlphaInnotecClimateSensor(CoordinatorEntity, ClimateEntity):
             try:
                 await self.hass.async_add_executor_job(
                     self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]['controller_api'].set_temperature,
-                    self.thermostat.identifier, temp)
+                    self.thermostat.identifier,
+                    temp
+                )
                 self.thermostat.desired_temperature = temp
                 _LOGGER.debug("Set temperature for %s to %s", self.thermostat.identifier, temp)
             except Exception as e:
                 _LOGGER.error("Error setting temperature for %s: %s", self.thermostat.identifier, e)
-                raise
+                self.async_write_ha_state()
 
     @property
     def hvac_mode(self) -> HVACMode | None:
-        """Return current hvac mode."""
+        """Return current HVAC mode."""
         return HVACMode.AUTO
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
-        """Return the list of available hvac modes."""
-
-        return [
-            HVACMode.AUTO
-        ]
+        """Return the list of available HVAC modes."""
+        return self._attr_hvac_modes

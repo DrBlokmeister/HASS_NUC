@@ -42,7 +42,8 @@ class GatewayAPI(BaseAPI):
             urlencoded_body_prepared_for_hash = urlencoded_body_prepared_for_hash + "|"
 
             request_signature = base64.b64encode(
-                self.encode_signature(urlencoded_body_prepared_for_hash, self.password)).decode()
+                self.encode_signature(urlencoded_body_prepared_for_hash, self.password)
+            ).decode()
 
             self.last_request_signature = request_signature
 
@@ -51,15 +52,15 @@ class GatewayAPI(BaseAPI):
 
             _LOGGER.debug("[%s] - body: %s", endpoint, urlencoded_body)
 
-            response = self.session.post("http://{hostname}/{endpoint}".format(hostname=self.api_host, endpoint=endpoint),
-                                         data=urlencoded_body,
-                                         headers={'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-                                         )
+            response = self.session.post(
+                f"http://{self.api_host}/{endpoint}",
+                data=urlencoded_body,
+                headers={'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+            )
 
-            self.request_count = self.request_count + 1
+            self.request_count += 1
 
             _LOGGER.debug("[%s] - response code: %s", endpoint, response.status_code)
-
             json_response = response.json()
         except Exception as exception:
             _LOGGER.exception("Unable to fetch data from API [%s]: %s", endpoint, exception)
@@ -68,8 +69,14 @@ class GatewayAPI(BaseAPI):
         _LOGGER.debug("[%s] - response body: %s", endpoint, json_response)
 
         if not json_response.get('success', False):
-            _LOGGER.error("[%s] - API call unsuccessful: %s", endpoint, json_response)
-            raise Exception('Failed to get data from API endpoint: {}'.format(endpoint))
+            error_message = json_response.get('message', 'Unknown error').lower()
+            if "currently there is no connection between gateway and control box" in error_message:
+                _LOGGER.warning("[%s] - %s", endpoint, json_response.get('message', 'No connection between Gateway and Control Box.'))
+                # Return an empty dict or specific structure to indicate partial failure
+                return {}
+            else:
+                _LOGGER.error("[%s] - API call unsuccessful: %s", endpoint, json_response)
+                raise Exception(f'Failed to get data from API endpoint: {endpoint}')
         else:
             _LOGGER.debug('[%s] - successfully fetched data from API', endpoint)
 
@@ -92,7 +99,16 @@ class GatewayAPI(BaseAPI):
     def all_modules(self) -> dict:
         try:
             response = self.call("api/gateway/allmodules")
-            return response['modules']['rooms']
+            if not response.get('success', False):
+                # Specific handling for known connection issues
+                message = response.get('message', '').lower()
+                if "currently there is no connection between gateway and control box" in message:
+                    _LOGGER.warning("No connection between Gateway and Control Box: %s", response.get('message', ''))
+                    # Optionally, return an empty dict or specific structure
+                    return {}
+                else:
+                    raise Exception(f"API call unsuccessful: {response}")
+            return response.get('modules', {}).get('rooms', {})
         except Exception as e:
             _LOGGER.error("Error fetching all modules: %s", e)
             raise
@@ -107,7 +123,7 @@ class GatewayAPI(BaseAPI):
     def get_module_details(self, module_id) -> dict | None:
         try:
             response = self.db_modules()
-            if module_id in response['modules']:
+            if module_id in response.get('modules', {}):
                 return response['modules'][module_id]
             else:
                 _LOGGER.warning("Module details not found for module ID: %s", module_id)
