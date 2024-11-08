@@ -318,7 +318,7 @@ automation:
 
   - alias: "[misc|epaperlink] Update Study Powerstrip Display"
     id: misc_epaperlink_update_study_powerstrip_display
-    mode: single
+    mode: restart
     trigger:
       - platform: time_pattern
         minutes: "/30"  # Triggers every 30 minutes
@@ -335,6 +335,8 @@ automation:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 600 }}" #Checks if tags have checked in in the past 10 minutes. Only updates if it actually works
     action:
+      - delay:
+          seconds: 10
       - service: script.update_study_powerstrip_display
         data:
           display_entity_id: open_epaper_link.0000021D1C8E3413
