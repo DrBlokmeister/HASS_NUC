@@ -38,24 +38,50 @@ ALL_METRICS=$($SSH_CMD "
     echo used_disk_space \$(df -h | grep /mnt/user/ | awk '{print \$3}' | sed 's/T//g' | awk '{print \$1 * 1024}');
     echo link_speed \$(ethtool eth0 | grep 'Speed:' | awk '{print \$2}');
     echo nvme_composite_temperature \$(sensors | grep 'Composite:' | awk '{print \$2}' | sed 's/+//g; s/°C//g');
-    echo parity_temperature \$(smartctl -A /dev/sdb | grep Temperature_Celsius | awk '{print \$10}');
-    echo disk_1_temperature \$(smartctl -A /dev/sdc | grep Temperature_Celsius | awk '{print \$10}');
-    echo disk_2_temperature \$(smartctl -A /dev/sde | grep Temperature_Celsius | awk '{print \$10}');
-    echo disk_3_temperature \$(smartctl -A /dev/sdd | grep Temperature_Celsius | awk '{print \$10}');
-    echo dev_1_temperature \$(smartctl -A /dev/sdg | grep Temperature_Celsius | awk '{print \$10}');
-    echo dev_2_temperature \$(smartctl -A /dev/sdf | grep Temperature_Celsius | awk '{print \$10}');
-    for container in transmission plex Portainer-CE Firefox ApacheGuacamole PhotoPrism Onedrive HDDTemp glances ntp swag; do
-        state=\$(docker inspect -f '{{.State.Running}}' \$container);
-        echo \${container}_container_state \$(if [ \"\$state\" = \"true\" ]; then echo true; else echo false; fi);
-        # Fetch container stats
-        stats=\$(docker stats --no-stream --format \"{{.Name}} {{.CPUPerc}} {{.MemUsage}} {{.MemPerc}}\" \$container);
-        cpu_usage=\$(echo \$stats | awk '{print \$2}' | sed 's/%//'); # CPU usage without the percent sign
-        mem_usage=\$(echo \$stats | awk '{print \$3}'); # Memory usage (used)
-        mem_perc=\$(echo \$stats | awk '{print \$NF}' | sed 's/%//'); # Memory usage percent without the percent sign, assuming it's the last field (NF: Number of Fields)
-        echo \${container}_cpu_usage \${cpu_usage};
-        echo \${container}_mem_usage \${mem_usage};
-        echo \${container}_mem_perc \${mem_perc};
-    done;
+    
+    # Function to safely get disk temperature or set to null if unavailable
+    get_disk_temp() {
+        local disk_name=\$1
+        local disk_device=\$2
+        temp=\$(smartctl -n standby -A \$disk_device | grep Temperature_Celsius | awk '{print \$10}')
+        if [[ -z "\$temp" ]]; then
+            echo \"\${disk_name}_temperature null\"
+        else
+            echo \"\${disk_name}_temperature \$temp\"
+        fi
+    }
+
+    # Get temperatures for parity and disks
+    get_disk_temp parity /dev/sdb
+    get_disk_temp disk_1 /dev/sdc
+    get_disk_temp disk_2 /dev/sde
+    get_disk_temp disk_3 /dev/sdd
+    get_disk_temp dev_1 /dev/sdg
+    get_disk_temp dev_2 /dev/sdf
+
+    for container in transmission plex Firefox ApacheGuacamole PhotoPrism Onedrive HDDTemp glances ntp swag; do
+        # Check if the container exists
+        if docker inspect -f '{{.State.Running}}' \$container > /dev/null 2>&1; then
+            state=\$(docker inspect -f '{{.State.Running}}' \$container)
+            echo \${container}_container_state \$(if [ \"\$state\" = \"true\" ]; then echo true; else echo false; fi)
+            
+            # Fetch container stats
+            stats=\$(docker stats --no-stream --format \"{{.Name}} {{.CPUPerc}} {{.MemUsage}} {{.MemPerc}}\" \$container)
+            cpu_usage=\$(echo \$stats | awk '{print \$2}' | sed 's/%//') # CPU usage without the percent sign
+            mem_usage=\$(echo \$stats | awk '{print \$3}') # Memory usage (used)
+            mem_perc=\$(echo \$stats | awk '{print \$NF}' | sed 's/%//') # Memory usage percent without the percent sign, assuming it's the last field (NF: Number of Fields)
+            
+            echo \${container}_cpu_usage \$cpu_usage
+            echo \${container}_mem_usage \$mem_usage
+            echo \${container}_mem_perc \$mem_perc
+        else
+            # Container does not exist, set state to false and metrics to null
+            echo \${container}_container_state false
+            echo \${container}_cpu_usage 0
+            echo \${container}_mem_usage 0B
+            echo \${container}_mem_perc 0.00
+        fi
+    done
     echo unraid_array_status \$(mdcmd status | grep 'mdState=' | cut -d'=' -f2 | awk '{print \$1 == \"STARTED\" ? \"true\" : \"false\"}');
     echo wireguard_service_status \$(if [[ \$(wg) ]]; then echo true; else echo false; fi);
 ")
@@ -78,15 +104,17 @@ else
         else
             # Attempt to determine if the value is an integer or float
             if [[ "$value" =~ ^-?[0-9]+$ ]] || [[ "$value" =~ ^-?[0-9]+\.[0-9]+$ ]]; then
-                # It's a numeric value, update without quotes
-                update_json "$key" $value  # No quotes around $value to treat as numeric
+                update_json "$key" "$value"  # Quotes ensure proper numeric handling
                 # Since we're successfully parsing metrics, set NAS as available
                 nas_available=true
             else
-                # It's a string, update with quotes
-                update_json "$key" "\"$value\""
+                # It's a string or null, update accordingly
+                if [[ "$value" == "null" ]]; then
+                    update_json "$key" -1  # No quotes to set JSON null
+                else
+                    update_json "$key" "\"$value\""
+                fi
             fi
         fi
     done
 fi
-
