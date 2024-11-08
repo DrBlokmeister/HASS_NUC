@@ -245,6 +245,85 @@ automation:
                       brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                       kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
+  - alias: '[bathroom|lights]Toggle mirror light when switch is pressed'
+    id: bathroom_lights_toggle_mirror_light_when_switch_is_pressed
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: esphome.button_pressed
+        event_data:
+          device_name: Shelly Bathroom
+          channel: "2"
+    action:
+      - choose:
+          # Handle Single Click
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.click_count | int == 1 }}"
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.bathroom_mirror
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          # Handle Double Click
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.click_count | int == 2 }}"
+            sequence:
+              - choose:
+                  # If light is off or brightness is less than 100%
+                  - conditions:
+                      - condition: or
+                        conditions:
+                          - condition: state
+                            entity_id: light.bathroom_mirror
+                            state: 'off'
+                          - condition: template
+                            value_template: "{{ state_attr('light.bathroom_mirror', 'brightness') | int < 250 }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          entity_id: light.bathroom_mirror
+                          brightness_pct: 100
+                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                # If light is at full brightness, set to adaptive brightness
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: light.bathroom_mirror
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                      kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          # Handle Triple Click
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.click_count | int == 3 }}"
+            sequence:
+              - choose:
+                  # If light is off or brightness is above 10%
+                  - conditions:
+                      - condition: or
+                        conditions:
+                          - condition: state
+                            entity_id: light.bathroom_mirror
+                            state: 'off'
+                          - condition: template
+                            value_template: "{{ state_attr('light.bathroom_mirror', 'brightness') | int > 30 }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          entity_id: light.bathroom_mirror
+                          brightness_pct: 10
+                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                # If light is at 10% brightness, set to adaptive brightness
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: light.bathroom_mirror
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                      kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+
+
   # - alias: '[bathroom|light] turn on light through motion'
   #   mode: restart
   #   trigger:
