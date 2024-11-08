@@ -79,3 +79,67 @@ group:
 #    SCRIPTS    #
 #################
 script:
+  toggle_lights_with_adaptive_brightness:
+    alias: Toggle lights with adaptive brightness
+    description: Toggle lights with adaptive brightness and different click actions based on button clicks.
+    fields:
+      light_entity:
+        description: Entity ID of the light to control
+        example: light.livingroom
+      click_count:
+        description: The number of times the switch is clicked
+        example: 2
+    sequence:
+      - choose:
+          # Single Click: Toggle light with adaptive brightness
+          - conditions:
+              - condition: template
+                value_template: "{{ click_count | int == 1 }}"
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: "{{ light_entity }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          # Double Click: Full brightness if below 100%, otherwise adaptive brightness
+          - conditions:
+              - condition: template
+                value_template: "{{ click_count | int == 2 }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int < 250) }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          entity_id: "{{ light_entity }}"
+                          brightness_pct: 100
+                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: "{{ light_entity }}"
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                      kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          # Triple Click: Set brightness to 10% if above, otherwise reset to adaptive brightness
+          - conditions:
+              - condition: template
+                value_template: "{{ click_count | int == 3 }}"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int > 30) }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          entity_id: "{{ light_entity }}"
+                          brightness_pct: 10
+                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: "{{ light_entity }}"
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                      kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
