@@ -7,7 +7,13 @@
 # resistor_value: 5.6kOhm
 # adc_attenuation: "12db"
 # adc_pin: GPIO35
-
+#### Shelly Plus 1 Mini
+# ntc_b_constant: "3350"
+# ntc_reference_resistance: "10kOhm"
+# ntc_reference_temperature: "298.15K"
+# resistor_value: 10kOhm
+# adc_attenuation: "12db"
+# adc_pin: GPIO3
 
 defaults:
   max_temp: "80.0"
@@ -46,13 +52,21 @@ sensor:
 
   - platform: resistance
     id: temp_resistance_reading
+    name: "${device_name} Resistance"
+    unit_of_measurement: "Ω"
+    icon: "mdi:resistor"
     sensor: temp_analog_reading
     configuration: DOWNSTREAM
-    resistor: 32kOhm
+    resistor: ${resistor_value}
+    accuracy_decimals: 1
     entity_category: 'diagnostic'
 
   - platform: adc
     id: temp_analog_reading
+    name: "${device_name} ADC Voltage"
+    unit_of_measurement: "V"
+    icon: "mdi:flash"
     pin: ${adc_pin}
     attenuation: ${adc_attenuation}
+    accuracy_decimals: 3
     entity_category: 'diagnostic'

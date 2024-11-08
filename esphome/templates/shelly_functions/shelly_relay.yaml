@@ -3,11 +3,15 @@
 # Shelly Plus 2PM
 # GPIO_pin: GPIO12 #Relay 1
 # GPIO_pin: GPIO13 #Relay 2
+# Shelly 1 Plus Mini
+# GPIO_pin: GPIO7
+
 
 defaults:
   relay_id: 'shelly_relay'
-  restore_mode: "ALWAYS_ON"
+  relay_restore_mode: "ALWAYS_ON"
   detached_mode_id: "detach_mode"
+  detached_mode_restore_mode: "RESTORE_DEFAULT_ON"
   relay_device_name: "${device_name}"
   GPIO_pin: GPIO4
 
@@ -16,7 +20,7 @@ switch:
     name: "${relay_device_name} Detached Mode"
     icon: mdi:link-variant-off
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: ${detached_mode_restore_mode}
     entity_category: "config"
     id: ${detached_mode_id}
     # turn_on_action:
@@ -26,8 +30,7 @@ switch:
     #   - lambda: |-
     #       id(${detached_mode_id}).set_icon("mdi:link-variant");
   - platform: gpio
-    name: "${relay_device_name}"
+    name: ${relay_device_name}
     pin: ${GPIO_pin} #GPIO4
     id: ${relay_id}
-    # After reboot, restore to ON
-    restore_mode: ${restore_mode}
+    restore_mode: ${relay_restore_mode}

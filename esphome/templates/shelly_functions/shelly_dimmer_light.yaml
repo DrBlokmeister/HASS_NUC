@@ -1,0 +1,50 @@
+defaults:
+  uart_tx_pin: GPIO1
+  uart_rx_pin: GPIO3
+  dimmer_device_name: "${device_name}"
+  dimmer_id: "dimmer"
+  power_id: "power"
+  voltage_id: "voltage"
+  current_id: "current"
+  apparent_power_id: "apparent_power"
+  power_factor_id: "power_factor"
+  reactive_power_id: "reactive_power"
+  min_brightness: 0
+  max_brightness: 1000
+  warmup_brightness: 100
+  gamma_correct: 2
+  STM_firmware_version: "51.7"
+
+uart:
+    tx_pin: ${uart_tx_pin}
+    rx_pin: ${uart_rx_pin}
+    baud_rate: 115200
+
+light:
+  - platform: shelly_dimmer
+    name: "${dimmer_device_name}"
+    id: ${dimmer_id}
+    icon: mdi:globe-light-outline
+    power:
+      name: "${device_name} Power"
+      id: ${power_id}
+      on_value:
+        then:
+          - component.update: ${apparent_power_id}
+          - component.update: ${power_factor_id}
+          - component.update: ${reactive_power_id}
+    voltage:
+      name: "${device_name} Voltage"
+      id: voltage
+    current:
+      name: "${device_name} Current"
+      id: current
+    min_brightness: "${min_brightness}"
+    max_brightness: "${max_brightness}"
+    warmup_brightness: ${warmup_brightness}
+    leading_edge: false #Trailing edge is for LED dimming (see https://github.com/esphome/issues/issues/3487)
+    default_transition_length: 1s
+    gamma_correct: ${gamma_correct}
+    firmware:
+      version: "${STM_firmware_version}"
+      update: true

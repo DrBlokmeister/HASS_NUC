@@ -3,6 +3,8 @@
 # Shelly Plus 2PM
 # GPIO_pin: GPIO4 #Input 1
 # GPIO_pin: GPIO18 #Input 2
+# Shelly Plus 1 Mini
+# GPIO_pin: GPIO10
 
 
 defaults:
@@ -15,6 +17,13 @@ defaults:
   detached_mode_id: "detach_mode"
   input_device_name: "${device_name}"
 
+esphome:
+  on_boot:
+    priority: 100
+    then:
+      - binary_sensor.template.publish:
+          id: ${clicker_id}
+          state: OFF
 
 binary_sensor:
   - platform: gpio

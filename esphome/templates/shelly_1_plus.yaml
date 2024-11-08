@@ -1,15 +1,22 @@
-#See config here: https://devices.esphome.io/devices/Shelly-Plus-1-Mini
-
+# See config here: https://devices.esphome.io/devices/Shelly-Plus-1
 esphome:
   name: "${espname}"
-  comment: 'Shelly 1 Plus Mini'
+  comment: 'Shelly 1 Plus'
   platformio_options:
-    board_build.flash_mode: dio
+    board_build.f_cpu: 160000000L
 
 esp32:
-  board: esp32-c3-devkitm-1
+  board: esp32doit-devkit-v1
   framework:
     type: esp-idf
+    # version: latest
+    sdkconfig_options:
+      CONFIG_FREERTOS_UNICORE: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_160: y
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ: "160"
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "20"
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: n
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
 
 packages:
   wifi: !include /config/esphome/common/wifi.yaml
@@ -18,11 +25,13 @@ packages:
   inputs: !include
     file: /config/esphome/templates/shelly_functions/shelly_inputs.yaml
     vars:
-      GPIO_pin: GPIO10
+      GPIO_pin: GPIO04
   relay: !include
     file: /config/esphome/templates/shelly_functions/shelly_relay.yaml
     vars:
-      GPIO_pin: GPIO7
+      GPIO_pin: GPIO26
+      detached_mode_restore_mode: ${detached_mode_restore_mode}
+      relay_restore_mode: ${relay_restore_mode}
   ntc_sensor: !include
     file: /config/esphome/templates/shelly_functions/shelly_ntc_sensors.yaml
     vars:
@@ -31,7 +40,7 @@ packages:
       ntc_reference_resistance: "10kOhm"
       resistor_value: "10kOhm"
       adc_attenuation: "12db"
-      adc_pin: "GPIO3"
+      adc_pin: "GPIO32"
 
 status_led:
   pin:
@@ -44,7 +53,7 @@ binary_sensor:
     name: "${device_name} Button"
     internal: true
     pin:
-      number: 1
+      number: GPIO25
       inverted: yes
       mode:
         input: true
