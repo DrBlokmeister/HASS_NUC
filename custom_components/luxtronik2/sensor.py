@@ -212,14 +212,22 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
         self, data: LuxtronikCoordinatorData | None = None
     ) -> None:
         """Handle updated data from the coordinator."""
+        LOGGER.debug("Handling coordinator update for %s", self.entity_id)
         super()._handle_coordinator_update(data)
         time_now = time(datetime.now().hour, datetime.now().minute)
         evu = LuxOperationMode.evu.value
         weekday = datetime.today().weekday()
+
+        # Debug: Log current EVU_DAYS before processing
+        current_evu_days = self._attr_cache.get(SA.EVU_DAYS)
+        LOGGER.debug(
+            f"Before processing: SA.EVU_DAYS = {current_evu_days} (type: {type(current_evu_days)})"
+        )
+
         if self._attr_native_value is None or self._last_state is None:
             pass
         elif self._attr_native_value == evu and str(self._last_state) != evu:
-            # evu start
+            # EVU start
             if (
                 self._attr_cache[SA.EVU_FIRST_START_TIME] == time.min
                 or time_now.hour <= self._attr_cache[SA.EVU_FIRST_START_TIME].hour
@@ -235,7 +243,7 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
                 if weekday not in self._attr_cache[SA.EVU_DAYS]:
                     self._attr_cache[SA.EVU_DAYS].append(weekday)
         elif self._attr_native_value != evu and str(self._last_state) == evu:
-            # evu end
+            # EVU end
             if (
                 self._attr_cache[SA.EVU_FIRST_END_TIME] == time.min
                 or time_now.hour <= self._attr_cache[SA.EVU_FIRST_END_TIME].hour
@@ -437,11 +445,12 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
         return "" if value == time.min else value.strftime("%H:%M")
 
     def _wd_txt(self, value: list) -> str:
+        if not isinstance(value, list):
+            LOGGER.error(f"SA.EVU_DAYS expected to be a list, but got {type(value).__name__}: {value}")
+            return ""
         if not value:
             return ""
-        days = []
-        for i in value:
-            days.append(calendar.day_name[i])
+        days = [calendar.day_name[i] for i in value]
         return ','.join(days)
 
     def _restore_attr_value(self, value: Any | None) -> Any:

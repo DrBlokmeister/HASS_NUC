@@ -104,9 +104,28 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
             for attr in self.entity_description.extra_attributes:
                 if not attr.restore_on_startup or attr.key not in last_state.attributes:
                     continue
-                self._attr_cache[attr.key] = self._restore_attr_value(
+                restored_value = self._restore_attr_value(
                     last_state.attributes[attr.key]
                 )
+                self._attr_cache[attr.key] = restored_value
+
+                # Debug: Log restored attribute
+                LOGGER.debug(
+                    f"Restored attribute {attr.key}: {restored_value} (type: {type(restored_value).__name__})"
+                )
+
+            # Validate SA.EVU_DAYS is a list
+            if SA.EVU_DAYS in self._attr_cache:
+                evu_days = self._attr_cache[SA.EVU_DAYS]
+                if not isinstance(evu_days, list):
+                    LOGGER.error(
+                        f"SA.EVU_DAYS was restored as {type(evu_days).__name__}, resetting to empty list."
+                    )
+                    self._attr_cache[SA.EVU_DAYS] = []
+                else:
+                    LOGGER.debug(
+                        f"SA.EVU_DAYS successfully restored as list: {evu_days}"
+                    )
 
             last_extra_data = await self.async_get_last_extra_data()
             if last_extra_data is not None:
