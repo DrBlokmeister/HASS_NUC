@@ -41,8 +41,45 @@ template:
       - name: "Shellies Power Estimate"
         unit_of_measurement: 'W'
         state: >-
-            {% set shellies = states.device_tracker | map(attribute='entity_id') | select('match', 'device_tracker.shelly') | list() %}
-            {{ (0.4 * (states.device_tracker | selectattr('entity_id', 'in', shellies) | selectattr('state', 'eq', 'home') | list() | count()) )| int() }}
+            {% set switches = [
+              'switch.shelly_study',
+              'switch.shelly_hallway_2nd_floor',
+              'switch.shelly_hallway_1st_floor',
+              'switch.shelly_washroom',
+              'switch.shelly_porch',
+              'switch.shelly_living_room',
+              'switch.shelly_entry',
+              'switch.shelly_kitchen',
+              'switch.shelly_back_garden',
+              'switch.shelly_baby_room',
+              'switch.shelly_closet',
+              'switch.shelly_guest_room',
+              'switch.shelly_bathroom_1'
+            ] %}
+            {% set on_count = switches | select('is_state', 'on') | list | count %}
+            {% set off_count = switches | select('is_state', 'off') | list | count %}
+            
+            {% set total_power = (on_count * 0.70) + (off_count * 0.40) %}
+            
+            {{ total_power | round(2) }}
+        attributes:
+          unavailable_shellies: >-
+            {% set switches = [
+              'switch.shelly_study',
+              'switch.shelly_hallway_2nd_floor',
+              'switch.shelly_hallway_1st_floor',
+              'switch.shelly_washroom',
+              'switch.shelly_porch',
+              'switch.shelly_living_room',
+              'switch.shelly_entry',
+              'switch.shelly_kitchen',
+              'switch.shelly_back_garden',
+              'switch.shelly_baby_room',
+              'switch.shelly_closet',
+              'switch.shelly_guest_room',
+              'switch.shelly_bathroom_1'
+            ] %}
+            {{ switches | select('is_state', 'unavailable') | list | count }}
     trigger:
       - platform: time_pattern
         seconds: /1
