@@ -50,7 +50,58 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-
+  - alias: "[home|lights] Set Sleep Mode Light Brightness"
+    id: yaml_automation_home_lights_set_sleep_mode_light_brightness
+    description: >
+      Sets the lights to a dimmer level when sleep tracking is active and you're home alone.
+      This triggers when sleep tracking starts and stops, ensuring lights are adjusted accordingly.
+    trigger:
+      - platform: template
+        value_template: >
+          {{
+            not is_state('sensor.sleepasandroid_sander', 'sleep_tracking_stopped') and
+            not is_state('sensor.sleepasandroid_sander', 'time_to_bed_alarm_alert') and
+            not is_state('sensor.sleepasandroid_sander', 'alarm_alert_dismiss') and
+            not is_state('sensor.sleepasandroid_sander', 'unknown')
+          }}
+        for:
+          minutes: 3
+        id: sleep_tracking_start
+      - platform: template
+        value_template: >
+          {{
+            is_state('sensor.sleepasandroid_sander', 'sleep_tracking_stopped') or
+            is_state('sensor.sleepasandroid_sander', 'time_to_bed_alarm_alert') or
+            is_state('sensor.sleepasandroid_sander', 'alarm_alert_dismiss') or
+            is_state('sensor.sleepasandroid_sander', 'unknown')
+          }}
+        for:
+          minutes: 3
+        id: sleep_tracking_stop
+    condition:
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'sleep_tracking_start' }}"
+              - condition: numeric_state
+                entity_id: sensor.guest_wifi_clients
+                below: 1
+              - condition: not
+                conditions:
+                  - condition: state
+                    entity_id: person.tamara
+                    state: home
+            sequence:
+              - service: switch.turn_on
+                entity_id: switch.adaptive_lighting_sleep_mode_adaptive_lighting
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'sleep_tracking_stop' }}"
+            sequence:
+              - service: switch.turn_off
+                entity_id: switch.adaptive_lighting_sleep_mode_adaptive_lighting
 ################
 #    SCENES    #
 ################
@@ -89,6 +140,11 @@ script:
       click_count:
         description: The number of times the switch is clicked
         example: 2
+      transition_time:
+        description: Transition time of the lights
+        example: 0
+        default: "0.0"
+        required: false
     sequence:
       - choose:
           # Single Click: Toggle light with adaptive brightness
@@ -101,6 +157,7 @@ script:
                   entity_id: "{{ light_entity }}"
                   brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                   kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  transition: "{{ transition_time }}"
           # Double Click: Full brightness if below 100%, otherwise adaptive brightness
           - conditions:
               - condition: template
@@ -109,19 +166,21 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int < 250) }}"
+                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int < 250) or state_attr(light_entity, 'color_temp_kelvin') | int < 4000 }}"
                     sequence:
                       - service: light.turn_on
                         data:
                           entity_id: "{{ light_entity }}"
                           brightness_pct: 100
-                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                          kelvin: 4200 # "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                          transition: "{{ transition_time }}"
                 default:
                   - service: light.turn_on
                     data:
                       entity_id: "{{ light_entity }}"
                       brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                       kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                      transition: "{{ transition_time }}"
           # Triple Click: Set brightness to 10% if above, otherwise reset to adaptive brightness
           - conditions:
               - condition: template
@@ -130,16 +189,18 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int > 30) }}"
+                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int > 30) }}" # Brightness 30/256, so around 12%
                     sequence:
                       - service: light.turn_on
                         data:
                           entity_id: "{{ light_entity }}"
                           brightness_pct: 10
-                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                          kelvin: 2300 #"{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                          transition: "{{ transition_time }}"
                 default:
                   - service: light.turn_on
                     data:
                       entity_id: "{{ light_entity }}"
                       brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                       kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                      transition: "{{ transition_time }}"
