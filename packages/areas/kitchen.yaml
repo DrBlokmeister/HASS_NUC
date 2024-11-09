@@ -125,12 +125,19 @@ automation:
         event_type: esphome.button_pressed
         event_data:
           device_name: "Shelly Kitchen"
+        variables:
+          click_count: "{{ trigger.event.data.click_count }}"
     action:
-      - service: light.toggle
+      - service: script.toggle_lights_with_adaptive_brightness
         data:
-          entity_id: light.kitchen
-          brightness: 255
-          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          light_entity: light.kitchen
+          transition_time: 0.5
+          click_count: "{{ click_count }}"
+      # - service: light.toggle
+      #   data:
+      #     entity_id: light.kitchen
+      #     brightness: 255
+      #     kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
   - alias: '[kitchen|notify] fridge overtemp warning'
     id: kitchen_notify_fridge_overtemp_warning

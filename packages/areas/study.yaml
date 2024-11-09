@@ -231,7 +231,7 @@ automation:
               - service: light.toggle
                 data:
                   entity_id: light.study_lights
-                  brightness: 255
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                   kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
           - conditions:
               - condition: or
@@ -241,12 +241,57 @@ automation:
                   - condition: template
                     value_template: "{{ trigger.event.data.event == 1004 }}" # Single click of switch
             sequence:
-              - service: input_select.select_next
-                data:
-                  entity_id: input_select.study_scenes
-              - service: scene.turn_on
-                data:
-                  entity_id: scene.study_{{ states('input_select.study_scenes') }}
+              - choose:
+                  # If light is off or brightness is less than 100%
+                  - conditions:
+                      - condition: or
+                        conditions:
+                          - condition: state
+                            entity_id: light.study_lights
+                            state: 'off'
+                          - condition: template
+                            value_template: "{{ state_attr('light.study_lights', 'brightness') | int < 250 }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          entity_id: light.study_lights
+                          brightness_pct: 100
+                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                # If light is at full brightness, set to adaptive brightness
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: light.study_lights
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                      kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          # Handle Triple Click
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.click_count | int == 3 }}"
+            sequence:
+              - choose:
+                  # If light is off or brightness is above 10%
+                  - conditions:
+                      - condition: or
+                        conditions:
+                          - condition: state
+                            entity_id: light.study_lights
+                            state: 'off'
+                          - condition: template
+                            value_template: "{{ state_attr('light.study_lights', 'brightness') | int > 30 }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          entity_id: light.study_lights
+                          brightness_pct: 10
+                          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                # If light is at 10% brightness, set to adaptive brightness
+                default:
+                  - service: light.turn_on
+                    data:
+                      entity_id: light.study_lights
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                      kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
   - alias: "[study|lights]Study Rotary Knob Control"
     mode: queued
@@ -499,7 +544,7 @@ automation:
                     sequence:
                       - condition: numeric_state
                         entity_id: sensor.plug_study_desk_power
-                        below: 250
+                        below: 200
                       - service: switch.turn_off
                         entity_id: switch.powerstrip_study_desk_socket_1
           - conditions:

@@ -77,13 +77,20 @@ automation:
         event_type: esphome.button_pressed
         event_data:
           device_name: "Shelly Hallway 2nd Floor"
+        variables:
+          click_count: "{{ trigger.event.data.click_count }}"
     condition:
     action:
-      - service: light.toggle
+      - service: script.toggle_lights_with_adaptive_brightness
         data:
-          entity_id: light.hallway_2nd_floor
-          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          light_entity: light.hallway_2nd_floor
+          transition_time: 0.5
+          click_count: "{{ click_count }}"
+      # - service: light.toggle
+      #   data:
+      #     entity_id: light.hallway_2nd_floor
+      #     brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+      #     kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
   - alias: '[hallway2ndfloor|lights] Turn on lights when motion is detected'
     id: hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected

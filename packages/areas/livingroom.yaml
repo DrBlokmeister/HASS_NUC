@@ -196,27 +196,34 @@ automation:
         event_type: esphome.button_pressed
         event_data:
           device_name: "shelly Living Room"
+        variables:
+          click_count: "{{ trigger.event.data.click_count }}"
     action:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.click_type == 'single' }}"
-            sequence:
-              - service: light.toggle
-                data:
-                  entity_id: light.living_room
-                  brightness: 255
-                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.click_type == 'double' }}"
-            sequence:
-              - service: input_select.select_next
-                data:
-                  entity_id: input_select.livingroom_scenes
-              - service: scene.turn_on
-                data:
-                  entity_id: scene.livingroom_{{ states('input_select.livingroom_scenes') }}
+      - service: script.toggle_lights_with_adaptive_brightness
+        data:
+          light_entity: light.living_room
+          transition_time: 0.5
+          click_count: "{{ click_count }}"
+      # - choose:
+      #     - conditions:
+      #         - condition: template
+      #           value_template: "{{ trigger.event.data.click_type == 'single' }}"
+      #       sequence:
+      #         - service: light.toggle
+      #           data:
+      #             entity_id: light.living_room
+      #             brightness: 255
+      #             kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      #     - conditions:
+      #         - condition: template
+      #           value_template: "{{ trigger.event.data.click_type == 'double' }}"
+      #       sequence:
+      #         - service: input_select.select_next
+      #           data:
+      #             entity_id: input_select.livingroom_scenes
+      #         - service: scene.turn_on
+      #           data:
+      #             entity_id: scene.livingroom_{{ states('input_select.livingroom_scenes') }}
 
   - alias: '[livingroom|light]Automate light string based on sunset'
     id: livingroom_light_automate_light_string_based_on_sunset

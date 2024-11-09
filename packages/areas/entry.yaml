@@ -121,12 +121,19 @@ automation:
         event_type: esphome.button_pressed
         event_data:
           device_name: "Shelly Entry"
+        variables:
+          click_count: "{{ trigger.event.data.click_count }}"
     action:
-      service: light.toggle
-      data:
-        entity_id: light.entry
-        brightness: 255
-        kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      - service: script.toggle_lights_with_adaptive_brightness
+        data:
+          light_entity: light.entry
+          transition_time: 0.5
+          click_count: "{{ click_count }}"
+      # service: light.toggle
+      # data:
+      #   entity_id: light.entry
+      #   brightness: 255
+      #   kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
   - alias: '[entry|light]Lights_when_utility_cabinet_is_open'
     id: entry_light_utility_cabinet
