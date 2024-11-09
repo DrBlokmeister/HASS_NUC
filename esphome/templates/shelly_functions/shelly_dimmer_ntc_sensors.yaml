@@ -1,0 +1,53 @@
+defaults:
+  max_temp: "80.0"
+  ntc_b_constant: "3350"
+  ntc_reference_temperature: "298.15K"
+  relay_id: "shelly_relay"
+
+sensor:
+  - platform: ntc
+    sensor: temp_resistance_reading
+    name: ${device_name} temperature
+    id: temperature
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer"
+    entity_category: 'diagnostic'
+    calibration:
+      b_constant: ${ntc_b_constant}
+      reference_resistance: ${ntc_reference_resistance}
+      reference_temperature: ${ntc_reference_temperature}
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 5
+    on_value_range:
+      - above: ${max_temp}
+        then:
+          - logger.log: "Temperature exceeded ${max_temp}°C"
+          - homeassistant.service:
+              service: persistent_notification.create
+              data:
+                title: Message from ${device_name}
+              data_template:
+                message: Temperature exceeded ${max_temp}°C
+
+  - platform: resistance
+    id: temp_resistance_reading
+    name: "${device_name} Resistance"
+    unit_of_measurement: "Ω"
+    icon: "mdi:resistor"
+    sensor: temp_analog_reading
+    configuration: DOWNSTREAM
+    resistor: ${resistor_value}
+    accuracy_decimals: 1
+    entity_category: 'diagnostic'
+
+  - platform: adc
+    id: temp_analog_reading
+    name: "${device_name} ADC Voltage"
+    unit_of_measurement: "V"
+    icon: "mdi:flash"
+    pin: ${adc_pin}
+    accuracy_decimals: 3
+    entity_category: 'diagnostic'

@@ -23,95 +23,16 @@ packages:
       min_brightness: 0
       max_brightness: 1000
       gamma_correct: 2
-  # inputs: !include
-  #   file: /config/esphome/templates/shelly_functions/shelly_inputs.yaml
-  #   vars:
-  #     GPIO_pin: GPIO4
+  inputs: !include
+    file: /config/esphome/templates/shelly_functions/shelly_dimmer_inputs.yaml
+    vars:
+      input_GPIO_pin: GPIO14
   ntc_sensor: !include
-    file: /config/esphome/templates/shelly_functions/shelly_ntc_sensors.yaml
+    file: /config/esphome/templates/shelly_functions/shelly_dimmer_ntc_sensors.yaml
     vars:
       #ntc_b_constant: "3350"
       #ntc_reference_temperature: "298.15K"
       ntc_reference_resistance: "10kOhm"
       resistor_value: "32kOhm"
-      adc_attenuation: "0db"
       adc_pin: "A0"
   power: !include /config/esphome/common/power.yaml
-
-# Sensors with general information.
-sensor:
-  # Home assistant adaptive lighting
-  - platform: homeassistant
-    id: colortemperature
-    entity_id: switch.adaptive_lighting_adaptive_lighting
-    attribute: color_temp_kelvin
-  - platform: homeassistant
-    id: brightness
-    entity_id: switch.adaptive_lighting_adaptive_lighting
-    attribute: brightness_pct
-
-binary_sensor:
-  - platform: gpio
-    name: ${device_name} Switch
-    pin:
-      number: ${input_pin}
-      mode:
-        input: true
-        #pullup: true
-    # small delay to prevent debouncing
-    filters:
-      - delayed_on_off: 50ms
-    # config for state change of input button
-    on_state:
-        then:
-          - binary_sensor.template.publish:
-              id: switch_clicker
-              state: ON
-          - delay: 100ms
-          - binary_sensor.template.publish:
-              id: switch_clicker
-              state: OFF
-    id: shelly_switch
-  - platform: template
-    name: ${device_name} Momentary Switch
-    id: switch_clicker
-    on_multi_click:
-      # triple click
-      - timing:
-          - ON for at most 1s
-          - OFF for at most 1s
-          - ON for at most 1s
-          - OFF for at most 1s
-          - ON for at most 1s
-          - OFF for at least 0.2s
-        then:
-          - logger.log: "Triple-Clicked"
-          - light.turn_on:
-              id: dimmer
-              brightness: 25%
-      # double click
-      - timing:
-          - ON for at most 1s
-          - OFF for at most 1s
-          - ON for at most 1s
-          - OFF for at least 0.2s
-        then:
-          - logger.log: "Double-Clicked"
-          - light.turn_on:
-              id: dimmer
-              brightness: 100%
-      - timing:
-          - ON for at most 1s
-          - OFF for at least 0.3s
-        then:
-          - logger.log: "Single-Clicked"
-          - if:
-              condition:
-                light.is_on: dimmer
-              then:
-                - light.turn_off: dimmer
-              else:
-                - light.turn_on:
-                    id: dimmer
-                    brightness: !lambda |-
-                      return id(brightness).state/100;

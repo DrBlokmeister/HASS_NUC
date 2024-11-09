@@ -1,4 +1,9 @@
 defaults:
+  min_brightness: "0"
+  max_brightness: "1000"
+  warmup_brightness: "100"
+  gamma_correct: "2"
+  STM_firmware_version: "51.7"
   uart_tx_pin: GPIO1
   uart_rx_pin: GPIO3
   dimmer_device_name: "${device_name}"
@@ -6,14 +11,19 @@ defaults:
   power_id: "power"
   voltage_id: "voltage"
   current_id: "current"
+  current_multiplier: "1"
+  voltage_multiplier: "1"
   apparent_power_id: "apparent_power"
   power_factor_id: "power_factor"
   reactive_power_id: "reactive_power"
-  min_brightness: 0
-  max_brightness: 1000
-  warmup_brightness: 100
-  gamma_correct: 2
-  STM_firmware_version: "51.7"
+
+sensor:
+  # Home assistant adaptive lighting
+  - platform: homeassistant
+    id: adaptive_lighting_brightness
+    entity_id: switch.adaptive_lighting_adaptive_lighting
+    attribute: brightness_pct
+    internal: true
 
 uart:
     tx_pin: ${uart_tx_pin}
@@ -25,26 +35,58 @@ light:
     name: "${dimmer_device_name}"
     id: ${dimmer_id}
     icon: mdi:globe-light-outline
-    power:
-      name: "${device_name} Power"
-      id: ${power_id}
-      on_value:
-        then:
-          - component.update: ${apparent_power_id}
-          - component.update: ${power_factor_id}
-          - component.update: ${reactive_power_id}
-    voltage:
-      name: "${device_name} Voltage"
-      id: voltage
-    current:
-      name: "${device_name} Current"
-      id: current
     min_brightness: "${min_brightness}"
     max_brightness: "${max_brightness}"
-    warmup_brightness: ${warmup_brightness}
+    warmup_brightness: "${warmup_brightness}"
     leading_edge: false #Trailing edge is for LED dimming (see https://github.com/esphome/issues/issues/3487)
     default_transition_length: 1s
     gamma_correct: ${gamma_correct}
     firmware:
       version: "${STM_firmware_version}"
       update: true
+
+    current:
+      name: "${device_name} Current"
+      id: ${current_id}
+      unit_of_measurement: A
+      accuracy_decimals: 3
+      icon: mdi:current-ac
+      filters:
+        - multiply: ${current_multiplier}
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 0.5
+            - delta: 5%
+
+    voltage:
+      name: "${device_name} Voltage"
+      id: ${voltage_id}
+      unit_of_measurement: V
+      accuracy_decimals: 1
+      icon: mdi:flash-outline
+      filters:
+        - multiply: ${voltage_multiplier}
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - delta: 1.0
+
+    power:
+      name: "${device_name} Power"
+      id: ${power_id}
+      unit_of_measurement: W
+      icon: mdi:gauge
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 20.0
+            - delta: 5%
+      on_value:
+        then:
+          - component.update: ${apparent_power_id}
+          - component.update: ${power_factor_id}
+          - component.update: ${reactive_power_id}
