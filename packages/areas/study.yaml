@@ -74,6 +74,14 @@ sensor:
       - sensor.study_motion_2_illuminace
       - sensor.study_light_1
       - sensor.study_light_1
+  - platform: history_stats
+    name: "Power Above 50W Last 5 Minutes"
+    entity_id: binary_sensor.power_above_50w
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      minutes: 5
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -95,6 +103,20 @@ binary_sensor:
             is_state('binary_sensor.study_motion_2', 'on')
           }}
         availability_template: "{{ (states('binary_sensor.study_motion_1') in ['on', 'off']) and (states('binary_sensor.study_motion_2') in ['on', 'off']) }}"
+      power_above_50w:
+        friendly_name: "Power Above 50W"
+        #device_class: power
+        value_template: "{{ states('sensor.plug_study_workbench_power') | float >= 50 }}"
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+  soldering_mode:
+    name: Soldering Mode
+    initial: off
+    icon: mdi:hammer-screwdriver
+
 ##################
 #    SWITCHES    #
 ##################
@@ -293,7 +315,7 @@ automation:
                       brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                       kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
 
-  - alias: "[study|lights]Study Rotary Knob Control"
+  - alias: "[study|lights] MOES Study Rotary Knob Control"
     mode: queued
     description: Controls the lights in the study based on rotary knob actions.
     trigger:
@@ -349,6 +371,141 @@ automation:
                   transition: 0.5
                   color_temp_kelvin: "{{ [state_attr('light.study', 'color_temp_kelvin') - 500 , 2000] | max }}"
 
+  - alias: "[study|lights]Study Rotary Knob Control"
+    mode: queued
+    description: Controls the lights in the study room based on rotary knob actions.
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_tap_dial
+      - platform: event
+        event_type: deconz_relative_rotary_event
+        event_data:
+          id: relativerotary_111
+    action:
+      - choose:
+          - conditions:
+              - condition: and
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.event_type == deconz_event }}"
+                  - condition: template
+                    value_template: "{{ trigger.event.data.event == 1000 }}" #single press
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.study_lights
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: and
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.event_type == deconz_event }}"
+                  - condition: template
+                    value_template: "{{ trigger.event.data.event == 2000 }}" #single press
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.study_cabinet_a_rgb_ledstrip
+                  brightness_pct: 100
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: and
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.event_type == deconz_event }}"
+                  - condition: template
+                    value_template: "{{ trigger.event.data.event == 3000 }}" #single press
+            sequence:
+              - service: light.toggle
+                data:
+                  entity_id: light.study_desk_a_rgb_ledstrip
+                  brightness_pct: 100
+                  kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: and
+                conditions:
+                  - condition: template
+                    value_template: "{{ trigger.event_type == deconz_event }}"
+                  - condition: template
+                    value_template: "{{ trigger.event.data.event == 4000 }}" #single press
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: state
+                        entity_id: input_boolean.soldering_mode
+                        state: 'on'
+                    sequence:
+                      - service: light.toggle
+                        data:
+                          entity_id: light.led_strip_main_section
+                          brightness_pct: 100
+                          hs_color: [0,0]
+                default:
+                  - service: light.toggle
+                    data:
+                      entity_id: light.ledstrip_study_workbench
+                      brightness_pct: 100
+                      hs_color: [0,0] # Hue, Saturation
+                      #kelvin: 4000
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event_type == deconz_relative_rotary_event }}"
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_lights
+                  transition: 0.4
+                  brightness_step_pct: "{{ trigger.event.data.rotation/15 }}"
+
+  - alias: "[areas|study] Soldering Mode Control"
+    mode: queued
+    description: >
+      Controls the soldering mode based on the power usage of the soldering iron.
+      - Turns ON soldering mode when power has NOT been below 50W for 5 minutes.
+      - Turns OFF soldering mode when power has been below 50W for 5 minutes.
+    id: yaml_automation_areas_study_soldering_mode_control
+    trigger:
+      # Trigger to turn ON soldering mode
+      - platform: numeric_state
+        entity_id: sensor.power_above_50w_last_5_minutes
+        above: 10  # 10% of 5 minutes
+        id: trigger_soldering_on
+
+      - platform: numeric_state
+        entity_id: sensor.power_above_50w_last_5_minutes
+        below: 10  # 10% of 5 minutes
+        id: trigger_soldering_off
+    action:
+      - choose:
+          # When the soldering mode should be turned ON
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'trigger_soldering_on' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.soldering_mode
+              - service: light.turn_on
+                target:
+                  entity_id: light.led_strip_soldering_section
+                data:
+                  rgb_color: [255, 50, 50]
+                  effect: "Slow Pulse"
+          # When the soldering mode should be turned OFF
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'trigger_soldering_off' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.soldering_mode
+              - service: light.turn_off
+                target:
+                  entity_id: light.led_strip_soldering_section
+        default: []
 
 
   # - alias: '[study|power]Turn off pc plug'
