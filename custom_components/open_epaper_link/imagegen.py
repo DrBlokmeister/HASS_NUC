@@ -685,6 +685,282 @@ def customimage(entity_id, service, hass):
                         img_draw.rectangle([(diag_x + yaxis_width, curr_y), (diag_x + yaxis_width + yaxis_tick_width - 1, curr_y)], width=0, fill=getIndexColor(yaxis_color))
                         curr += yaxis_tick_every
 
+        # New: Column Graph
+        if element["type"] == "column_graph":
+            _LOGGER.debug("Processing a 'column_graph' element.")
+
+            # Validate required fields
+            required_keys = ["x_start", "y_start", "width", "height", "data", "labels"]
+            missing_keys = [key for key in required_keys if key not in element]
+            if missing_keys:
+                _LOGGER.error(f"Missing required keys for 'column_graph': {missing_keys}")
+                continue  # Skip this element
+
+            # Extract parameters
+            x_start = element["x_start"]
+            y_start = element["y_start"]
+            graph_width = element["width"]
+            graph_height = element["height"]
+            data = element["data"]
+            labels = element["labels"]
+            title = element.get("title", "")
+            y_label = element.get("y_label", "")
+            x_label = element.get("x_label", "")
+            column_color = element.get("column_color", "black")
+            axis_color_y = element.get("y_axis_color", "black")  # Separate Y-axis color
+            axis_color_x = element.get("x_axis_color", "black")  # Separate X-axis color
+            grid_color = getIndexColor(element.get("grid_color", "gray"))
+            font_path = element.get("font", "/config/www/fonts/ppb.ttf")  # Default font set to "ppb.ttf"
+            font_size = element.get("font_size", 10)
+            label_precision = element.get("label_precision", 0)  # Default float precision
+            x_label_interval = element.get("x_label_interval", None)  # Optional parameter
+            y_label_prefix = element.get("y_label_prefix", "€")  # Default prefix
+
+            # Handle Y-axis limits
+            ymax_input = element.get("ymax", None)
+            ymin_input = element.get("ymin", None)
+
+            # Initialize min and max values from data
+            if not isinstance(data, list) or not data:
+                _LOGGER.error("'data' should be a non-empty list of numerical values.")
+                continue  # Skip this element
+
+            data_numeric = [val for val in data if isinstance(val, (int, float))]
+            if len(data_numeric) != len(data):
+                _LOGGER.warning("Some 'data' entries are non-numeric and will be ignored.")
+                data = data_numeric
+                labels = labels[:len(data)]  # Adjust labels accordingly
+
+            if not data:
+                _LOGGER.error("No valid numerical data provided for 'column_graph'. Skipping element.")
+                continue  # Skip if no valid data
+
+            actual_min = min(data)
+            actual_max = max(data)
+
+            # Determine Y-axis limits
+            if ymax_input:
+                if isinstance(ymax_input, str) and ymax_input.startswith("~"):
+                    try:
+                        ymax_soft = float(ymax_input[1:])
+                        max_value = max(ymax_soft, actual_max)
+                        _LOGGER.debug(f"Soft ymax set to {max_value} (input: {ymax_input}, actual_max: {actual_max}).")
+                    except ValueError:
+                        _LOGGER.error(f"Invalid ymax value: {ymax_input}. Using actual_max={actual_max}.")
+                        max_value = actual_max
+                else:
+                    try:
+                        max_value = float(ymax_input)
+                        _LOGGER.debug(f"Hard ymax set to {max_value}.")
+                    except ValueError:
+                        _LOGGER.error(f"Invalid ymax value: {ymax_input}. Using actual_max={actual_max}.")
+                        max_value = actual_max
+            else:
+                max_value = actual_max
+
+            if ymin_input:
+                if isinstance(ymin_input, str) and ymin_input.startswith("~"):
+                    try:
+                        ymin_soft = float(ymin_input[1:])
+                        min_value = min(ymin_soft, actual_min)
+                        _LOGGER.debug(f"Soft ymin set to {min_value} (input: {ymin_input}, actual_min: {actual_min}).")
+                    except ValueError:
+                        _LOGGER.error(f"Invalid ymin value: {ymin_input}. Using actual_min={actual_min}.")
+                        min_value = actual_min
+                else:
+                    try:
+                        min_value = float(ymin_input)
+                        _LOGGER.debug(f"Hard ymin set to {min_value}.")
+                    except ValueError:
+                        _LOGGER.error(f"Invalid ymin value: {ymin_input}. Using actual_min={actual_min}.")
+                        min_value = actual_min
+            else:
+                min_value = actual_min
+
+            # Prevent division by zero and ensure min < max
+            if min_value >= max_value:
+                _LOGGER.warning(f"min_value ({min_value}) >= max_value ({max_value}). Adjusting min_value.")
+                min_value = max_value - 1
+
+            _LOGGER.debug(f"'column_graph' Y-axis limits: min_value={min_value}, max_value={max_value}.")
+
+            # Load font with error handling
+            try:
+                font = ImageFont.truetype(font_path, font_size)
+                _LOGGER.debug(f"Loaded font from '{font_path}' with size {font_size}.")
+            except IOError:
+                _LOGGER.error(f"Failed to load font from '{font_path}'. Using default font.")
+                font = ImageFont.load_default()
+
+            # Validate labels
+            if not isinstance(labels, list):
+                _LOGGER.error("'labels' should be a list of strings.")
+                continue  # Skip this element
+            if len(data) != len(labels):
+                _LOGGER.warning(f"The length of 'data' ({len(data)}) does not match the length of 'labels' ({len(labels)}). Trimming to the shorter length.")
+                min_length = min(len(data), len(labels))
+                data = data[:min_length]
+                labels = labels[:min_length]
+
+            # Calculate X-axis label interval if not provided
+            if x_label_interval is None:
+                x_label_interval = max(1, len(labels) // 5)  # Default to show approximately 5 labels
+                _LOGGER.debug(f"Calculated default x_label_interval={x_label_interval} for {len(labels)} labels.")
+            else:
+                if isinstance(x_label_interval, int) and x_label_interval > 0:
+                    _LOGGER.debug(f"Using user-defined x_label_interval={x_label_interval}.")
+                else:
+                    _LOGGER.warning(f"Invalid x_label_interval={x_label_interval}. Using default value.")
+                    x_label_interval = max(1, len(labels) // 5)
+
+            # Draw axes
+            draw = ImageDraw.Draw(img)
+            # Y-axis
+            draw.line(
+                [(x_start, y_start), (x_start, y_start + graph_height)],
+                fill=axis_color_y,
+                width=1
+            )
+            _LOGGER.debug(f"Drew Y-axis from ({x_start}, {y_start}) to ({x_start}, {y_start + graph_height}) with color {axis_color_y}.")
+            # X-axis
+            draw.line(
+                [(x_start, y_start + graph_height), (x_start + graph_width, y_start + graph_height)],
+                fill=axis_color_x,
+                width=1
+            )
+            _LOGGER.debug(f"Drew X-axis from ({x_start}, {y_start + graph_height}) to ({x_start + graph_width}, {y_start + graph_height}) with color {axis_color_x}.")
+
+            # Draw grid lines
+            grid_steps = element.get("grid_steps", 5)
+            _LOGGER.debug(f"Drawing {grid_steps} grid steps.")
+            for i in range(1, grid_steps):
+                y = y_start + graph_height - (graph_height / grid_steps) * i
+                draw.line(
+                    [(x_start, y), (x_start + graph_width, y)],
+                    fill=grid_color,
+                    width=1
+                )
+                _LOGGER.debug(f"Drew grid line {i} at y={y} with color {grid_color}.")
+
+                # Y-axis labels using textbbox
+                y_val = min_value + (max_value - min_value) / grid_steps * i
+                text = f"{y_label_prefix}{y_val:.{label_precision}f}"  # Prepend prefix and set float precision
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                label_x = x_start - text_width - 5
+                label_y = y - text_height / 2
+                draw.text((int(label_x), int(label_y)), text, fill=axis_color_y, font=font)
+                _LOGGER.debug(f"Drew Y-axis label '{text}' at ({label_x}, {label_y}) with fill color {axis_color_y}.")
+
+            # Calculate column width and spacing
+            num_columns = len(data)
+            spacing = element.get("spacing", 5)
+            if num_columns == 0:
+                _LOGGER.warning("No data points provided for 'column_graph'. Skipping column drawing.")
+                continue  # Skip if no data
+            column_width = (graph_width - (num_columns + 1) * spacing) / num_columns
+            _LOGGER.debug(f"Calculated column_width={column_width} and spacing={spacing} for {num_columns} columns.")
+
+            # Determine column colors
+            if isinstance(column_color, list):
+                if len(column_color) != num_columns:
+                    _LOGGER.warning(f"Length of 'column_color' list ({len(column_color)}) does not match number of data points ({num_columns}). Using single color for all columns.")
+                    column_colors = [getIndexColor(column_color[0])] * num_columns
+                else:
+                    column_colors = [getIndexColor(col) for col in column_color]
+                    _LOGGER.debug(f"Using per-bar colors: {column_colors}")
+            else:
+                column_colors = [getIndexColor(column_color)] * num_columns
+                _LOGGER.debug(f"Using single column color: {column_color}")
+
+            # Draw columns
+            for idx, value in enumerate(data):
+                if idx >= len(labels):
+                    _LOGGER.warning(f"No label provided for column index {idx}. Using index as label.")
+                    label = str(idx)
+                else:
+                    label = labels[idx]
+
+                # Validate numerical value
+                if not isinstance(value, (int, float)):
+                    _LOGGER.warning(f"Non-numeric value '{value}' at index {idx} in 'data'. Skipping this column.")
+                    continue  # Skip non-numeric data
+
+                # Calculate column height
+                column_height = (value - min_value) / (max_value - min_value) * graph_height
+                if column_height < 0:
+                    _LOGGER.warning(f"Negative column height ({column_height}) for value '{value}' at index {idx}. Setting to 0.")
+                    column_height = 0
+
+                # Define rectangle coordinates
+                x0 = x_start + spacing + idx * (column_width + spacing)
+                y0 = y_start + graph_height - column_height
+                x1 = x0 + column_width
+                y1 = y_start + graph_height
+
+                # Ensure coordinates are integers
+                x0_int = int(round(x0))
+                y0_int = int(round(y0))
+                x1_int = int(round(x1))
+                y1_int = int(round(y1))
+
+                # Draw rectangle
+                draw.rectangle([x0_int, y0_int, x1_int, y1_int], fill=column_colors[idx])
+                _LOGGER.debug(f"Drew column {idx} with height {column_height} mm from ({x0_int}, {y0_int}) to ({x1_int}, {y1_int}) with color {column_colors[idx]}.")
+
+                # Draw labels using textbbox
+                bbox = draw.textbbox((0, 0), label, font=font)
+                label_width = bbox[2] - bbox[0]
+                label_height = bbox[3] - bbox[1]
+                label_x = x0 + (column_width - label_width) / 2
+                label_y = y_start + graph_height + 2
+
+                # Determine if the label should be drawn based on interval
+                if idx % x_label_interval == 0:
+                    draw.text((int(round(label_x)), int(round(label_y))), label, fill=axis_color_x, font=font)
+                    _LOGGER.debug(f"Drew X-axis label '{label}' at ({label_x}, {label_y}) with fill color {axis_color_x}.")
+                else:
+                    _LOGGER.debug(f"Skipped drawing X-axis label '{label}' at index {idx} based on x_label_interval={x_label_interval}.")
+
+            # Draw title
+            if title:
+                bbox = draw.textbbox((0, 0), title, font=font)
+                title_width = bbox[2] - bbox[0]
+                title_height = bbox[3] - bbox[1]
+                title_x = x_start + (graph_width - title_width) / 2
+                title_y = y_start - title_height - 5
+                draw.text((int(round(title_x)), int(round(title_y))), title, fill=axis_color_y, font=font)
+                _LOGGER.debug(f"Drew title '{title}' at ({title_x}, {title_y}) with fill color {axis_color_y}.")
+
+            # Draw Y-axis label (rotated)
+            if y_label:
+                # Create a separate image for the rotated text
+                y_label_image = Image.new('RGBA', (graph_height, 50), (255, 255, 255, 0))  # Width=graph_height to accommodate rotation
+                y_draw = ImageDraw.Draw(y_label_image)
+                bbox = y_draw.textbbox((0, 0), y_label, font=font)
+                y_label_width = bbox[2] - bbox[0]
+                y_label_height = bbox[3] - bbox[1]
+                y_draw.text((0, (50 - y_label_height) / 2), y_label, fill=axis_color_y, font=font)
+                rotated_label = y_label_image.rotate(90, expand=1)
+                # Calculate position to paste the rotated label
+                label_x = x_start - 45  # Adjust as needed
+                label_y = y_start + (graph_height - rotated_label.size[1]) / 2
+                img.paste(rotated_label, (int(round(label_x)), int(round(label_y))), rotated_label)
+                _LOGGER.debug(f"Drew Y-axis label '{y_label}' rotated at ({label_x}, {label_y}).")
+
+            # Draw X-axis label
+            if x_label:
+                bbox = draw.textbbox((0, 0), x_label, font=font)
+                x_label_width = bbox[2] - bbox[0]
+                x_label_height = bbox[3] - bbox[1]
+                x_label_x = x_start + graph_width / 2 - x_label_width / 2
+                x_label_y = y_start + graph_height + 15
+                draw.text((int(round(x_label_x)), int(round(x_label_y))), x_label, fill=axis_color_x, font=font)
+                _LOGGER.debug(f"Drew X-axis label '{x_label}' at ({x_label_x}, {x_label_y}) with fill color {axis_color_x}.")
+
+
+
         # progress_bar
         if element["type"] == "progress_bar":
             check_for_missing_required_arguments(element, ["x_start", "x_end", "y_start", "y_end", "progress"], "progress_bar")
@@ -746,8 +1022,6 @@ def customimage(entity_id, service, hass):
 
                 # Draw text
                 img_draw.text((text_x, text_y), percentage_text, font=font, fill=text_color, anchor='lt') # TODO anchor is still off
-
-
 
 
 
