@@ -26,7 +26,8 @@ title: Power
 icon: mdi:lightning-bolt
 badges: []
 cards:
-  - cards:
+  - type: vertical-stack
+    cards:
     - type: custom:apexcharts-card
       header:
         title: Energy Usage Today
@@ -142,7 +143,7 @@ cards:
       all_series_config:
         group_by:
           func: avg
-          duration: 5min
+          duration: 1min
         float_precision: 0
         show:
           datalabels: false
@@ -171,12 +172,36 @@ cards:
         - decimals: 0
       chart_type: donut
       series:
+        - entity: sensor.plug_electric_car_power
+          name: Electric Car
+          color: '#FFC107'  # Entertainment and Others - Amber
         - entity: sensor.plug_study_desk_power
           name: Computer
           color: '#4CAF50'  # Computing Devices - Green
         - entity: sensor.plug_nas_power
           name: NAS
           color: '#8BC34A'  # Computing Devices - Light green
+        - entity: sensor.heatpump_tapwater_power
+          name: Tapwater
+          color: '#FF9800'  # Central House Systems - A muted orange
+        - entity: sensor.heatpump_heating_power
+          name: Heating
+          color: '#FF5722'  # Central House Systems - Deep orange
+        - entity: sensor.plug_washing_machine_power
+          name: Washing Machine
+          color: '#9C27B0'  # Home Appliances - A deeper purple
+        - entity: sensor.plug_poe_switch_power
+          name: PoE
+          color: '#2196F3'  # Rich blue, less piercing
+        - entity: sensor.ventilation_power_estimate
+          name: Ventilation
+          color: '#FF9800'  # Central House Systems - Earthy orange
+        - entity: sensor.plug_dishwasher_power
+          name: Dishwasher
+          color: '#673AB7'  # Home Appliances - Darker orchid
+        - entity: sensor.plug_watercooker_power
+          name: Watercooker
+          color: '#9C27B0'  # Consistent with appliances, a little lighter
         - entity: sensor.plug_nuc_power
           name: NUC
           color: '#66BB6A'  # Computing Devices - Medium sea green
@@ -186,42 +211,27 @@ cards:
         - entity: sensor.plug_router_power
           name: Router
           color: '#03A9F4'  # Network Devices - Lighter blue
-        - entity: sensor.plug_poe_switch_power
-          name: PoE
-          color: '#2196F3'  # Rich blue, less piercing
-        - entity: sensor.plug_electric_car_power
-          name: Electric Car
-          color: '#FFC107'  # Entertainment and Others - Amber
         - entity: sensor.blitzwolf_ambilight_amplifier_power
           name: Ambilight Amplifier
           color: '#FFB300'  # Entertainment and Others - Vivid but not harsh amber
-        - entity: sensor.plug_3d_printer_power
-          name: 3D Printer
-          color: '#FFA726'  # Entertainment and Others - Orange peel, slightly playful
-        - entity: sensor.heatpump_heating_power
-          name: Heating
-          color: '#FF5722'  # Central House Systems - Deep orange
-        - entity: sensor.heatpump_tapwater_power
-          name: Tapwater
-          color: '#FF9800'  # Central House Systems - A muted orange
-        - entity: sensor.ventilation_power_estimate
-          name: Ventilation
-          color: '#FF9800'  # Central House Systems - Earthy orange
+        - entity: sensor.plug_tv_power
+          name: TV
+          color: '#FFCA28'  # Light amber, for comfortable viewing
         - entity: sensor.blitzwolf_heatpump_power
           name: Circulation
           color: '#795548'  # Central House Systems - Brown
-        - entity: sensor.plug_washing_machine_power
-          name: Washing Machine
-          color: '#9C27B0'  # Home Appliances - A deeper purple
-        - entity: sensor.plug_dishwasher_power
-          name: Dishwasher
-          color: '#673AB7'  # Home Appliances - Darker orchid
+        - entity: sensor.plug_3d_printer_power
+          name: 3D Printer
+          color: '#FFA726'  # Entertainment and Others - Orange peel, slightly playful
         - entity: sensor.all_lights_power_estimate_power
           name: Lights
           color: '#FFEB3B'  # Entertainment and Others - Bright yellow
         - entity: sensor.vacuums_power_estimate
           name: Vacuums
           color: '#9E9E9E'  # Central House Systems - Grey
+        - entity: sensor.shellies_power_estimate
+          name: Shellies
+          color: '#00796B'  # Distinct teal, fits the overall palette nicely
         - entity: sensor.unknown_power
           name: Unknown
           color: '#BDBDBD'  # Unknown category - Light grey
@@ -636,25 +646,8 @@ cards:
           show:
             icon: false
             points: false
-    - type: custom:mini-graph-card
-      entities:
-        - sensor.unknown_power
-        - sensor.filtered_unknown_power
-      name: Unknown power
-      line_color: '#784a3a'
-      hours_to_show: 24
-      points_per_hour: 6
-      line_width: 5
-      font_size: 75
-      font_size_header: 10
-      align_state: right
-      lower_bound: 0
-      #upper_bound: 20
-      show:
-        icon: false
-        points: false
-    type: vertical-stack
-  - cards:
+  - type: vertical-stack
+    cards:
       - type: gauge
         name: Net Power usage
         unit: 'kW'
@@ -727,7 +720,8 @@ cards:
               - from: 2000
                 to: 3000
                 color: '#3A7DFF'  # Dark Green
-      - cards:
+      - type: horizontal-stack
+        cards:
           - type: gauge
             name: Computer Power
             unit: 'W'
@@ -760,7 +754,6 @@ cards:
               - from: 100
                 to: 200
                 color: '#F44336'  # Soft Red
-        type: horizontal-stack
       - type: custom:mini-graph-card
         entities:
           - entity: sensor.daily_energy_use
@@ -1164,29 +1157,6 @@ cards:
                 color: "#ffaf33"
               - value: 4
                 color: "#ff5733"
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.mediacenter_cost_today
-            aggregate_func: max
-            name: Mediacenter
-          - entity: sensor.computer_cost_today
-            aggregate_func: max
-            name: Computer
-          - entity: sensor.energie_kosten_dag
-            aggregate_func: max
-            name: Total
-        name: Electricity costs
-        hours_to_show: 168
-        group_by: date
-        lower_bound: 0
-        #upper_bound: 5
-        icon: mdi:currency-eur
-        smoothing: false
-        show:
-          graph: line
-          icon: false
-          points: always
-    type: vertical-stack
 
   - type: entities
     title: Power Switches
