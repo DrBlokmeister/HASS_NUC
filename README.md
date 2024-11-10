@@ -69,7 +69,7 @@ SELECT entity_id, COUNT(*) as count FROM states GROUP BY entity_id ORDER BY coun
 ```
 To remove entities from the database directly using [regular expressions](https://mariadb.com/kb/en/like/):
 ```SQL
--- first test if the regular expression works. I'm looking for e.g.: sensor.blitzwolf_NUC_energy_voltage
+-- first test if the regular expression works. I'm looking for e.g.: sensor.plug_nuc_voltage
 SELECT entity_id, COUNT(*) as count FROM states WHERE entity_id LIKE 'sensor.blitzwolf%status' GROUP BY entity_id ORDER BY count DESC LIMIT 10;
 -- then remove the entities. This is final!
 DELETE FROM states WHERE entity_id LIKE 'sensor.blitzwolf%energy\_voltage';
