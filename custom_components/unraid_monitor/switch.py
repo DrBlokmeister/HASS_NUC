@@ -8,12 +8,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     coordinator = hass.data[DOMAIN][entry.entry_id]
     entities = []
 
+    # Detect all Docker containers, including non-running ones
     for key, value in coordinator.data.items():
         if key.endswith("_container_state") and isinstance(value, bool):
             container_name = key.replace("_container_state", "")
             entities.append(UnraidDockerContainerSwitch(coordinator, container_name))
 
     async_add_entities(entities)
+
 
 class UnraidDockerContainerSwitch(SwitchEntity):
     """Representation of a Docker container switch."""
@@ -34,12 +36,17 @@ class UnraidDockerContainerSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Start the Docker container."""
         await self.coordinator.start_container(self.container_name)
-        await self.coordinator.async_request_refresh()
+        # Fast polling is already handled in the coordinator's start_container method
 
     async def async_turn_off(self, **kwargs):
         """Stop the Docker container."""
         await self.coordinator.stop_container(self.container_name)
-        await self.coordinator.async_request_refresh()
+        # Fast polling is already handled in the coordinator's stop_container method
+
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.data.get(f"{self.container_name}_container_state") is not None
 
     @property
     def should_poll(self):

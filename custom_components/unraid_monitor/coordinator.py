@@ -123,8 +123,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
                 results[f"{interface}_sent"] = self._parse_data_size(transfer_tx)
 
                 _LOGGER.debug(f"WireGuard {interface} - Endpoint: {endpoint}, "
-                            f"Handshake: {handshake_timestamp.isoformat()}, "
-                            f"Received: {transfer_rx}, Sent: {transfer_tx}")
+                              f"Handshake: {handshake_timestamp.isoformat()}, "
+                              f"Received: {transfer_rx}, Sent: {transfer_tx}")
 
         return results
 
@@ -144,7 +144,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _fetch_container_stats(self):
         """Fetch Docker container stats via SSH."""
-        container_list_cmd = "docker ps --format '{{.Names}}'"
+        # Modify to include all containers, including non-running ones
+        container_list_cmd = "docker ps -a --format '{{.Names}}'"
         containers_output = await self.connection.run_command(container_list_cmd)
         _LOGGER.debug(f"Containers output: {containers_output}")
         containers = containers_output.strip().splitlines()
