@@ -229,38 +229,72 @@ automation:
     mode: single
     trigger:
       - platform: time_pattern
-        minutes: "0"
+        minutes: "/10" #every ten minutes. Should not affect battery life since the image updates only every hour.
     condition:
       - condition: time
-        after: "6:00:00"
+        after: "5:00:00"
         before: "23:30:00"
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
+      - delay: #ensure that the current nordpool price has already been updated
+          minutes: 1
       - choose:
         - conditions:
             - condition: time
               before: "15:00:00"
           sequence:
-            #- service: script.update_energy_price_today_display
             - service: script.update_energy_price_today_larger_display
+              continue_on_error: true
               data:
                 display_entity_id:
-                  # - open_epaper_link.00007E22B1D7B299 #Study
-                  #- open_epaper_link.00007e22b1b2b29a #Washroom
                   - open_epaper_link.00007e225dc2b29f #Kitchen
+                  #- open_epaper_link.00007e22cc92b292 #New Display 1
+                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+            - delay:
+                seconds: 10
+            - service: script.update_energy_price_today_larger_display
+              continue_on_error: true
+              data:
+                display_entity_id:
+                  #- open_epaper_link.00007e225dc2b29f #Kitchen
                   - open_epaper_link.00007e22cc92b292 #New Display 1
+                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+            - delay:
+                seconds: 10
+            - service: script.update_energy_price_today_larger_display
+              continue_on_error: true
+              data:
+                display_entity_id:
+                  #- open_epaper_link.00007e225dc2b29f #Kitchen
+                  #- open_epaper_link.00007e22cc92b292 #New Display 1
                   - open_epaper_link.00007e1f8b30b297 #New Display 2
         default:
-          #- service: script.update_energy_price_transition_display
-          - service: script.update_energy_price_transition_larger_display
-            data:
-              display_entity_id:
-                # - open_epaper_link.00007E22B1D7B299 #Study
-                #- open_epaper_link.00007e22b1b2b29a #Washroom
-                - open_epaper_link.00007e225dc2b29f #Kitchen
-                - open_epaper_link.00007e22cc92b292 #New Display 1
-                - open_epaper_link.00007e1f8b30b297 #New Display 2
+            - service: script.update_energy_price_transition_larger_display
+              continue_on_error: true
+              data:
+                display_entity_id:
+                  - open_epaper_link.00007e225dc2b29f #Kitchen
+                  #- open_epaper_link.00007e22cc92b292 #New Display 1
+                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+            - delay:
+                seconds: 10
+            - service: script.update_energy_price_transition_larger_display
+              continue_on_error: true
+              data:
+                display_entity_id:
+                  #- open_epaper_link.00007e225dc2b29f #Kitchen
+                  - open_epaper_link.00007e22cc92b292 #New Display 1
+                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+            - delay:
+                seconds: 10
+            - service: script.update_energy_price_transition_larger_display
+              continue_on_error: true
+              data:
+                display_entity_id:
+                  #- open_epaper_link.00007e225dc2b29f #Kitchen
+                  #- open_epaper_link.00007e22cc92b292 #New Display 1
+                  - open_epaper_link.00007e1f8b30b297 #New Display 2
 
   - alias: "[misc|epaperlink] Timed Update Moeke Water Tank Display"
     id: misc_epaperlink_timed_update_moeke_water_tank_display
