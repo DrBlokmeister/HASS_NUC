@@ -75,8 +75,8 @@ sensor:
       - sensor.study_light_1
       - sensor.study_light_1
   - platform: history_stats
-    name: "Power Above 50W Last 5 Minutes"
-    entity_id: binary_sensor.power_above_50w
+    name: "Power Above Soldering Power Last 5 Minutes"
+    entity_id: binary_sensor.power_above_soldering_power
     state: "on"
     type: ratio
     end: "{{ now() }}"
@@ -103,10 +103,10 @@ binary_sensor:
             is_state('binary_sensor.study_motion_2', 'on')
           }}
         availability_template: "{{ (states('binary_sensor.study_motion_1') in ['on', 'off']) and (states('binary_sensor.study_motion_2') in ['on', 'off']) }}"
-      power_above_50w:
-        friendly_name: "Power Above 50W"
+      power_above_soldering_power:
+        friendly_name: "Power Above Soldering Power"
         #device_class: power
-        value_template: "{{ states('sensor.plug_study_workbench_power') | float >= 50 }}"
+        value_template: "{{ states('sensor.plug_study_workbench_power') | float >= 35 }}"
 
 ########################
 #    INPUT BOOLEANS    #
@@ -470,12 +470,12 @@ automation:
     trigger:
       # Trigger to turn ON soldering mode
       - platform: numeric_state
-        entity_id: sensor.power_above_50w_last_5_minutes
+        entity_id: sensor.power_above_soldering_power_last_5_minutes
         above: 10  # 10% of 5 minutes
         id: trigger_soldering_on
 
       - platform: numeric_state
-        entity_id: sensor.power_above_50w_last_5_minutes
+        entity_id: sensor.power_above_soldering_power_last_5_minutes
         below: 10  # 10% of 5 minutes
         id: trigger_soldering_off
     action:
