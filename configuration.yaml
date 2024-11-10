@@ -67,8 +67,11 @@ influxdb:
       - binary_sensor
       - automation
       - device_tracker
+      - input_boolean
+      - input_number
+      - light
     entities:
-      - sensor.blitzwolf_nas_energy_today
+      - sensor.plug_nas_energy_today
       - sensor.blitzwolf_computer_energy_today
     entity_globs:
       - sensor.blitzwolf_*_energy_today
@@ -187,12 +190,14 @@ recorder:
   db_url: !secret mariadb_URL
   include:
     entities:
-      - sensor.blitzwolf_nas_energy_today
+      - sensor.plug_nas_energy_today
       - sensor.blitzwolf_computer_energy_today
   exclude:
     entity_globs:
       - sensor.*_human_readable
       - sensor.*uptime*
+      - sensor.*rx*
+      - sensor.*tx*
       #- sensor.blitzwolf_*_status
       #- sensor.blitzwolf_*_energy_apparentpower
       #- sensor.blitzwolf_*_energy_current
@@ -332,9 +337,13 @@ logger:
     homeassistant.components.command_line: warn
     homeassistant.components.command_line.switch: warn
     custom_components.alpha_innotec.coordinator: warn
+    #homeassistant.components.reolink: debug
+    #reolink_aio: debug
     #custom_components.mitemp_bt: debug
     #homeassistant.components.miflora: debug
     #homeassistant.components.mqtt: debug
     #custom_components.mitemp_bt: notset
     #custom_components.ble_monitor: debug
     #custom_components.xiaomi_cloud_map_extractor: debug
+    asyncssh: warn
+    custom_components.unraid_monitor: info
