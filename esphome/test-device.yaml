@@ -1,0 +1,52 @@
+substitutions:
+  device_name: "Test Device"
+  espname: "test-device"
+
+esphome:
+  name: '${espname}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+  inputs_1: !include
+    file: templates/shelly_functions/shelly_inputs.yaml
+    vars:
+      channel: '1'
+      device_name: "${device_name} 1"
+      relay_id: shelly_relay_2
+      clicker_id: switch_clicker_1
+      shelly_switch_id: shelly_switch_1
+      GPIO_pin: GPIO6
+  inputs_2: !include
+    file: templates/shelly_functions/shelly_inputs.yaml
+    vars:
+      channel: '2'
+      device_name: "${device_name} 2"
+      relay_id: shelly_relay_2
+      clicker_id: switch_clicker_2
+      shelly_switch_id: shelly_switch_2
+      GPIO_pin: GPIO7
+  relay_1: !include
+    file: templates/shelly_functions/shelly_relay.yaml
+    vars:
+      relay_id: shelly_relay_1
+      device_name: "${device_name} 1"
+      GPIO_pin: GPIO4
+  relay_2: !include
+    file: templates/shelly_functions/shelly_relay.yaml
+    vars:
+      relay_id: shelly_relay_2
+      device_name: "${device_name} 2"
+      GPIO_pin: GPIO5

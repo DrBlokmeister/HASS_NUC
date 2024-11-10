@@ -1,0 +1,115 @@
+substitutions:
+  device_name: "Turbidity Sensor"
+  espname: "turbidity-sensor"
+
+esphome:
+  name: '${espname}'
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: arduino
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+status_led:
+  pin: GPIO15
+
+i2c:
+  sda: GPIO05
+  scl: GPIO03
+  scan: true
+  id: ads1115_bus
+  frequency: 10kHz
+
+ads1115:
+  - address: 0x48
+
+sensor:
+  # - platform: adc
+  #   pin: GPIO09
+  #   name: ${device_name} Turbidity
+  #   raw: false
+  #   attenuation: 6db
+  #   accuracy_decimals: 5
+  #   update_interval: 0.001s
+  #   id: turbidity
+  #   filters:
+  #     - throttle_average: 1s
+  #     - or:
+  #       - throttle_average: 60s
+  #       - delta: 0.1
+
+  - platform: ads1115
+    id: ads1115_a0a1
+    multiplexer: 'A0_A1'
+    gain: 1.024
+    update_interval: 1s
+    accuracy_decimals: 5
+    name: "${device_name} ADS1115 Channel A0-A1"
+    filters:
+      - throttle_average: 5s
+      - or:
+        - throttle_average: 60s
+        - delta: 0.01
+
+  # - platform: ads1115
+  #   id: ads1115_a2a3
+  #   multiplexer: 'A2_A3'
+  #   gain: 6.144
+  #   update_interval: 0.125s
+  #   accuracy_decimals: 5
+  #   name: "${device_name} ADS1115 Channel A2-GND"
+  #   filters:
+  #     - throttle_average: 5s
+
+  # - platform: template
+  #   name: "${device_name} Normalized ADS1115 A0-A1"
+  #   device_class: "voltage"
+  #   state_class: "measurement"
+  #   unit_of_measurement: "V"
+  #   update_interval: 5s
+  #   lambda: |-
+  #     return id(ads1115_a0a1).state / id(ads1115_a2a3).state * -5.0;
+  #   accuracy_decimals: 5
+
+  - platform: aht10
+    variant: AHT20
+    i2c_id: ads1115_bus
+    update_interval: 1s
+    temperature:
+      name: "${device_name} Temperature"
+      icon: mdi:thermometer
+      id: aht25_temp
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      accuracy_decimals: 3
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - delta: 0.1
+    humidity:
+      name: "${device_name} AQM Humidity"
+      icon: mdi:water-percent
+      id: aht25_hum
+      unit_of_measurement: "%"
+      device_class: "humidity"
+      accuracy_decimals: 1
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - delta: 5
+
