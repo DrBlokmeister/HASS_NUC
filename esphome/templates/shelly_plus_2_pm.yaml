@@ -112,28 +112,62 @@ binary_sensor:
 
 sensor:
   # Power Sensor
+  # https://esphome.io/components/sensor/ade7953.html
   - platform: ade7953_i2c
     irq_pin: GPIO27
+    update_interval: 1s
     voltage:
       name: "${device_name} Voltage"
       entity_category: 'diagnostic'
       id: voltage
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - delta: 1.0
     current_a:
       name: "${device_name} Channel 1 Current"
       entity_category: 'diagnostic'
       id: current_1
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 0.5
+            - delta: 5%
     active_power_a:
       name: "${device_name} Channel 1 Power"
       id: power_1
-      entity_category: 'diagnostic'
+      entity_category: "" #'diagnostic'
       filters:
         - multiply: -1
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 20.0
+            - delta: 5%
     current_b:
       name: "${device_name} Channel 2 Current"
       entity_category: 'diagnostic'
       id: current_2
+      filters:
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 0.5
+            - delta: 5%
     active_power_b:
       name: "${device_name} Channel 2 Power"
       id: power_2
-      entity_category: 'diagnostic'
-    update_interval: 10s
+      entity_category: "" #'diagnostic'
+      filters:
+        - multiply: -1
+        - throttle_average: 5s
+        - or:
+          - throttle_average: 60s
+          - or:
+            - delta: 20.0
+            - delta: 5%
