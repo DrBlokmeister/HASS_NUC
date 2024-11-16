@@ -10,7 +10,6 @@ homeassistant:
       icon: mdi:lightning-bolt
 
   customize:
-
     sensor.waterverbruik_vandaag:
       icon: mdi:water
     sensor.water_consumption_per_hour:
@@ -22,6 +21,9 @@ template:
   - sensor:
       - name: "Known Power"
         unit_of_measurement: 'W'
+        device_class: power
+        icon: mdi:meter-electric
+        unique_id: yaml_template_known_power
         state: >-
           {{ expand('group.power_entities') |rejectattr('domain','eq','group')
                                             |rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|map(attribute='state')|map('float')|sum|round() }}
@@ -31,15 +33,31 @@ template:
   - sensor:
       - name: "Unknown Power"
         unit_of_measurement: 'W'
+        device_class: power
+        icon: mdi:meter-electric
+        unique_id: yaml_template_unknown_power
         state: >-
           {{ states('sensor.total_power_consumption_watt')|float - states('sensor.known_power')|float|round() }}
         #availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.known_power')|is_number }}"
     # trigger:
     #   - platform: time_pattern
     #     seconds: /1
-  - sensor:
-      - name: "Shellies Power Estimate"
+
+  - trigger:
+      - platform: time_pattern
+        seconds: /5
+    sensor:
+        # Use template below to find all shelly switches
+        # {{ states.switch 
+        #   | map(attribute='entity_id') 
+        #   | select('match', 'switch.shelly') 
+        #   | reject('search', '_detached_mode') 
+        #   | sort() | join('\n - ') }}
+      - name: "Shellies Background Power Estimate"
         unit_of_measurement: 'W'
+        device_class: power
+        icon: mdi:meter-electric
+        unique_id: yaml_template_shellies_background_power_estimate
         state: >-
             {% set switches = [
               'switch.shelly_study',
@@ -80,9 +98,6 @@ template:
               'switch.shelly_bathroom_1'
             ] %}
             {{ switches | select('is_state', 'unavailable') | list | count }}
-    trigger:
-      - platform: time_pattern
-        seconds: /1
 
   - trigger:
       - platform: time
@@ -639,6 +654,13 @@ sensor:
     unit_time: h
     method: left
     round: 2
+  - platform: integration
+    source: sensor.electric_car_estimate_electricity_cost_per_hour
+    name: Electric Car Total Electricity Cost
+    unique_id: yaml_integration_electric_car_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
 
   - platform: integration
     source: sensor.all_lights_power_estimate_electricity_cost_per_hour
@@ -690,13 +712,6 @@ sensor:
     method: left
     round: 2
   - platform: integration
-    source: sensor.electric_car_estimate_electricity_cost_per_hour
-    name: Electric Car Total Electricity Cost
-    unique_id: yaml_integration_electric_car_total_electricity_cost
-    unit_time: h
-    method: left
-    round: 2
-  - platform: integration
     source: sensor.solar_panels_production_earnings_per_hour
     name: Solar Panels Total Electricity Earnings
     unique_id: yaml_integration_solar_panel_total_electricity_benefits
@@ -704,6 +719,21 @@ sensor:
     method: left
     round: 2
 
+  - platform: integration # New integration sensor for total net electricity cost
+    source: sensor.net_electricity_cost_per_hour
+    name: Total Net Electricity Cost
+    unique_id: yaml_integration_sensor_total_net_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+
+  - platform: integration  #Energy costs
+    source: sensor.current_electricity_cost_per_hour
+    name: "Total Electricity Cost"
+    method: left
+    unit_time: h
+    round: 2
+# Integration sensors for power consumption W -> kWh
   - platform: integration
     source: sensor.total_power_consumption_watt
     name: Total Energy Usage
@@ -712,6 +742,8 @@ sensor:
     unit_prefix: k
     method: left
     round: 2
+    max_sub_interval:
+      minutes: 10
   - platform: integration
     source: sensor.heatpump_tapwater_power_estimate
     name: Tapwater Energy
@@ -720,6 +752,8 @@ sensor:
     unit_prefix: k
     method: left
     round: 2
+    max_sub_interval:
+      minutes: 10
   - platform: integration
     source: sensor.unknown_power
     name: Unknown Energy
@@ -728,12 +762,28 @@ sensor:
     unit_prefix: k
     method: left
     round: 2
+    max_sub_interval:
+      minutes: 10
   - platform: integration
-    source: sensor.water_meter_current_water_consumption
-    name: Total Water Usage
-    unique_id: integration_total_water_usage
-    unit_time: min
-    round: 0
+    name: Shelly PM Lights Energy
+    source: sensor.shelly_pm_lights_power
+    unique_id: yaml_integration_shelly_pm_lights_energy
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
+    max_sub_interval:
+      minutes: 10
+  - platform: integration
+    name: Shelly Background Energy
+    source: sensor.shellies_background_power_estimate
+    unique_id: yaml_integration_shellies_background_energy
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
+    max_sub_interval:
+      minutes: 10
 
   - platform: integration
     source: sensor.heatpump_tapwater_power
@@ -751,6 +801,8 @@ sensor:
     unit_prefix: k
     method: left
     round: 2
+    max_sub_interval:
+      minutes: 10
 
   - platform: integration
     source: sensor.solar_panel_power_production_available
@@ -760,13 +812,22 @@ sensor:
     unit_prefix: k #source is in W, this is in kWh.
     method: left
     round: 2
+    max_sub_interval:
+      minutes: 10
 
-  - platform: derivative
-    source: sensor.water_meter_main_water_consumption
-    name: Current Water Consumption
+  - platform: integration
+    source: sensor.water_meter_current_water_consumption
+    name: Total Water Usage
+    unique_id: integration_total_water_usage
     unit_time: min
-    time_window: "00:01:00"
-
+    round: 0
+    max_sub_interval:
+      minutes: 10
+  # - platform: derivative # I think this should be removed
+  #   source: sensor.water_meter_main_water_consumption
+  #   name: Current Water Consumption
+  #   unit_time: min
+  #   time_window: "00:01:00"
   - platform: statistics
     entity_id: sensor.water_meter_water_consumption
     name: Statistics Water per Ten Minutes
@@ -794,14 +855,6 @@ sensor:
       - filter: time_simple_moving_average
         window_size: '00:15'
         precision: 0
-
-  #Energy costs
-  - platform: integration
-    source: sensor.current_electricity_cost_per_hour
-    name: "Total Electricity Cost"
-    method: left
-    unit_time: h
-    round: 2
 
   - platform: statistics
     name: "Energy Price Five Day Moving 2 Percentile"
@@ -836,14 +889,7 @@ sensor:
     max_age:
       days: 5
 
-  # New integration sensor for total net electricity cost
-  - platform: integration
-    source: sensor.net_electricity_cost_per_hour
-    name: Total Net Electricity Cost
-    unique_id: yaml_integration_sensor_total_net_electricity_cost
-    unit_time: h
-    method: left
-    round: 2
+
 
 
   - platform: min_max
@@ -886,9 +932,23 @@ sensor:
       - sensor.ventilation_power_estimate
       - sensor.blitzwolf_heatpump_power
 
+  - platform: min_max
+    name: Shelly PM Lights Power
+    #icon: mdi:meter-electric #Icon not yet supported for min_max sensors
+    unique_id: yaml_minmax_shelly_pm_lights_power
+    round_digits: 0
+    type: sum
+    entity_ids:
+      - sensor.shelly_bathroom_channel_1_power
+      - sensor.shelly_bathroom_channel_2_power
+      - sensor.shelly_bedroom_power
+      - sensor.shelly_dinner_table_power
+      - sensor.shelly_tamara_s_room_power
+
   - platform: filter
     entity_id: sensor.known_power
     name: Averaged Known Power
+    #icon: mdi:meter-electric #Icon not yet supported for min_max sensors
     unique_id: yaml_filter_sensor_averaged_known_power
     filters:
       - filter: time_simple_moving_average
@@ -897,6 +957,7 @@ sensor:
   - platform: filter
     entity_id: sensor.unknown_power
     name: Averaged Unknown Power
+    #icon: mdi:meter-electric #Icon not yet supported for min_max sensors
     unique_id: yaml_filter_sensor_averaged_unknown_power
     filters:
       - filter: time_simple_moving_average
@@ -1269,30 +1330,58 @@ group:
   power_entities:
     name: Power Entities
     entities:
+      # All power entities can be found using the following jinja:
+      # {{ states.sensor 
+      #    | selectattr('attributes.device_class', 'eq', 'power') 
+      #    | map(attribute='entity_id') 
+      #    | sort() 
+      #    | join('\n - ')
+      # }}
       # Shelly bathroom staat er niet bij, dat wordt gedaan door die power integratie
-      - sensor.plug_3d_printer_power
-      - sensor.plug_nas_power
-      - sensor.plug_tv_power
-      - sensor.plug_electric_car_power
+      # Plugs can be obtained using statement below. Replace .plug by .blitzwolf to get the old names
+      #   - {{ states.sensor 
+      #     | selectattr('entity_id', 'match', '^sensor\.plug_.+_power$') 
+      #     | rejectattr('entity_id', 'search', 'apparent') 
+      #     | rejectattr('entity_id', 'search', 'reactive') 
+      #     | map(attribute='entity_id') 
+      #     | sort() 
+      #     | join('\n - ')
+      #  }}
+
       - sensor.plug_10gb_switch_power
-      - sensor.blitzwolf_ambilight_amplifier_power
-      - sensor.plug_study_desk_power
+      - sensor.plug_3d_printer_power
       - sensor.plug_dishwasher_power
+      - sensor.plug_electric_car_power
+      # - sensor.plug_epaper_ap_power # This is already included through the study workbench
+      - sensor.plug_nas_power
       - sensor.plug_nuc_power
       - sensor.plug_poe_switch_power
       - sensor.plug_router_power
+      - sensor.plug_study_desk_power
+      - sensor.plug_study_workbench_power
+      - sensor.plug_tv_power
       - sensor.plug_washing_machine_power
       - sensor.plug_watercooker_power
+
+      - sensor.blitzwolf_ambilight_amplifier_power
       - sensor.blitzwolf_heatpump_power
-      - sensor.all_lights_power_estimate_power
+
+      # Shellies
+      - sensor.shelly_bathroom_channel_1_power
+      - sensor.shelly_bathroom_channel_2_power
       - sensor.shelly_bedroom_power
       - sensor.shelly_dinner_table_power
+      # - sensor.shelly_heatpump_energy_power #Excluded as this is going through heatpump_heating_power and heatpump_tapwater_power
       - sensor.shelly_tamara_s_room_power
+
+      # Lights from powercalc
+      - sensor.all_lights_power_estimate_power
+      - sensor.all_standby_power
+
       - sensor.heatpump_heating_power
       - sensor.heatpump_tapwater_power
-      #- sensor.shelly_heatpump_energy_power
       - sensor.ventilation_power_estimate
-      - sensor.alfred_power_estimate
+      # - sensor.alfred_power_estimate #Alfred removed since this is included in study workbench
       - sensor.argus_power_estimate
       - sensor.moeke_power_estimate
       - sensor.shellies_power_estimate
