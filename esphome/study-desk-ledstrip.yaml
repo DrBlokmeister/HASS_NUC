@@ -3,6 +3,15 @@ substitutions:
 
 esphome:
   name: study-desk-ledstrip
+  on_boot:
+    priority: -100  # Ensures this runs after most other things have initialized
+    then:
+      - light.turn_on:
+          id: ledstrip
+          effect: "Rainbow Swirl"
+      - delay: 5s  # Let the rainbow show run for 2 seconds
+      - light.turn_off:
+          id: ledstrip
 
 esp32:
   board: nodemcu-32s
@@ -17,8 +26,10 @@ e131:
 
 light:
   - platform: neopixelbus
+    id: ledstrip
     type: GRBW
     variant: SK6812
+    method: ESP32_I2S
     pin: GPIO26
     num_leds: 122 #48 + 4
     gamma_correct: 2.0
