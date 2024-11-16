@@ -3373,3 +3373,180 @@ script:
               color: >
                 {{ 'black' if is_state('switch.powerstrip_study_desk_socket_4', 'on') 
                   else 'white' }}
+
+  update_router_speedtest_display:
+    alias: "Update Router and Speedtest Display"
+    description: "Displays router bandwidth and speedtest results on a 1.54\" ePaper display using OpenEPaperLink."
+    mode: single
+    fields:
+      display_entity_id:
+        description: "The entity ID of the OpenEPaperLink display to update."
+        example: "open_epaper_link.0000021DBCA73412"
+        required: true
+        selector:
+          entity:
+            domain: open_epaper_link
+    mode: single
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          entity_id: "{{ display_entity_id }}"
+        data:
+          background: white
+          rotate: 0
+          ttl: 300
+          payload:
+            # Top Left Section
+            - type: rectangle
+              outline: white
+              fill: white
+              width: 1
+              x_start: 0
+              y_start: 0
+              x_end: 75
+              y_end: 49
+
+            - type: icon
+              size: 32
+              color: black
+              value: mdi:download
+              x: 1
+              y: 8
+
+            - type: text
+              font: ppb.ttf
+              size: 24
+              color: black
+              anchor: mm
+              value: "{{ states('sensor.udmp_download_speed_mbs') }}"
+              x: 52
+              y: 14
+
+            - type: text
+              font: ppb.ttf
+              size: 18
+              color: black
+              anchor: mm
+              value: "{{ state_attr('sensor.udmp_download_speed_mbs', 'unit_of_measurement') }}"
+              x: 52
+
+            # Top Right Section
+            - type: rectangle
+              outline: white
+              fill: white
+              width: 1
+              x_start: 77
+              y_start: 0
+              x_end: 151
+              y_end: 49
+
+            - type: icon
+              size: 32
+              color: >
+                {% if states('sensor.google_dns_round_trip_time_average') | float > 1000 %}
+                  red
+                {% else %}
+                  black
+                {% endif %}
+              value: mdi:google
+              x: 77
+              y: 8
+
+            - type: text
+              font: ppb.ttf
+              size: 24
+              color: >
+                {% if states('sensor.google_dns_round_trip_time_average') | float > 1000 %}
+                  red
+                {% else %}
+                  black
+                {% endif %}
+              value: "{{ states('sensor.google_dns_round_trip_time_average') }}"
+              x: 128
+              y: 14
+
+            - type: text
+              font: ppb.ttf
+              size: 18
+              color: >
+                {% if states('sensor.google_dns_round_trip_time_average') | float > 1000 %}
+                  red
+                {% else %}
+                  black
+                {% endif %}
+              value: "{{ state_attr('sensor.google_dns_round_trip_time_average', 'unit_of_measurement') }}"
+              x: 128
+
+            # Middle Graph Section
+            - type: rectangle
+              outline: white
+              fill: white
+              width: 1
+              x_start: 0
+              y_start: 51
+              x_end: 151
+              y_end: 100
+
+            - type: icon
+              size: 32
+              color: black
+              value: mdi:upload
+              x: 1
+              y: 59
+
+            - type: plot
+              font: ppb.ttf
+              size: 12
+              ylegend:
+                position: right
+                color: red
+              yaxis: null
+              x_start: 34
+              y_start: 52
+              x_end: 149
+              y_end: 99
+              duration: 86400
+              data:
+                - entity: sensor.udmp_download_speed_mbs
+                  width: 3
+                  joint: curve
+                  color: black
+                - entity: sensor.udmp_upload_speed_mbs
+                  width: 1
+                  joint: curve
+                  color: red
+
+            # Bottom Graph Section
+            - type: rectangle
+              outline: white
+              fill: white
+              width: 1
+              x_start: 0
+              y_start: 102
+              x_end: 151
+              y_end: 151
+
+            - type: icon
+              size: 32
+              color: black
+              value: mdi:google
+              x: 1
+              y: 110
+
+            - type: plot
+              font: ppb.ttf
+              size: 12
+              ylegend:
+                position: right
+                color: red
+              yaxis: null
+              x_start: 34
+              y_start: 103
+              x_end: 149
+              y_end: 150
+              duration: 86400
+              data:
+                - entity: sensor.google_dns_round_trip_time_average
+                  width: 3
+                  joint: curve
+                  color: black
