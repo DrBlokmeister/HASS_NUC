@@ -38,19 +38,158 @@ cards:
         type: glance
       - type: horizontal-stack
         cards:
-        - type: sensor
-          entity: sensor.filtered_nuc_cpu_use
-          detail: 2
-          graph: line
-        - type: sensor
-          entity: sensor.filtered_nuc_cpu_temperature
-          detail: 2
-          graph: line
-      - type: sensor
-        entity: sensor.filtered_nuc_power
-        name: NUC Power
-        detail: 2
-        graph: line
+          - type: custom:apexcharts-card
+            header:
+              title: CPU Use
+              show: true
+              show_states: true
+              colorize_states: true
+            apex_config:
+              chart:
+                toolbar:
+                  show: false
+                height: 100px
+              grid:
+                show: false
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+              annotations:
+                position: front
+                yaxis:
+                  - y: 25
+                    borderColor: '#FEB019'  # Greenish color for low intensity
+                    label:
+                      position: left
+                      offsetX: 40
+                      borderColor: '#FEB019'
+                      text: '25%'
+                      style:
+                        background: 'transparent'
+                        color: '#FEB019'  # Text color matches the line color
+                        fontSize: '10px'
+                        fontFamily: 'Helvetica, Arial, sans-serif'
+            yaxis:
+              - min: 0
+                max: ~50
+                show: false
+            layout: minimal
+            series:
+              - entity: sensor.filtered_nuc_cpu_use
+                name: CPU Usage
+                type: area
+                group_by:
+                  func: avg
+                  duration: 5min
+                stroke_width: 3
+          - type: custom:apexcharts-card
+            header:
+              title: Temperature
+              show: true
+              show_states: true
+              colorize_states: true
+            apex_config:
+              chart:
+                toolbar:
+                  show: false
+                height: 100px
+              grid:
+                show: false
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+              annotations:
+                position: front
+                yaxis:
+                  - y: 60
+                    borderColor: '#FEB019'  # Greenish color for low intensity
+                    label:
+                      position: left
+                      offsetX: 40
+                      borderColor: '#FEB019'
+                      text: '60 °C'
+                      style:
+                        background: 'transparent'
+                        color: '#FEB019'  # Text color matches the line color
+                        fontSize: '10px'
+                        fontFamily: 'Helvetica, Arial, sans-serif'
+            yaxis:
+              - min: 30
+                max: 100
+                show: false
+            layout: minimal
+            series:
+              - entity: sensor.processor_temperature
+                name: CPU Temperature
+                type: area
+                group_by:
+                  func: avg
+                  duration: 5min
+                stroke_width: 3
+
+          # - type: sensor
+          #   entity: sensor.filtered_nuc_cpu_use
+          #   detail: 2
+          #   graph: line
+          # - type: sensor
+          #   entity: sensor.filtered_nuc_cpu_temperature
+          #   detail: 2
+          #   graph: line
+      - type: custom:apexcharts-card
+        header:
+          title: Power
+          show: true
+          show_states: true
+          colorize_states: true
+        apex_config:
+          chart:
+            toolbar:
+              show: false
+            height: 100px
+          grid:
+            show: false
+            padding:
+              left: 0
+              right: 0
+              bottom: 0
+              top: -100
+          annotations:
+            position: front
+            yaxis:
+              - y: 20
+                borderColor: '#FEB019'  # Greenish color for low intensity
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FEB019'
+                  text: '20 W'
+                  style:
+                    background: 'transparent'
+                    color: '#FEB019'  # Text color matches the line color
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+        yaxis:
+          - min: 0
+            max: 40
+            show: false
+        layout: minimal
+        series:
+          - entity: sensor.plug_nuc_power
+            name: Power
+            type: area
+            group_by:
+              func: avg
+              duration: 5min
+            stroke_width: 3
+      # - type: sensor
+      #   entity: sensor.filtered_nuc_power
+      #   name: NUC Power
+      #   detail: 2
+      #   graph: line
 
   - type: custom:apexcharts-card
     header:
