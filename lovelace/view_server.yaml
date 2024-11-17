@@ -202,15 +202,15 @@ cards:
     yaxis:
       - min: 0
         max: 32000
-        decimals: 1
+        decimals: 0
         apex_config:
           forceNiceScale: True
           tickAmount: 4
-          # labels:
-          #   formatter: |
-          #     EVAL:function(value) {
-          #       return `${value} GB`;
-          #     }
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value/1000} GB`;
+              }
     series:
       - entity: sensor.nas_used_memory_file
         name: Used Memory
@@ -648,9 +648,11 @@ cards:
             func: avg
             duration: 10min
           stroke_width: 3
+          transform: |
+            EVAL:return (parseFloat(x) === -1.0 ? null : x);
         yaxis:
           - min: 0
-            max: 100
+            max: ~100
             decimals: 0
             apex_config:
               forceNiceScale: False
