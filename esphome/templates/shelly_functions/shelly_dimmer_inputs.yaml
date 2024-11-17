@@ -71,12 +71,15 @@ binary_sensor:
         then:
           - if:
               condition:
-                lambda: |-
-                  return id(${dimmer_id}).remote_values.get_brightness()  > 0.25;
+                or:
+                  - light.is_off: ${dimmer_id}
+                  - lambda: |-
+                      return id(${dimmer_id}).remote_values.get_brightness()  > 0.25;
               then:
                 - light.turn_on:
                     id: ${dimmer_id}
                     brightness: 0.25
+                    transition_length: 1s
               else:
                 - light.turn_on:
                     id: ${dimmer_id}
@@ -94,8 +97,10 @@ binary_sensor:
         then:
           - if:
               condition:
-                lambda: |-
-                  return id(${dimmer_id}).remote_values.get_brightness() < 1;
+                or:
+                  - light.is_off: ${dimmer_id}
+                  - lambda: |-
+                      return id(${dimmer_id}).remote_values.get_brightness() < 1;
               then:
                 - light.turn_on:
                     id: ${dimmer_id}
