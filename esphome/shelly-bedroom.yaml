@@ -10,12 +10,20 @@ substitutions:
   max_power: "220.0" # watt
   max_temp: "70.0" # °C
   max_brightness: "1000"
-  min_brightness: "40"
+  min_brightness: "50"
+  gamma_correct: "2"
+  warmup_brightness: "50"
 
   ntc_b_constant: "3350"
   ntc_reference_resistance: "10kOhm"
   ntc_reference_temperature: "298.15K"
 
 packages:
-  shelly: !include templates/shelly_dimmer.yaml
+  shelly: !include
+    file: templates/shelly_dimmer.yaml
+    vars:
+      max_brightness: ${max_brightness}
+      min_brightness: ${min_brightness}
+      gamma_correct: ${gamma_correct}
+      warmup_brightness: ${warmup_brightness}
 # <<: !include templates/shelly_dimmer.yaml
