@@ -48,6 +48,7 @@ command_line:
       name: 'CoreELEC CPU temp'
       unit_of_measurement: '°C'
       scan_interval: 60
+      icon: 'mdi:thermometer'
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
@@ -57,24 +58,36 @@ command_line:
       name: 'CoreELEC GPU temp'
       unit_of_measurement: '°C'
       scan_interval: 60
+      icon: 'mdi:thermometer'
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
         gputemp | awk '{print $1}'
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
-      name: 'CoreELEC Memory Usage'
+      name: 'CoreELEC CPU Usage'
       unit_of_measurement: '%'
       scan_interval: 60
+      icon: 'mdi:chip'
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
-        free -m | awk 'NR==2{printf "%.2f\n", $3*100/$2 }'
+        top -bn1 | awk '/%Cpu\(s\):/ {print $2}' | tr -d '%'
+  - sensor:
+      name: 'CoreELEC Memory Usage'
+      unit_of_measurement: '%'
+      scan_interval: 60
+      icon: 'mdi:memory'
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
+        root@10.0.20.50
+        free -m | awk 'NR==2{printf "%.0f\n", $3*100/$2 }'
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
       name: 'CoreELEC Disk Usage'
       unit_of_measurement: '%'
       scan_interval: 60
+      icon: 'mdi:harddisk'
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
