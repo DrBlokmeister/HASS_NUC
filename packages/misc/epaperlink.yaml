@@ -439,6 +439,8 @@ automation:
               {%- endif -%}
           {% endfor %}
           {{ outdated.found }}
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.uptime'))) > 300 }}"
     action:
       # - condition: template
       #   value_template: "{{ trigger.to_state.state == 'unavailable' or (as_timestamp(now()) - as_timestamp(trigger.to_state.last_changed)) > 300 }}"
@@ -514,6 +516,8 @@ automation:
       - condition: template
         value_template: >
           {{ state_attr('automation.misc_epaperlink_power_cycle_ap_when_ap_is_unavailable_and_devices_haven_t_checked_in', 'current') == 0 }}
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.uptime'))) > 600 }}"
     action:
       # Attempt to reload the integration until devices have checked in or max attempts reached
       - alias: "Reload Integration Until Devices Check In or Max Attempts"
@@ -579,6 +583,8 @@ automation:
             (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 900 or
             is_state('device_tracker.openepaperlink_7bc8', 'off')
           }}
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.uptime'))) > 600 }}"
     action:
       # Repeat power cycling the AP until it becomes available or maximum attempts reached
       - alias: "Power Cycle AP Until Available or Max Attempts"
