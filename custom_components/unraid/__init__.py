@@ -1,112 +1,95 @@
-"""Unraid sensor integration."""
-
-import asyncio
+"""The Unraid integration."""
+from __future__ import annotations
 import logging
-import requests
-import json
-
-from homeassistant.helpers.entity import Entity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    TEMP_CELSIUS,
-    DATA_GIGABYTES,
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_PORT,
+    CONF_USERNAME,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+
+from .const import (
+    DOMAIN,
+    PLATFORMS,
+    CONF_GENERAL_INTERVAL,
+    CONF_DISK_INTERVAL,
+    DEFAULT_GENERAL_INTERVAL,
+    DEFAULT_DISK_INTERVAL,
+    DEFAULT_PORT,
+    CONF_HAS_UPS,
+)
+from .coordinator import UnraidDataUpdateCoordinator
+from .unraid import UnraidAPI
+from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "unraid"
-SENSOR_PREFIX = "Unraid "
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Unraid from a config entry."""
+    _LOGGER.debug("Setting up Unraid integration")
 
-SENSOR_TYPES = {
-    "temp": ["Temperature", TEMP_CELSIUS],
-    "used": ["Used Space", DATA_GIGABYTES],
-    "free": ["Free Space", DATA_GIGABYTES],
-}
-
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Unraid platform."""
-
-    host = config["host"]
-    port = config["port"]
-    password = config["password"]
-
-    url = f"http://{host}:{port}/plugins/dynamix.docker.manager/include/Unraid.php"
-    headers = {"Authorization": f"Bearer {password}"}
-
-    entities = []
-
-    for sensor_type in SENSOR_TYPES:
-        for share in await hass.async_add_executor_job(get_shares, url, headers):
-            entities.append(UnraidSensor(SENSOR_PREFIX + share["name"] + " " + SENSOR_TYPES[sensor_type][0], url, headers, sensor_type, share))
-
-    async_add_entities(entities, True)
-
-
-def get_shares(url, headers):
-    """Get a list of shares from the Unraid server."""
-
-    shares = []
+    # Migrate data from data to options if necessary
+    if CONF_GENERAL_INTERVAL not in entry.options:
+        options = dict(entry.options)
+        # Convert old check interval (seconds) to new format (minutes)
+        old_interval = entry.data.get("check_interval", 300)  # 300 seconds default
+        minutes = max(1, old_interval // 60)  # Convert to minutes, minimum 1
+        
+        options.update({
+            CONF_GENERAL_INTERVAL: minutes,
+            CONF_DISK_INTERVAL: DEFAULT_DISK_INTERVAL,  # Start with default disk interval in hours
+            CONF_PORT: entry.data.get(CONF_PORT, DEFAULT_PORT),
+            CONF_HAS_UPS: entry.data.get(CONF_HAS_UPS, False),
+        })
+        
+        hass.config_entries.async_update_entry(entry, options=options)
 
     try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as error:
-        _LOGGER.error("Error getting shares from Unraid server: %s", error)
-        return shares
+        api = UnraidAPI(
+            host=entry.data[CONF_HOST],
+            username=entry.data[CONF_USERNAME],
+            password=entry.data[CONF_PASSWORD],
+            port=entry.options.get(CONF_PORT, DEFAULT_PORT),
+        )
 
-    data = json.loads(response.text)
+        coordinator = UnraidDataUpdateCoordinator(hass, api, entry)
+        
+        await coordinator.async_setup()
+        await coordinator.async_config_entry_first_refresh()
 
-    for share in data["shares"]:
-        shares.append(share)
+        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    return shares
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+        await async_setup_services(hass)
 
-class UnraidSensor(Entity):
-    """Representation of a sensor."""
+        entry.async_on_unload(entry.add_update_listener(update_listener))
 
-    def __init__(self, name, url, headers, sensor_type, share):
-        """Initialize the sensor."""
+        _LOGGER.debug("Unraid integration setup completed successfully")
+        return True
 
-        self._name = name
-        self._url = url
-        self._headers = headers
-        self._sensor_type = sensor_type
-        self._state = None
-        self._share = share
+    except Exception as err:
+        _LOGGER.error("Failed to set up Unraid integration: %s", err)
+        raise ConfigEntryNotReady from err
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        hass.data[DOMAIN].pop(entry.entry_id)
+        await async_unload_services(hass)
 
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
+    return unload_ok
 
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return SENSOR_TYPES[self._sensor_type][1]
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Update listener."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
-    async def async_update(self):
-        """Get the latest data from the Unraid API."""
-
-        try:
-            response = requests.get(self._url, headers=self._headers)
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            _LOGGER.error("Error getting data from Unraid server: %s", error)
-            return
-
-        data = json.loads(response.text)
-
-        if self._sensor_type == "temp":
-            for sensor in data["sensors"]:
-                if sensor["name"] == self._share["name"]:
-                    self._state = sensor["temp"]
-        elif self._sensor_type == "used":
-            self._state = self._share["used"]
-        elif self._sensor_type == "free":
-            self._state = self._share["free"]
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Update options."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    await coordinator.async_update_ups_status(entry.options.get(CONF_HAS_UPS, False))
