@@ -414,8 +414,147 @@ scene:
 #    GROUPS    #
 ################
 group:
+  shelly_1_update_entities:
+    name: Shelly 1 Update Entities
+    entities:
+      - update.shelly_kitchen_firmware
+      - update.shelly_study_firmware
+      - update.shelly_entry_firmware
+      - update.shelly_hallway_1st_floor_firmware
+      - update.shelly_hallway_2nd_floor_firmware
+
+  shelly_1_plus_update_entities:
+    name: Shelly 1 Plus Update Entities
+    entities:
+      - update.shelly_livingroom_firmware
+      - update.shelly_washroom_firmware
+      - update.shelly_porch_firmware
+
+  shelly_1_plus_mini_update_entities:
+    name: Shelly 1 Plus Mini Update Entities
+    entities:
+      - update.shelly_babyroom_firmware
+      - update.shelly_backgarden_firmware
+      - update.shelly_closet_plus1mini_firmware
+      - update.shelly_guestroom_firmware
+
+  shelly_dimmer_update_entities:
+    name: Shelly Dimmer Update Entities
+    entities:
+      - update.shelly_bedroom_firmware
+      - update.shelly_dinnertable_firmware
+      - update.shelly_tamaras_room_firmware
+
+  plug_update_entities:
+    name: Plug Update Entities
+    entities:
+      - update.plug_3d_printer_firmware
+      - update.plug_electric_car_firmware
+      - update.plug_nas_firmware
+      - update.plug_study_desk_firmware
+      - update.plug_study_workbench_firmware
+      - update.plug_tv_firmware
+      - update.blitzwolf_ambilight_amplifier_firmware
+      - update.blitzwolf_dishwasher_firmware
+      - update.plug_router_firmware
+      - update.blitzwolf_10gb_switch_firmware
+      - update.plug_washing_machine_firmware
+      - update.plug_watercooker_firmware
+
+  ledstrip_update_entities:
+    name: Ledstrip Update Entities
+    entities:
+      - update.study_cabinet_ledstrip_firmware
+      - update.study_desk_ledstrip_firmware
+      - update.atmoorb_left_firmware
+      - update.atmoorb_right_firmware
+      - update.livingroom_tv_ambilight_firmware
+      - update.ledstrip_falcon_firmware
+
+  aqm_update_entities:
+    name: Air Quality Monitor Update Entities
+    entities:
+      - update.bedroom_air_quality_monitor_firmware
+      - update.shed_air_quality_monitor_firmware
+      - update.air_quality_monitor_1_firmware
+      - update.aqm_guest_room_firmware
+      - update.aqm_living_room_firmware_firmware
+      - update.aqm_baby_room_firmware
 
 #################
 #    SCRIPTS    #
 #################
 script:
+  update_esphome_group:
+    alias: "Update ESPHome Devices Group"
+    description: "Updates ESPHome devices in a specified group sequentially with error handling."
+    fields:
+      group_entity:
+        description: "The group entity containing ESPHome update entities."
+        example: "group.shellies_updates"
+        required: true
+        selector:
+          entity:
+            domain: group
+    mode: single
+    sequence:
+      - variables:
+          # Extract the list of entities from the specified group
+          update_entities: "{{ state_attr(group_entity, 'entity_id') | list }}"
+      - service: system_log.write
+        data:
+          message: "Starting update of ESPHome group {{ group_entity }}."
+          level: info
+      - repeat:
+          # Iterate over each update entity in the group
+          for_each: "{{ update_entities }}"
+          sequence:
+            - variables:
+                current_update: "{{ repeat.item }}"
+            - choose:
+                - conditions:
+                    # Combined condition to ensure:
+                    # 1. The entity is in the 'update' domain
+                    # 2. The entity's state is 'on' (update available)
+                    - condition: template
+                      value_template: >
+                        {{
+                          current_update.split('.')[0] == 'update' and
+                          is_state(current_update, 'on')
+                        }}
+                  sequence:
+                    - service: update.install
+                      target:
+                        entity_id: "{{ current_update }}"
+                    - wait_template: >
+                        {{ is_state(current_update, 'off') or is_state(current_update, 'unavailable') }}
+                      timeout: '00:10:00'  # Adjust timeout as needed
+                      continue_on_timeout: false
+                    - choose:
+                        - conditions:
+                            # Check if the update did not complete successfully
+                            - condition: template
+                              value_template: >
+                                {{
+                                  not (is_state(current_update, 'off') or is_state(current_update, 'unavailable'))
+                                }}
+                          sequence:
+                            - service: notify.notify
+                              data:
+                                title: "Firmware Update Failed"
+                                message: "Update failed for {{ current_update }}."
+                            - service: script.turn_off
+                              # Aborts the current script by turning it off
+                              data:
+                                entity_id: "{{ this.entity_id }}"
+              # Default sequence if the conditions are not met
+              default:
+                - service: system_log.write
+                  data:
+                    message: "Skipping entity {{ current_update }} because it is not an update entity or no update is available."
+                    level: info
+      - service: notify.notify
+        data:
+          title: "Firmware Update Complete"
+          message: "All devices in {{ group_entity }} have been updated successfully."
+
