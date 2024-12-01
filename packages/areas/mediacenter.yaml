@@ -52,7 +52,7 @@ command_line:
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
-        cputemp | awk '{print $1}'
+        cputemp | awk '{print $1}' || echo -1
       #availability_template: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
       name: 'CoreELEC GPU temp'
@@ -62,7 +62,7 @@ command_line:
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
-        gputemp | awk '{print $1}'
+        gputemp | awk '{print $1}' || echo -1
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
       name: 'CoreELEC CPU Usage'
@@ -72,7 +72,7 @@ command_line:
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
-        top -bn1 | awk '/%Cpu\(s\):/ {print $2}' | tr -d '%'
+        top -bn1 | awk '/%Cpu\(s\):/ {print $2}' | tr -d '%' || echo -1
   - sensor:
       name: 'CoreELEC Memory Usage'
       unit_of_measurement: '%'
@@ -81,7 +81,7 @@ command_line:
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
-        free -m | awk 'NR==2{printf "%.0f\n", $3*100/$2 }'
+        free -m | awk 'NR==2{printf "%.0f\n", $3*100/$2 }' || echo -1
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
       name: 'CoreELEC Disk Usage'
@@ -91,7 +91,7 @@ command_line:
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
-        df -h /storage | awk '{ if (NR==2) print $5}' | tr -d '%'
+        df -h /storage | awk '{ if (NR==2) print $5}' | tr -d '%' || echo -1
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
 
 #################
@@ -158,6 +158,12 @@ automation:
         entity_id: media_player.tv_samsung_led55
         to: 'on'
       - platform: state
+        entity_id: switch.65_oled
+        to: 'on'
+      - platform: state
+        entity_id: media_player.tv_samsung_led55
+        to: 'on'
+      - platform: state
         entity_id: media_player.coreelec
         from: 'idle'
         to: 'playing'
@@ -165,6 +171,11 @@ automation:
         entity_id: media_player.plex_plexkodiconnect_kodi_coreelec
         from: 'idle'
         to: 'playing'
+      - platform: numeric_state
+        entity_id: sensor.plug_tv_power
+        above: 10
+        for:
+          seconds: 10
     action:
       - service: switch.turn_on
         continue_on_error: true
@@ -201,6 +212,16 @@ automation:
           - platform: state
             entity_id: media_player.tv_samsung_led55
             to: 'off'
+            for:
+              minutes: 2
+          - platform: state
+            entity_id: switch.65_oled
+            to: 'off'
+            for:
+              minutes: 2
+          - platform: numeric_state
+            entity_id: sensor.plug_tv_power
+            below: 10
             for:
               minutes: 2
       - service: switch.turn_off
