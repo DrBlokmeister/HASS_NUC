@@ -558,7 +558,7 @@ automation:
                   - automation.misc_epaperlink_update_study_displays
         default:
           # Devices haven't checked in, send a notification
-          - service: notify.mobile_app_your_android_phone
+          - service: notify.mobile_app_blokmeisters21u
             data:
               title: "OpenEPaperLink Integration Issue"
               message: "Devices haven't checked in after multiple integration reloads."
@@ -720,10 +720,16 @@ script:
 
   update_energy_price_today_display:
     alias: "Update Energy Price Today Display"
+    description: "Updates the old Solum M2 2.7 inch screens with today's electricty prices"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated. Note: the example is the wrong type of tag!"
+        example: "open_epaper_link.00007E22B1D7B299"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.0000021f86d83b1e
+          entity_id: "{{ display_entity_id }}"
         data:
           background: white
           rotate: 0
@@ -1120,10 +1126,16 @@ script:
 
   update_energy_price_tomorrow_display:
     alias: "Update Energy Price Tomorrow Display"
+    description: "Updates the old Solum M2 2.7 inch screens with tomorrow's electricty prices"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated. Note: the example is the wrong type of tag!"
+        example: "open_epaper_link.00007E22B1D7B299"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.0000021f86d83b1e
+          entity_id: "{{ display_entity_id }}"
         data:
           background: white
           rotate: 0
@@ -1458,10 +1470,16 @@ script:
 
   update_energy_price_transition_display:
     alias: "Update Energy Price Transition Display"
+    description: "Updates the old Solum M2 2.7 inch screens with the transition electricty prices"
+    mode: queued
+    fields:
+      display_entity_id:
+        description: "The entity ID of the display to be updated. Note: the example is the wrong type of tag!"
+        example: "open_epaper_link.00007E22B1D7B299"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.0000021f86d83b1e
+          entity_id: "{{ display_entity_id }}"
         data:
           background: white
           rotate: 0
@@ -3119,36 +3137,36 @@ script:
               color: 'black'
               anchor: rb
 
-  update_precipitation_display:
-    alias: "Update Precipitation Display"
-    sequence:
-      - service: open_epaper_link.drawcustom
-        target:
-          entity_id: open_epaper_link.00007e225dd0b29c
-        data:
-          background: white
-          rotate: 0
-          dry-run: false
-          payload:
-            - type: plot_custom
-              x_start: 10
-              y_start: 10
-              x_end: 344
-              y_end: 150
-              low: 0
-              high: 20
-              ylegend:
-                position: right
-                color: red
-              yaxis:
-                tick_width: 4
-                grid: 5
-              data:
-                color: black
-                width: 1
-                joint: None
-                x: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='timestamp') | join(',') }}"
-                y: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='precipitation') | join(',') }}"
+  # update_precipitation_display:
+  #   alias: "Update Precipitation Display"
+  #   sequence:
+  #     - service: open_epaper_link.drawcustom
+  #       target:
+  #         entity_id: open_epaper_link.00007e225dd0b29c
+  #       data:
+  #         background: white
+  #         rotate: 0
+  #         dry-run: false
+  #         payload:
+  #           - type: plot_custom
+  #             x_start: 10
+  #             y_start: 10
+  #             x_end: 344
+  #             y_end: 150
+  #             low: 0
+  #             high: 20
+  #             ylegend:
+  #               position: right
+  #               color: red
+  #             yaxis:
+  #               tick_width: 4
+  #               grid: 5
+  #             data:
+  #               color: black
+  #               width: 1
+  #               joint: None
+  #               x: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='timestamp') | join(',') }}"
+  #               y: "{{ state_attr('sensor.precipitation_forecast', 'precipitation_raw') | map(attribute='precipitation') | join(',') }}"
 
   update_moeke_water_tank_display:
     alias: "Update Moeke Water Tank Display"

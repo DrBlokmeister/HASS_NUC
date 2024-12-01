@@ -241,10 +241,10 @@ input_number:
 #    SENSORS    #
 #################
 sensor:
-  - platform: integration
-    source: sensor.water_meter_water_consumption
-    method: left
-    unit_time: min
+  # - platform: integration
+  #   source: sensor.water_meter_water_consumption
+  #   method: left
+  #   unit_time: min
 
   - platform: template
     sensors:
@@ -705,7 +705,7 @@ sensor:
     method: left
     round: 2
   - platform: integration
-    source: sensor.moeke_power_estimate_electricity_cost_per_hour
+    source: sensor.moeke_power_electricity_cost_per_hour
     name: Moeke Power Estimate Total Electricity Cost
     unique_id: yaml_integration_moeke_power_estimate_total_electricity_cost
     unit_time: h
@@ -815,9 +815,9 @@ sensor:
     max_sub_interval:
       minutes: 10
 
-  - platform: integration
-    source: sensor.water_meter_current_water_consumption
-    name: Total Water Usage
+  - platform: integration #Note, this is in principle a redundant sensor, as I can also just use sensor.total_water from the ESPHome device itself
+    source: sensor.water_usage
+    name: Total Water Usage Home Assistant Integrated
     unique_id: integration_total_water_usage
     unit_time: min
     round: 0
@@ -1014,8 +1014,8 @@ sensor:
       - sensor.shelly_bedroom_voltage
       - sensor.shelly_dinner_table_voltage
       # - sensor.shelly_heatpump_energy_voltage
-      - sensor.shelly_tamara_s_room_voltage_2
-      - sensor.shelly_washroom_relay_supply_voltage
+      - sensor.shelly_tamara_s_room_voltage
+      # - sensor.shelly_washroom_relay_supply_voltage
 
 
 ########################
@@ -1373,6 +1373,7 @@ group:
       - sensor.shelly_dinner_table_power
       # - sensor.shelly_heatpump_energy_power #Excluded as this is going through heatpump_heating_power and heatpump_tapwater_power
       - sensor.shelly_tamara_s_room_power
+      - sensor.shellies_background_power_estimate
 
       # Lights from powercalc
       - sensor.all_lights_power_estimate_power
@@ -1384,7 +1385,6 @@ group:
       # - sensor.alfred_power_estimate #Alfred removed since this is included in study workbench
       - sensor.argus_power_estimate
       - sensor.moeke_power_estimate
-      - sensor.shellies_power_estimate
 
   electricity_cost_per_hour_sensors:
     name: Electricity Cost per Hour Sensors
