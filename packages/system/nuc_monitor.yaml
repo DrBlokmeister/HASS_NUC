@@ -82,6 +82,67 @@ counter:
 ######################
 command_line:
   - sensor:
+      name: "NUC Free RAM"
+      icon: mdi:memory
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"free | awk '/^Mem:/ {print \\$4}'\""
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "kB"
+  - sensor:
+      name: "NUC Used RAM"
+      icon: mdi:memory
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"free | awk '/^Mem:/ {print \\$3}'\""
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "kB"
+  - sensor:
+      name: "NUC Buff/Cached RAM"
+      icon: mdi:memory
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"free | awk '/^Mem:/ {print \\$6}'\""
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "kB"
+  - sensor:
+      name: "NUC Available RAM"
+      icon: mdi:memory
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"free | awk '/^Mem:/ {print \\$7}'\""
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "kB"
+  - sensor:
+      name: "NUC Used Swap"
+      icon: mdi:memory
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"free | awk '/^Swap:/ {print \\$3}'\""
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "kB"
+  - sensor:
+      name: "NUC Free Swap"
+      icon: mdi:memory
+      command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"free | awk '/^Swap:/ {print \\$4}'\""
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "kB"
+  - sensor:
+      name: "NUC NVMe Composite Temperature"
+      icon: mdi:thermometer
+      command: >
+        ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \
+        "sensors | awk '/nvme-pci/ {found=1} found && /Composite/ {print \$2; exit}' | sed 's/+//;s/°C//' || echo -1"
+      command_timeout: 30
+      scan_interval: 60
+      unit_of_measurement: "°C"
+
+
+  # - sensor:
+  #     name: "NUC HDD Temperature"
+  #     icon: mdi:thermometer
+  #     command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \"sudo smartctl -n standby -A /dev/sda | awk '/^194 Temperature/ {print \\$10} /Device is in STANDBY/ {print \\\"-1\\\"}'\""
+  #     command_timeout: 30
+  #     scan_interval: 60
+  #     unit_of_measurement: "°C"
+
+  - sensor:
       name: "NUC Available Package Updates"
       icon: mdi:package-variant-closed
       command: "ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 '/home/drblokmeister/Documents/check_updates.sh'"
@@ -405,6 +466,17 @@ automation:
           title: "Log Error Detected"
           message: "Error: {{ trigger.event.data.message }}"
 
+  - alias: "[system|nuc]Periodic Profiler"
+    mode: single
+    id: yaml_automation_sytem_nuc_periodic_profiler
+    trigger:
+      - platform: time_pattern
+        minutes: /10
+    action:
+      - service: profiler.start
+        data:
+          seconds: 30
+
 ################
 #    SCENES    #
 ################
@@ -496,6 +568,14 @@ script:
         selector:
           entity:
             domain: group
+      force_update:
+        description: "Whether to force reflash the devices even if they are up to date."
+        example: "false"
+        default: false
+        required: false
+        selector:
+          boolean:
+
     mode: single
     sequence:
       - variables:
@@ -520,7 +600,7 @@ script:
                       value_template: >
                         {{
                           current_update.split('.')[0] == 'update' and
-                          is_state(current_update, 'on')
+                          ( is_state(current_update, 'on') or force_update )
                         }}
                   sequence:
                     - service: update.install
