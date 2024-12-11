@@ -1,3 +1,7 @@
+defaults:
+  hlw_8012_voltage_div: "${voltage_div}"
+  voltage_multiplier: "1"
+
 substitutions:
   hlw8012_sf1_pin: 'GPIO04' #Default for SP111. GPIO14 is default for SHP6
 
@@ -26,37 +30,13 @@ packages:
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
   power: !include /config/esphome/common/power.yaml
-
-status_led:
-  pin:
-    number: GPIO02
-    inverted: True
-  id: led_blue
-
-binary_sensor: !include
-    file: /config/esphome/templates/plug_functions/plug_input_button.yaml
+  plug: !include
+    file: /config/esphome/templates/plug_functions/plug_default_components.yaml
     vars:
-      input_button_pin: GPIO13
+      status_led_gpio_pin: "GPIO02"
+      relay_gpio_pin: "GPIO15"
 
 sensor:
-  - platform: total_daily_energy
-    name: "${device_name} Energy Today"
-    power_id: power
-    filters:
-      # Multiplication factor from W to kW is 0.001
-      - multiply: 0.001
-    unit_of_measurement: kWh
-    icon: mdi:calendar-clock
-
-  - platform: adc
-    pin: VCC
-    name: "${device_name} VCC Voltage"
-    icon: mdi:flash-outline
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 0.3
-
   - platform: hlw8012
     sel_pin:
       number: GPIO12
@@ -65,63 +45,6 @@ sensor:
     cf1_pin: ${hlw8012_sf1_pin}
     change_mode_every: 4
     current_resistor: ${current_res}
-    voltage_divider: ${voltage_div}
+    voltage_divider: ${hlw_8012_voltage_div}
     update_interval: 0.5s
-    current:
-      name: "${device_name} Current"
-      unit_of_measurement: A
-      accuracy_decimals: 3
-      id: current
-      icon: mdi:current-ac
-      filters:
-        - multiply: ${current_multiplier}
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - or:
-            - delta: 0.5
-            - delta: 5%
-    voltage:
-      name: "${device_name} Voltage"
-      unit_of_measurement: V
-      accuracy_decimals: 1
-      id: voltage
-      icon: mdi:flash-outline
-      filters:
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - delta: 1.0
-    power:
-      name: "${device_name} Power"
-      unit_of_measurement: W
-      id: power
-      icon: mdi:gauge
-      filters:
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - or:
-            - delta: 20.0
-            - delta: 5%
-
-output:
-  - platform: gpio
-    pin:
-      number: GPIO00
-      inverted: true
-    id: led_red
-
-switch:
-  - platform: gpio
-    name: "${device_name} Switch"
-    icon: mdi:power-socket-de
-    pin: GPIO15
-    id: relay
-    restore_mode: RESTORE_DEFAULT_ON
-    on_turn_on:
-      - switch.turn_on: relay
-      - output.turn_on: led_red
-    on_turn_off:
-      - switch.turn_off: relay
-      - output.turn_off: led_red
+    <<: !include plug_functions/plug_default_power_sensor_settings.yaml

@@ -1,3 +1,6 @@
+defaults:
+  voltage_multiplier: "${voltage_div}"
+
 esphome:
   name: ${espname}
   friendly_name: ${device_name}
@@ -18,12 +21,11 @@ packages:
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
   power: !include /config/esphome/common/power.yaml
-
-status_led:
-  pin:
-    number: GPIO04
-    inverted: True
-  id: led_blue
+  plug: !include
+    file: /config/esphome/templates/plug_functions/plug_default_components.yaml
+    vars:
+      status_led_gpio_pin: "GPIO04"
+      relay_gpio_pin: "GPIO05"
 
 uart:
   id: uart_bus
@@ -32,70 +34,12 @@ uart:
   baud_rate: 4800
   stop_bits: 1
 
-binary_sensor: !include
-    file: /config/esphome/templates/plug_functions/plug_input_button.yaml
-    vars:
-      input_button_pin: GPIO13
-
 sensor:
-  - platform: total_daily_energy
-    name: "${device_name} Energy Today"
-    power_id: power
-    filters:
-      - multiply: 0.001
-    unit_of_measurement: kWh
-    icon: mdi:calendar-clock
-
-  - platform: adc
-    pin: VCC
-    name: "${device_name} VCC Voltage"
-    icon: mdi:flash-outline
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 0.3
-
   - platform: bl0940
     uart_id: uart_bus
     update_interval: 0.5s
-    current:
-      name: "${device_name} Current"
-      unit_of_measurement: A
-      accuracy_decimals: 3
-      id: current
-      icon: mdi:current-ac
-      filters:
-        - multiply: ${current_multiplier}
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - or:
-            - delta: 0.5
-            - delta: 5%
-    voltage:
-      name: "${device_name} Voltage"
-      unit_of_measurement: V
-      accuracy_decimals: 1
-      id: voltage
-      icon: mdi:flash-outline
-      filters:
-        - multiply: ${voltage_div}
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - delta: 1.0
-    power:
-      name: "${device_name} Power"
-      unit_of_measurement: W
-      id: power
-      icon: mdi:gauge
-      filters:
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - or:
-            - delta: 20.0
-            - delta: 5%
+    <<: !include plug_functions/plug_default_power_sensor_settings.yaml
+
     internal_temperature:
       name: "${device_name} Internal temperature"
       unit_of_measurement: °C
@@ -106,22 +50,3 @@ sensor:
         - or:
           - throttle_average: 60s
           - delta: 1.0
-
-output:
-  - platform: gpio
-    pin:
-      number: GPIO00
-      inverted: true
-    id: led_red
-
-switch:
-  - platform: gpio
-    name: "${device_name} Switch"
-    icon: mdi:power-socket-de
-    pin: GPIO05
-    id: relay
-    restore_mode: RESTORE_DEFAULT_ON
-    on_turn_on:
-      - output.turn_on: led_red
-    on_turn_off:
-      - output.turn_off: led_red

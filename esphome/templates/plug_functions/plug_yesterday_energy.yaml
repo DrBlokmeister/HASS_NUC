@@ -1,0 +1,22 @@
+# Time-based trigger to update yesterday's energy at 23:59 every day
+time:
+  - id: !extend homeassistant_time
+    on_time:
+      - seconds: 0
+        minutes: 59
+        hours: 23
+        then:
+          - lambda: |-
+              // Publish the current daily_energy as yesterday's energy
+              id(yesterday_energy_sensor).publish_state(id(daily_energy).state);
+# Template sensor to expose yesterday's energy to Home Assistant
+sensor:
+  - platform: template
+    name: "${device_name} Energy Yesterday"
+    unit_of_measurement: kWh
+    icon: mdi:counter
+    id: yesterday_energy_sensor
+    # Lambda initial value; will be updated manually
+    lambda: |-
+      return 0.0;
+    update_interval: never  # Disable automatic updates

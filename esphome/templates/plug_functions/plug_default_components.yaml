@@ -1,0 +1,69 @@
+# Defaults:
+# status_led_gpio_pin:
+# - SHP10: GPIO04
+# - SP111: GPIO02
+# plug_input_button:    # Both the same
+# - SHP10: GPIO13
+# - SP111: GPIO13
+# red LED light:        # Both the same
+# - SHP10: GPIO00
+# - SP111: GPIO00
+# Relay:                # Both the same
+# - SHP10: GPIO05
+# - SP111: GPIO15
+
+defaults:
+  relay_gpio_pin: "GPIO15"
+  red_led_gpio_pin: "GPIO00"
+
+status_led:
+  pin:
+    number: ${status_led_gpio_pin}
+    inverted: True
+  id: led_blue
+
+binary_sensor: !include
+    file: /config/esphome/templates/plug_functions/plug_input_button.yaml
+    vars:
+      input_button_pin: GPIO13
+
+sensor:
+  - platform: total_daily_energy
+    name: "${device_name} Energy Today"
+    power_id: power
+    id: daily_energy
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh
+    icon: mdi:calendar-clock
+
+  - platform: adc
+    pin: VCC
+    name: "${device_name} VCC Voltage"
+    icon: mdi:flash-outline
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 0.3
+
+output:
+  - platform: gpio
+    pin:
+      number: "${red_led_gpio_pin}"
+      inverted: true
+    id: led_red
+
+switch:
+  - platform: gpio
+    name: "${device_name} Switch"
+    icon: mdi:power-socket-de
+    pin: "${relay_gpio_pin}"
+    id: relay
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - switch.turn_on: relay
+      - output.turn_on: led_red
+    on_turn_off:
+      - switch.turn_off: relay
+      - output.turn_off: led_red

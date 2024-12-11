@@ -1,0 +1,39 @@
+# Default settings for current, voltage and power sensors, shared among Blitzwolf SHP10 and Gosund SP111 plugs.
+current:
+  name: "${device_name} Current"
+  unit_of_measurement: A
+  accuracy_decimals: 3
+  id: current
+  icon: mdi:current-ac
+  filters:
+    - multiply: ${current_multiplier}
+    - throttle_average: 5s
+    - or:
+      - throttle_average: 60s
+      - or:
+        - delta: 0.5
+        #- delta: 5%
+voltage:
+  name: "${device_name} Voltage"
+  unit_of_measurement: V
+  accuracy_decimals: 1
+  id: voltage
+  icon: mdi:flash-outline
+  filters:
+    - multiply: ${voltage_multiplier}
+    - throttle_average: 5s
+    - or:
+      - throttle_average: 60s
+      - delta: 1.0
+power:
+  name: "${device_name} Power"
+  unit_of_measurement: W
+  id: power
+  icon: mdi:gauge
+  filters:
+    - throttle_average: 5s
+    - or:
+      - throttle_average: 60s
+      - or:
+        - delta: 10.0
+        #- delta: 10%
