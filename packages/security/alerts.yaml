@@ -82,7 +82,7 @@ automation:
           entity_id: timer.motion_detected
     action:
       - service: homeassistant.turn_on
-        entity_id: automation.message_phone_if_motion_is_detected_when_im_not_home
+        entity_id: automation.security_alert_message_phone_if_motion_is_detected_when_im_not_home
 
   - alias: '[security|alert]Disable detection monitoring'
     trigger:
@@ -92,7 +92,7 @@ automation:
           entity_id: timer.motion_detected
     action:
       - service: homeassistant.turn_off
-        entity_id: automation.message_phone_if_motion_is_detected_when_im_not_home
+        entity_id: automation.security_alert_message_phone_if_motion_is_detected_when_im_not_home
 
   - alias: '[security|alert]Message phone if motion is detected when Im not home'
     trigger:
@@ -188,22 +188,32 @@ group:
 #    SCRIPTS    #
 #################
 script:
-  # message_someone_is_at_home:
-  #   alias: "Motion is detected at home"
-  #   sequence:
-  #     - service: camera.snapshot
-  #       data:
-  #         entity_id: camera.tapo_camera_d6d4_hd
-  #         filename: "/config/www/snapshots/livingroom_last_snapshot.jpg"
-  #     - delay:
-  #         seconds: 2
-  #     - service: notify.mobile_app_blokmeisters21u
-  #       data:
-  #         message: "Motion has been detected for sensor {{states('sensor.last_triggered_motion_sensor')}}!"
-  #         title: "Home Assistant - Warning"
-  #         data:
-  #           group: info
-  #           tag: security
-  #           icon_url: local/icons/motion-sensor.png
-  #           timeout: 10800
-  #           image: !secret last_snapshot_url
+  message_someone_is_at_home:
+    alias: "Motion is detected at home"
+    sequence:
+      # - service: camera.snapshot
+      #   data:
+      #     entity_id: camera.tapo_camera_d6d4_hd
+      #     filename: "/config/www/snapshots/livingroom_last_snapshot.jpg"
+      # - delay:
+      #     seconds: 2
+      - service: notify.mobile_app_blokmeisters21u
+        data:
+          message: "Motion has been detected at home!"
+          title: "Home Assistant - Warning"
+          data:
+            group: info
+            tag: security
+            icon_url: local/icons/motion-sensor.png
+            timeout: 10800
+            # image: !secret last_snapshot_url
+      # - service: notify.mobile_app_blokmeisters21u
+      #   data:
+      #     message: "Motion has been detected for sensor {{states('sensor.last_triggered_motion_sensor')}}!"
+      #     title: "Home Assistant - Warning"
+      #     data:
+      #       group: info
+      #       tag: security
+      #       icon_url: local/icons/motion-sensor.png
+      #       timeout: 10800
+      #       image: !secret last_snapshot_url
