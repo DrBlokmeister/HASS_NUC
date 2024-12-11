@@ -477,6 +477,66 @@ automation:
         data:
           seconds: 30
 
+  - alias: "[system|3dprinter] Manage OctoPrint integration based on printer status"
+    mode: single
+    description: "Automation to manage OctoPrint integration based on printer status"
+    id: yaml_automation_system_3dprinter_manage_octoprint_integration
+    trigger:
+      # Trigger when the device tracker changes state
+      - platform: state
+        entity_id: device_tracker.octopi
+      # Trigger when the power usage sensor changes state
+      - platform: numeric_state
+        entity_id: sensor.plug_3d_printer_power
+        below: 5
+      - platform: numeric_state
+        entity_id: sensor.plug_3d_printer_power
+        above: 5
+      # Trigger on Home Assistant startup
+      - platform: homeassistant
+        event: start
+    condition: []
+    action:
+      - choose:
+        # Check if Home Assistant uptime is less than 5 minutes
+        - conditions:
+          - condition: template
+            value_template: >
+              {{ (now() - as_datetime(states('sensor.uptime'))).total_seconds() < 300 }}
+          sequence:
+            - delay:
+                minutes: 5  # Delay for 5 minutes
+      - choose:
+          # Disable OctoPrint integration if the printer is offline
+          - conditions:
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity_id: device_tracker.octopi
+                    state: "away"
+                  - condition: numeric_state
+                    entity_id: sensor.plug_3d_printer_power
+                    below: 5
+            sequence:
+              - service: homeassistant.disable_config_entry
+                data:
+                  config_entry_id: 4579f9b25783c90b764ed2ce0ebbbc66
+          # Enable OctoPrint integration if the printer is online
+          - conditions:
+              - condition: and
+                conditions:
+                  - condition: state
+                    entity_id: device_tracker.octopi
+                    state: "home"
+                  - condition: numeric_state
+                    entity_id: sensor.plug_3d_printer_power
+                    above: 5
+            sequence:
+              - service: homeassistant.enable_config_entry
+                data:
+                  config_entry_id: 4579f9b25783c90b764ed2ce0ebbbc66
+
+
 ################
 #    SCENES    #
 ################
