@@ -45,7 +45,10 @@
           #Has to be a minimum of 1 second, otherwise you won't get ONLINE notifications (because of the way I wrote this).
           for:
             seconds: 10
-  
+      condition:
+        - condition: template
+          value_template: >
+            {{ (now() - as_datetime(states('sensor.uptime'))).total_seconds() < 300 }}
       action:
         - service: persistent_notification.create #Notifies me via telegram. Change this to your preferred service (such as: persistent_notification.create).
           data:
