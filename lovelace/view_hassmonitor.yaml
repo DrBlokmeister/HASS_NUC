@@ -251,272 +251,492 @@ cards:
       #   detail: 2
       #   graph: line
 
-  - type: custom:apexcharts-card
-    header:
-      title: Container CPU Usage
-      show: true
-      show_states: true
-      colorize_states: true
-    graph_span: 24h
-    apex_config:
-      chart:
-        height: 350px
-      legend:
-        show: false
-    all_series_config:
-      group_by:
-        func: median
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
-    yaxis:
-      - min: 0
-        max: ~25
-        align_to: 5
+  - type: custom:collapsable-cards
+    title: Container Stats
+    cards:
+      - type: custom:apexcharts-card
+        header:
+          title: Container CPU Usage
+          show: true
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        stacked: false
         apex_config:
-          #stepSize: 25
-          tickAmount: 5
-          forceNiceScale: true
-          # labels:
-          #   formatter: |
-          #     EVAL:function(value) {
-          #       return `${value} %`;
-          #     }
-    series:
-      - entity: sensor.home_assistant_core_cpu_percent
-        name: HA Core
-        color: '#4BC0C0' # Middle Blue Green
-      - entity: sensor.home_assistant_supervisor_cpu_percent
-        name: Supervisor
-        color: '#2E8B57' # Middle Blue Green
-      - entity: sensor.chrony_cpu_percent
-        name: Chrony
-        color: '#FF6384' # Radical Red
-      - entity: sensor.deconz_cpu_percent
-        name: deCONZ
-        color: '#36A2EB' # Picton Blue
-      - entity: sensor.esphome_cpu_percent
-        name: ESPHome
-        color: '#FFCE56' # Yellow (Crayola)
-      - entity: sensor.grafana_cpu_percent
-        name: Grafana
-        color: '#FF9F40' # Orange Peel
-      - entity: sensor.influxdb_cpu_percent
-        name: InfluxDB
-        color: '#9966FF' # Amethyst
-      - entity: sensor.mariadb_cpu_percent
-        name: MariaDB
-        color: '#C9CBCF' # Silver Sand
-      - entity: sensor.mosquitto_broker_cpu_percent
-        name: Mosquitto
-        color: '#7E57C2' # Chetwode Blue
+          chart:
+            height: 250px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: -20
+              right: 0
+              bottom: -10
+              top: -50
+        all_series_config:
+          group_by:
+            func: median
+            duration: 10min
+          stroke_width: 3
+          fill_raw: 'null'
+        yaxis:
+          - min: 0
+            max: ~25
+            align_to: 5
+            apex_config:
+              #stepSize: 25
+              tickAmount: 5
+              forceNiceScale: true
+              labels:
+                offsetX: -25
+                rotate: 0
+              # labels:
+              #   formatter: |
+              #     EVAL:function(value) {
+              #       return `${value} %`;
+              #     }
+        series:
+          - entity: sensor.home_assistant_core_cpu_percent
+            name: HA Core
+            color: '#4BC0C0' # Middle Blue Green
+          - entity: sensor.home_assistant_supervisor_cpu_percent
+            name: Supervisor
+            color: '#2E8B57' # Middle Blue Green
+          - entity: sensor.chrony_cpu_percent
+            name: Chrony
+            color: '#FF6384' # Radical Red
+          - entity: sensor.deconz_cpu_percent
+            name: deCONZ
+            color: '#36A2EB' # Picton Blue
+          - entity: sensor.esphome_cpu_percent
+            name: ESPHome
+            color: '#FFCE56' # Yellow (Crayola)
+          - entity: sensor.grafana_cpu_percent
+            name: Grafana
+            color: '#FF9F40' # Orange Peel
+          - entity: sensor.influxdb_cpu_percent
+            name: InfluxDB
+            color: '#9966FF' # Amethyst
+          - entity: sensor.mariadb_cpu_percent
+            name: MariaDB
+            color: '#C9CBCF' # Silver Sand
+          - entity: sensor.mosquitto_broker_cpu_percent
+            name: Mosquitto
+            color: '#7E57C2' # Chetwode Blue
 
-  # ApexCharts Graph for Memory Usage with Unique Colors
-  - type: custom:apexcharts-card
-    header:
-      title: Container Memory Usage
-      show: true
-      show_states: true
-      colorize_states: true
-    graph_span: 24h
-    apex_config:
-      chart:
-        height: 350px
-      legend:
-        show: false
-    all_series_config:
-      group_by:
-        func: median
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
-    yaxis:
-      - min: 0
-        max: ~25
-        align_to: 5
+      # ApexCharts Graph for Memory Usage with Unique Colors
+      - type: custom:apexcharts-card
+        header:
+          title: Container Max Memory Usage
+          show: true
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        stacked: false
         apex_config:
-          #stepSize: 25
-          tickAmount: 5
-          #forceNiceScale: true
-          labels:
-            formatter: |
-              EVAL:function(value) {
-                return `${value} %`;
-              }
-    series:
-      - entity: sensor.home_assistant_core_memory_percent
-        name: HA Core
-        color: '#4BC0C0' # Middle Blue Green
-      - entity: sensor.home_assistant_supervisor_memory_percent
-        name: Supervisor
-        color: '#2E8B57' # Middle Blue Green
-      - entity: sensor.chrony_memory_percent
-        name: Chrony
-        color: '#FF6384' # Radical Red
-      - entity: sensor.deconz_memory_percent
-        name: deCONZ
-        color: '#36A2EB' # Picton Blue
-      - entity: sensor.esphome_memory_percent
-        name: ESPHome
-        color: '#FFCE56' # Yellow (Crayola)
-      - entity: sensor.grafana_memory_percent
-        name: Grafana
-        color: '#FF9F40' # Orange Peel
-      - entity: sensor.influxdb_memory_percent
-        name: InfluxDB
-        color: '#9966FF' # Amethyst
-      - entity: sensor.mariadb_memory_percent
-        name: MariaDB
-        color: '#C9CBCF' # Silver Sand
-      - entity: sensor.mosquitto_broker_memory_percent
-        name: Mosquitto
-        color: '#7E57C2' # Chetwode Blue
+          chart:
+            height: 250px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: -20
+              right: 0
+              bottom: -10
+              top: -50
+        all_series_config:
+          group_by:
+            func: max
+            duration: 10min
+          stroke_width: 3
+          fill_raw: 'null'
+        yaxis:
+          - min: 0
+            max: ~25
+            align_to: 5
+            apex_config:
+              #stepSize: 25
+              tickAmount: 5
+              #forceNiceScale: true
+              labels:
+                offsetX: -25
+                rotate: 0
+                formatter: |
+                  EVAL:function(value) {
+                    return `${value} %`;
+                  }
+        series:
+          - entity: sensor.home_assistant_core_memory_percent
+            name: HA Core
+            color: '#4BC0C0' # Middle Blue Green
+          - entity: sensor.home_assistant_supervisor_memory_percent
+            name: Supervisor
+            color: '#2E8B57' # Middle Blue Green
+          - entity: sensor.chrony_memory_percent
+            name: Chrony
+            color: '#FF6384' # Radical Red
+          - entity: sensor.deconz_memory_percent
+            name: deCONZ
+            color: '#36A2EB' # Picton Blue
+          - entity: sensor.esphome_memory_percent
+            name: ESPHome
+            color: '#FFCE56' # Yellow (Crayola)
+          - entity: sensor.grafana_memory_percent
+            name: Grafana
+            color: '#FF9F40' # Orange Peel
+          - entity: sensor.influxdb_memory_percent
+            name: InfluxDB
+            color: '#9966FF' # Amethyst
+          - entity: sensor.mariadb_memory_percent
+            name: MariaDB
+            color: '#C9CBCF' # Silver Sand
+          - entity: sensor.mosquitto_broker_memory_percent
+            name: Mosquitto
+            color: '#7E57C2' # Chetwode Blue
 
-  # History Graph of Running State
-  - type: history-graph
-    title: Container Running State
-    hours_to_show: 24
-    refresh_interval: 60
-    entities:
-      - entity: binary_sensor.chrony_running
-        name: Chrony
-      - entity: binary_sensor.deconz_running
-        name: deCONZ
-      - entity: binary_sensor.esphome_running
-        name: ESPHome
-      - entity: binary_sensor.grafana_running
-        name: Grafana
-      - entity: binary_sensor.home_assistant_core_running
-        name: HA Core
-      - entity: binary_sensor.influxdb_running
-        name: InfluxDB
-      - entity: binary_sensor.mariadb_running
-        name: MariaDB
-      - entity: binary_sensor.mosquitto_broker_running
-        name: Mosquitto
+      # History Graph of Running State
+      - type: history-graph
+        title: Container Running State
+        hours_to_show: 24
+        refresh_interval: 60
+        entities:
+          - entity: binary_sensor.chrony_running
+            name: Chrony
+          - entity: binary_sensor.deconz_running
+            name: deCONZ
+          - entity: binary_sensor.esphome_running
+            name: ESPHome
+          - entity: binary_sensor.grafana_running
+            name: Grafana
+          - entity: binary_sensor.home_assistant_core_running
+            name: HA Core
+          - entity: binary_sensor.influxdb_running
+            name: InfluxDB
+          - entity: binary_sensor.mariadb_running
+            name: MariaDB
+          - entity: binary_sensor.mosquitto_broker_running
+            name: Mosquitto
 
-  - type: custom:apexcharts-card
-    header:
-      title: Home Assistant Core CPU Usage
-      show: true
-      show_states: true
-      colorize_states: true
-    graph_span: 24h
-    apex_config:
-      chart:
-        height: 250px
-      legend:
-        show: false
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 2
-      opacity: 0.5
-      type: area
-    yaxis:
-      - min: 0
-        max: ~50
-        align_to: 10
-        show: false
-        # apex_config:
-        #   stepSize: 25
-        #   tickAmount: 4
-        #   forceNiceScale: false
-        #   labels:
-        #     formatter: |
-        #       EVAL:function(value) {
-        #         return `${value} %`;
-        #       }
-    layout: minimal
-    series:
-      - entity: sensor.processor_use
-        color: '#4BC0C0'  # Middle Blue Green
-        name: CPU Use 10min avg
-        show:
-          extremas: true
-      - entity: sensor.processor_use
-        #color: '#9966FF'  # Amethyst
-        name: CPU Use Max
-        group_by:
-          func: max
-          duration: 10min
-        opacity: 0
-        stroke_width: 1
+  - type: custom:collapsable-cards
+    title: Host Stats
+    cards:
+      - type: vertical-stack
+        title: System Monitor Day
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              title: Home Assistant Core CPU Usage
+              show: true
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+            apex_config:
+              chart:
+                height: 200px
+              legend:
+                show: false
+              grid:
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+            all_series_config:
+              group_by:
+                func: avg
+                duration: 10min
+              stroke_width: 2
+              opacity: 0.6
+              type: area
+            yaxis:
+              - min: 0
+                max: ~50
+                align_to: 10
+                show: false
+                # apex_config:
+                #   stepSize: 25
+                #   tickAmount: 4
+                #   forceNiceScale: false
+                #   labels:
+                #     formatter: |
+                #       EVAL:function(value) {
+                #         return `${value} %`;
+                #       }
+            layout: minimal
+            series:
+              - entity: sensor.processor_use
+                color: '#4BC0C0'  # Middle Blue Green
+                name: CPU Use 10min avg
+                extend_to: now
+                show:
+                  extremas: true
+              - entity: sensor.processor_use
+                color: '#4BC0C0'  # Middle Blue Green
+                offset: '-1d'
+                name: 1 Day Ago
+                opacity: 0.4
+                type: line
+                show:
+                  in_header: false
+                  legend_value: false
+              - entity: sensor.processor_use
+                #color: '#9966FF'  # Amethyst
+                name: CPU Use Max
+                extend_to: now
+                group_by:
+                  func: max
+                  duration: 15min
+                opacity: 0
+                stroke_width: 1
+          - type: custom:apexcharts-card
+            header:
+              title: Home Assistant Core Memory Free
+              show: true
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+            apex_config:
+              chart:
+                height: 200px
+              legend:
+                show: false
+              grid:
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+            all_series_config:
+              group_by:
+                func: median
+                duration: 5min
+              stroke_width: 2
+              opacity: 0.5
+              type: area
+            yaxis:
+              - min: 0
+                max: 32768
+                align_to: 4096
+                show: false
+            layout: minimal
+            series:
+              - entity: sensor.memory_use
+                color: '#9966FF'  # Amethyst
+                extend_to: now
+              - entity: sensor.memory_use
+                color: '#9966FF'  # Amethyst
+                offset: '-1d'
+                name: 1 Day Ago
+                type: line
+                opacity: 0.4
+                show:
+                  in_header: false
+                  legend_value: false
+              - entity: sensor.memory_use
+                #color: '#9966FF'  # Amethyst
+                group_by:
+                  func: max
+                  duration: 15min
+                opacity: 0
+                stroke_width: 1
 
-  - type: custom:apexcharts-card
-    header:
-      title: Home Assistant Core Memory Free
-      show: true
-      show_states: true
-      colorize_states: true
-    graph_span: 24h
-    span:
-      start: day
-    apex_config:
-      chart:
-        height: 250px
-      legend:
-        show: false
-    all_series_config:
-      group_by:
-        func: median
-        duration: 5min
-      stroke_width: 2
-      opacity: 0.5
-      type: area
-    yaxis:
-      - min: 0
-        max: 8192
-        show: false
-        # apex_config:
-        #   stepSize: 25
-        #   tickAmount: 4
-        #   forceNiceScale: false
-        #   labels:
-        #     formatter: |
-        #       EVAL:function(value) {
-        #         return `${value} MB`;
-        #       }
-    layout: minimal
-    series:
-      - entity: sensor.memory_free
-        color: '#9966FF'  # Amethyst
-      - entity: sensor.memory_free
-        #color: '#9966FF'  # Amethyst
-        group_by:
-          func: raw
-          duration: 1min
-        opacity: 0
-        stroke_width: 1
-
-  - type: custom:apexcharts-card
-    header:
-      title: Home Assistant Host Disk Space
-      show: true
-      show_states: true
-      colorize_states: true
-    graph_span: 14d
-    apex_config:
-      chart:
-        height: 250px
-      legend:
-        show: false
-    all_series_config:
-      group_by:
-        func: max
-        duration: 1h
-      fill_raw: last
-    yaxis:
-      - min: 0
-        max: 512
-        show: false
-    layout: minimal
-    series:
-      - entity: sensor.home_assistant_host_disk_free
-        name: Disk Free Space
-        color: '#FFCE56'  # Yellow (Crayola)
-      - entity: sensor.home_assistant_host_disk_total
-        name: Disk Total Space
-        color: '#FF6384'  # Radical Red
-        type: line
+          - type: custom:apexcharts-card
+            header:
+              title: NUC NVME Utilization
+              show: true
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+            apex_config:
+              chart:
+                height: 200px
+              legend:
+                show: false
+              grid:
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+            all_series_config:
+              group_by:
+                func: median
+                duration: 5min
+              stroke_width: 2
+              opacity: 0.5
+              type: area
+            yaxis:
+              - min: 0
+                max: 100
+                show: false
+            layout: minimal
+            series:
+              - entity: sensor.nuc_nvme_utilization
+                color: '#9966FF'  # Amethyst
+                extend_to: now
+              - entity: sensor.nuc_nvme_utilization
+                color: '#9966FF'  # Amethyst
+                offset: '-1d'
+                name: 1 Day Ago
+                type: line
+                opacity: 0.4
+                show:
+                  in_header: false
+                  legend_value: false
+              - entity: sensor.nuc_nvme_utilization
+                name: Queue Size
+                #color: '#9966FF'  # Amethyst
+                attribute: queue_size
+          - type: custom:apexcharts-card
+            header:
+              title: Used Disk Space
+              show: true
+              show_states: true
+              colorize_states: true
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+            apex_config:
+              chart:
+                height: 200px
+              legend:
+                show: false
+              grid:
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+              annotations:
+                position: front
+                yaxis:
+                  - y: 137
+                    borderColor: '#FF6384'  # Greenish color for low intensity
+                    label:
+                      position: left
+                      offsetX: 70
+                      borderColor: '#FF6384'
+                      text: '30% Usage'
+                      style:
+                        background: 'transparent'
+                        color: '#FF6384'  # Text color matches the line color
+                        fontSize: '10px'
+                        fontFamily: 'Helvetica, Arial, sans-serif'
+            all_series_config:
+              group_by:
+                func: max
+                duration: 30min
+              stroke_width: 2
+              opacity: 0.5
+              type: line
+              show:
+                in_header: false
+                legend_value: false
+            yaxis:
+              - min: 0
+                max: ~200
+                align_to: 100
+                show: false
+            layout: minimal
+            series:
+              - entity: sensor.system_monitor_disk_use
+                name: Today
+                color: '#FFCE56' # Bright color for today to stand out
+                type: line
+                extend_to: now
+                opacity: 1
+                show:
+                  in_header: true
+                  legend_value: true
+              # Previous 14 days with fading colors and opacity
+              - entity: sensor.system_monitor_disk_use
+                offset: '-1d'
+                name: Yesterday
+                color: '#FFA726'
+                opacity: 0.45
+              - entity: sensor.system_monitor_disk_use
+                offset: '-2d'
+                name: 2 Days Ago
+                color: '#FB8C00'
+                opacity: 0.4
+              - entity: sensor.system_monitor_disk_use
+                offset: '-3d'
+                name: 3 Days Ago
+                color: '#F57C00'
+                opacity: 0.35
+              - entity: sensor.system_monitor_disk_use
+                offset: '-4d'
+                name: 4 Days Ago
+                color: '#EF6C00'
+                opacity: 0.3
+              - entity: sensor.system_monitor_disk_use
+                offset: '-5d'
+                name: 5 Days Ago
+                color: '#E65100'
+                opacity: 0.25
+              - entity: sensor.system_monitor_disk_use
+                offset: '-6d'
+                name: 6 Days Ago
+                color: '#DD2C00'
+                opacity: 0.2
+              - entity: sensor.system_monitor_disk_use
+                offset: '-7d'
+                name: 7 Days Ago
+                color: '#C41C00'
+                opacity: 0.15
+              - entity: sensor.system_monitor_disk_use
+                offset: '-8d'
+                name: 8 Days Ago
+                color: '#B71B00'
+                opacity: 0.1
+              - entity: sensor.system_monitor_disk_use
+                offset: '-9d'
+                name: 9 Days Ago
+                color: '#A61A00'
+                opacity: 0.08
+              - entity: sensor.system_monitor_disk_use
+                offset: '-10d'
+                name: 10 Days Ago
+                color: '#951900'
+                opacity: 0.06
+              - entity: sensor.system_monitor_disk_use
+                offset: '-11d'
+                name: 11 Days Ago
+                color: '#841800'
+                opacity: 0.05
+              - entity: sensor.system_monitor_disk_use
+                offset: '-12d'
+                name: 12 Days Ago
+                color: '#731700'
+                opacity: 0.04
+              - entity: sensor.system_monitor_disk_use
+                offset: '-13d'
+                name: 13 Days Ago
+                color: '#621600'
+                opacity: 0.03
+              - entity: sensor.system_monitor_disk_use
+                offset: '-14d'
+                name: 14 Days Ago
+                color: '#511500'
+                opacity: 0.02
+              # - entity: sensor.home_assistant_host_disk_total
+              #   #color: '#9966FF'  # Amethyst
+              #   group_by:
+              #     func: max
+              #     duration: 15min
+              #   opacity: 0
+              #   stroke_width: 1

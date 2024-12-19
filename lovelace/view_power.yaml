@@ -238,107 +238,111 @@ cards:
         - entity: sensor.unknown_power
           name: Unknown
           color: '#BDBDBD'  # Unknown category - Light grey
-    - type: custom:apexcharts-card
-      header:
-        title: Power Phases
-        show: true
-        show_states: true
-        colorize_states: true
-      graph_span: 24h
-      update_interval: 1m
-      all_series_config:
-        group_by:
-          func: avg
-          duration: 1min
-        float_precision: 0
-      apex_config:
-        legend:
-          show: false
-        plotOptions:
-          pie:
-            donut:
-              labels:
-                show: true
-                total:
-                  show: true
-                  label: Total
-                  formatter: |
-                    EVAL:function(w) {
-                      return Math.round((w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2)) + ' W';
-                      }
-                value:
-                  show: true
-                  formatter: |
-                    EVAL:function(val) {
-                      return Math.round(val) + ' W'
-                    }
-      chart_type: donut
-      series:
-        - entity: sensor.electricity_meter_power_consumption_phase_l1
-          name: Phase 1
-          transform: "return (x * 1000);"
-          unit: W
-          group_by:
-            func: avg
-            duration: 1min
-        - entity: sensor.electricity_meter_power_consumption_phase_l2
-          name: Phase 2
-          transform: "return (x * 1000);"
-          unit: W
-          group_by:
-            func: avg
-            duration: 1min
-        - entity: sensor.electricity_meter_power_consumption_phase_l3
-          name: Phase 3
-          transform: "return (x * 1000);"
-          unit: W
-          group_by:
-            func: avg
-            duration: 1min
-    - type: custom:apexcharts-card
-      header:
-        title: Power Phases
-        show: true
-        show_states: true
-        colorize_states: true
-      graph_span: 24h
-      update_interval: 1m
-      stacked: true
-      yaxis:
-        - min: 0
-          max: ~4000
-          decimals: 0
+    - type: custom:collapsable-cards
+      title: Power Phases
+      cards:
+        - type: custom:apexcharts-card
+          header:
+            title: Power Phases
+            show: true
+            show_states: true
+            colorize_states: true
+          graph_span: 24h
+          update_interval: 1m
+          all_series_config:
+            group_by:
+              func: avg
+              duration: 1min
+            float_precision: 0
           apex_config:
-            tickAmount: 4
-      all_series_config:
-        stroke_width: 2
-        float_precision: 0
-        transform: "return Math.round(x * 1000);"
-        unit: W
-        show:
-          datalabels: false
-        group_by:
-          func: avg
-          duration: 5min
-      chart_type: line
-      brush:
-        selection_span: 10m
-      apex_config:
-        legend:
-          show: false
-      series:
-        - entity: sensor.electricity_meter_power_consumption_phase_l1
-          name: Phase 1
-        - entity: sensor.electricity_meter_power_consumption_phase_l2
-          name: Phase 2
-        - entity: sensor.electricity_meter_power_consumption_phase_l3
-          name: Phase 3
-        - entity: sensor.total_power_consumption_watt
-          name: Total
-          transform: "return Math.round(x * 1);"
-          show:
-            in_brush: true
-            in_chart: false
+            legend:
+              show: false
+            plotOptions:
+              pie:
+                donut:
+                  labels:
+                    show: true
+                    total:
+                      show: true
+                      label: Total
+                      formatter: |
+                        EVAL:function(w) {
+                          return Math.round((w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0)).toFixed(2)) + ' W';
+                          }
+                    value:
+                      show: true
+                      formatter: |
+                        EVAL:function(val) {
+                          return Math.round(val) + ' W'
+                        }
+          chart_type: donut
+          series:
+            - entity: sensor.electricity_meter_power_consumption_phase_l1
+              name: Phase 1
+              transform: "return (x * 1000);"
+              unit: W
+              group_by:
+                func: avg
+                duration: 1min
+            - entity: sensor.electricity_meter_power_consumption_phase_l2
+              name: Phase 2
+              transform: "return (x * 1000);"
+              unit: W
+              group_by:
+                func: avg
+                duration: 1min
+            - entity: sensor.electricity_meter_power_consumption_phase_l3
+              name: Phase 3
+              transform: "return (x * 1000);"
+              unit: W
+              group_by:
+                func: avg
+                duration: 1min
+        - type: custom:apexcharts-card
+          header:
+            title: Power Phases
+            show: true
+            show_states: true
+            colorize_states: true
+          graph_span: 24h
+          update_interval: 1m
+          stacked: true
+          yaxis:
+            - min: 0
+              max: ~4000
+              decimals: 0
+              apex_config:
+                tickAmount: 4
+          all_series_config:
+            stroke_width: 2
+            float_precision: 0
+            transform: "return Math.round(x * 1000);"
+            unit: W
+            show:
+              datalabels: false
+            group_by:
+              func: avg
+              duration: 5min
+          chart_type: line
+          brush:
+            selection_span: 10m
+          apex_config:
+            legend:
+              show: false
+          series:
+            - entity: sensor.electricity_meter_power_consumption_phase_l1
+              name: Phase 1
+            - entity: sensor.electricity_meter_power_consumption_phase_l2
+              name: Phase 2
+            - entity: sensor.electricity_meter_power_consumption_phase_l3
+              name: Phase 3
+            - entity: sensor.total_power_consumption_watt
+              name: Total
+              transform: "return Math.round(x * 1);"
+              show:
+                in_brush: true
+                in_chart: false
+
     - type: custom:mini-graph-card
       entities:
         - color: grey
@@ -616,8 +620,6 @@ cards:
           points: false
     - type: horizontal-stack
       cards:
-      - type: horizontal-stack
-        cards:
         - type: custom:mini-graph-card
           entities:
             - sensor.blitzwolf_ambilight_amplifier_power
@@ -876,364 +878,635 @@ cards:
             color: "#ffaf33"
           - value: 400
             color: "#ff5733"
-      - type: grid
-        square: false
-        columns: 2
+      - type: custom:collapsable-cards
+        title: Individual Device Power
         cards:
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_nas_energy_today
-                aggregate_func: max
-                name: Max
-            name: NAS
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 3
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 1
-                color: "#beff33"
-              - value: 2
-                color: "#ffd433"
-              - value: 3
-                color: "#ffaf33"
-              - value: 4
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_study_desk_energy_today
-                aggregate_func: max
-                name: Max
-            name: Computer
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 3
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 1
-                color: "#beff33"
-              - value: 2
-                color: "#ffd433"
-              - value: 3
-                color: "#ffaf33"
-              - value: 4
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_router_energy_today
-                aggregate_func: max
-                name: Max
-            name: Router
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 2
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 0.5
-                color: "#beff33"
-              - value: 1
-                color: "#ffd433"
-              - value: 1.5
-                color: "#ffaf33"
-              - value: 2
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_nuc_energy_today
-                aggregate_func: max
-                name: Max
-            name: NUC
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 2
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 0.5
-                color: "#beff33"
-              - value: 1
-                color: "#ffd433"
-              - value: 1.5
-                color: "#ffaf33"
-              - value: 2
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_10gb_switch_energy_today
-                aggregate_func: max
-                name: Max
-            name: 10Gbe Switch
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 2
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 0.5
-                color: "#beff33"
-              - value: 1
-                color: "#ffd433"
-              - value: 1.5
-                color: "#ffaf33"
-              - value: 2
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_poe_switch_energy_today
-                aggregate_func: max
-                name: Max
-            name: PoE Switch
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 2
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 0.5
-                color: "#beff33"
-              - value: 1
-                color: "#ffd433"
-              - value: 1.5
-                color: "#ffaf33"
-              - value: 2
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.blitzwolf_ambilight_amplifier_daily_energy
-                aggregate_func: max
-                name: Max
-            name: Ambilight/Amplifier
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 5
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 1
-                color: "#beff33"
-              - value: 2
-                color: "#ffd433"
-              - value: 3
-                color: "#ffaf33"
-              - value: 4
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_washing_machine_energy_today
-                aggregate_func: max
-                name: Max
-            name: Washing Machine
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 5
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 1
-                color: "#beff33"
-              - value: 2
-                color: "#ffd433"
-              - value: 3
-                color: "#ffaf33"
-              - value: 4
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.plug_dishwasher_energy_today
-                aggregate_func: max
-                name: Max
-            name: Dishwasher
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 5
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 1
-                color: "#beff33"
-              - value: 2
-                color: "#ffd433"
-              - value: 3
-                color: "#ffaf33"
-              - value: 4
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.heatpump_tapwater_daily_energy_use
-                aggregate_func: max
-                name: Max
-            name: Tapwater
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 15
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 3
-                color: "#beff33"
-              - value: 6
-                color: "#ffd433"
-              - value: 9
-                color: "#ffaf33"
-              - value: 12
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.heatpump_verwarming_daily_energy_use
-                aggregate_func: max
-                name: Max
-            name: Verwarming
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 15
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 3
-                color: "#beff33"
-              - value: 6
-                color: "#ffd433"
-              - value: 9
-                color: "#ffaf33"
-              - value: 12
-                color: "#ff5733"
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.heatpump_circulation_daily_energy_use
-                aggregate_func: max
-                name: Max
-            name: Circulation
-            hours_to_show: 120
-            group_by: date
-            lower_bound: 0
-            upper_bound: 4
-            icon: mdi:lightning-bolt
-            show:
-              graph: bar
-            color_thresholds_transition: smooth
-            color_thresholds:
-              - value: 0
-                color: "#46ff33"
-              - value: 1
-                color: "#beff33"
-              - value: 2
-                color: "#ffd433"
-              - value: 3
-                color: "#ffaf33"
-              - value: 4
-                color: "#ff5733"
+          - type: grid
+            square: false
+            columns: 2
+            cards:
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_nas_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: NAS
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 3
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 1
+                    color: "#beff33"
+                  - value: 2
+                    color: "#ffd433"
+                  - value: 3
+                    color: "#ffaf33"
+                  - value: 4
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_study_desk_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: Computer
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 3
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 1
+                    color: "#beff33"
+                  - value: 2
+                    color: "#ffd433"
+                  - value: 3
+                    color: "#ffaf33"
+                  - value: 4
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_router_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: Router
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 2
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 0.5
+                    color: "#beff33"
+                  - value: 1
+                    color: "#ffd433"
+                  - value: 1.5
+                    color: "#ffaf33"
+                  - value: 2
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_nuc_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: NUC
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 2
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 0.5
+                    color: "#beff33"
+                  - value: 1
+                    color: "#ffd433"
+                  - value: 1.5
+                    color: "#ffaf33"
+                  - value: 2
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_10gb_switch_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: 10Gbe Switch
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 2
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 0.5
+                    color: "#beff33"
+                  - value: 1
+                    color: "#ffd433"
+                  - value: 1.5
+                    color: "#ffaf33"
+                  - value: 2
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_poe_switch_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: PoE Switch
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 2
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 0.5
+                    color: "#beff33"
+                  - value: 1
+                    color: "#ffd433"
+                  - value: 1.5
+                    color: "#ffaf33"
+                  - value: 2
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.blitzwolf_ambilight_amplifier_daily_energy
+                    aggregate_func: max
+                    name: Max
+                name: Ambilight/Amplifier
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 5
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 1
+                    color: "#beff33"
+                  - value: 2
+                    color: "#ffd433"
+                  - value: 3
+                    color: "#ffaf33"
+                  - value: 4
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_washing_machine_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: Washing Machine
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 5
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 1
+                    color: "#beff33"
+                  - value: 2
+                    color: "#ffd433"
+                  - value: 3
+                    color: "#ffaf33"
+                  - value: 4
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.plug_dishwasher_energy_today
+                    aggregate_func: max
+                    name: Max
+                name: Dishwasher
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 5
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 1
+                    color: "#beff33"
+                  - value: 2
+                    color: "#ffd433"
+                  - value: 3
+                    color: "#ffaf33"
+                  - value: 4
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.heatpump_tapwater_daily_energy_use
+                    aggregate_func: max
+                    name: Max
+                name: Tapwater
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 15
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 3
+                    color: "#beff33"
+                  - value: 6
+                    color: "#ffd433"
+                  - value: 9
+                    color: "#ffaf33"
+                  - value: 12
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.heatpump_verwarming_daily_energy_use
+                    aggregate_func: max
+                    name: Max
+                name: Verwarming
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 15
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 3
+                    color: "#beff33"
+                  - value: 6
+                    color: "#ffd433"
+                  - value: 9
+                    color: "#ffaf33"
+                  - value: 12
+                    color: "#ff5733"
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.heatpump_circulation_daily_energy_use
+                    aggregate_func: max
+                    name: Max
+                name: Circulation
+                hours_to_show: 120
+                group_by: date
+                lower_bound: 0
+                upper_bound: 4
+                icon: mdi:lightning-bolt
+                show:
+                  graph: bar
+                color_thresholds_transition: smooth
+                color_thresholds:
+                  - value: 0
+                    color: "#46ff33"
+                  - value: 1
+                    color: "#beff33"
+                  - value: 2
+                    color: "#ffd433"
+                  - value: 3
+                    color: "#ffaf33"
+                  - value: 4
+                    color: "#ff5733"
 
-  - type: entities
-    title: Power Switches
-    show_header_toggle: false
-    entities:
-      - entity: switch.plug_10gb_switch_switch
-        name: 10Gb Switch
-        icon: mdi:switch
-        confirm:
-          text: "Are you sure you want to turn off the 10Gb Switch?"
-      - entity: switch.plug_3d_printer_switch
-        name: 3D Printer
-        icon: mdi:printer-3d
-      - entity: switch.plug_dishwasher_switch
-        name: Dishwasher
-        icon: mdi:dishwasher
-      - entity: switch.plug_electric_car_switch
-        name: Electric Car
-        icon: mdi:car-electric
-      - entity: switch.plug_epaper_ap_switch
-        name: ePaper Access Point
-        icon: mdi:access-point-network
-      - entity: switch.plug_nas_plug_nas_switch
-        name: NAS
-        icon: mdi:nas
-        confirm:
-          text: "Are you sure you want to turn off the NAS?"
-      - entity: switch.plug_nuc_switch
-        name: NUC
-        icon: mdi:desktop-classic
-        confirm:
-          text: "Are you sure you want to turn off the NUC?"
-      - entity: switch.plug_poe_switch_switch
-        name: PoE Switch
-        icon: mdi:switch
-        confirm:
-          text: "Are you sure you want to turn off the PoE Switch?"
-      - entity: switch.plug_router_switch
-        name: Router
-        icon: mdi:router-wireless
-        confirm:
-          text: "Are you sure you want to turn off the Router?"
-      - entity: switch.plug_study_desk_plug_study_desk_switch
-        name: Study Desk
-        icon: mdi:desk
-      - entity: switch.plug_study_workbench_switch
-        name: Study Workbench
-        icon: mdi:desk-lamp
-      - entity: switch.plug_tv_switch
-        name: TV
-        icon: mdi:television
-      - entity: switch.plug_washing_machine_switch
-        name: Washing Machine
-        icon: mdi:washing-machine
-      - entity: switch.plug_watercooker_switch
-        name: Water Cooker
-        icon: mdi:kettle
+  - type: custom:collapsable-cards
+    title: Device Power Switches
+    cards:
+      - type: entities
+        #title: Power Switches
+        show_header_toggle: false
+        entities:
+          - entity: switch.plug_10gb_switch_switch
+            name: 10Gb Switch
+            icon: mdi:switch
+            confirm:
+              text: "Are you sure you want to turn off the 10Gb Switch?"
+          - entity: switch.plug_3d_printer_switch
+            name: 3D Printer
+            icon: mdi:printer-3d
+          - entity: switch.plug_dishwasher_switch
+            name: Dishwasher
+            icon: mdi:dishwasher
+          - entity: switch.plug_electric_car_switch
+            name: Electric Car
+            icon: mdi:car-electric
+          - entity: switch.plug_epaper_ap_switch
+            name: ePaper Access Point
+            icon: mdi:access-point-network
+          - entity: switch.plug_nas_plug_nas_switch
+            name: NAS
+            icon: mdi:nas
+            confirm:
+              text: "Are you sure you want to turn off the NAS?"
+          - entity: switch.plug_nuc_switch
+            name: NUC
+            icon: mdi:desktop-classic
+            confirm:
+              text: "Are you sure you want to turn off the NUC?"
+          - entity: switch.plug_poe_switch_switch
+            name: PoE Switch
+            icon: mdi:switch
+            confirm:
+              text: "Are you sure you want to turn off the PoE Switch?"
+          - entity: switch.plug_router_switch
+            name: Router
+            icon: mdi:router-wireless
+            confirm:
+              text: "Are you sure you want to turn off the Router?"
+          - entity: switch.plug_study_desk_plug_study_desk_switch
+            name: Study Desk
+            icon: mdi:desk
+          - entity: switch.plug_study_workbench_switch
+            name: Study Workbench
+            icon: mdi:desk-lamp
+          - entity: switch.plug_tv_switch
+            name: TV
+            icon: mdi:television
+          - entity: switch.plug_washing_machine_switch
+            name: Washing Machine
+            icon: mdi:washing-machine
+          - entity: switch.plug_watercooker_switch
+            name: Water Cooker
+            icon: mdi:kettle
+
+  - type: vertical-stack
+    cards:
+      # Electricity Usage Charts
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Daily Electricity Usage
+          show_states: true
+          colorize_states: true
+        graph_span: 14d
+        apex_config:
+          chart:
+            height: 200px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: 0
+              right: 0
+              bottom: -10
+              top: -50
+        yaxis:
+          - min: 0
+            max: ~25
+            align_to: 5
+            apex_config:
+              #stepSize: 5
+              tickAmount: 4
+              forceNiceScale: true
+              labels:
+                offsetX: -15
+                rotate: 0
+        experimental:
+          color_threshold: true
+        all_series_config:
+          float_precision: 2
+          show:
+            datalabels: false
+          statistics:
+            type: state
+            period: day
+            align: middle
+          type: column
+          color_threshold:
+            - value: 3
+              color: '#66BB6A'
+            - value: 6
+              color: '#8BC34A'
+            - value: 9
+              color: '#D4E157'
+            - value: 12
+              color: '#FFEB3B'
+            - value: 15
+              color: '#FFC107'
+            - value: 18
+              color: '#FF9800'
+            - value: 21
+              color: '#FF7043'
+            - value: 24
+              color: '#F4511E'
+            - value: 27
+              color: '#E53935'
+            - value: 30
+              color: '#B71C1C'
+        series:
+          - entity: sensor.daily_energy_use
+            name: Daily Energy Usage
+            #color: '#42d7d7'
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Monthly Electricity Usage
+          show_states: true
+          colorize_states: true
+        graph_span: 365d
+        apex_config:
+          chart:
+            height: 200px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: 0
+              right: 0
+              bottom: -10
+              top: -50
+        yaxis:
+          - min: 0
+            max: ~600
+            align_to: 100
+            apex_config:
+              #stepSize: 5
+              tickAmount: 4
+              forceNiceScale: true
+              labels:
+                offsetX: -15
+                rotate: 0
+        experimental:
+          color_threshold: true
+        all_series_config:
+          float_precision: 2
+          show:
+            datalabels: false
+          statistics:
+            type: state
+            period: month
+            align: middle
+          type: column
+          color_threshold:
+            - value: 70
+              color: '#66BB6A'
+            - value: 140
+              color: '#8BC34A'
+            - value: 210
+              color: '#D4E157'
+            - value: 280
+              color: '#FFEB3B'
+            - value: 350
+              color: '#FFC107'
+            - value: 420
+              color: '#FF9800'
+            - value: 490
+              color: '#FF7043'
+            - value: 560
+              color: '#F4511E'
+            - value: 630
+              color: '#E53935'
+            - value: 700
+              color: '#B71C1C'
+        series:
+          - entity: sensor.monthly_energy_use
+            name: Monthly Energy Usage
+            color: '#8891d0'
+      # Electricity Cost Charts
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Daily Electricity Cost
+          show_states: true
+          colorize_states: true
+        graph_span: 14d
+        apex_config:
+          chart:
+            height: 200px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: 0
+              right: 0
+              bottom: -10
+              top: -50
+        yaxis:
+          - min: 0
+            max: ~10
+            align_to: 5
+            apex_config:
+              #stepSize: 5
+              tickAmount: 4
+              forceNiceScale: true
+              labels:
+                offsetX: -15
+                rotate: 0
+        experimental:
+          color_threshold: true
+        all_series_config:
+          float_precision: 2
+          show:
+            datalabels: false
+          statistics:
+            type: state
+            period: day
+            align: middle
+          type: column
+          color_threshold:
+            - value: 0
+              color: '#42A5F5'
+            - value: 1.5
+              color: '#64B5F6'
+            - value: 3
+              color: '#81C784'
+            - value: 4.5
+              color: '#A5D6A7'
+            - value: 6
+              color: '#FFD54F'
+            - value: 7.5
+              color: '#FFB74D'
+            - value: 9
+              color: '#FF8A65'
+            - value: 10.5
+              color: '#F4511E'
+            - value: 12
+              color: '#E53935'
+            - value: 15
+              color: '#B71C1C'
+        series:
+          - entity: sensor.daily_net_electricity_cost
+            name: Daily Cost
+            color: '#d4a017'
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Monthly Electricity Cost
+          show_states: true
+          colorize_states: true
+        graph_span: 365d
+        apex_config:
+          chart:
+            height: 200px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: 0
+              right: 0
+              bottom: -10
+              top: -50
+        yaxis:
+          - min: 0
+            max: ~200
+            align_to: 5
+            apex_config:
+              #stepSize: 5
+              tickAmount: 4
+              forceNiceScale: true
+              labels:
+                offsetX: -15
+                rotate: 0
+        experimental:
+          color_threshold: true
+        all_series_config:
+          float_precision: 2
+          show:
+            datalabels: false
+          statistics:
+            type: state
+            period: month
+            align: middle
+          type: column
+          color_threshold:
+            - value: 0
+              color: '#42A5F5'
+            - value: 20
+              color: '#64B5F6'
+            - value: 40
+              color: '#81C784'
+            - value: 60
+              color: '#A5D6A7'
+            - value: 80
+              color: '#FFD54F'
+            - value: 100
+              color: '#FFB74D'
+            - value: 120
+              color: '#FF8A65'
+            - value: 140
+              color: '#F4511E'
+            - value: 160
+              color: '#E53935'
+            - value: 200
+              color: '#B71C1C'
+        series:
+          - entity: sensor.monthly_net_electricity_cost
+            name: Monthly Cost
+            color: '#00bbf9'
