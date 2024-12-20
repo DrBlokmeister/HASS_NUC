@@ -132,6 +132,24 @@ command_line:
       command_timeout: 30
       scan_interval: 60
       unit_of_measurement: "°C"
+  - sensor:
+      name: "NUC NVMe Utilization"
+      command: >
+        ssh -t -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@10.0.0.252 \
+        "iostat -dx nvme0n1 30 2 | awk 'NR > 6 && /nvme0n1/ {printf(\"{\\\"Utilization\\\": %.2f, \\\"Queue Size\\\": %.2f, \\\"Read Latency\\\": %.2f, \\\"Write Latency\\\": %.2f, \\\"Read Operations\\\": %.2f, \\\"Read Throughput\\\": %.2f, \\\"Write Operations\\\": %.2f, \\\"Write Throughput\\\": %.2f}\\n\", \$(NF), \$(NF-2), \$(6), \$(11), \$(2), \$(3), \$(8), \$(9)); exit}'"
+      json_attributes:
+        - Queue Size
+        - Read Latency
+        - Write Latency
+        - Read Operations
+        - Read Throughput
+        - Write Operations
+        - Write Throughput
+      value_template: "{{ value_json.Utilization }}"
+      unit_of_measurement: "%"
+      command_timeout: 40
+      scan_interval: 60
+      unique_id: nvme_utilization
 
 
   # - sensor:
@@ -254,6 +272,72 @@ sensor:
         attribute_templates:
           automations: >
             {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
+      nuc_nvme_queue_size:
+        friendly_name: "NUC NVMe Queue Size"
+        unique_id: yaml_template_nuc_monitor_nvme_queue_size
+        icon_template: "mdi:database"
+        unit_of_measurement: "requests"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Queue Size') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+      nuc_nvme_read_latency:
+        friendly_name: "NUC NVMe Read Latency"
+        unique_id: yaml_template_nuc_monitor_nvme_read_latency
+        icon_template: "mdi:clock-outline"
+        unit_of_measurement: "ms"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Read Latency') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+      nuc_nvme_write_latency:
+        friendly_name: "NUC NVMe Write Latency"
+        unique_id: yaml_template_nuc_monitor_nvme_write_latency
+        icon_template: "mdi:clock-outline"
+        unit_of_measurement: "ms"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Write Latency') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+      nuc_nvme_read_operations:
+        friendly_name: "NUC NVMe Read Operations"
+        unique_id: yaml_template_nuc_monitor_nvme_read_operations
+        icon_template: "mdi:chart-line"
+        unit_of_measurement: "Operations/s"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Read Operations') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+      nuc_nvme_read_throughput:
+        friendly_name: "NUC NVMe Read Throughput"
+        unique_id: yaml_template_nuc_monitor_nvme_read_throughput
+        icon_template: "mdi:download"
+        unit_of_measurement: "kB/s"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Read Throughput') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+      nuc_nvme_write_operations:
+        friendly_name: "NUC NVMe Write Operations"
+        unique_id: yaml_template_nuc_monitor_nvme_write_operations
+        icon_template: "mdi:chart-line"
+        unit_of_measurement: "Operations/s"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Write Operations') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+      nuc_nvme_write_throughput:
+        friendly_name: "NUC NVMe Write Throughput"
+        unique_id: yaml_template_nuc_monitor_nvme_write_throughput
+        icon_template: "mdi:upload"
+        unit_of_measurement: "kB/s"
+        value_template: >
+          {{ state_attr('sensor.nuc_nvme_utilization', 'Write Throughput') }}
+        availability_template: >
+          {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
+
+
+
 
   - platform: filter
     name: "Filtered NUC CPU Temperature"
