@@ -138,6 +138,7 @@ script:
   toggle_lights_with_adaptive_brightness:
     alias: Toggle lights with adaptive brightness
     description: Toggle lights with adaptive brightness and different click actions based on button clicks.
+    # id: yaml_script_toggle_lights_with_adaptive_brightness
     mode: parallel
     fields:
       light_entity:
@@ -172,7 +173,7 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int < 250) or state_attr(light_entity, 'color_temp_kelvin') | int < 4000 }}"
+                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int(0) < 250) or (state_attr(light_entity, 'color_temp_kelvin') | int(0) < 4000) }}"
                     sequence:
                       - service: light.turn_on
                         data:
@@ -195,7 +196,7 @@ script:
               - choose:
                   - conditions:
                       - condition: template
-                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int > 30) }}" # Brightness 30/256, so around 12%
+                        value_template: "{{ is_state(light_entity, 'off') or (state_attr(light_entity, 'brightness') | int(100) > 30) }}" # Brightness 30/256, so around 12%
                     sequence:
                       - service: light.turn_on
                         data:
@@ -210,3 +211,17 @@ script:
                       brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
                       kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
                       transition: "{{ transition_time }}"
+        default:
+          - service: logbook.log
+            data:
+              name: "Toggle Lights Script"
+              message: >
+                "Default option chosen in 'toggle_lights_with_adaptive_brightness'.
+                light_entity: {{ light_entity }}, click_count: {{ click_count }}, transition_time: {{ transition_time }}"
+              entity_id: "script.toggle_lights_with_adaptive_brightness"
+          - service: system_log.write
+            data:
+              level: warning
+              message: >
+                "Default option chosen in 'toggle_lights_with_adaptive_brightness'.
+                light_entity: {{ light_entity }}, click_count: {{ click_count }}, transition_time: {{ transition_time }}"
