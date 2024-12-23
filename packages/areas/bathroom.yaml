@@ -271,39 +271,40 @@ automation:
   #         - light.bathroom_light_bright
   #         - light.bathroom_light_dim
 
-  # - alias: '[bathroom|occupancy] Set shower occupancy input boolean'
-  #   mode: single
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.bathroom_shower_occupied
-  #       to: 'on'
-  #     - platform: state
-  #       entity_id: binary_sensor.bathroom_shower_left
-  #       to: 'on'
-  #     - platform: numeric_state
-  #       entity_id: sensor.water_consumption_per_hour
-  #       below: 50
-  #       for:
-  #         minutes: 2
-  #     - platform: state
-  #       entity_id: binary_sensor.bathroom_motion_1
-  #       to: 'off'
-  #       for:
-  #         minutes: 60
-  #   action:
-  #     - choose:
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_occupied' }}"
-  #           sequence:
-  #             - service: input_boolean.turn_on
-  #               entity_id: input_boolean.shower_occupied
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' or trigger.entity_id == 'sensor.water_consumption_per_hour' or trigger.entity_id == 'binary_sensor.bathroom_motion_1'}}"
-  #           sequence:
-  #             - service: input_boolean.turn_off
-  #               entity_id: input_boolean.shower_occupied
+  - alias: '[bathroom|occupancy] Set shower occupancy input boolean'
+    id: yaml_automation_bathroom_occupancy_set_shower_occupancy_input_boolean
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.bathroom_shower_occupied
+        to: 'on'
+      - platform: state
+        entity_id: binary_sensor.bathroom_shower_left
+        to: 'on'
+      - platform: numeric_state
+        entity_id: sensor.water_usage
+        below: 5
+        for:
+          minutes: 2
+      - platform: state
+        entity_id: binary_sensor.bathroom_motion_1
+        to: 'off'
+        for:
+          minutes: 60
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_occupied' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                entity_id: input_boolean.shower_occupied
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.entity_id == 'binary_sensor.bathroom_shower_left' or trigger.entity_id == 'sensor.water_consumption_per_hour' or trigger.entity_id == 'binary_sensor.bathroom_motion_1'}}"
+            sequence:
+              - service: input_boolean.turn_off
+                entity_id: input_boolean.shower_occupied
 
 ################
 #    SCENES    #
