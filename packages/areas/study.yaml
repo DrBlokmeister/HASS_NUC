@@ -647,6 +647,9 @@ automation:
       event_type: deconz_event
       event_data:
         id: study_desk_multiswitch
+    condition:
+      - condition: template
+        value_template: "{{ trigger.event.data.event in [1001, 1002, 2001, 2002, 3001, 3002, 4001, 4002] }}"
     action:
       - choose:
           - conditions: ################## CONDITIONS BELOW ARE FOR SHORT PRESS ##################
@@ -741,10 +744,10 @@ automation:
                             - 'off'
                             - 'unavailable'
                           for:
-                            seconds: 2
+                            seconds: 1
                     - condition: template
                       value_template: >
-                        {{ (now() - start_time).total_seconds() < 10 }}
+                        {{ (now() - start_time).total_seconds() > 10 }}
               - service: switch.turn_off
                 entity_id: switch.powerstrip_study_desk_socket_3
           - conditions:
