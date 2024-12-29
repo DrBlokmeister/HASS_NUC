@@ -192,60 +192,16 @@ template:
         unit_of_measurement: '€'
         state: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
         availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+
 #######################
 #    INPUT NUMBERS    #
 #######################
 input_number:
-  water_meter_daily_consumption:
-    min: 0
-    max: 2000000
-    name: Daily Water Consumption
-    step: 1
-    mode: box
-    unit_of_measurement: L
-    icon: mdi:water
-  water_meter_weekly_consumption:
-    min: 0
-    max: 2000000
-    name: Weekly Water Consumption
-    step: 1
-    mode: box
-    unit_of_measurement: L
-    icon: mdi:water
-  water_meter_monthly_consumption:
-    min: 0
-    max: 2000000
-    name: Monthly Water Consumption
-    step: 1
-    mode: box
-    unit_of_measurement: L
-    icon: mdi:water
-  water_meter_yearly_consumption:
-    min: 0
-    max: 2000000
-    name: Yearly Water Consumption
-    step: 1
-    mode: box
-    unit_of_measurement: L
-    icon: mdi:water
-  water_meter_total_consumption:
-    min: 0
-    max: 2000000
-    name: Total Water Consumption
-    step: 1
-    mode: box
-    unit_of_measurement: L
-    icon: mdi:water
 
 #################
 #    SENSORS    #
 #################
 sensor:
-  # - platform: integration
-  #   source: sensor.water_meter_water_consumption
-  #   method: left
-  #   unit_time: min
-
   - platform: template
     sensors:
       net_energy_usage:
@@ -813,26 +769,6 @@ sensor:
     method: left
     round: 2
     max_sub_interval:
-      minutes: 10
-
-  - platform: integration #Note, this is in principle a redundant sensor, as I can also just use sensor.total_water from the ESPHome device itself
-    source: sensor.water_usage
-    name: Total Water Usage Home Assistant Integrated
-    unique_id: integration_total_water_usage
-    unit_time: min
-    round: 0
-    max_sub_interval:
-      minutes: 10
-  # - platform: derivative # I think this should be removed
-  #   source: sensor.water_meter_main_water_consumption
-  #   name: Current Water Consumption
-  #   unit_time: min
-  #   time_window: "00:01:00"
-  - platform: statistics
-    entity_id: sensor.water_meter_water_consumption
-    name: Statistics Water per Ten Minutes
-    state_characteristic: sum
-    max_age:
       minutes: 10
 
 # Heat pump:

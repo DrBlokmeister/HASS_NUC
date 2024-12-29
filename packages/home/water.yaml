@@ -1,0 +1,430 @@
+homeassistant:
+  customize: {}
+
+input_datetime:
+  last_heat_up:
+    name: Last Heat Up
+    has_date: true
+    has_time: true
+  last_disinfection:
+    name: Last Disinfection
+    has_date: true
+    has_time: true
+
+#################
+#    SENSORS    #
+#################
+sensor:
+  - platform: integration #Note, this is in principle a redundant sensor, as I can also just use sensor.total_water from the ESPHome device itself
+    source: sensor.water_usage
+    name: Total Water Usage Home Assistant Integrated
+    unique_id: integration_total_water_usage
+    unit_time: min
+    round: 0
+    max_sub_interval:
+      minutes: 10
+  # - platform: derivative # I think this should be removed
+  #   source: sensor.water_meter_main_water_consumption
+  #   name: Current Water Consumption
+  #   unit_time: min
+  #   time_window: "00:01:00"
+  - platform: statistics
+    entity_id: sensor.water_meter_water_consumption
+    name: Statistics Water per Ten Minutes
+    state_characteristic: sum
+    max_age:
+      minutes: 10
+
+  - platform: derivative
+    source: sensor.heatpump_tapwater_temperature
+    name: Tapwater Temperature Change 1min
+    time_window: "00:01:00"
+    unit_time: h
+    unit: °C
+  - platform: derivative
+    source: sensor.heatpump_tapwater_temperature
+    name: Tapwater Temperature Change 5min
+    time_window: "00:05:00"
+    unit_time: h
+    unit: °C
+  - platform: derivative
+    source: sensor.heatpump_tapwater_temperature
+    name: Tapwater Temperature Change 10min
+    time_window: "00:10:00"
+    unit_time: h
+    unit: °C
+
+#######################
+#    INPUT NUMBERS    #
+#######################
+input_number:
+  water_meter_daily_consumption:
+    min: 0
+    max: 2000000
+    name: Daily Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_weekly_consumption:
+    min: 0
+    max: 2000000
+    name: Weekly Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_monthly_consumption:
+    min: 0
+    max: 2000000
+    name: Monthly Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_yearly_consumption:
+    min: 0
+    max: 2000000
+    name: Yearly Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+  water_meter_total_consumption:
+    min: 0
+    max: 2000000
+    name: Total Water Consumption
+    step: 1
+    mode: box
+    unit_of_measurement: L
+    icon: mdi:water
+
+  tapwater_disinfection_temperature:
+    name: "Tapwater Disinfection Temperature"
+    icon: mdi:thermometer
+    min: 55  # Minimum temperature in °C
+    max: 60  # Maximum temperature in °C
+    step: 0.1  # Adjust the temperature in 1°C steps
+    unit_of_measurement: "°C"
+    mode: "box"
+  tapwater_heat_up_temperature:
+    name: "Tapwater Heat-Up Temperature"
+    icon: mdi:thermometer-plus
+    min: 40
+    max: 60
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: "box"
+  tapwater_set_back_temperature:
+    name: "Tapwater Set-Back Temperature"
+    icon: mdi:thermometer-minus
+    min: 30
+    max: 50
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: "box"
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+  - platform: template
+    switches:
+      heatpump_tapwater_power_saving_mode:
+        value_template: "{{ states('number.heatpump_tapwater_target_temperature')|int <= 45 and states('number.heatpump_tapwater_hysteresis')|float() >= 5 }}"
+        turn_on:
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_target_temperature
+              value: 45
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_hysteresis
+              value: 5
+        turn_off:
+          delay:
+            seconds: 1
+      heatpump_tapwater_heatup_mode:
+        value_template: "{{ states('number.heatpump_tapwater_target_temperature')|int >= 55 and states('number.heatpump_tapwater_hysteresis')|float() < 5 }}"
+        turn_on:
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_target_temperature
+              value: 55
+          - service: number.set_value
+            data:
+              entity_id: number.heatpump_tapwater_hysteresis
+              value: 1
+        turn_off:
+          delay:
+            seconds: 1
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: "[home|climate] Heat up tapwater in the morning"
+    id: home_climate_heat_up_tapwater_in_the_morning
+    mode: single
+    trigger:
+      - platform: template
+        value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
+        id: "heat_up_total_cheapest"
+      # - platform: template #Two hours after lowest energy price time
+      #   value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 2 }}"
+      #   id: "cool_down"
+      - platform: numeric_state
+        entity_id: sensor.nordpool_energy_price
+        value_template: "{{ state.state | float - 0.001 }}"
+        above: sensor.lowest_quartile_electricity_price_today
+        id: "cool_down"
+      - platform: template
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+        id: "heat_up_nightly_cheapest"
+      - platform: template
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 4) }}"
+        id: "cool_down"
+    condition:
+    action:
+      - choose:
+            # Regular heat-up during cheapest time
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'heat_up_total_cheapest' }}"
+              - condition: template
+                value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity_id: binary_sensor.house_occupied
+                    state: 'on'
+                  - condition: numeric_state
+                    entity_id: sensor.proximity_tamara_distance
+                    below: 50000
+                  - condition: numeric_state
+                    entity_id: sensor.proximity_sander_distance
+                    below: 50000
+              - condition: not
+                conditions:
+                  - condition: time
+                    weekday:
+                      - sun
+            sequence:
+              - service: number.set_value
+                data_template:
+                  value: >
+                    {{ states('input_number.tapwater_heat_up_temperature') }}
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 1
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+              - delay:
+                  seconds: 5
+              - wait_for_trigger:
+                  - platform: numeric_state
+                    entity_id: sensor.nordpool_energy_price
+                    value_template: "{{ state.state | float - 0.001 }}"
+                    above: sensor.lowest_quartile_electricity_price_today
+                timeout:
+                  hours: 6
+                continue_on_timeout: true
+              - service: number.set_value
+                data:
+                  value: "{{ states('input_number.tapwater_set_back_temperature') }}"
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 5
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+            # Disinfection heat-up during cheapest time on sunday
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'heat_up_total_cheapest' }}"
+              - condition: template
+                value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
+              - condition: time
+                weekday:
+                  - sun
+            sequence:
+              - service: number.set_value
+                data_template:
+                  value: >
+                    {{ states('input_number.tapwater_disinfection_temperature') }}
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 1
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+              - delay:
+                  seconds: 5
+              - wait_for_trigger:
+                  - platform: numeric_state
+                    entity_id: sensor.nordpool_energy_price
+                    value_template: "{{ state.state | float - 0.001 }}"
+                    above: sensor.lowest_quartile_electricity_price_today
+                timeout:
+                  hours: 6
+                continue_on_timeout: true
+              - service: number.set_value
+                data:
+                  value: "{{ states('input_number.tapwater_set_back_temperature') }}"
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 5
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+            # Nighly heat-up
+          - conditions:
+              - condition: template
+                value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+              - condition: state
+                entity_id: binary_sensor.house_occupied
+                state: 'on'
+              # - condition: not
+              #   conditions:
+              #     - condition: time
+              #       weekday:
+              #         - sun
+            sequence:
+              - service: number.set_value
+                data_template:
+                  value: >
+                    {{ states('input_number.tapwater_heat_up_temperature') }}
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 1
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+              - delay:
+                  minutes: 60
+              - service: number.set_value
+                data:
+                  value: "{{ states('input_number.tapwater_set_back_temperature') }}"
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 5
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+          # Back-up sequence lower temperature back again if it is not already running
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'cool_down' }}"
+              - condition: template
+                value_template: "{{ state_attr('automation.home_climate_heat_up_tapwater_in_the_morning', 'current') != 0 }}"
+            sequence:
+              - service: number.set_value
+                data:
+                  value: "{{ states('input_number.tapwater_set_back_temperature') }}"
+                target:
+                  entity_id: number.heatpump_tapwater_target_temperature
+              - service: number.set_value
+                data:
+                  value: 5
+                target:
+                  entity_id:
+                    - number.heatpump_tapwater_hysteresis
+
+  - alias: "[home|climate] Update Last Heat Up Time"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.heatpump_tapwater_temperature
+        above: input_number.tapwater_heat_up_temperature
+        for:
+          minutes: 30
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.last_heat_up
+        data:
+          timestamp: "{{ now().timestamp() }}"
+
+  - alias: "[home|climate] Update Last Disinfection Time"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.heatpump_tapwater_temperature
+        above: '59'
+        for:
+          minutes: 30
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.last_disinfection
+        data:
+          timestamp: "{{ now().timestamp() }}"
+
+  - alias: "[home|climate] Disinfection Overdue Notification"
+    trigger:
+      - platform: time_pattern
+        hours: "/1"
+      - platform: template # last disinfection was 8 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_disinfection'))) > (8 * 24 * 3600) }}
+    condition:
+      - condition: template # last disinfection was 8 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_disinfection'))) > (8 * 24 * 3600) }}
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Disinfection Overdue"
+          message: >
+            The thermal disinfection has not been performed since {{ strptime(states('input_datetime.last_disinfection'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
+          notification_id: thermal_disinfection_overdue
+
+  - alias: "[home|climate] Heat Up Overdue Notification"
+    trigger:
+      - platform: time_pattern
+        hours: "/1"
+      - platform: template # last disinfection was 2 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_heat_up'))) > (2 * 24 * 3600) }}
+    condition:
+      - condition: template # last disinfection was 2 days ago, but calculation is in seconds
+        value_template: >
+          {{ (as_timestamp(now()) - as_timestamp(states('input_datetime.last_heat_up'))) > (2 * 24 * 3600) }}
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Heat Up Overdue"
+          message: >
+            The water heatup has not been performed since {{ strptime(states('input_datetime.last_heat_up'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
+          notification_id: regular_heatup_overdue
+  
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
