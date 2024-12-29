@@ -158,6 +158,8 @@ binary_sensor:
 input_boolean:
   shower_occupied:
     name: Shower Occupation
+  hot_water_in_shower:
+    name: Hot Water in Shower
 ##################
 #    SWITCHES    #
 ##################
@@ -201,76 +203,6 @@ automation:
           transition_time: 0.5
           click_count: "{{ trigger.event.data.click_count }}"
 
-  # - alias: '[bathroom|light] turn on light through motion'
-  #   mode: restart
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.bathroom_motion_1
-  #       to: 'on'
-  #   condition:
-  #     - condition: state
-  #       entity_id: input_boolean.sleep_tracking_on
-  #       state: 'off'
-  #     - condition: state
-  #       entity_id: binary_sensor.house_occupied
-  #       state: 'on'
-  #   action:
-  #     - choose:
-  #       - conditions:
-  #           - condition: time
-  #             after: '06:00:00'
-  #             before: '21:00:00'
-  #         sequence:
-  #           - service: light.turn_on
-  #             entity_id:
-  #               - light.bathroom_light_bright
-  #               - light.bathroom_light_dim
-  #       - conditions:
-  #           - condition: time
-  #             after: '21:00:00'
-  #             before: '06:00:00'
-  #         sequence:
-  #           - service: light.turn_on
-  #             entity_id:
-  #               - light.bathroom_light_dim
-  #     - service: timer.start
-  #       data:
-  #         entity_id: timer.bathroom_lights
-  #         duration: "{{ states('input_number.bathroom_light_timeout')|int(5)*60 }}"
-  #     - wait_for_trigger:
-  #         - platform: template
-  #           value_template: "{{ is_state('binary_sensor.bathroom_motion_1', 'off') and is_state('input_boolean.shower_occupied', 'off') }}"
-  #           for:
-  #             minutes: "{{ states('input_number.bathroom_light_timeout')|int(5) }}"
-  #         - platform: numeric_state
-  #           entity_id: sensor.water_consumption_per_hour
-  #           below: 1
-  #           for:
-  #             minutes: 15
-  #     - condition: state
-  #       entity_id: light.bathroom_light_dim
-  #       state: 'on'
-  #     - service: light.turn_off
-  #       entity_id: light.bathroom_light_dim
-  #     - delay:
-  #         milliseconds: 300
-  #     - service: light.turn_on
-  #       entity_id: light.bathroom_light_dim
-  #     - delay:
-  #         milliseconds: 300
-  #     - service: light.turn_off
-  #       entity_id: light.bathroom_light_dim
-  #     - delay:
-  #         milliseconds: 300
-  #     - service: light.turn_on
-  #       entity_id: light.bathroom_light_dim
-  #     - delay:
-  #         seconds: 15
-  #     - service: light.turn_off
-  #       entity_id:
-  #         - light.bathroom_light_bright
-  #         - light.bathroom_light_dim
-
   - alias: '[bathroom|occupancy] Set shower occupancy input boolean'
     id: yaml_automation_bathroom_occupancy_set_shower_occupancy_input_boolean
     mode: single
@@ -306,6 +238,45 @@ automation:
               - service: input_boolean.turn_off
                 entity_id: input_boolean.shower_occupied
 
+  - alias: '[bathroom|occupancy] Detect Hot Water Usage in Shower'
+    id: detect_hot_water_usage_in_shower
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.water_usage
+        above: 5
+      - platform: numeric_state
+        entity_id: sensor.water_usage
+        below: 5
+        for:
+          minutes: 5
+    condition:
+      - condition: template
+        value_template: >
+          {% if trigger.to_state.state|float > 5 %}
+            true
+          {% else %}
+            states('sensor.tapwater_temperature_change_5min')|float <= -1
+          {% endif %}
+    action:
+      - choose:
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.water_usage
+                above: 5
+            sequence:
+              - service: input_boolean.turn_on
+                entity_id: input_boolean.hot_water_in_shower
+          - conditions:
+              - condition: numeric_state
+                entity_id: sensor.water_usage
+                below: 5
+                for:
+                  minutes: 5
+            sequence:
+              - service: input_boolean.turn_off
+                entity_id: input_boolean.hot_water_in_shower
+
 ################
 #    SCENES    #
 ################
@@ -320,33 +291,6 @@ group:
 #    LIGHTS    #
 ################
 light:
-  # - platform: template
-  #   lights:
-  #     bathroom_light_bright:
-  #       #friendly name: "Bathroom light bright"
-  #       #entity_id: switch.shelly_bathroom_1
-  #       value_template: "{{ states('switch.shelly_bathroom_1') }}"
-  #       turn_on:
-  #         service: switch.turn_on
-  #         entity_id: switch.shelly_bathroom_1
-  #       turn_off:
-  #         service: switch.turn_off
-  #         entity_id: switch.shelly_bathroom_1
-  #     bathroom_light_dim:
-  #       #friendly name: "Bathroom light dim"
-  #       #entity_id: switch.shelly_bathroom_2
-  #       value_template: "{{ states('switch.shelly_bathroom_2') }}"
-  #       turn_on:
-  #         service: switch.turn_on
-  #         entity_id: switch.shelly_bathroom_2
-  #       turn_off:
-  #         service: switch.turn_off
-  #         entity_id: switch.shelly_bathroom_2
-  # - platform: group
-  #   name: Bathroom Lights
-  #   entities:
-  #     - light.bathroom_light_bright
-  #     - light.bathroom_light_dim
 
 #################
 #    SCRIPTS    #
