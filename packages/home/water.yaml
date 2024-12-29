@@ -54,6 +54,13 @@ sensor:
     unit_time: h
     unit: °C
 
+  - platform: statistics
+    name: "Water Usage 10 Minute Average"
+    entity_id: sensor.water_usage
+    state_characteristic: average_step
+    max_age:
+      minutes: 10
+
 #######################
 #    INPUT NUMBERS    #
 #######################
@@ -413,7 +420,43 @@ automation:
           message: >
             The water heatup has not been performed since {{ strptime(states('input_datetime.last_heat_up'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
           notification_id: regular_heatup_overdue
-  
+
+  - alias: "[home|water]Warn High Water Usage"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.water_usage_10_minute_average
+        above: 0.3  # Adjust this threshold based on your needs
+        for:
+          minutes: 60
+    condition:
+    action:
+      - service: notify.sander_and_tamara_phones
+        data:
+          message: >-
+            Warning: High water usage detected! 
+            Current usage: {{ states('sensor.water_usage') }} L/min.
+            10-minute average: {{ states('sensor.water_usage_10_min_average') }} L/min.
+          title: "Water Usage Alert"
+          data:
+            ttl: 0
+            priority: high
+            tag: water_usage
+            group: "water_usage_alert"
+            notification_icon: "mdi:water-alert"
+      - wait_for_trigger:
+          - platform: numeric_state
+            entity_id: sensor.water_usage
+            below: 0.01  # Adjust if your sensor reports values slightly above 0
+            for:
+              minutes: 10
+      - service: notify.sander_and_tamara_phones
+        data:
+          message: "clear_notification"
+          data:
+            ttl: 0
+            priority: high
+            tag: water_usage
+
 ################
 #    SCENES    #
 ################
