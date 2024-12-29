@@ -1,0 +1,131 @@
+substitutions:
+  device_name: "Powerstrip Mediacenter"
+  espname: "powerstrip-mediacenter"
+
+esphome:
+  name: '${espname}'
+  friendly_name: '${device_name}'
+  comment: 'Blitzwolf SHP9' #See https://devices.esphome.io/devices/BlitzWolf-BW-SHP9
+  on_boot:
+    priority: -100
+    then:
+      - light.turn_on:
+          id: led_status
+          brightness: 100%
+          effect: "Slow Pulse"
+
+preferences:
+  flash_write_interval: 60min
+
+esp8266:
+  board: esp8285 #ESP-02S
+  early_pin_init: false # Prevent relay toggle during boot
+  restore_from_flash: true
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+wifi:
+  use_address: 10.0.30.144
+
+output:
+  - platform: esp8266_pwm
+    pin: GPIO0
+    frequency: 500 Hz
+    id: pwm_output
+
+light:
+  - platform: status_led
+    output: pwm_output
+    id: led_status
+    name: ${device_name} LED
+    internal: true
+    # effects:
+    #   - pulse:
+    #       name: "Slow Pulse"
+    #       transition_length: 1s
+    #       update_interval: 1.2s
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "${device_name} Button"
+    on_multi_click:
+    - timing:
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Triple Click - socket 3"
+        - switch.toggle: relay3
+    - timing:
+        - ON for at most 0.6s
+        - OFF for at most 0.6s
+        - ON for at most 0.6s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Double Click - socket 2"
+        - switch.toggle: relay2
+    - timing:
+        - ON for at most 0.5s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Single Click - socket 1"
+        - switch.toggle: relay1
+    - timing:
+        - ON for 0.8s to 2s
+        - OFF for at least 0.1s
+      then:
+        - logger.log: "Long Click - USB"
+        - switch.toggle: relay_usb
+    - timing:
+        - ON for at least 5s
+      then:
+        - light.turn_on: led_status
+        - delay: 500ms
+        - light.turn_off: led_status
+        - delay: 500ms
+        - light.turn_on: led_status
+        - delay: 500ms
+        - light.turn_off: led_status
+        - delay: 500ms
+        - light.turn_on: led_status
+        - delay: 500ms
+        - light.turn_off: led_status
+        - delay: 500ms
+        - button.press: restart_button
+
+switch:
+  - platform: gpio
+    pin: GPIO12
+    name: "${device_name} Socket 1"
+    icon: mdi:power-socket-de
+    id: relay1
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin: GPIO14
+    name: "${device_name} Socket 2"
+    icon: mdi:power-socket-de
+    id: relay2
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin: GPIO5
+    name: "${device_name} Socket 3"
+    icon: mdi:power-socket-de
+    id: relay3
+    restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    pin:
+      number: GPIO15
+    name: "${device_name} Socket USB"
+    icon: mdi:usb
+    id: relay_usb
+    restore_mode: RESTORE_DEFAULT_ON
