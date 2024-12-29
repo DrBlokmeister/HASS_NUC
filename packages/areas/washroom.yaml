@@ -55,6 +55,41 @@ automation:
             - service: switch.turn_off
               data:
                 entity_id: switch.shelly_washroom
+
+  - alias: "[washroom|leak]Warn Washing Machine Leak"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.washing_machine_leak_sensor
+        to: "on"  # Water detected
+    condition: []
+    action:
+      - service: notify.sander_and_tamara_phones
+        data:
+          message: >-
+            Warning: Water detected under the washing machine!
+            Detector state: {{ states('binary_sensor.washing_machine_leak_sensor') }} since {{ states.binary_sensor.washing_machine_leak_sensor.last_changed.strftime('%Y-%m-%d %H:%M:%S') }}.
+            Please check immediately to prevent damage.
+          title: "Washing Machine Leak Alert"
+          data:
+            ttl: 0
+            priority: high
+            tag: washing_machine_leak
+            group: "water_leak_alert"
+            notification_icon: "mdi:water-alert"
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.washing_machine_leak_sensor
+            to: "off"  # No water detected
+            for:
+              hours: 12
+      - service: notify.sander_and_tamara_phones
+        data:
+          message: "clear_notification"
+          data:
+            ttl: 0
+            priority: high
+            tag: washing_machine_leak
+
 ################
 #    SCENES    #
 ################
