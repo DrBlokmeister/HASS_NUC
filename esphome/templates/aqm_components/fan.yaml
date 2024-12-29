@@ -1,0 +1,44 @@
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - fan.turn_on:
+          id: speedfan
+          speed: 60
+
+sensor:
+  - platform: pulse_counter
+    name: "${location} Fan Speed"
+    pin:
+      number: GPIO17 #D3
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    id: fanspeed_sensor
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+
+output:
+  # Wire this pin (15) into the PWM pin of your 12v fan
+  # ledc is the name of the pwm output system on an esp32
+  - platform: ledc
+    id: fan_output
+    pin: GPIO5 #D8
+
+    # 25KHz is standard PC fan frequency, minimises buzzing
+    frequency: "25000 Hz"
+
+    # my fans stop working below 13% powerful.
+    # also they're  powerful and loud, cap their max speed to 80%
+    min_power: 1%
+    max_power: 100%
+
+fan:
+  - platform: speed
+    output: fan_output
+    id: speedfan
+    name: "${location} Fan"
+    restore_mode: RESTORE_DEFAULT_ON
