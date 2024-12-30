@@ -707,9 +707,9 @@ automation:
                             - 'unavailable'
                           for:
                             seconds: 1
-                    - condition: template
-                      value_template: >
-                        {{ (now() - start_time).total_seconds() > 10 }}
+                        - condition: template
+                          value_template: >
+                            {{ (now() - start_time).total_seconds() > 20 }}
               - service: switch.turn_off
                 entity_id: switch.powerstrip_study_desk_socket_3
           - conditions:
@@ -718,6 +718,91 @@ automation:
             sequence:
               - service: switch.turn_off
                 entity_id: switch.powerstrip_study_desk_socket_usb
+
+  - alias: "[study|desk] Turn off study powerstrip devices"
+    description: Turns off study desk sockets desktop and laptop are not home
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.plug_study_desk_power
+        below: 50
+        for: "00:05:00"
+      - platform: state
+        entity_id: device_tracker.blokmeister_h2o2_proart
+        to: "not_home"
+        for: "00:05:00"
+      - platform: state
+        entity_id: device_tracker.worklaptop_dock
+        to: "not_home"
+        for: "00:05:00"
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.plug_study_desk_power
+        below: 50
+      - condition: state
+        entity_id: device_tracker.blokmeister_h2o2_proart
+        state: "not_home"
+        for: "00:05:00"
+      - condition: state
+        entity_id: device_tracker.worklaptop_dock
+        state: "not_home"
+        for: "00:05:00"
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: switch.powerstrip_study_desk_socket_1
+            state: "on"
+          - condition: state
+            entity_id: switch.powerstrip_study_desk_socket_2
+            state: "on"
+          - condition: state
+            entity_id: switch.powerstrip_study_desk_socket_3
+            state: "on"
+          - condition: state
+            entity_id: switch.powerstrip_study_desk_socket_4
+            state: "on"
+    action:
+      - service: switch.turn_off
+        target:
+          entity_id: switch.powerstrip_study_desk_socket_4
+      - variables:
+          start_time: "{{ now().timestamp() }}"
+      - repeat:
+          sequence:
+            - delay:
+                milliseconds: 500
+            - service: light.turn_off
+              entity_id:
+                - light.study_candle
+                - light.study_desk_a_rgb_ledstrip
+          until:
+            - condition: or
+              conditions:
+                - condition: state
+                  entity_id:
+                    - light.study_candle
+                    - light.study_desk_a_rgb_ledstrip
+                  state:
+                    - 'off'
+                    - 'unavailable'
+                  for:
+                    seconds: 1
+                - condition: template
+                  value_template: >
+                    {{ (now() - start_time).total_seconds() > 20 }}
+      - service: switch.turn_off
+        target:
+          entity_id: switch.powerstrip_study_desk_socket_3
+      - delay: "00:00:02"
+      - delay: "00:00:02"
+      - service: switch.turn_off
+        target:
+          entity_id: switch.powerstrip_study_desk_socket_2
+      - delay: "00:00:02"
+      - service: switch.turn_off
+        target:
+          entity_id: switch.powerstrip_study_desk_socket_1
+
 
 #################
 #    SCRIPTS    #
