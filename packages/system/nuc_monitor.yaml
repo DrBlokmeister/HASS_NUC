@@ -25,6 +25,14 @@ homeassistant:
     binary_sensor.plexmediaserver:
       icon: mdi:plex
 
+notify:
+  - name: mysql_command_example_db
+    platform: mysql_command
+    host: !secret NUC_IP
+    username: !secret mariadb_user
+    password: !secret mariadb_pass
+    db: homeassistant
+
 # monitor_docker:
 #   - name: Docker
 #     url: tcp://10.0.0.252:2375
@@ -370,6 +378,19 @@ sensor:
       - filter: lowpass
         time_constant: 10
 
+  - platform: derivative
+    source: sensor.system_monitor_packets_in_eno1
+    name: NUC eno1 Incoming Packets per Second
+    round: 0
+    unit_time: s
+    unit: packets/s
+  - platform: derivative
+    source: sensor.system_monitor_packets_out_eno1
+    name: NUC eno1 Outgoing Packets per Second
+    round: 0
+    unit_time: s
+    unit: packets/s
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -442,7 +463,24 @@ automation:
           language: en-IE
       - delay:
           minutes: 5
-      - service: shell_command.set_mariadb_variables
+      - action: notify.mariadb_command
+        data:
+          message: SET GLOBAL innodb_buffer_pool_size = 12 * 1024 * 1024 * 1024;
+      - action: notify.mariadb_command
+        data:
+          message: SET GLOBAL max_connections = 256;
+      - action: notify.mariadb_command
+        data:
+          message: SET GLOBAL thread_cache_size = 32;
+      - action: notify.mariadb_command
+        data:
+          message: SET GLOBAL tmp_table_size = 256 * 1024 * 1024;
+      - action: notify.mariadb_command
+        data:
+          message: SET GLOBAL query_cache_size = 64 * 1024 * 1024;
+      - action: notify.mariadb_command
+        data:
+          message: SET GLOBAL query_cache_type = 1;
 
   - alias: '[System] Hass Updater'
     initial_state: on
@@ -468,6 +506,8 @@ automation:
     action:
       - service: homeassistant.update_entity
         entity_id: sensor.mariadb_size
+      - service: homeassistant.update_entity
+        entity_id: sensor.mariadb_most_recorded_entity
 
   - alias: '[system|database] Auto purge database'
     mode: single
