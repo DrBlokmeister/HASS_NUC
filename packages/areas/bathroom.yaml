@@ -104,6 +104,8 @@ binary_sensor:
         value_template: "{{ is_state('light.bathroom', 'on') }}"
       bathroom_bayesian_test_water_usage_contition:
         value_template: "{{ states('sensor.water_meter_current_water_consumption')|int(0) > 20 }}"
+      water_usage_above_5_l_min:
+        value_template: "{{ states('sensor.water_usage')|int(0) > 5 }}"
 
   - platform: bayesian
     name: Shower Occupied
@@ -242,18 +244,20 @@ automation:
     id: detect_hot_water_usage_in_shower
     mode: single
     trigger:
-      - platform: numeric_state
-        entity_id: sensor.water_usage
-        above: 5
-      - platform: numeric_state
-        entity_id: sensor.water_usage
-        below: 5
-        for:
-          minutes: 5
+      - platform: state
+        entity_id: sensor.water_usage_above_5_l_min
+      # - platform: numeric_state
+      #   entity_id: sensor.water_usage
+      #   above: 5
+      # - platform: numeric_state
+      #   entity_id: sensor.water_usage
+      #   below: 5
+      #   for:
+      #     minutes: 5
     condition:
       - condition: template
         value_template: >
-          {% if trigger.to_state.state|float > 5 %}
+          {% if trigger.to_state.state == 'on' %}
             true
           {% else %}
             states('sensor.tapwater_temperature_change_5min')|float <= -1
@@ -268,9 +272,9 @@ automation:
               - service: input_boolean.turn_on
                 entity_id: input_boolean.hot_water_in_shower
           - conditions:
-              - condition: numeric_state
-                entity_id: sensor.water_usage
-                below: 5
+              - condition: state
+                entity_id: sensor.water_usage_above_5_l_min
+                state: 'off'
                 for:
                   minutes: 5
             sequence:
