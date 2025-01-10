@@ -26,7 +26,7 @@ homeassistant:
       icon: mdi:plex
 
 notify:
-  - name: mysql_command_example_db
+  - name: ha_mariadb_command
     platform: mysql_command
     host: !secret NUC_IP
     username: !secret mariadb_user
@@ -463,22 +463,22 @@ automation:
           language: en-IE
       - delay:
           minutes: 5
-      - action: notify.mariadb_command
+      - action: notify.ha_mariadb_command
         data:
           message: SET GLOBAL innodb_buffer_pool_size = 12 * 1024 * 1024 * 1024;
-      - action: notify.mariadb_command
+      - action: notify.ha_mariadb_command
         data:
           message: SET GLOBAL max_connections = 256;
-      - action: notify.mariadb_command
+      - action: notify.ha_mariadb_command
         data:
           message: SET GLOBAL thread_cache_size = 32;
-      - action: notify.mariadb_command
+      - action: notify.ha_mariadb_command
         data:
           message: SET GLOBAL tmp_table_size = 256 * 1024 * 1024;
-      - action: notify.mariadb_command
+      - action: notify.ha_mariadb_command
         data:
           message: SET GLOBAL query_cache_size = 64 * 1024 * 1024;
-      - action: notify.mariadb_command
+      - action: notify.ha_mariadb_command
         data:
           message: SET GLOBAL query_cache_type = 1;
 
@@ -663,6 +663,51 @@ automation:
                 data:
                   config_entry_id: 4579f9b25783c90b764ed2ce0ebbbc66
 
+
+  - alias: "[system|nuc]Reload Shelly Config When Unavailable"
+    mode: parallel
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.ping_shelly_baby_room_round_trip_time_average
+          - sensor.ping_shelly_backgarden_round_trip_time_average
+          - sensor.ping_shelly_bathroom_round_trip_time_average
+          - sensor.ping_shelly_bedroom_round_trip_time_average
+          - sensor.ping_shelly_closet_round_trip_time_average
+          - sensor.ping_shelly_dinnertable_round_trip_time_average
+          - sensor.ping_shelly_entry_round_trip_time_average
+          - sensor.ping_shelly_guest_room_round_trip_time_average
+          - sensor.ping_shelly_hallway_1st_floor_round_trip_time_average
+          - sensor.ping_shelly_hallway_2nd_floor_round_trip_time_average
+          - sensor.ping_shelly_kitchen_round_trip_time_average
+          - sensor.ping_shelly_livingroom_round_trip_time_average
+          - sensor.ping_shelly_porch_round_trip_time_average
+          - sensor.ping_shelly_study_round_trip_time_average
+          - sensor.ping_shelly_washroom_round_trip_time_average
+        to: "unavailable"
+    action:
+      - service: homeassistant.reload_config_entry
+        data: {}
+        target:
+          device_id: >
+            {% set mapping = {
+              "sensor.ping_shelly_baby_room_round_trip_time_average": "4be973a29c599ad17986cb9d9cc78e7a",
+              "sensor.ping_shelly_backgarden_round_trip_time_average": "66fb966d608591f9a3b3b449fa51b552",
+              "sensor.ping_shelly_bathroom_round_trip_time_average": "539a25871d8ff9b1531f4ca6ab75b782",
+              "sensor.ping_shelly_bedroom_round_trip_time_average": "8a2018eac4f665588e4d61861466c921",
+              "sensor.ping_shelly_closet_round_trip_time_average": "ac32547c1329f7449ed2e29a199309f1",
+              "sensor.ping_shelly_dinnertable_round_trip_time_average": "9db5ce7301f44b14ec4be2e66d94f6ef",
+              "sensor.ping_shelly_entry_round_trip_time_average": "69a10bba6075f808c56bdc92cf094a3b",
+              "sensor.ping_shelly_guest_room_round_trip_time_average": "b36ebfee8746ec10da8d5ffa125676fa",
+              "sensor.ping_shelly_hallway_1st_floor_round_trip_time_average": "d1134ac7c9f4cdfa05fa55e7e4672de0",
+              "sensor.ping_shelly_hallway_2nd_floor_round_trip_time_average": "7ffa80d3afca0975a2e3430055362d09",
+              "sensor.ping_shelly_kitchen_round_trip_time_average": "ef5294fb9aab5aba74a1245567851b37",
+              "sensor.ping_shelly_livingroom_round_trip_time_average": "b509848c6cadec0384d849577a0e8d0b",
+              "sensor.ping_shelly_porch_round_trip_time_average": "4d38e03b8cc6d60dad87dc0b4684fe3b",
+              "sensor.ping_shelly_study_round_trip_time_average": "56dc4b914f0946bb0231ba9ce4205d84",
+              "sensor.ping_shelly_washroom_round_trip_time_average": "ddab2d0aca5ca9adf7d5dde9abee5f3a"
+            } %}
+            {{ mapping[trigger.entity_id] }}
 
 ################
 #    SCENES    #
