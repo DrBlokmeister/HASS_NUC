@@ -1,8 +1,13 @@
 """Constants for the Unraid integration."""
 from enum import Enum, IntEnum
-from typing import Final
+from typing import Final, Dict
 from homeassistant.const import ( # type: ignore
     Platform,
+    PERCENTAGE,
+    UnitOfPower,
+    UnitOfElectricPotential,
+    UnitOfTime,
+    UnitOfEnergy,
 )
 
 # Unraid Server
@@ -55,18 +60,40 @@ UNIT_PERCENTAGE = "%"
 TEMP_WARN_THRESHOLD: Final = 80  # Temperature above which warning state is triggered
 TEMP_CRIT_THRESHOLD: Final = 90  # Temperature above which critical state is triggered
 
-# UPS Configuration
-UPS_METRICS = {
-    "NOMPOWER": {"min": 0, "max": 10000, "unit": "W"},
-    "LOADPCT": {"min": 0, "max": 100, "unit": "%"},
-    "CUMONKWHOURS": {"min": 0, "max": 1000000, "unit": "kWh"},
-    "LOADAPNT": {"min": 0, "max": 10000, "unit": "VA"},
-    "LINEV": {"min": 0, "max": 500, "unit": "V"},
-    "POWERFACTOR": {"min": 0, "max": 1, "unit": None},
-    "BCHARGE": {"min": 0, "max": 100, "unit": "%"},
-    "TIMELEFT": {"min": 0, "max": 1440, "unit": "min"},
-    "BATTV": {"min": 0, "max": 60, "unit": "V"},
+# UPS metric validation ranges
+UPS_METRICS: Final[Dict[str, dict]] = {
+    "NOMPOWER": {"min": 0, "max": 10000, "unit": UnitOfPower.WATT},
+    "LOADPCT": {"min": 0, "max": 100, "unit": PERCENTAGE},
+    "BCHARGE": {"min": 0, "max": 100, "unit": PERCENTAGE},
+    "LINEV": {"min": 0, "max": 500, "unit": UnitOfElectricPotential.VOLT},
+    "BATTV": {"min": 0, "max": 60, "unit": UnitOfElectricPotential.VOLT},
+    "TIMELEFT": {"min": 0, "max": 1440, "unit": UnitOfTime.MINUTES},
+    "ITEMP": {"min": 0, "max": 60, "unit": "°C"},
+    "CUMONKWHOURS": {"min": 0, "max": 1000000, "unit": UnitOfEnergy.KILO_WATT_HOUR},
 }
+
+# UPS model patterns for power calculation
+UPS_MODEL_PATTERNS: Final[Dict[str, float]] = {
+    r'smart-ups.*?(\d{3,4})': 1.0,       # Smart-UPS models use direct VA rating
+    r'back-ups.*?(\d{3,4})': 0.9,        # Back-UPS models typically 90% of VA
+    r'back-ups pro.*?(\d{3,4})': 0.95,   # Back-UPS Pro models ~95% of VA
+    r'smart-ups\s*x.*?(\d{3,4})': 1.0,   # Smart-UPS X series
+    r'smart-ups\s*xl.*?(\d{3,4})': 1.0,  # Smart-UPS XL series
+    r'smart-ups\s*rt.*?(\d{3,4})': 1.0,  # Smart-UPS RT series
+    r'symmetra.*?(\d{3,4})': 1.0,        # Symmetra models
+    r'sua\d{3,4}': 1.0,                  # Smart-UPS alternative model format
+    r'smx\d{3,4}': 1.0,                  # Smart-UPS SMX model format
+    r'smt\d{3,4}': 1.0,                  # Smart-UPS SMT model format
+}
+
+# UPS default values and thresholds
+UPS_DEFAULT_POWER_FACTOR: Final = 0.9
+UPS_TEMP_WARN_THRESHOLD: Final = 45  # °C
+UPS_TEMP_CRIT_THRESHOLD: Final = 60  # °C
+UPS_BATTERY_LOW_THRESHOLD: Final = 50  # %
+UPS_BATTERY_CRITICAL_THRESHOLD: Final = 20  # %
+UPS_LOAD_HIGH_THRESHOLD: Final = 80  # %
+UPS_LOAD_CRITICAL_THRESHOLD: Final = 95  # %
 
 # SpinDownDelay class
 class SpinDownDelay(IntEnum):
@@ -75,15 +102,28 @@ class SpinDownDelay(IntEnum):
     MINUTES_15 = 15
     MINUTES_30 = 30
     MINUTES_45 = 45
-    HOUR_1 = 60
-    HOURS_2 = 120
-    HOURS_3 = 180
-    HOURS_4 = 240
-    HOURS_5 = 300
-    HOURS_6 = 360
-    HOURS_7 = 420
-    HOURS_8 = 480
-    HOURS_9 = 540
+    HOUR_1 = 1
+    HOURS_2 = 2
+    HOURS_3 = 3
+    HOURS_4 = 4
+    HOURS_5 = 5
+    HOURS_6 = 6
+    HOURS_7 = 7
+    HOURS_8 = 8
+    HOURS_9 = 9
+
+    @classmethod
+    def _missing_(cls, value: object) -> "SpinDownDelay":
+        """Handle invalid values by mapping to closest valid option."""
+        try:
+            # Convert value to int for comparison
+            val = int(str(value))
+            valid_values = sorted([m.value for m in cls])
+            # Find closest valid value
+            closest = min(valid_values, key=lambda x: abs(x - val))
+            return cls(closest)
+        except (ValueError, TypeError):
+            return cls.NEVER
 
     def to_human_readable(self) -> str:
         """Convert spin down delay to human readable format."""
@@ -115,26 +155,6 @@ class DiskHealth(str, Enum):
     PASSED = "PASSED"
     FAILED = "FAILED"
     UNKNOWN = "Unknown"
-
-# Docker Configuration
-CONF_DOCKER_INSIGHTS = "docker_insights"
-DEFAULT_DOCKER_INSIGHTS = False
-
-# Docker Stats Keys
-DOCKER_STATS_CPU_PERCENTAGE = "containers_cpu_percentage"
-DOCKER_STATS_1CPU_PERCENTAGE = "containers_1cpu_percentage" 
-DOCKER_STATS_MEMORY = "containers_memory"
-DOCKER_STATS_MEMORY_PERCENTAGE = "containers_memory_percentage"
-
-# Container Stats Keys
-CONTAINER_STATS_CPU_PERCENTAGE = "cpu_percentage"
-CONTAINER_STATS_1CPU_PERCENTAGE = "1cpu_percentage"
-CONTAINER_STATS_MEMORY = "memory"
-CONTAINER_STATS_MEMORY_PERCENTAGE = "memory_percentage"
-CONTAINER_STATS_NETWORK_SPEED_UP = "network_speed_up"
-CONTAINER_STATS_NETWORK_SPEED_DOWN = "network_speed_down"
-CONTAINER_STATS_NETWORK_TOTAL_UP = "network_total_up"
-CONTAINER_STATS_NETWORK_TOTAL_DOWN = "network_total_down"
 
 # Device identifier patterns
 DEVICE_ID_SERVER = "{}_server_{}"  # DOMAIN, entry_id

@@ -13,7 +13,13 @@ from homeassistant.helpers.typing import StateType # type: ignore
 from homeassistant.util import dt as dt_util # type: ignore
 
 from .base import UnraidBinarySensorBase
-from .const import UnraidBinarySensorEntityDescription
+from .const import (
+    UnraidBinarySensorEntityDescription,
+    PARITY_HISTORY_DATE_FORMAT,
+    PARITY_TIME_FORMAT,
+    PARITY_FULL_DATE_FORMAT,
+    DEFAULT_PARITY_ATTRIBUTES,
+)
 from ..const import (
     DOMAIN,
     SpinDownDelay,
@@ -85,18 +91,31 @@ class UnraidParityDiskSensor(UnraidBinarySensorBase, DiskDataHelperMixin):
             
             # Get parity delay (diskSpindownDelay.0)
             delay = disk_cfg.get("diskSpindownDelay.0")
+            
+            # Handle disk-specific setting if present and not -1
             if delay and delay != "-1":
                 _LOGGER.debug("Using parity-specific spin down delay: %s", delay)
-                return SpinDownDelay(int(delay))
-                
+                try:
+                    return SpinDownDelay(int(delay))
+                except ValueError:
+                    _LOGGER.warning(
+                        "Invalid parity-specific delay value: %s, falling back to global setting",
+                        delay
+                    )
+
             # Use global setting
             global_delay = disk_cfg.get("spindownDelay", "0")
             _LOGGER.debug("Using global spin down delay: %s", global_delay)
+            
+            # Handle special cases for global delay
+            if global_delay in (None, "", "-1"):
+                return SpinDownDelay.NEVER
+                
             return SpinDownDelay(int(global_delay))
             
         except (ValueError, TypeError) as err:
             _LOGGER.warning(
-                "Error getting spin down delay for parity disk: %s. Using default.",
+                "Error getting spin down delay for parity disk: %s. Using default Never.",
                 err
             )
             return SpinDownDelay.NEVER
@@ -470,18 +489,49 @@ class UnraidParityCheckSensor(UnraidBinarySensorBase):
     def is_on(self) -> bool | None:
         """Return true if parity check is running."""
         try:
-            # Check array state first
             array_state = self.coordinator.data.get("array_state", {})
             if array_state.get("state") != "STARTED":
                 return False
 
             # Check if sync action is running
             sync_action = array_state.get("mdResyncAction", "")
-            return bool(sync_action and sync_action != "IDLE")
+            resync_active = int(array_state.get("mdResync", "0")) > 0
+            
+            return bool(sync_action and sync_action != "IDLE" and resync_active)
 
         except Exception as err:
             _LOGGER.debug("Error checking parity status: %s", err)
             return self._last_state
+
+    @property
+    def state(self) -> str:
+        """Return the state of the sensor."""
+        try:
+            array_state = self.coordinator.data.get("array_state", {})
+            
+            # Check if array is started
+            if array_state.get("state") != "STARTED":
+                return "Success"  # Default to Success when array not started
+                
+            # Get sync action and history
+            sync_action = array_state.get("mdResyncAction", "")
+            history = array_state.get("parity_history", {})
+            
+            # If sync is running
+            if sync_action and sync_action != "IDLE":
+                return "Running"
+                
+            # Return status from history or default to Success
+            return history.get("status", "Success")
+            
+        except Exception as err:
+            _LOGGER.debug("Error determining state: %s", err)
+            return "Success"  # Default to Success on error
+
+    @property
+    def icon(self) -> str:
+        """Return the icon based on state."""
+        return "mdi:check-circle" if self.state == "Success" else "mdi:progress-check"
 
     @property
     def extra_state_attributes(self) -> dict[str, StateType]:
@@ -490,92 +540,30 @@ class UnraidParityCheckSensor(UnraidBinarySensorBase):
             array_state = self.coordinator.data.get("array_state", {})
             _LOGGER.debug("Current array state: %s", array_state)
             
-            attrs = {
-                "status": "Idle",
-                "progress": 0,
-                "speed": "N/A",
-                "errors": 0,
-                "last_check": "N/A",
-                "next_check": self.coordinator.data.get("next_parity_check", "Unknown"),
-                "duration": "N/A",
-                "last_status": "N/A"
-            }
+            # Start with default attributes
+            attrs = DEFAULT_PARITY_ATTRIBUTES.copy()
+            attrs["next_check"] = self.coordinator.data.get("next_parity_check", "Unknown")
 
-            # Get current sync status if running
-            if sync_action := array_state.get("mdResyncAction"):
-                _LOGGER.debug("Found sync action: %s", sync_action)
+            # Check if sync action is running
+            sync_action = array_state.get("mdResyncAction", "")
+            resync_active = int(array_state.get("mdResync", "0")) > 0
+            
+            if sync_action and sync_action != "IDLE" and resync_active:
+                _LOGGER.debug("Found active sync action: %s", sync_action)
                 
-                # Clean up status display
-                if sync_action == "check P":
-                    attrs["status"] = "Checking Parity"
-                else:
-                    attrs["status"] = sync_action.capitalize()
+                attrs["status"] = "Running" if sync_action == "check P" else sync_action.capitalize()
                 
-                # Calculate progress
-                if (pos := array_state.get("mdResyncPos")) and (
-                    size := array_state.get("mdResyncSize")
-                ):
-                    try:
-                        attrs["progress"] = round((int(pos) / int(size)) * 100, 2)
-                        _LOGGER.debug(
-                            "Calculated progress: %s%% (pos=%s, size=%s)",
-                            attrs["progress"],
-                            pos,
-                            size
-                        )
-                    except (ValueError, ZeroDivisionError) as err:
-                        _LOGGER.warning("Error calculating progress: %s", err)
-                        attrs["progress"] = 0
-                
-                # Get speed and format it nicely
-                if speed := array_state.get("mdResyncSpeed"):
-                    try:
-                        speed_mb = round(float(speed) / (1024 * 1024), 2)
-                        attrs["speed"] = f"{speed_mb} MB/s"
-                        _LOGGER.debug("Calculated speed: %s", attrs["speed"])
-                    except (ValueError, TypeError) as err:
-                        _LOGGER.warning("Error calculating speed: %s", err)
-                        attrs["speed"] = "N/A"
-                
-                # Get errors
+                self._update_progress(attrs, array_state)
+                self._update_speed(attrs, array_state)
                 attrs["errors"] = int(array_state.get("mdSyncErrs", 0))
+                
                 _LOGGER.debug("Current errors: %s", attrs["errors"])
+            else:
+                attrs["status"] = "Success"
 
             # Get last check details from history
             if history := array_state.get("parity_history"):
-                _LOGGER.debug("Found parity history: %s", history)
-                try:
-                    # Format last check date to be more readable
-                    if check_date := history.get("date"):
-                        parsed_date = datetime.strptime(check_date, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-                        now = dt_util.now()
-                        time_diff = now - parsed_date
-                        
-                        if time_diff.days == 0:
-                            attrs["last_check"] = f"Today at {parsed_date.strftime('%H:%M')}"
-                        elif time_diff.days == 1:
-                            attrs["last_check"] = f"Yesterday at {parsed_date.strftime('%H:%M')}"
-                        else:
-                            attrs["last_check"] = parsed_date.strftime("%b %d %Y %H:%M")
-                        
-                        _LOGGER.debug("Formatted last check date: %s", attrs["last_check"])
-
-                    # Add other history details
-                    attrs["duration"] = history.get("duration", "N/A")
-                    attrs["last_status"] = history.get("status", "N/A")
-                    attrs["last_speed"] = history.get("speed", "N/A")
-                    
-                    _LOGGER.debug("Added history details: duration=%s, status=%s, speed=%s",
-                                attrs["duration"],
-                                attrs["last_status"],
-                                attrs["last_speed"])
-
-                except (ValueError, TypeError) as err:
-                    _LOGGER.warning(
-                        "Error formatting history data: %s",
-                        err,
-                        exc_info=True
-                    )
+                self._update_history_attributes(attrs, history)
 
             _LOGGER.debug("Final attributes: %s", attrs)
             return attrs
@@ -586,16 +574,76 @@ class UnraidParityCheckSensor(UnraidBinarySensorBase):
                 err,
                 exc_info=True
             )
-            return {
-                "status": "Unknown",
-                "progress": 0,
-                "speed": "N/A",
-                "errors": 0,
-                "last_check": "N/A",
-                "next_check": "Unknown",
-                "duration": "N/A",
-                "last_status": "N/A"
-            }
+            return DEFAULT_PARITY_ATTRIBUTES.copy()
+
+    def _update_progress(self, attrs: Dict[str, Any], array_state: Dict[str, Any]) -> None:
+        """Update progress information."""
+        if (pos := array_state.get("mdResyncPos")) and (
+            size := array_state.get("mdResyncSize")
+        ):
+            try:
+                attrs["progress"] = round((int(pos) / int(size)) * 100, 2)
+                _LOGGER.debug(
+                    "Calculated progress: %s%% (pos=%s, size=%s)",
+                    attrs["progress"],
+                    pos,
+                    size
+                )
+            except (ValueError, ZeroDivisionError) as err:
+                _LOGGER.warning("Error calculating progress: %s", err)
+                attrs["progress"] = 0
+
+    def _update_speed(self, attrs: Dict[str, Any], array_state: Dict[str, Any]) -> None:
+        """Update speed information."""
+        if speed := array_state.get("mdResyncSpeed"):
+            try:
+                speed_mb = round(float(speed) / (1024 * 1024), 2)
+                attrs["speed"] = f"{speed_mb} MB/s"
+                _LOGGER.debug("Calculated speed: %s", attrs["speed"])
+            except (ValueError, TypeError) as err:
+                _LOGGER.warning("Error calculating speed: %s", err)
+                attrs["speed"] = "N/A"
+
+    def _update_history_attributes(self, attrs: Dict[str, Any], history: Dict[str, Any]) -> None:
+        """Update history attributes."""
+        _LOGGER.debug("Found parity history: %s", history)
+        try:
+            if check_date := history.get("date"):
+                parsed_date = datetime.strptime(
+                    check_date, 
+                    PARITY_HISTORY_DATE_FORMAT
+                ).replace(tzinfo=timezone.utc)
+                
+                now = dt_util.now()
+                time_diff = now - parsed_date
+                
+                if time_diff.days == 0:
+                    attrs["last_check"] = f"Today at {parsed_date.strftime(PARITY_TIME_FORMAT)}"
+                elif time_diff.days == 1:
+                    attrs["last_check"] = f"Yesterday at {parsed_date.strftime(PARITY_TIME_FORMAT)}"
+                else:
+                    attrs["last_check"] = parsed_date.strftime(PARITY_FULL_DATE_FORMAT)
+                
+                _LOGGER.debug("Formatted last check date: %s", attrs["last_check"])
+
+            # Add other history details
+            attrs["duration"] = history.get("duration", "N/A")
+            attrs["last_status"] = history.get("status", "N/A")
+            attrs["last_speed"] = history.get("speed", "N/A")
+            
+            _LOGGER.debug(
+                "Added history details: duration=%s, status=%s, speed=%s",
+                attrs["duration"],
+                attrs["last_status"],
+                attrs["last_speed"]
+            )
+
+        except (ValueError, TypeError) as err:
+            _LOGGER.warning(
+                "Error formatting history data: %s",
+                err,
+                exc_info=True
+            )
 
     @property
     def available(self) -> bool:
