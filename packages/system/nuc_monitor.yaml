@@ -85,6 +85,164 @@ counter:
     step: 1
     restore: False
 
+#############
+#    SQL    #
+#############
+sql:
+  # MariaDB Status
+  # - name: "MariaDB Status"
+  #   query: >-
+  #     SELECT 'running' as status 
+  #     FROM information_schema.GLOBAL_STATUS 
+  #     WHERE VARIABLE_NAME = 'Uptime' 
+  #     AND CAST(VARIABLE_VALUE AS UNSIGNED) > 0;
+  #   column: "status"
+  #   value_template: "{{ value if value else 'stopped' }}"
+
+  # MariaDB Version
+  # - name: "MariaDB Version"
+  #   query: >-
+  #     SELECT @@version as version;
+  #   column: "version"
+
+  # MariaDB Performance
+  # - name: "MariaDB Performance"
+  #   query: >-
+  #     SELECT CONCAT(
+  #       ROUND(
+  #         (SELECT VARIABLE_VALUE 
+  #          FROM information_schema.GLOBAL_STATUS 
+  #          WHERE VARIABLE_NAME = 'Queries') / 
+  #         (SELECT VARIABLE_VALUE 
+  #          FROM information_schema.GLOBAL_STATUS 
+  #          WHERE VARIABLE_NAME = 'Uptime')
+  #       ), ' q/s') as performance;
+  #   column: "performance"
+
+  # Database size
+  # - name: "Database Size"
+  #   query: >-
+  #     SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) as size 
+  #     FROM information_schema.tables 
+  #     WHERE table_schema = 'homeassistant';
+  #   column: "size"
+  #   unit_of_measurement: "MB"
+  #   value_template: "{{ value | float }}"
+
+  # Table count
+  # - name: "Database Tables Count"
+  #   query: >-
+  #     SELECT COUNT(*) as count 
+  #     FROM information_schema.tables 
+  #     WHERE table_schema = 'homeassistant';
+  #   column: "count"
+  #   unit_of_measurement: "tables"
+
+  # Oldest record
+  # - name: "Database Oldest Record"
+  #   query: >-
+  #     SELECT DATE_FORMAT(MIN(last_updated), '%Y-%m-%d') as oldest 
+  #     FROM states;
+  #   column: "oldest"
+
+  # Total records
+  # - name: "Database Total Records"
+  #   query: >-
+  #     SELECT COUNT(*) as count 
+  #     FROM states;
+  #   column: "count"
+  #   unit_of_measurement: "records"
+
+  # Records per day
+  # - name: "Database Records Per Day"
+  #   query: >-
+  #     SELECT ROUND(COUNT(*) / DATEDIFF(NOW(), MIN(last_updated)), 0) as avg 
+  #     FROM states;
+  #   column: "avg"
+  #   unit_of_measurement: "records/day"
+
+  # MariaDB uptime
+  - name: "MariaDB Uptime"
+    query: >-
+      SELECT VARIABLE_VALUE as value
+      FROM information_schema.GLOBAL_STATUS 
+      WHERE VARIABLE_NAME = 'Uptime';
+    column: "value"
+    unit_of_measurement: "seconds"
+
+  # Active connections
+  # - name: "MariaDB Connections"
+  #   query: >-
+  #     SELECT VARIABLE_VALUE as value
+  #     FROM information_schema.GLOBAL_STATUS 
+  #     WHERE VARIABLE_NAME = 'Threads_connected';
+  #   column: "value"
+  #   unit_of_measurement: "connections"
+
+  # Total queries
+  # - name: "MariaDB Questions"
+  #   query: >-
+  #     SELECT VARIABLE_VALUE as value
+  #     FROM information_schema.GLOBAL_STATUS 
+  #     WHERE VARIABLE_NAME = 'Questions';
+  #   column: "value"
+  #   unit_of_measurement: "queries"
+
+  # MariaDB Buffer Pool Size
+  - name: "MariaDB Buffer Pool Size"
+    query: >-
+      SELECT CONCAT(ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1), ' GB') as value;
+    column: "value"
+
+  # MariaDB Max Connections
+  - name: "MariaDB Max Connections"
+    query: >-
+      SELECT @@max_connections as value;
+    column: "value"
+
+  # MariaDB InnoDB Log File Size
+  - name: "MariaDB Log File Size"
+    query: >-
+      SELECT CONCAT(ROUND(@@innodb_log_file_size/1024/1024, 0), ' MB') as value;
+    column: "value"
+
+  # MariaDB Tmp Table Size
+  - name: "MariaDB Tmp Table Size"
+    query: >-
+      SELECT CONCAT(ROUND(@@tmp_table_size/1024/1024, 0), ' MB') as value;
+    column: "value"
+
+  # MariaDB IO Capacity
+  - name: "MariaDB IO Capacity"
+    query: >-
+      SELECT @@innodb_io_capacity as value;
+    column: "value"
+
+  # MariaDB IO Threads
+  # - name: "MariaDB IO Threads"
+  #   query: >-
+  #     SELECT CONCAT(
+  #       'Read: ', @@innodb_read_io_threads,
+  #       ', Write: ', @@innodb_write_io_threads
+  #     ) as value;
+  #   column: "value"
+
+  # MariaDB Table Cache
+  - name: "MariaDB Table Cache"
+    query: >-
+      SELECT @@table_open_cache as value;
+    column: "value"
+
+  # MariaDB Buffer Sizes
+  - name: "MariaDB Buffer Sizes"
+    query: >-
+      SELECT CONCAT(
+        'Sort: ', ROUND(@@sort_buffer_size/1024/1024, 0), 'M, ',
+        'Read: ', ROUND(@@read_buffer_size/1024/1024, 0), 'M, ',
+        'Join: ', ROUND(@@join_buffer_size/1024/1024, 0), 'M'
+      ) as value;
+    column: "value"
+
 ######################
 #    COMMAND LINE    #
 ######################
@@ -505,9 +663,22 @@ automation:
       minutes: /30
     action:
       - service: homeassistant.update_entity
-        entity_id: sensor.mariadb_size
-      - service: homeassistant.update_entity
-        entity_id: sensor.mariadb_most_recorded_entity
+        data:
+          entity_id:
+            - sensor.mariadb_size
+            - sensor.mariadb_most_recorded_entity
+            - sensor.mariadb_questions
+            - sensor.mariadb_performance
+            - sensor.mariadb_version_2
+            - sensor.mariadb_uptime_2
+            - sensor.database_oldest_record
+            - sensor.database_records_per_day
+            - sensor.database_tables_count
+            - sensor.database_total_records
+            - sensor.mariadb_connections
+            - sensor.mariadb_io_threads
+            - sensor.mariadb_status
+
 
   - alias: '[system|database] Auto purge database'
     mode: single
@@ -666,6 +837,7 @@ automation:
 
   - alias: "[system|nuc]Reload Shelly Config When Unavailable"
     mode: parallel
+    id: yaml_automation_system_nuc_reload_shelly_config_when_unavailable
     trigger:
       - platform: state
         entity_id:
