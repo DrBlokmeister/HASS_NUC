@@ -81,10 +81,18 @@ binary_sensor:
                     brightness: 0.25
                     transition_length: 1s
               else:
-                - light.turn_on:
-                    id: ${dimmer_id}
-                    brightness: !lambda |-
-                      return id(${adaptive_brightness_id}).state / 100.0;
+                - if:
+                    condition:
+                      - api.connected:
+                    then:
+                      - light.turn_on:
+                          id: ${dimmer_id}
+                          brightness: !lambda |-
+                            return id(${adaptive_brightness_id}).state / 100.0;
+                    else:
+                      - light.turn_on:
+                          id: ${dimmer_id}
+                          brightness: 1
           # - light.turn_on:
           #     id: ${dimmer_id}
           #     brightness: 25%
@@ -106,10 +114,19 @@ binary_sensor:
                     id: ${dimmer_id}
                     brightness: 1
               else:
-                - light.turn_on:
-                    id: ${dimmer_id}
-                    brightness: !lambda |-
-                      return id(${adaptive_brightness_id}).state / 100.0;
+                - if:
+                    condition:
+                      - api.connected:
+                    then:
+                      - light.turn_on:
+                          id: ${dimmer_id}
+                          brightness: !lambda |-
+                            return id(${adaptive_brightness_id}).state / 100.0;
+                    else:
+                      - light.turn_on:
+                          id: ${dimmer_id}
+                          brightness: 1
+
           # - logger.log: "Double-Clicked"
           # - light.turn_on:
           #     id: ${dimmer_id}
@@ -125,7 +142,15 @@ binary_sensor:
               then:
                 - light.turn_off: ${dimmer_id}
               else:
-                - light.turn_on:
-                    id: ${dimmer_id}
-                    brightness: !lambda |-
-                      return id( ${adaptive_brightness_id} ).state/100;
+                - if:
+                    condition:
+                      - api.connected:
+                    then:
+                      - light.turn_on:
+                          id: ${dimmer_id}
+                          brightness: !lambda |-
+                            return id( ${adaptive_brightness_id} ).state/100;
+                    else:
+                      - light.turn_on:
+                          id: ${dimmer_id}
+                          brightness: 1
