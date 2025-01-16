@@ -20,15 +20,26 @@ from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
 from homeassistant.components.update import UpdateEntityDescription, UpdateDeviceClass
 from homeassistant.components.water_heater import (
-    WaterHeaterEntityEntityDescription,
-    WaterHeaterEntityFeature,
+    WaterHeaterEntityFeature
 )
+
+# fix breaking change due to typo in WaterHeaterEntityDescription (#132888)
+WaterHeaterEntityDescription = None
+
+try:
+    from homeassistant.components.water_heater import (
+        WaterHeaterEntityDescription
+    )
+except ImportError:
+    from homeassistant.components.water_heater import (
+        WaterHeaterEntityEntityDescription as WaterHeaterEntityDescription
+    )
+
 from homeassistant.const import Platform, UnitOfTemperature
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.typing import StateType
 
 from .const import (
-    UPDATE_INTERVAL_SLOW,
     UPDATE_INTERVAL_VERY_SLOW,
     DeviceKey,
     FirmwareVersionMinor,
@@ -115,7 +126,7 @@ class LuxtronikNumberDescription(
     """Class describing Luxtronik number sensor entities."""
 
     platform = Platform.NUMBER
-    update_interval = UPDATE_INTERVAL_SLOW
+    update_interval = UPDATE_INTERVAL_VERY_SLOW
     factor: float | None = None
     native_precision: int | None = None
     mode: NumberMode = NumberMode.AUTO
@@ -143,7 +154,7 @@ class LuxtronikSwitchDescription(
     """Class describing Luxtronik switch entities."""
 
     platform = Platform.SWITCH
-    update_interval = UPDATE_INTERVAL_SLOW
+    update_interval = UPDATE_INTERVAL_VERY_SLOW
     on_state: str | bool = True
     on_states: list[str] | None = None
     off_state: str | bool = False
@@ -172,10 +183,14 @@ class LuxtronikClimateDescription(
     temperature_unit: str = UnitOfTemperature.CELSIUS
 
 
+def metaclass_resolver(*classes):
+    metaclass = tuple(set(type(cls) for cls in classes))
+    metaclass = metaclass[0] if len(metaclass)==1 else type("_".join(mcls.__name__ for mcls in metaclass), metaclass, {})   # class M_C
+    return metaclass("_".join(cls.__name__ for cls in classes), classes, {})   
+
 @dataclass
 class LuxtronikWaterHeaterDescription(
-    LuxtronikEntityDescription,
-    WaterHeaterEntityEntityDescription,
+    metaclass_resolver(LuxtronikEntityDescription, WaterHeaterEntityDescription)
 ):
     """Class describing Luxtronik water heater entities."""
 
