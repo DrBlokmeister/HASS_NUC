@@ -114,9 +114,9 @@ switch:
         value_template: >-
           {{
             is_state('switch.ambilight', 'on') and
-            is_state('light.atmoorb_left', 'on') and is_state('light.atmoorb_right', 'on') and
-            is_state_attr('light.atmoorb_left', 'effect', 'E1.31') and is_state_attr('light.atmoorb_right', 'effect', 'E1.31') and
-            is_state('switch.hyperion_atmoorb_left_component_led_device', 'on') and is_state('switch.hyperion_atmoorb_right_component_platform_capture', 'on')
+            is_state('light.atmoorb_left', 'on') and is_state('light.atmoorb_right', 'on') and is_state('light.ledstrip_falcon', 'on') and
+            is_state_attr('light.atmoorb_left', 'effect', 'E1.31') and is_state_attr('light.atmoorb_right', 'effect', 'E1.31') and is_state_attr('light.ledstrip_falcon', 'effect', 'E1.31') and
+            is_state('switch.hyperion_atmoorb_left_component_led_device', 'on') and is_state('switch.hyperion_atmoorb_right_component_platform_capture', 'on') and is_state('switch.hyperion_ledstrip_falcon_component_platform_capture', 'on')
           }}
         turn_on:
           service: script.turn_on_ambilight
@@ -207,7 +207,7 @@ automation:
           #   for:
           #     minutes: 2
           - platform: state
-            entity_id: media_player.tv_samsung_led55
+            entity_id: media_player.65_oled
             to: 'off'
             for:
               minutes: 2
@@ -508,6 +508,7 @@ script:
                 - switch.tv_apa102_universe_2_component_led_device
                 - switch.hyperion_atmoorb_right_component_led_device
                 - switch.hyperion_atmoorb_left_component_led_device
+                - switch.hyperion_ledstrip_falcon_component_platform_capture
             - delay:
                 seconds: 0.5  # Short delay before checking state
       - delay:
@@ -527,6 +528,9 @@ script:
                     - condition: state
                       entity_id: light.atmoorb_right
                       state: 'on'
+                    - condition: state
+                      entity_id: light.ledstrip_falcon
+                      state: 'on'
                 - condition: template
                   value_template: "{{ repeat.index > 10 }}"
           sequence:
@@ -539,6 +543,7 @@ script:
                   - light.livingroom_tv_ambilight
                   - light.atmoorb_left
                   - light.atmoorb_right
+                  - light.ledstrip_falcon
             - delay:
                 seconds: 0.5
       - service: light.turn_on
@@ -550,6 +555,7 @@ script:
             #- light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
+            - light.hyperion_ledstrip_falcon
           brightness: 255
           effect: Rainbow swirl fast
       - delay:
@@ -575,6 +581,9 @@ script:
                     - condition: state
                       entity_id: light.hyperion_atmoorb_right
                       state: 'off'
+                    - condition: state
+                      entity_id: light.hyperion_ledstrip_falcon
+                      state: 'off'
                 - condition: template
                   value_template: "{{ repeat.index > 10 }}"
           sequence:
@@ -587,6 +596,7 @@ script:
                   #- light.hyperion_apa102
                   - light.hyperion_atmoorb_left
                   - light.hyperion_atmoorb_right
+                  - light.hyperion_ledstrip_falcon
             - delay:
                 seconds: 0.5  # Short delay before checking state
 
@@ -606,6 +616,7 @@ script:
             #- light.hyperion_apa102
             - light.hyperion_atmoorb_left
             - light.hyperion_atmoorb_right
+            - light.hyperion_ledstrip_falcon
           effect: "Cinema dim lights"
       # Wait for the effect to complete
       - delay:
@@ -619,6 +630,7 @@ script:
           #- switch.hyperion_apa102_component_led_device
           - switch.hyperion_atmoorb_right_component_led_device
           - switch.hyperion_atmoorb_left_component_led_device
+          - switch.hyperion_ledstrip_falcon_component_platform_capture
       # Wait a moment before proceeding
       - delay:
           seconds: 0.5
@@ -631,6 +643,7 @@ script:
           #- light.hyperion_apa102
           - light.atmoorb_left
           - light.atmoorb_right
+          - light.ledstrip_falcon
       # Finally, turn off the Ambilight power supply
       - delay:
           seconds: 2
