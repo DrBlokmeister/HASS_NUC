@@ -1,13 +1,14 @@
 ########## REFERENCES ##########
-# 00000218736e3b1e #Study Climate
-# 0000021d7356341f #Moeke Water Reservoir
-# 0000039223703418 #Study Energy
-# garbage_monitor_tag #Garbage Monitor
-# 0000021c3bc6341b #Washing Machine Energy
-# 0000021f3abd3415 #Litterbox
-# 00007e1f8b30b297 #Washroom Electricity Price
-# 00007e225dc2b29f #Kitchen Electricity Price
-# 00007e22cc92b292 #Study Electricity Price
+# 00000218736e3b1e    #Study Climate                ab510c02b314bf3bf98fa4d65f911229
+# 0000021d7356341f    #Moeke Water Reservoir New    a5fb0b3999b39d6b82d0c338d9bc211e
+# 0000039223703418    #Study Energy                 bee8d1c7023925de74fc4e839cae072e
+# garbage_monitor_tag #Garbage Monitor              c7b6f77506400992217dfccd860d1ee0
+# 0000021c3bc6341b    #Washing Machine Energy       89b2b0672c4ebd0eeb86b7a8672e1b2a
+# 0000021F3ABD3415    #Litterbox New                e64e72fa14accf4656aad8b32c41e320
+# 00007e1f8b30b297    #Washroom Electricity Price   fceb879457ffabc7cdd9e21651afbe11
+# 00007e225dc2b29f    #Kitchen Electricity Price    29d7d4483b27d042b60d86ac92541aa2
+# 00007e22cc92b292    #Study Electricity Price      322949b4c22af9b50d8546decb19354d
+# 0000021D1C8E3413    #Powerstrip Study Status      fcf0279b783325a85401128ab88eefd4
 
 homeassistant:
   customize: {}
@@ -78,7 +79,7 @@ template:
         unit_of_measurement: transfers
         state: >
           {{ states.sensor
-              | selectattr('entity_id', 'search', '_pending_transfer$')
+              | selectattr('entity_id', 'search', '_pending_updates$')
               | map(attribute='state')
               | map('float', default=0)
               | sum }}
@@ -93,37 +94,37 @@ sensor:
     type: sum
     ignore_non_numeric: true
     #unit_of_measurement: transfers
-    entities: # Use template code:  - {{ states.sensor | selectattr('entity_id', 'search', '_pending_transfer$') | map(attribute='entity_id') | list | join('\n - ') }}
-      - sensor.00007e1f7f9fb299_pending_transfer
-      - sensor.00007e1f8b30b297_pending_transfer
-      - sensor.780105561c92b300_pending_transfer
-      - sensor.0000039223703418_pending_transfer
-      - sensor.00007e225dceb293_pending_transfer
-      - sensor.0000021c3bc6341b_pending_transfer
-      - sensor.00007e225dd0b29c_pending_transfer
-      - sensor.780105561a342201_pending_transfer
-      - sensor.00007e22cc92b292_pending_transfer
-      - sensor.780105561c817600_pending_transfer
-      - sensor.780105561c294d00_pending_transfer
-      - sensor.0000021e6b5b3b17_pending_transfer
-      - sensor.00000218736e3b1e_pending_transfer
-      - sensor.0000c87b913bdaec_pending_transfer
-      - sensor.00007e1f8186b290_pending_transfer
-      - sensor.garbage_monitor_tag_pending_transfer
-      - sensor.0000021f86d83b1e_pending_transfer
-      - sensor.780105561a2ce800_pending_transfer
-      - sensor.00007e22b1d7b299_pending_transfer
-      - sensor.00007e1f75f1b29b_pending_transfer
-      - sensor.00007e225dc2b29f_pending_transfer
-      - sensor.00007e22b1b2b29a_pending_transfer
-      - sensor.000040866ce6fc84_pending_transfer
-      - sensor.fd600b561a2ce800_pending_transfer
-      - sensor.fd600bb900090900_pending_transfer
-      - sensor.0000021d7356341f_pending_transfer
-      - sensor.0000021f3abd3415_pending_transfer
-      - sensor.0000021d2ef23419_pending_transfer
-      - sensor.fd600bd70007074d_pending_transfer
-      - sensor.7801055600817600_pending_transfer
+    entities: # Use template code:  - {{ states.sensor | selectattr('entity_id', 'search', '_pending_updates$') | map(attribute='entity_id') | list | join('\n - ') }}
+      - sensor.00007e1f7f9fb299_pending_updates
+      - sensor.00007e1f8b30b297_pending_updates
+      - sensor.780105561c92b300_pending_updates
+      - sensor.0000039223703418_pending_updates
+      - sensor.00007e225dceb293_pending_updates
+      - sensor.0000021c3bc6341b_pending_updates
+      - sensor.00007e225dd0b29c_pending_updates
+      - sensor.780105561a342201_pending_updates
+      - sensor.00007e22cc92b292_pending_updates
+      - sensor.780105561c817600_pending_updates
+      - sensor.780105561c294d00_pending_updates
+      - sensor.0000021e6b5b3b17_pending_updates
+      - sensor.00000218736e3b1e_pending_updates
+      - sensor.0000c87b913bdaec_pending_updates
+      - sensor.00007e1f8186b290_pending_updates
+      - sensor.garbage_monitor_tag_pending_updates
+      - sensor.0000021f86d83b1e_pending_updates
+      - sensor.780105561a2ce800_pending_updates
+      - sensor.00007e22b1d7b299_pending_updates
+      - sensor.00007e1f75f1b29b_pending_updates
+      - sensor.00007e225dc2b29f_pending_updates
+      - sensor.00007e22b1b2b29a_pending_updates
+      - sensor.000040866ce6fc84_pending_updates
+      - sensor.fd600b561a2ce800_pending_updates
+      - sensor.fd600bb900090900_pending_updates
+      - sensor.0000021d7356341f_pending_updates
+      - sensor.0000021f3abd3415_pending_updates
+      - sensor.0000021d2ef23419_pending_updates
+      - sensor.fd600bd70007074d_pending_updates
+      - sensor.7801055600817600_pending_updates
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -206,7 +207,7 @@ automation:
     action:
       # - service: open_epaper_link.lines4
       #   target:
-      #     entity_id: open_epaper_link.00000218736E3B1E
+      #     device_id: ab510c02b314bf3bf98fa4d65f911229
       #   data:
       #     line1: " Update: {{ states('sensor.time') | string }} "
       #     line2: " T: {{ states('sensor.study_aqm_temperature') | string }} C, CO2: {{ states('sensor.study_co2') | int | string }}"
@@ -247,54 +248,54 @@ automation:
             - service: script.update_energy_price_today_larger_display
               continue_on_error: true
               data:
-                display_entity_id:
-                  - open_epaper_link.00007e225dc2b29f #Kitchen
-                  #- open_epaper_link.00007e22cc92b292 #New Display 1
-                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+                display_device_id:
+                  - 29d7d4483b27d042b60d86ac92541aa2 #Kitchen
+                  #- 322949b4c22af9b50d8546decb19354d #New Display 1
+                  #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
             - delay:
                 seconds: 10
             - service: script.update_energy_price_today_larger_display
               continue_on_error: true
               data:
-                display_entity_id:
-                  #- open_epaper_link.00007e225dc2b29f #Kitchen
-                  - open_epaper_link.00007e22cc92b292 #New Display 1
-                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+                display_device_id:
+                  #- 29d7d4483b27d042b60d86ac92541aa2 #Kitchen
+                  - 322949b4c22af9b50d8546decb19354d #New Display 1
+                  #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
             - delay:
                 seconds: 10
             - service: script.update_energy_price_today_larger_display
               continue_on_error: true
               data:
-                display_entity_id:
-                  #- open_epaper_link.00007e225dc2b29f #Kitchen
-                  #- open_epaper_link.00007e22cc92b292 #New Display 1
-                  - open_epaper_link.00007e1f8b30b297 #New Display 2
+                display_device_id:
+                  #- 29d7d4483b27d042b60d86ac92541aa2 #Kitchen
+                  #- 322949b4c22af9b50d8546decb19354d #New Display 1
+                  - fceb879457ffabc7cdd9e21651afbe11 #New Display 2
         default:
             - service: script.update_energy_price_transition_larger_display
               continue_on_error: true
               data:
-                display_entity_id:
-                  - open_epaper_link.00007e225dc2b29f #Kitchen
-                  #- open_epaper_link.00007e22cc92b292 #New Display 1
-                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+                display_device_id:
+                  - 29d7d4483b27d042b60d86ac92541aa2 #Kitchen
+                  #- 322949b4c22af9b50d8546decb19354d #New Display 1
+                  #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
             - delay:
                 seconds: 10
             - service: script.update_energy_price_transition_larger_display
               continue_on_error: true
               data:
-                display_entity_id:
-                  #- open_epaper_link.00007e225dc2b29f #Kitchen
-                  - open_epaper_link.00007e22cc92b292 #New Display 1
-                  #- open_epaper_link.00007e1f8b30b297 #New Display 2
+                display_device_id:
+                  #- 29d7d4483b27d042b60d86ac92541aa2 #Kitchen
+                  - 322949b4c22af9b50d8546decb19354d #New Display 1
+                  #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
             - delay:
                 seconds: 10
             - service: script.update_energy_price_transition_larger_display
               continue_on_error: true
               data:
-                display_entity_id:
-                  #- open_epaper_link.00007e225dc2b29f #Kitchen
-                  #- open_epaper_link.00007e22cc92b292 #New Display 1
-                  - open_epaper_link.00007e1f8b30b297 #New Display 2
+                display_device_id:
+                  #- 29d7d4483b27d042b60d86ac92541aa2 #Kitchen
+                  #- 322949b4c22af9b50d8546decb19354d #New Display 1
+                  - fceb879457ffabc7cdd9e21651afbe11 #New Display 2
 
   - alias: "[misc|epaperlink] Timed Update Moeke Water Tank Display"
     id: misc_epaperlink_timed_update_moeke_water_tank_display
@@ -328,10 +329,10 @@ automation:
     action:
       - service: script.update_moeke_water_tank_display
         data:
-          display_entity_id: open_epaper_link.0000021d7356341f
+          display_device_id: a5fb0b3999b39d6b82d0c338d9bc211e
       - service: script.update_moeke_water_tank_display #Update the old display in the study to check if this still shows battery drain
         data:
-          display_entity_id: open_epaper_link.0000021dbca73412
+          display_device_id: a5fb0b3999b39d6b82d0c338d9bc211e
 
   - alias: "[misc|epaperlink] Update Pixel Litterbox Display"
     id: misc_epaperlink_update_pixel_litterbox_display
@@ -351,10 +352,10 @@ automation:
     action:
       - service: script.update_litterbox_display
         data:
-          display_entity_id: open_epaper_link.0000021f3abd3415
+          display_device_id: e64e72fa14accf4656aad8b32c41e320
       - service: script.update_litterbox_display #Update the old display in the study to check if this still shows battery drain
         data:
-          display_entity_id: open_epaper_link.0000021d26a23414
+          display_device_id: e64e72fa14accf4656aad8b32c41e320
 
   - alias: "[misc|epaperlink] Update Study Powerstrip Display"
     id: misc_epaperlink_update_study_powerstrip_display
@@ -379,7 +380,7 @@ automation:
           seconds: 10
       - service: script.update_study_powerstrip_display
         data:
-          display_entity_id: open_epaper_link.0000021D1C8E3413
+          display_device_id: fcf0279b783325a85401128ab88eefd4
 
   - alias: "[misc|epaperlink] Tag Button Update of Displays"
     id: automation_yaml_misc_epaperlink_tag_button_update_of_displays
@@ -402,21 +403,21 @@ automation:
             sequence:
               - service: script.update_energy_price_today_larger_display
                 data:
-                  display_entity_id: open_epaper_link.00007e225dc2b29f
+                  display_device_id: 29d7d4483b27d042b60d86ac92541aa2
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.device_id == '00007E22B1D7B299' }}"
             sequence:
               - service: script.update_energy_price_today_larger_display
                 data:
-                  display_entity_id: open_epaper_link.00007E22B1D7B299
+                  display_device_id: fceb879457ffabc7cdd9e21651afbe11
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.device_id == '00007E22B1B2B29A' }}"
             sequence:
               - service: script.update_energy_price_today_larger_display
                 data:
-                  display_entity_id: open_epaper_link.00007e22b1b2b29a
+                  display_device_id: 29d7d4483b27d042b60d86ac92541aa2
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
     mode: restart
@@ -676,7 +677,7 @@ script:
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.0000021C3BC6341B
+          device_id: 89b2b0672c4ebd0eeb86b7a8672e1b2a
         data:
           background: white
           rotate: 0
@@ -729,13 +730,13 @@ script:
     description: "Updates the old Solum M2 2.7 inch screens with today's electricty prices"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated. Note: the example is the wrong type of tag!"
-        example: "open_epaper_link.00007E22B1D7B299"
+      display_device_id:
+        description: "The device ID of the display to be updated. Note: the example is the wrong type of tag!"
+        example: "fceb879457ffabc7cdd9e21651afbe11"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -1135,13 +1136,13 @@ script:
     description: "Updates the old Solum M2 2.7 inch screens with tomorrow's electricty prices"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated. Note: the example is the wrong type of tag!"
-        example: "open_epaper_link.00007E22B1D7B299"
+      display_device_id:
+        description: "The device ID of the display to be updated. Note: the example is the wrong type of tag!"
+        example: "fceb879457ffabc7cdd9e21651afbe11"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -1479,13 +1480,13 @@ script:
     description: "Updates the old Solum M2 2.7 inch screens with the transition electricty prices"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated. Note: the example is the wrong type of tag!"
-        example: "open_epaper_link.00007E22B1D7B299"
+      display_device_id:
+        description: "The device ID of the display to be updated. Note: the example is the wrong type of tag!"
+        example: "fceb879457ffabc7cdd9e21651afbe11"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -1843,16 +1844,16 @@ script:
     description: "Updates the new Solum M3 2.9 inch screens with today's electricty prices"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated"
-        example: "open_epaper_link.00007E22B1D7B299"
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "fceb879457ffabc7cdd9e21651afbe11"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
-            # - open_epaper_link.00007E22B1D7B299
-            # #- open_epaper_link.00007e22b1b2b29a
-            # - open_epaper_link.00007e225dc2b29f
+          device_id: "{{ display_device_id }}"
+            # - fceb879457ffabc7cdd9e21651afbe11
+            # #- 29d7d4483b27d042b60d86ac92541aa2
+            # - 29d7d4483b27d042b60d86ac92541aa2
         data:
           background: white
           rotate: 0
@@ -2219,13 +2220,13 @@ script:
     description: "Updates the new Solum M3 2.9 inch screens with tonight's and tomorrow morning's electricty prices"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated"
-        example: "open_epaper_link.00007E22B1D7B299"
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "fceb879457ffabc7cdd9e21651afbe11"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -2592,7 +2593,7 @@ script:
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.00000219A2923B10
+          entity_id: c7b6f77506400992217dfccd860d1ee0
         data:
           background: white
           rotate: 0
@@ -2779,7 +2780,7 @@ script:
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.00000218736E3B1E
+          device_id: ab510c02b314bf3bf98fa4d65f911229
         data:
           background: white
           dry-run: false
@@ -3028,7 +3029,7 @@ script:
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: open_epaper_link.0000039223703418
+          device_id: bee8d1c7023925de74fc4e839cae072e
         data:
           background: white
           rotate: 0
@@ -3178,13 +3179,13 @@ script:
     alias: "Update Moeke Water Tank Display"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated"
-        example: "open_epaper_link.0000021d7356341f"
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "a5fb0b3999b39d6b82d0c338d9bc211e"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -3249,13 +3250,13 @@ script:
     alias: "Update Litterbox Display"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated"
-        example: "open_epaper_link.0000021f3abd3415"
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "e64e72fa14accf4656aad8b32c41e320"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -3311,13 +3312,13 @@ script:
     alias: "Update Study Powerstrip Display"
     mode: queued
     fields:
-      display_entity_id:
-        description: "The entity ID of the display to be updated"
-        example: "open_epaper_link.0000021d7356341f"
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "a5fb0b3999b39d6b82d0c338d9bc211e"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -3409,9 +3410,9 @@ script:
     description: "Displays router bandwidth and speedtest results on a 1.54\" ePaper display using OpenEPaperLink."
     mode: single
     fields:
-      display_entity_id:
-        description: "The entity ID of the OpenEPaperLink display to update."
-        example: "open_epaper_link.0000021d7356341f"
+      display_device_id:
+        description: "The device ID of the OpenEPaperLink display to update."
+        example: "a5fb0b3999b39d6b82d0c338d9bc211e"
         required: true
         selector:
           entity:
@@ -3419,7 +3420,7 @@ script:
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: "{{ display_entity_id }}"
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
