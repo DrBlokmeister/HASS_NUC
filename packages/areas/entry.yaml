@@ -299,6 +299,11 @@ automation:
                 entity_id: binary_sensor.house_occupied
                 state: 'on'
             sequence:
+              - service: scene.create
+                data:
+                  scene_id: porch_before
+                  snapshot_entities:
+                    - light.shelly_porch
               - service: light.turn_on
                 entity_id: light.shelly_porch
               - repeat:
@@ -370,8 +375,11 @@ automation:
                             ttl: 0
                             priority: high
                             tag: doorbell
-              - service: light.turn_off
-                entity_id: light.shelly_porch
+              - service: scene.turn_on
+                data:
+                  entity_id: scene.porch_before
+              # - service: light.turn_off
+              #   entity_id: light.shelly_porch
 
   - alias: "[entry|litterbox] Reset Litterbox Count"
     id: automation_yaml_entry_litterbox_reset_litterbox_count
@@ -385,6 +393,11 @@ automation:
           id: litterbox_button
           event: 1001
     action:
+      - service: scene.create
+        data:
+          scene_id: entry_before
+          snapshot_entities:
+            - light.entry
       - service: utility_meter.calibrate
         target:
           entity_id: sensor.litterbox_total_counts
@@ -399,9 +412,10 @@ automation:
           entity_id: light.entry
       - delay:
           seconds: 2
-      - service: light.turn_off
-        target:
-          entity_id: light.entry
+      - service: scene.turn_on
+        data:
+          entity_id: scene.entry_before
+          transition: 1
 
   - alias: '[areas|entry] Light Calibration Automation'
     description: Automates light on/off cycle for entry calibration and resets input boolean
