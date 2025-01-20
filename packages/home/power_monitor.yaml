@@ -449,6 +449,20 @@ sensor:
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.blitzwolf_heatpump_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.blitzwolf_heatpump_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+      plug_study_workbench_energy_cost_hourly:
+        friendly_name: "Plug Study Workbench Electricity Cost per Hour"
+        icon_template: mdi:currency-eur
+        unique_id: "yaml_template_sensor_plug_study_workbench_energy_cost_hourly"
+        unit_of_measurement: "€/h"
+        availability_template: "{{ states('sensor.plug_study_workbench_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.plug_study_workbench_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+      plug_tv_energy_cost_hourly:
+        friendly_name: "Plug TV Electricity Cost per Hour"
+        icon_template: mdi:currency-eur
+        unique_id: "yaml_template_sensor_plug_tv_energy_cost_hourly"
+        unit_of_measurement: "€/h"
+        availability_template: "{{ states('sensor.plug_tv_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.plug_tv_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
       all_lights_power_estimate_energy_cost_hourly:
         friendly_name: "All Lights Power Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
@@ -607,6 +621,20 @@ sensor:
     source: sensor.blitzwolf_heatpump_electricity_cost_per_hour
     name: Blitzwolf Heat Pump Total Electricity Cost
     unique_id: yaml_integration_blitzwolf_heatpump_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.plug_study_workbench_energy_cost_hourly
+    name: Plug Study Workbench Total Electricity Cost
+    unique_id: yaml_integration_plug_study_workbench_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.plug_tv_energy_cost_hourly
+    name: Plug TV Total Electricity Cost
+    unique_id: yaml_integration_plug_tv_total_electricity_cost
     unit_time: h
     method: left
     round: 2
@@ -1337,6 +1365,8 @@ group:
       - sensor.blitzwolf_washingmachine_electricity_cost_per_hour
       - sensor.blitzwolf_watercooker_electricity_cost_per_hour
       - sensor.blitzwolf_heatpump_electricity_cost_per_hour
+      - sensor.plug_study_workbench_energy_cost_hourly
+      - sensor.plug_tv_energy_cost_hourly
       - sensor.all_lights_power_estimate_electricity_cost_per_hour
       - sensor.heatpump_heating_electricity_cost_per_hour
       - sensor.heatpump_tapwater_electricity_cost_per_hour
@@ -1360,6 +1390,8 @@ group:
       - sensor.blitzwolf_washing_machine_total_electricity_cost
       - sensor.blitzwolf_water_cooker_total_electricity_cost
       - sensor.blitzwolf_heat_pump_total_electricity_cost
+      - sensor.plug_study_workbench_total_electricity_cost
+      - sensor.plug_tv_total_electricity_cost
       - sensor.all_lights_power_estimate_total_electricity_cost
       - sensor.heat_pump_heating_total_electricity_cost
       - sensor.heat_pump_tap_water_total_electricity_cost
