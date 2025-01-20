@@ -89,63 +89,74 @@ counter:
 #    SQL    #
 #############
 sql:
-  # MariaDB Status
-  # - name: "MariaDB Status"
-  #   query: >-
-  #     SELECT 'running' as status 
-  #     FROM information_schema.GLOBAL_STATUS 
-  #     WHERE VARIABLE_NAME = 'Uptime' 
-  #     AND CAST(VARIABLE_VALUE AS UNSIGNED) > 0;
-  #   column: "status"
-  #   value_template: "{{ value if value else 'stopped' }}"
+  # MariaDB Status (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0005 seconds.) )
+  - name: "MariaDB Status"
+    query: >-
+      SELECT 'running' as status 
+      FROM information_schema.GLOBAL_STATUS 
+      WHERE VARIABLE_NAME = 'Uptime' 
+      AND CAST(VARIABLE_VALUE AS UNSIGNED) > 0;
+    column: "status"
+    value_template: "{{ value if value else 'stopped' }}"
 
   # MariaDB Version
-  # - name: "MariaDB Version"
-  #   query: >-
-  #     SELECT @@version as version;
-  #   column: "version"
+  - name: "MariaDB Version"
+    query: >-
+      SELECT @@version as version;
+    column: "version"
+    #unit_of_measurement: None
+    #device_class: None
+    icon: mdi:database
 
   # MariaDB Performance (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0015 seconds.) )
-  # - name: "MariaDB Performance"
-  #   query: >-
-  #     SELECT CONCAT(
-  #       ROUND(
-  #         (SELECT VARIABLE_VALUE 
-  #          FROM information_schema.GLOBAL_STATUS 
-  #          WHERE VARIABLE_NAME = 'Queries') / 
-  #         (SELECT VARIABLE_VALUE 
-  #          FROM information_schema.GLOBAL_STATUS 
-  #          WHERE VARIABLE_NAME = 'Uptime')
-  #       ), ' q/s') as performance;
-  #   column: "performance"
-  #   unit_of_measurement: "queries/s"
-
+  - name: "MariaDB Performance"
+    query: >-
+      SELECT CONCAT(
+        ROUND(
+          (SELECT VARIABLE_VALUE 
+           FROM information_schema.GLOBAL_STATUS 
+           WHERE VARIABLE_NAME = 'Queries') / 
+          (SELECT VARIABLE_VALUE 
+           FROM information_schema.GLOBAL_STATUS 
+           WHERE VARIABLE_NAME = 'Uptime')
+        )) as performance;
+    column: "performance"
+    unit_of_measurement: "queries/s"
+    #device_class: None
+    icon: mdi:chart-line
 
   # Database size (phpMyAdmin benchmark:  Showing rows 0 - 0 (1 total, Query took 0.0004 seconds.) )
-  # - name: "Database Size"
-  #   query: >-
-  #     SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) as size 
-  #     FROM information_schema.tables 
-  #     WHERE table_schema = 'homeassistant';
-  #   column: "size"
-  #   unit_of_measurement: "MB"
-  #   value_template: "{{ value | float }}"
+  - name: "MariaDB Database Size"
+    query: >-
+      SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) as size 
+      FROM information_schema.tables 
+      WHERE table_schema = 'homeassistant';
+    column: "size"
+    unit_of_measurement: "MB"
+    device_class: data_size
+    icon: mdi:database-outline
+    value_template: "{{ value | float }}"
 
   # Table count (phpMyAdmin benchmark: Your SQL query has been executed successfully., almost instant update )
-  # - name: "Database Tables Count"
-  #   query: >-
-  #     SELECT COUNT(*) as count 
-  #     FROM information_schema.tables 
-  #     WHERE table_schema = 'homeassistant';
-  #   column: "count"
-  #   unit_of_measurement: "tables"
+  - name: "MariaDB Database Tables Count"
+    query: >-
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = 'homeassistant';
+    column: "count"
+    unit_of_measurement: "tables"
+    #device_class: None
+    icon: mdi:table
 
-  # Oldest record
+  # Oldest record (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 6.2007 seconds.) NULL result)
   # - name: "Database Oldest Record"
   #   query: >-
   #     SELECT DATE_FORMAT(MIN(last_updated), '%Y-%m-%d') as oldest 
   #     FROM states;
   #   column: "oldest"
+  #   unit_of_measurement: "date"
+  #   device_class: timestamp
+  #   icon: mdi:calendar-clock
 
   # Total records (phpMyAdmin benchmark: Your SQL query has been executed successfully. (stopwatched to about 6 seconds) )
   # - name: "Database Total Records"
@@ -154,6 +165,8 @@ sql:
   #     FROM states;
   #   column: "count"
   #   unit_of_measurement: "records"
+  #   #device_class: None
+  #   icon: mdi:database-check
 
   # Records per day (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 7.0855 seconds.))
   # - name: "Database Records Per Day"
@@ -162,8 +175,10 @@ sql:
   #     FROM states;
   #   column: "avg"
   #   unit_of_measurement: "records/day"
+  #   #device_class: None
+  #   icon: mdi:calendar-multiselect
 
-  # MariaDB uptime
+  # MariaDB uptime (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0006 seconds.) )
   - name: "MariaDB Uptime"
     query: >-
       SELECT VARIABLE_VALUE as value
@@ -171,65 +186,85 @@ sql:
       WHERE VARIABLE_NAME = 'Uptime';
     column: "value"
     unit_of_measurement: "seconds"
+    device_class: duration
+    icon: mdi:clock-outline
 
   # Active connections (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0004 seconds.) )
-  # - name: "MariaDB Connections"
-  #   query: >-
-  #     SELECT VARIABLE_VALUE as value
-  #     FROM information_schema.GLOBAL_STATUS 
-  #     WHERE VARIABLE_NAME = 'Threads_connected';
-  #   column: "value"
-  #   unit_of_measurement: "connections"
+  - name: "MariaDB Connections"
+    query: >-
+      SELECT VARIABLE_VALUE as value
+      FROM information_schema.GLOBAL_STATUS 
+      WHERE VARIABLE_NAME = 'Threads_connected';
+    column: "value"
+    unit_of_measurement: "connections"
+    #device_class: None
+    icon: mdi:lan-connect
 
   # Total queries (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0004 seconds.) )
-  # - name: "MariaDB Questions"
-  #   query: >-
-  #     SELECT VARIABLE_VALUE as value
-  #     FROM information_schema.GLOBAL_STATUS 
-  #     WHERE VARIABLE_NAME = 'Questions';
-  #   column: "value"
-  #   unit_of_measurement: "queries"
+  - name: "MariaDB Questions"
+    query: >-
+      SELECT VARIABLE_VALUE as value
+      FROM information_schema.GLOBAL_STATUS 
+      WHERE VARIABLE_NAME = 'Questions';
+    column: "value"
+    unit_of_measurement: "queries"
+    #device_class: None
+    icon: mdi:clipboard-list
 
-  # MariaDB Buffer Pool Size
   - name: "MariaDB Buffer Pool Size"
-    query: >-
-      SELECT CONCAT(ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1), ' GB') as value;
+    query: >
+      SELECT ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1) AS value;
     column: "value"
+    unit_of_measurement: "GB"
+    device_class: data_size
+    icon: mdi:database
 
-  # MariaDB Max Connections
+  # MariaDB Max Connections (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0001 seconds.)
   - name: "MariaDB Max Connections"
-    query: >-
-      SELECT @@max_connections as value;
+    query: >
+      SELECT @@max_connections AS value;
     column: "value"
+    unit_of_measurement: "connections"
+    #device_class: None
+    icon: mdi:account-multiple
 
-  # MariaDB InnoDB Log File Size
+  # MariaDB Buffer Pool Size (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0002 seconds.))
   - name: "MariaDB Log File Size"
-    query: >-
-      SELECT CONCAT(ROUND(@@innodb_log_file_size/1024/1024, 0), ' MB') as value;
+    query: >
+      SELECT ROUND(@@innodb_log_file_size/1024/1024, 0) AS value;
     column: "value"
+    unit_of_measurement: "MB"
+    device_class: data_size
+    icon: mdi:file-document
 
-  # MariaDB Tmp Table Size
+  # MariaDB Tmp Table Size (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0001 seconds.) )
   - name: "MariaDB Tmp Table Size"
-    query: >-
-      SELECT CONCAT(ROUND(@@tmp_table_size/1024/1024, 0), ' MB') as value;
+    query: >
+      SELECT ROUND(@@tmp_table_size/1024/1024, 0) AS value;
     column: "value"
+    unit_of_measurement: "MB"
+    device_class: data_size
+    icon: mdi:table
 
-  # MariaDB IO Capacity
+  # MariaDB IO Capacity (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0001 seconds.) )
   - name: "MariaDB IO Capacity"
+    query: >
+      SELECT @@innodb_io_capacity AS value;
+    column: "value"
+    unit_of_measurement: "IOPS"
+    #device_class: None
+    icon: mdi:speedometer
+
+  #MariaDB IO Threads (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0001 seconds.) )
+  - name: "MariaDB IO Threads"
     query: >-
-      SELECT @@innodb_io_capacity as value;
+      SELECT CONCAT(
+        'Read: ', @@innodb_read_io_threads,
+        ', Write: ', @@innodb_write_io_threads
+      ) as value;
     column: "value"
 
-  # MariaDB IO Threads (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0001 seconds.) )
-  # - name: "MariaDB IO Threads"
-  #   query: >-
-  #     SELECT CONCAT(
-  #       'Read: ', @@innodb_read_io_threads,
-  #       ', Write: ', @@innodb_write_io_threads
-  #     ) as value;
-  #   column: "value"
-
-  # MariaDB Table Cache
+  # MariaDB Table Cache (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0003 seconds.) )
   - name: "MariaDB Table Cache"
     query: >-
       SELECT @@table_open_cache as value;
@@ -667,19 +702,19 @@ automation:
       - service: homeassistant.update_entity
         data:
           entity_id:
-            - sensor.mariadb_size
+            #- sensor.mariadb_size
             - sensor.mariadb_most_recorded_entity
-            - sensor.mariadb_questions
-            - sensor.mariadb_performance
-            - sensor.mariadb_version_2
-            - sensor.mariadb_uptime_2
-            - sensor.database_oldest_record
-            - sensor.database_records_per_day
-            - sensor.database_tables_count
+            #- sensor.mariadb_questions
+            #- sensor.mariadb_performance
+            #- sensor.mariadb_version_2
+            #- sensor.mariadb_uptime_2
+            #- sensor.database_oldest_record
+            #- sensor.database_records_per_day
+            #- sensor.database_tables_count
             - sensor.database_total_records
-            - sensor.mariadb_connections
-            - sensor.mariadb_io_threads
-            - sensor.mariadb_status
+            #- sensor.mariadb_connections
+            #- sensor.mariadb_io_threads
+            #- sensor.mariadb_status
 
 
   - alias: '[system|database] Auto purge database'
