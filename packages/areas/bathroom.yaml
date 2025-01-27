@@ -106,6 +106,12 @@ binary_sensor:
         value_template: "{{ states('sensor.water_meter_current_water_consumption')|int(0) > 20 }}"
       water_usage_above_5_l_min:
         value_template: "{{ states('sensor.water_usage')|int(0) > 5 }}"
+      hot_water_used:
+        value_template: >
+                          {{
+                            states('sensor.water_usage_above_5_l_min')|float(0) > 0 and
+                            states('sensor.tapwater_temperature_change_5min')|float(0) <= -1
+                          }}
 
   - platform: bayesian
     name: Shower Occupied
@@ -116,7 +122,7 @@ binary_sensor:
       - platform: state
         entity_id: light.bathroom
         prob_given_true: 0.7 #70% of the time we shower, the light is on
-        prob_given_false: 0.10 #10% of the time we don't shower, the light is on
+        prob_given_false: 0.05 #10% of the time we don't shower, the light is on
         to_state: "on"
       - platform: template
         value_template: >  # Bathroom humidity is at least 15% above minimum humidity
@@ -129,15 +135,20 @@ binary_sensor:
         prob_given_true: 0.98 #When we shower, water usage is almost never under 1 l/min
         prob_given_false: 0.10 #However, water is also being used when we don't shower.
       - platform: numeric_state
-        entity_id: sensor.tapwater_temperature_change_1min
+        entity_id: sensor.tapwater_temperature_change_5min
         prob_given_true: 0.90 #When we shower, tapwater is cooling down, but this is not immediately seen.
         prob_given_false: 0.02 #Tapwater almost never cools down this fast if we don't shower.
-        below: -5
+        below: -20
       - platform: state
         entity_id: binary_sensor.bathroom_motion_1
         to_state: "on"
         prob_given_true: 0.3 #Motion is detected roughly 30% of the time when we shower
         prob_given_false: 0.05 #If we don't shower, motion is detected less than 5% of the time
+      - platform: state
+        entity_id: input_boolean.hot_water_in_shower
+        to_state: "on"
+        prob_given_true: 0.9 #Hot water is used 90% of the time when we shower
+        prob_given_false: 0.02 #Hot water is used 2% of the time when we don't shower
       # I should refer to the new bathroom motion sensor statistics here
 
         # I should also use the current water usage. I created these, but should first test if they work. Added in power_monitor.yaml
@@ -245,15 +256,15 @@ automation:
     mode: single
     trigger:
       - platform: state
-        entity_id: sensor.water_usage_above_5_l_min
-      # - platform: numeric_state
-      #   entity_id: sensor.water_usage
-      #   above: 5
-      # - platform: numeric_state
-      #   entity_id: sensor.water_usage
-      #   below: 5
-      #   for:
-      #     minutes: 5
+        entity_id: binary_sensor.hot_water_used
+        to: 'on'
+        id: hot_water_on
+      - platform: state
+        entity_id: binary_sensor.hot_water_used
+        to: 'off'
+        for:
+          minutes: 3
+        id: hot_water_off
     condition:
       - condition: template
         value_template: >
@@ -265,18 +276,14 @@ automation:
     action:
       - choose:
           - conditions:
-              - condition: numeric_state
-                entity_id: sensor.water_usage
-                above: 5
+              - condition: template
+                value_template: "{{ trigger.id == 'hot_water_on' }}"
             sequence:
               - service: input_boolean.turn_on
                 entity_id: input_boolean.hot_water_in_shower
           - conditions:
-              - condition: state
-                entity_id: sensor.water_usage_above_5_l_min
-                state: 'off'
-                for:
-                  minutes: 5
+              - condition: template
+                value_template: "{{ trigger.id == 'hot_water_off' }}"
             sequence:
               - service: input_boolean.turn_off
                 entity_id: input_boolean.hot_water_in_shower
