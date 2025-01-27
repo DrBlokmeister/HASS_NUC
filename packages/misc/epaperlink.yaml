@@ -152,6 +152,8 @@ automation:
         minutes: "/30"
     action:
       - service: script.update_garbage_monitor_display
+        data:
+          display_device_id: c7b6f77506400992217dfccd860d1ee0
 
   - alias: '[misc|epaperlink]Update washing machine energy display'
     id: misc_epaperlink_update_washing_machine_energy_display
@@ -221,9 +223,14 @@ automation:
       - delay:
           seconds: 2
       - service: script.update_study_energy_display
+        continue_on_error: true
+        data:
+          display_device_id: bee8d1c7023925de74fc4e839cae072e
       - delay:
           seconds: 2
       - service: script.update_study_climate_display
+        data:
+          display_device_id: ab510c02b314bf3bf98fa4d65f911229
 
   - alias: '[misc|epaperlink]Timed update electricity price display'
     id: misc_epaperlink_timed_update_electricity_price_display
@@ -2590,10 +2597,15 @@ script:
 
   update_garbage_monitor_display:
     alias: "Update Garbage Monitor Display"
+    mode: queued
+    fields:
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "c7b6f77506400992217dfccd860d1ee0"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          entity_id: c7b6f77506400992217dfccd860d1ee0
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -2777,10 +2789,15 @@ script:
 
   update_study_climate_display:
     alias: "Update Study Climate Display"
+    mode: queued
+    fields:
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "ab510c02b314bf3bf98fa4d65f911229"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          device_id: ab510c02b314bf3bf98fa4d65f911229
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           dry-run: false
@@ -3026,10 +3043,15 @@ script:
 
   update_study_energy_display:
     alias: "Update Study Energy Display"
+    mode: queued
+    fields:
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "bee8d1c7023925de74fc4e839cae072e"
     sequence:
       - service: open_epaper_link.drawcustom
         target:
-          device_id: bee8d1c7023925de74fc4e839cae072e
+          device_id: "{{ display_device_id }}"
         data:
           background: white
           rotate: 0
@@ -3414,9 +3436,6 @@ script:
         description: "The device ID of the OpenEPaperLink display to update."
         example: "a5fb0b3999b39d6b82d0c338d9bc211e"
         required: true
-        selector:
-          entity:
-            domain: open_epaper_link
     sequence:
       - service: open_epaper_link.drawcustom
         target:
