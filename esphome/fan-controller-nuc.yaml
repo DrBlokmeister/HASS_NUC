@@ -1,0 +1,221 @@
+substitutions:
+  device_name: "Fan Controller NUC"
+  espname: "fan-controller-nuc"
+
+esphome:
+  name: '${espname}'
+  friendly_name: ${device_name}
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+  on_boot:
+    priority: -100
+    then:
+      - fan.turn_on:
+          id: speedfan
+          speed: 60
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: esp-idf
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+wifi:
+  use_address: 10.0.30.111
+
+status_led:
+  pin: GPIO15
+
+sensor:
+  - platform: homeassistant
+    id: nuc_cpu_temperature
+    entity_id: sensor.processor_temperature
+    internal: true
+    filters:
+      - heartbeat: 5s
+      - sliding_window_moving_average:
+          window_size: 60
+          send_every: 60
+  - platform: homeassistant
+    id: nuc_nvme_temperature
+    entity_id: sensor.nuc_nvme_composite_temperature
+    internal: true
+    filters:
+      - heartbeat: 5s
+      - sliding_window_moving_average:
+          window_size: 60
+          send_every: 60
+
+  - platform: pulse_counter
+    name: "NUC External Fan Speed"
+    pin:
+      number: GPIO09
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+
+output:
+  # Wire this pin (07) into the PWM pin of your 5v fan
+  # ledc is the name of the pwm output system on an esp32
+  - platform: ledc
+    id: fan_output
+    pin: GPIO07
+    # 25KHz is standard PC fan frequency, minimises buzzing
+    frequency: "25000 Hz"
+    min_power: 1%
+    max_power: 100%
+
+fan:
+  - platform: speed
+    output: fan_output
+    id: speedfan
+    name: "NUC External Fan"
+    restore_mode: RESTORE_DEFAULT_ON
+
+number:
+  - platform: template
+    name: "NUC Fan Setting - NVMe Min Temperature"
+    id: nvme_min_temp
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-low"
+    restore_value: true
+    initial_value: 30
+    min_value: 20
+    max_value: 40
+    step: 1
+    optimistic: true
+  - platform: template
+    name: "NUC Fan Setting - NVMe Max Temperature"
+    id: nvme_max_temp
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-high"
+    restore_value: true
+    initial_value: 70
+    min_value: 41
+    max_value: 80
+    step: 1
+    optimistic: true
+  - platform: template
+    name: "NUC Fan Setting - CPU Min Temperature"
+    id: cpu_min_temp
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-low"
+    restore_value: true
+    initial_value: 30
+    min_value: 20
+    max_value: 40
+    step: 1
+    optimistic: true
+  - platform: template
+    name: "NUC Fan Setting - CPU Max Temperature"
+    id: cpu_max_temp
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-high"
+    restore_value: true
+    initial_value: 80
+    min_value: 41
+    max_value: 80
+    step: 1
+    optimistic: true
+  - platform: template
+    name: "NUC Fan Setting - Min Fan Speed"
+    id: min_fan_speed
+    unit_of_measurement: "%"
+    icon: "mdi:fan-minus"
+    restore_value: true
+    initial_value: 20
+    min_value: 0
+    max_value: 40
+    step: 1
+    optimistic: true
+  - platform: template
+    name: "NUC Fan Setting - Max Fan Speed"
+    id: max_fan_speed
+    unit_of_measurement: "%"
+    icon: "mdi:fan-plus"
+    restore_value: true
+    initial_value: 80
+    min_value: 41
+    max_value: 100
+    step: 1
+    optimistic: true
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          // Read temperatures
+          bool cpu_available = !isnan(id(nuc_cpu_temperature).state);
+          bool nvme_available = !isnan(id(nuc_nvme_temperature).state);
+          float cpu_temp = cpu_available ? id(nuc_cpu_temperature).state : 0;
+          float nvme_temp = nvme_available ? id(nuc_nvme_temperature).state : 0;
+
+          // Get user-defined input values
+          float nvme_min = id(nvme_min_temp).state;
+          float nvme_max = id(nvme_max_temp).state;
+          float cpu_min = id(cpu_min_temp).state;
+          float cpu_max = id(cpu_max_temp).state;
+          float min_speed = id(min_fan_speed).state;
+          float max_speed = id(max_fan_speed).state;
+
+          // Debug input values
+          ESP_LOGD("fan_control", "NVMe Min: %.1f, NVMe Max: %.1f", nvme_min, nvme_max);
+          ESP_LOGD("fan_control", "CPU Min: %.1f, CPU Max: %.1f", cpu_min, cpu_max);
+          ESP_LOGD("fan_control", "Min Fan Speed: %.1f, Max Fan Speed: %.1f", min_speed, max_speed);
+
+          // Ensure valid ranges
+          if (nvme_max <= nvme_min) {
+            ESP_LOGW("fan_control", "Invalid NVMe range: Min (%.1f) >= Max (%.1f)", nvme_min, nvme_max);
+            return;
+          }
+          if (cpu_max <= cpu_min) {
+            ESP_LOGW("fan_control", "Invalid CPU range: Min (%.1f) >= Max (%.1f)", cpu_min, cpu_max);
+            return;
+          }
+          if (max_speed <= min_speed) {
+            ESP_LOGW("fan_control", "Invalid Fan Speed range: Min (%.1f) >= Max (%.1f)", min_speed, max_speed);
+            return;
+          }
+
+          // Calculate fan speeds
+          float nvme_speed = nvme_available 
+            ? ((nvme_temp - nvme_min) / (nvme_max - nvme_min)) * (max_speed - min_speed) + min_speed 
+            : min_speed;
+          float cpu_speed = cpu_available 
+            ? ((cpu_temp - cpu_min) / (cpu_max - cpu_min)) * (max_speed - min_speed) + min_speed 
+            : min_speed;
+
+          // Clamp values between min and max fan speed
+          nvme_speed = std::clamp(nvme_speed, min_speed, max_speed);
+          cpu_speed = std::clamp(cpu_speed, min_speed, max_speed);
+
+          // Use the maximum of the two calculated speeds
+          float final_speed = cpu_available || nvme_available
+            ? std::max(nvme_speed, cpu_speed)
+            : 60; // Default to 60% if sensors are unavailable
+
+          // Log the calculated speeds
+          ESP_LOGI("fan_control", 
+                   "CPU Temp: %.1f, NVMe Temp: %.1f, NVMe Speed: %.1f%%, CPU Speed: %.1f%%, Final Speed: %.1f%%", 
+                   cpu_temp, nvme_temp, nvme_speed, cpu_speed, final_speed);
+
+          // Set fan speed
+          auto call = id(speedfan).turn_on();
+          call.set_speed(final_speed);
+          call.perform();
