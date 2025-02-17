@@ -1,0 +1,93 @@
+substitutions:
+  device_name: "Wall Outlet Bathroom"
+  espname: "wall-outlet-bathroom"
+  # Higher value gives lower watt readout
+  current_res: "0.002281"
+  # Lower value gives lower voltage readout
+  voltage_div: "811.95"
+  current_multiplier: "1.928"
+  voltage_multiplier: "1"
+
+esphome:
+  name: '${espname}'
+  friendly_name: '${device_name}'
+  comment: 'BW-SHP8' #See https://devices.esphome.io/devices/BlitzWolf-BW-SHP8-Power-Monitoring-Wall-Outlet
+
+esp8266:
+  board: esp8285
+  early_pin_init: false # Prevent relay toggle during boot
+  restore_from_flash: true
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+  power: !include /config/esphome/common/power.yaml
+
+binary_sensor: !include
+    file: /config/esphome/templates/plug_functions/plug_input_button.yaml
+    vars:
+      input_button_pin: GPIO03
+
+status_led:
+  pin:
+    number: GPIO13
+    inverted: true
+
+switch:
+  - platform: gpio
+    name: "${device_name} Switch"
+    icon: mdi:power-socket-de
+    pin: GPIO14
+    id: relay
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - switch.turn_on: relay
+      - output.turn_on: led_red
+    on_turn_off:
+      - switch.turn_off: relay
+      - output.turn_off: led_red
+
+output:
+  - platform: esp8266_pwm
+    id: led_red
+    pin:
+      number: GPIO01
+      inverted: true
+
+light:
+  - platform: monochromatic
+    output: led_red
+    id: led
+
+sensor:
+  - platform: total_daily_energy
+    name: "${device_name} Energy Today"
+    power_id: power
+    id: daily_energy
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh
+    icon: mdi:calendar-clock
+
+  - platform: adc
+    pin: VCC
+    name: "${device_name} VCC Voltage"
+    icon: mdi:flash-outline
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 0.3
+
+  - platform: hlw8012
+    sel_pin:
+      number: GPIO12
+      inverted: True
+    cf_pin: GPIO04
+    cf1_pin: GPIO05
+    change_mode_every: 2
+    current_resistor: ${current_res}
+    voltage_divider: ${voltage_div}
+    update_interval: 0.5s
+    <<: !include templates/plug_functions/plug_default_power_sensor_settings.yaml
