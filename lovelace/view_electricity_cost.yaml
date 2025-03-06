@@ -130,6 +130,43 @@ cards:
             opacity: 0.3
             show:
               in_header: false
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.average_electricity_price_today
+            aggregate_func: last
+        name: Daily Average Price
+        hours_to_show: 168
+        hour24: true
+        lower_bound: ~0
+        upper_bound: ~0.5
+        group_by: date
+        show:
+          graph: bar
+        icon: mdi:currency-eur
+        color_thresholds_transition: smooth
+        color_thresholds:
+          - value: 0
+            color: "#8BC34A"  # Green
+          - value: .05
+            color: "#AED581"  # Light Green
+          - value: 0.1
+            color: "#C5E1A5"  # Lime Green
+          - value: 0.15
+            color: "#DCE775"  # Yellowish Green
+          - value: 0.2
+            color: "#FFF176"  # Light Yellow
+          - value: 0.25
+            color: "#FFD54F"  # Yellow
+          - value: 0.3
+            color: "#FFB74D"  # Orange Yellow
+          - value: 0.35
+            color: "#FF9800"  # Orange
+          - value: 0.4
+            color: "#FB8C00"  # Dark Orange
+          - value: 0.45
+            color: "#F57C00"  # Reddish Orange
+          - value: 0.5
+            color: "#E64A19"  # Red
       - type: entity
         entity: sensor.current_electricity_cost_per_hour
         name: Current Cost per Hour
@@ -140,6 +177,12 @@ cards:
         square: false
         columns: 2
         cards:
+          - type: entity
+            entity: sensor.average_electricity_price_today
+            name: Average Price Today
+          - type: entity
+            entity: sensor.average_electricity_price_this_week
+            name: Average Price This Week
           - type: entity
             entity: sensor.total_electricity_cost_daily_energy_use
             name: Current Cost Today
