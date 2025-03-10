@@ -276,18 +276,29 @@ automation:
     mode: single
     max_exceeded: silent
     trigger:
-      - platform: state
-        entity_id: binary_sensor.doorbell_button
-        to: 'on'
+      - trigger: event
+        event_type: state_changed
+        event_data:
+          entity_id: event.g4_doorbell_pro_doorbell
     condition:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 3) }}"
+      - condition: template
+        value_template: |
+          {{ 'ring' in trigger.event.data.new_state.attributes.event_types }}
     action:
+      # - service: camera.snapshot
+      #   data:
+      #     entity_id: camera.g4_doorbell_pro_high_resolution_channel
+      #     filename: "/config/www/snapshots/doorbell_snapshot.jpg"
+      # - delay:
+      #     milliseconds: 100
       - service: notify.sander_and_tamara_phones
         data:
           message: "Someone's at the door!"
           title: "Doorbell Alert"
           data:
+            image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
             ttl: 0
             priority: high
             tag: doorbell
@@ -329,8 +340,8 @@ automation:
                         data:
                           ttl: 0
                           priority: high
-                          tag: doorbell
-                          group: "doorbell_alert"
+                          tag: doorbell_reminder
+                          group: "doorbell_reminder"
                           notification_icon: "mdi:bell-ring"
                     - delay:
                         seconds: 4
@@ -354,6 +365,17 @@ automation:
                             ttl: 0
                             priority: high
                             tag: doorbell
+                      - delay:
+                          seconds: 1
+                      - service: notify.sander_and_tamara_phones
+                        data:
+                          message: "clear_notification"
+                          data:
+                            ttl: 0
+                            priority: high
+                            tag: doorbell_reminder
+                      - delay:
+                          seconds: 1
                       - service: notify.sander_and_tamara_phones
                         data:
                           message: "clear_notification"
@@ -361,20 +383,15 @@ automation:
                             ttl: 0
                             priority: high
                             tag: doorbell
+                      - delay:
+                          seconds: 1
                       - service: notify.sander_and_tamara_phones
                         data:
                           message: "clear_notification"
                           data:
                             ttl: 0
                             priority: high
-                            tag: doorbell
-                      - service: notify.sander_and_tamara_phones
-                        data:
-                          message: "clear_notification"
-                          data:
-                            ttl: 0
-                            priority: high
-                            tag: doorbell
+                            tag: doorbell_reminder
               - service: scene.turn_on
                 data:
                   entity_id: scene.porch_before
