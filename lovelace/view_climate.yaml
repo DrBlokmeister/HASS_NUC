@@ -2,6 +2,49 @@
 title: Climate
 icon: mdi:home-thermometer-outline
 cards:
+  - type: vertical-stack
+    cards:
+      - type: entities
+        title: "Heat Pump Control"
+        show_header_toggle: false
+        entities:
+          - entity: input_select.heatpump_price_control
+            name: "Price Control Mode"
+          - entity: input_number.heatpump_fixed_price_threshold
+            name: "Fixed Price Threshold"
+          - entity: sensor.lowest_quartile_electricity_price_today
+            name: "First Quartile Price"
+            icon: mdi:cash-multiple
+          - entity: input_number.heatpump_target_correction
+            name: "Target Correction"
+
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: "Heat Pump Flow Temperature"
+        graph_span: 24h
+        yaxis:
+          - id: temp
+            min: auto
+            max: auto
+            decimals: 1
+        series:
+          - entity: sensor.heatpump_flow_out_temperature
+            name: "Current Flow Temperature"
+            type: line
+            color: blue
+            stroke_width: 2
+          - entity: sensor.heatpump_flow_out_temperature_target
+            name: "Target Flow Temperature"
+            type: line
+            color: red
+            stroke_width: 2
+          - entity: number.heatpump_heating_target_correction
+            name: "Target Correction"
+            type: area
+            color: yellow
+            opacity: 0.4
+
   #Thermostat Cards
   - type: grid
     columns: 2

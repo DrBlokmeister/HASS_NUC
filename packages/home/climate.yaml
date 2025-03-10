@@ -1,6 +1,38 @@
 homeassistant:
   customize: {}
 
+#######################
+#    INPUT SELECTS    #
+#######################
+input_select:
+  heatpump_price_control:
+    name: Heat Pump Price Control
+    options:
+      - "Off"
+      - "Quartile Price"
+      - "Fixed Price"
+    icon: mdi:cash-multiple
+
+#######################
+#    INPUT NUMBERS    #
+#######################
+input_number:
+  heatpump_fixed_price_threshold:
+    name: Heat Pump Fixed Price Threshold
+    min: 0
+    max: 1
+    step: 0.01
+    unit_of_measurement: "€/kWh"
+    icon: mdi:currency-eur
+
+  heatpump_target_correction:
+    name: Heat Pump Target Correction
+    min: -5
+    max: 5
+    step: 1
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
+
 #################
 #    SENSORS    #
 #################
@@ -424,6 +456,71 @@ automation:
                 target:
                   entity_id: switch.heatpump_cooling
         # default: []
+
+  - alias: "[home|climate] Heat Pump Heating Control based on Electricity Price"
+    description: >
+      Controls the heat pump heating power based on electricity price conditions.
+      The heat pump turns on when the price is below a fixed threshold or the first quartile of today's prices.
+      Turns off when the price condition is no longer met or when manually set to "Off".
+    id: yaml_automation_home_climate_heatpump_heating_controL_based_on_electricity_price
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.electricity_price
+      - platform: state
+        entity_id: input_select.heatpump_price_control
+      - platform: state
+        entity_id: input_number.heatpump_fixed_price_threshold
+    condition: []
+    action:
+      - choose:
+          # If control mode is Off, turn off heat pump
+          - conditions:
+              - condition: state
+                entity_id: input_select.heatpump_price_control
+                state: "Off"
+            sequence:
+              - service: number.set_value
+                target:
+                  entity_id: number.heatpump_heating_target_correction
+                data:
+                  value: -5
+
+          # If control mode is Fixed Price and price is below threshold
+          - conditions:
+              - condition: state
+                entity_id: input_select.heatpump_price_control
+                state: "Fixed Price"
+              - condition: template
+                value_template: "{{ states('sensor.electricity_price') | float < states('input_number.heatpump_fixed_price_threshold') | float }}"
+            sequence:
+              - service: number.set_value
+                target:
+                  entity_id: number.heatpump_heating_target_correction
+                data:
+                  value: "{{ states('input_number.heatpump_target_correction') | int }}"
+
+          # If control mode is Quartile Price and price is below quartile sensor
+          - conditions:
+              - condition: state
+                entity_id: input_select.heatpump_price_control
+                state: "Quartile Price"
+              - condition: template
+                value_template: "{{ states('sensor.electricity_price') | float < states('sensor.lowest_quartile_electricity_price_today') | float }}"
+            sequence:
+              - service: number.set_value
+                target:
+                  entity_id: number.heatpump_heating_target_correction
+                data:
+                  value: "{{ states('input_number.heatpump_target_correction') | int }}"
+
+      # Default action (turn off if none of the conditions above were met)
+      - service: number.set_value
+        target:
+          entity_id: number.heatpump_heating_target_correction
+        data:
+          value: -5
+
 
 ################
 #    SCENES    #
