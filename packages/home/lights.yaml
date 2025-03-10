@@ -109,6 +109,43 @@ automation:
             sequence:
               - service: switch.turn_off
                 entity_id: switch.adaptive_lighting_sleep_mode_adaptive_lighting
+
+  - alias: "[home|lights]Toggle Light Automations When Home Alone"
+    description: "Enables motion-based lighting automations when I'm home alone between 06:00 and 22:00. Disables them when I'm not home alone, regardless of the time."
+    id: "yaml_automation_home_lights_toggle_light_automations_when_home_alone"
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.sander_home_alone
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.sander_home_alone
+                state: "on"
+              - condition: time
+                after: "06:00:00"
+                before: "22:00:00"
+            sequence:
+              - service: automation.turn_on
+                target:
+                  entity_id:
+                    - automation.livingroom_lights_turn_on_lights_when_motion_is_detected
+                    - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+                    - automation.study_lights_turn_on_lights_when_motion_is_detected
+                    - automation.entry_lights_turn_on_lights_when_motion_is_detected
+                    - automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
+                    - automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
+        default:
+          - service: automation.turn_off
+            target:
+              entity_id:
+                - automation.livingroom_lights_turn_on_lights_when_motion_is_detected
+                - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+                - automation.study_lights_turn_on_lights_when_motion_is_detected
+                - automation.entry_lights_turn_on_lights_when_motion_is_detected
+                - automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
+                - automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
 ################
 #    SCENES    #
 ################
