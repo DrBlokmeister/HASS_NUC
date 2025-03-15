@@ -8,6 +8,8 @@ cards:
         title: "Heat Pump Control"
         show_header_toggle: false
         entities:
+          - entity: sensor.heatpump_status
+            name: "Status"
           - entity: input_select.heatpump_price_control
             name: "Price Control Mode"
           - entity: input_number.heatpump_fixed_price_threshold
@@ -17,33 +19,52 @@ cards:
             icon: mdi:cash-multiple
           - entity: input_number.heatpump_target_correction
             name: "Target Correction"
-
+      - type: history-graph
+        title: Heat Pump Status
+        hours_to_show: 48
+        entities:
+          - entity: sensor.heatpump_status
+            name: Status
       - type: custom:apexcharts-card
         header:
+          show_states: true
+          colorize_states: true
           show: true
           title: "Heat Pump Flow Temperature"
-        graph_span: 24h
+        apex_config:
+          legend:
+            show: false
+          chart:
+            height: 300px
+        graph_span: 48h
         yaxis:
           - id: temp
-            min: auto
-            max: auto
-            decimals: 1
+            min: ~10
+            max: 30
+            decimals: 0
+            align_to: 5
+            apex_config:
+              forceNiceScale: True
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 10min
+          stroke_width: 3
+          fill_raw: last
         series:
           - entity: sensor.heatpump_flow_out_temperature
             name: "Current Flow Temperature"
             type: line
             color: blue
-            stroke_width: 2
           - entity: sensor.heatpump_flow_out_temperature_target
             name: "Target Flow Temperature"
             type: line
             color: red
-            stroke_width: 2
-          - entity: number.heatpump_heating_target_correction
-            name: "Target Correction"
-            type: area
-            color: yellow
-            opacity: 0.4
+          # - entity: number.heatpump_heating_target_correction
+          #   name: "Target Correction"
+          #   type: area
+          #   color: yellow
+          #   opacity: 0.4
 
   #Thermostat Cards
   - type: grid
@@ -74,6 +95,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
@@ -111,6 +134,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
@@ -148,6 +173,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
@@ -185,6 +212,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
@@ -222,6 +251,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
@@ -259,6 +290,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
@@ -296,6 +329,8 @@ cards:
     apex_config:
       legend:
         show: false
+      chart:
+        height: 180px
     graph_span: 24h
     update_interval: 1m
     yaxis:
