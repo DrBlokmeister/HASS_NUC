@@ -171,13 +171,26 @@ cards:
       show: true
       show_states: true
       colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
-      legend:
-        show: false
       chart:
         height: 180px
-    graph_span: 24h
-    update_interval: 1m
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
     yaxis:
       - min: ~18
         max: ~22
@@ -185,23 +198,54 @@ cards:
         align_to: 2
         apex_config:
           forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
     series:
       - entity: climate.tamara
         attribute: current_temperature
-        name: Tamara Current Temp
+        name: Tamara Yesterday
+        offset: '-1d'
+        color: '#9300A9'
+        opacity: 0.7
+      - entity: climate.tamara
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
         color: '#B10DC9'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
       - entity: climate.tamara
         attribute: temperature
         name: Tamara Setpoint
+        offset: '-1d'
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.2
+      - entity: climate.tamara
+        attribute: temperature
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
         type: area
         stroke_width: 0
         opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
 
   # ApexCharts Graph for Woonkamer
   - type: custom:apexcharts-card
@@ -210,13 +254,26 @@ cards:
       show: true
       show_states: true
       colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
-      legend:
-        show: false
       chart:
         height: 180px
-    graph_span: 24h
-    update_interval: 1m
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
     yaxis:
       - min: ~18
         max: ~22
@@ -224,38 +281,83 @@ cards:
         align_to: 2
         apex_config:
           forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
     series:
       - entity: climate.woonkamer
         attribute: current_temperature
-        name: Woonkamer Current Temp
+        name: Woonkamer Yesterday
+        offset: '-1d'
+        color: '#C00026'
+        opacity: 0.7
+      - entity: climate.woonkamer
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
         color: '#FF4136'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
       - entity: climate.woonkamer
         attribute: temperature
         name: Woonkamer Setpoint
+        offset: '-1d'
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.2
+      - entity: climate.woonkamer
+        attribute: temperature
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
         type: area
         stroke_width: 0
         opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
 
-  # ApexCharts Graph for Logeerkamer
+  # Repeat for all other rooms with corresponding colors
+  # Logeerkamer
   - type: custom:apexcharts-card
     header:
       title: Logeerkamer
       show: true
       show_states: true
       colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
-      legend:
-        show: false
       chart:
         height: 180px
-    graph_span: 24h
-    update_interval: 1m
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
     yaxis:
       - min: ~18
         max: ~22
@@ -263,23 +365,54 @@ cards:
         align_to: 2
         apex_config:
           forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
     series:
       - entity: climate.logeerkamer
         attribute: current_temperature
-        name: Logeerkamer Current Temp
+        name: Logeerkamer Yesterday
+        offset: '-1d'
+        color: '#008B8B'
+        opacity: 0.7
+      - entity: climate.logeerkamer
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
         color: '#39CCCC'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
       - entity: climate.logeerkamer
         attribute: temperature
         name: Logeerkamer Setpoint
+        offset: '-1d'
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.2
+      - entity: climate.logeerkamer
+        attribute: temperature
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
         type: area
         stroke_width: 0
         opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
 
   # ApexCharts Graph for Slaapkamer
   - type: custom:apexcharts-card
@@ -288,13 +421,26 @@ cards:
       show: true
       show_states: true
       colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
-      legend:
-        show: false
       chart:
         height: 180px
-    graph_span: 24h
-    update_interval: 1m
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
     yaxis:
       - min: ~18
         max: ~22
@@ -302,23 +448,54 @@ cards:
         align_to: 2
         apex_config:
           forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
     series:
       - entity: climate.slaapkamer
         attribute: current_temperature
-        name: Slaapkamer Current Temp
+        name: Slaapkamer Yesterday
+        offset: '-1d'
+        color: '#C46310'
+        opacity: 0.7
+      - entity: climate.slaapkamer
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
         color: '#FF851B'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
       - entity: climate.slaapkamer
         attribute: temperature
         name: Slaapkamer Setpoint
+        offset: '-1d'
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.2
+      - entity: climate.slaapkamer
+        attribute: temperature
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
         type: area
         stroke_width: 0
         opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
 
   # ApexCharts Graph for Babykamer
   - type: custom:apexcharts-card
@@ -327,13 +504,26 @@ cards:
       show: true
       show_states: true
       colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
-      legend:
-        show: false
       chart:
         height: 180px
-    graph_span: 24h
-    update_interval: 1m
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
     yaxis:
       - min: ~18
         max: ~22
@@ -341,23 +531,137 @@ cards:
         align_to: 2
         apex_config:
           forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
     series:
       - entity: climate.babykamer
         attribute: current_temperature
-        name: Babykamer Current Temp
+        name: Babykamer Yesterday
+        offset: '-1d'
+        color: '#C4A000'
+        opacity: 0.7
+      - entity: climate.babykamer
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
         color: '#FFDC00'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
       - entity: climate.babykamer
         attribute: temperature
         name: Babykamer Setpoint
+        offset: '-1d'
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.2
+      - entity: climate.babykamer
+        attribute: temperature
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
         type: area
         stroke_width: 0
         opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
+
+  # ApexCharts Graph for Studeerkamer
+  - type: custom:apexcharts-card
+    header:
+      title: Studeerkamer
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
+    apex_config:
+      chart:
+        height: 180px
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
+    yaxis:
+      - min: ~18
+        max: ~22
+        decimals: 0
+        align_to: 2
+        apex_config:
+          forceNiceScale: True
+    series:
+      - entity: climate.studeerkamer
+        attribute: current_temperature
+        name: Studeerkamer Yesterday
+        offset: '-1d'
+        color: '#228B22'
+        opacity: 0.7
+      - entity: climate.studeerkamer
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
+        color: '#2ECC40'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
+      - entity: climate.studeerkamer
+        attribute: temperature
+        name: Studeerkamer Setpoint
+        offset: '-1d'
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.2
+      - entity: climate.studeerkamer
+        attribute: temperature
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
+        type: area
+        stroke_width: 0
+        opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
 
   # ApexCharts Graph for Badkamer
   - type: custom:apexcharts-card
@@ -366,13 +670,26 @@ cards:
       show: true
       show_states: true
       colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
     apex_config:
-      legend:
-        show: false
       chart:
         height: 180px
-    graph_span: 24h
-    update_interval: 1m
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
     yaxis:
       - min: ~18
         max: ~22
@@ -380,62 +697,54 @@ cards:
         align_to: 2
         apex_config:
           forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
     series:
       - entity: climate.badkamer
         attribute: current_temperature
-        name: Badkamer Current Temp
+        name: Badkamer Yesterday
+        offset: '-1d'
+        color: '#00509E'
+        opacity: 0.7
+      - entity: climate.badkamer
+        attribute: current_temperature
+        name: Current Temperature
+        extend_to: now
         color: '#0074D9'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
       - entity: climate.badkamer
         attribute: temperature
         name: Badkamer Setpoint
+        offset: '-1d'
+        color: '#0074D9'
         type: area
         stroke_width: 0
-        opacity: 0.5
-
-  # ApexCharts Graph for Badkamer
-  - type: custom:apexcharts-card
-    header:
-      title: Studeerkamer
-      show: true
-      show_states: true
-      colorize_states: true
-    apex_config:
-      legend:
-        show: false
-      chart:
-        height: 180px
-    graph_span: 24h
-    update_interval: 1m
-    yaxis:
-      - min: ~18
-        max: ~22
-        decimals: 0
-        align_to: 2
-        apex_config:
-          forceNiceScale: True
-    all_series_config:
-      group_by:
-        func: avg
-        duration: 10min
-      stroke_width: 3
-      fill_raw: last
-    series:
-      - entity: climate.studeerkamer
-        attribute: current_temperature
-        name: Babykamer Current Temp
-        color: '#2ECC40'
-      - entity: climate.studeerkamer
+        opacity: 0.2
+      - entity: climate.badkamer
         attribute: temperature
-        name: Babykamer Setpoint
+        name: Setpoint
+        extend_to: now
+        color: '#0074D9'
         type: area
         stroke_width: 0
         opacity: 0.5
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 22 : 18;"
+        color: "#FF7043"  # Fiery Orange (better contrast)
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
 
   - type: vertical-stack
     cards:
