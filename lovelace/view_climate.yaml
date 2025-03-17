@@ -17,14 +17,62 @@ cards:
           - entity: sensor.lowest_quartile_electricity_price_today
             name: "First Quartile Price"
             icon: mdi:cash-multiple
+          - entity: sensor.nordpool_energy_price
+            name: "Current Energy Price"
+            icon: mdi:cash-multiple
           - entity: input_number.heatpump_target_correction
-            name: "Target Correction"
-      - type: history-graph
-        title: Heat Pump Status
-        hours_to_show: 48
-        entities:
-          - entity: sensor.heatpump_status
-            name: Status
+            name: "Automation Target Correction"
+          - entity: sensor.shelly_heatpump_energy_power
+            name: Heat Pump Power
+            icon: mdi:meter-electric-outline
+      - type: custom:collapsable-cards
+        title: Internal Heatpump Entities
+        cards:
+          - type: entities
+            entities:
+              - entity: number.heatpump_heating_target_correction
+                name: "Heating Target Correction"
+                icon: mdi:thermometer-water
+              - entity: sensor.heatpump_flow_in_temperature
+                name: "Flow In Temperature"
+              - entity: sensor.heatpump_flow_out_temperature
+                name: "Flow Out Temperature"
+              - entity: sensor.heatpump_flow_out_temperature_target
+                name: "Flow Out Target Temperature"
+                icon: mdi:thermometer-water
+              - entity: sensor.heatpump_heat_source_input_temperature
+                name: "Heat Source Input Temperature"
+                icon: mdi:waves-arrow-left
+              - entity: sensor.heatpump_heat_source_output_temperature
+                name: "Heat Source Output Temperature"
+                icon: mdi:waves-arrow-right
+              - entity: sensor.heatpump_tapwater_temperature
+                name: "Tapwater Temperature"
+              - entity: number.heatpump_tapwater_target_temperature
+                name: "Tapwater Target Temperature"
+                icon: mdi:thermometer-water
+              - entity: sensor.heatpump_outdoor_temperature
+                name: "Outdoor Temperature"
+                icon: mdi:thermometer
+      - type: custom:collapsable-cards
+        title: Tapwater Control Entities
+        cards:
+          - type: entities
+            entities:
+              - entity: sensor.heatpump_tapwater_temperature
+                name: "Current Temperature"
+              - entity: input_number.tapwater_set_back_temperature
+                name: "Automation Set Back Temp"
+                icon: mdi:thermometer-water
+              - entity: input_number.tapwater_heat_up_temperature
+                name: "Automation Heat Up Temp"
+                icon: mdi:thermometer-water
+              - entity: number.heatpump_tapwater_hysteresis
+                name: "Internal Hysteresis"
+                icon: mdi:thermometer-water
+              - entity: number.heatpump_tapwater_target_temperature
+                name: "Internal Target Temperature"
+
       - type: custom:apexcharts-card
         header:
           show_states: true
@@ -55,11 +103,42 @@ cards:
           - entity: sensor.heatpump_flow_out_temperature
             name: "Current Flow Temperature"
             type: line
-            color: blue
+            color: "#1E88E5"  # Royal Blue (clear and distinct)
           - entity: sensor.heatpump_flow_out_temperature_target
             name: "Target Flow Temperature"
             type: line
-            color: red
+            stroke_dash: 3
+            color: "#D32F2F"  # Dashed Warm Red (stands out without overpowering)
+          - entity: sensor.heatpump_status
+            name: "Heating On"
+            stroke_width: 0
+            type: area
+            transform: "return x === 'heating' ? 30 : 10;"
+            color: "#FF7043"  # Fiery Orange (better contrast)
+            opacity: 0.3
+            show:
+              legend_value: false
+              in_header: false
+          - entity: sensor.heatpump_status
+            name: "Tapwater On"
+            stroke_width: 0
+            type: area
+            transform: "return x === 'hot water' ? 30 : 10;"
+            color: "#00897B"  # Teal (better contrast for water)
+            opacity: 0.3
+            show:
+              legend_value: false
+              in_header: false
+      - type: history-graph
+        title: Heat Pump Status
+        hours_to_show: 48
+        entities:
+          - entity: sensor.heatpump_status
+            name: Status
+          - entity: binary_sensor.heatpump_additional_circulation_pump
+            name: Pump1
+
+
           # - entity: number.heatpump_heating_target_correction
           #   name: "Target Correction"
           #   type: area

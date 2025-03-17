@@ -471,6 +471,8 @@ automation:
         entity_id: input_select.heatpump_price_control
       - platform: state
         entity_id: input_number.heatpump_fixed_price_threshold
+      - platform: state
+        entity_id: input_number.heatpump_target_correction
     condition: []
     action:
       - choose:
@@ -492,7 +494,7 @@ automation:
                 entity_id: input_select.heatpump_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float < states('input_number.heatpump_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price') | float <= states('input_number.heatpump_fixed_price_threshold') | float }}"
             sequence:
               - service: number.set_value
                 target:
@@ -506,7 +508,7 @@ automation:
                 entity_id: input_select.heatpump_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float < states('sensor.lowest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price') | float <= states('sensor.lowest_quartile_electricity_price_today') | float }}"
             sequence:
               - service: number.set_value
                 target:
@@ -515,11 +517,12 @@ automation:
                   value: "{{ states('input_number.heatpump_target_correction') | int }}"
 
       # Default action (turn off if none of the conditions above were met)
-      - service: number.set_value
-        target:
-          entity_id: number.heatpump_heating_target_correction
-        data:
-          value: -5
+        default:
+          - service: number.set_value
+            target:
+              entity_id: number.heatpump_heating_target_correction
+            data:
+              value: -5
 
 
 ################
