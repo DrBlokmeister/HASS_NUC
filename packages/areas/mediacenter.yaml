@@ -151,15 +151,9 @@ automation:
     id: mediacenter_light_automation
     mode: single
     trigger:
-      # - platform: state
-      #   entity_id: device_tracker.samsung_tv_wired
-      #   to: 'home'
       - platform: state
         entity_id: media_player.samsung_tv
         to: 'on'
-      # - platform: state
-      #   entity_id: switch.65_oled
-      #   to: 'on'
       - platform: state
         entity_id: media_player.coreelec
         from: 'idle'
@@ -174,9 +168,15 @@ automation:
         for:
           seconds: 10
     action:
-      - service: switch.turn_on
-        continue_on_error: true
-        entity_id: switch.amplifier_power
+      - service: scene.create
+        data:
+          scene_id: amplifier_tv_before
+          snapshot_entities:
+            - switch.amplifier_power
+            - select.livingroom_receiver_audio_channel
+      # - service: switch.turn_on
+      #   continue_on_error: true
+      #   entity_id: switch.amplifier_power
       - service: switch.turn_on
         continue_on_error: true
         entity_id: switch.ambilight
@@ -185,27 +185,6 @@ automation:
         target:
           entity_id: button.set_livingroom_channel_to_tv
       - wait_for_trigger:
-          # - platform: state
-          #   entity_id: media_player.coreelec
-          #   from: 'playing'
-          #   to: 'idle'
-          #   for:
-          #     minutes: 15
-          # - platform: state
-          #   entity_id: media_player.coreelec
-          #   to: 'idle'
-          #   for:
-          #     minutes: 15
-          # - platform: state
-          #   entity_id: media_player.coreelec
-          #   to: 'unavailable'
-          #   for:
-          #     minutes: 15
-          # - platform: state
-          #   entity_id: device_tracker.samsung_tv
-          #   to: 'not_home'
-          #   for:
-          #     minutes: 2
           - platform: state
             entity_id: media_player.samsung_tv
             to: 'off'
@@ -221,9 +200,12 @@ automation:
         entity_id: switch.ambilight
       - delay:
           seconds: 2
-      - service: switch.turn_off
-        continue_on_error: true
-        entity_id: switch.amplifier_power
+      - service: scene.turn_on
+        data:
+          entity_id: scene.amplifier_tv_before
+      # - service: switch.turn_off
+      #   continue_on_error: true
+      #   entity_id: switch.amplifier_power
 
   - alias: "Kodi: turn on"
     trigger:
@@ -272,6 +254,12 @@ automation:
           id: "turntable"
           event: 1004  # Double press
     action:
+      - service: scene.create
+        data:
+          scene_id: amplifier_turntable_before
+          snapshot_entities:
+            - switch.amplifier_power
+            - select.livingroom_receiver_audio_channel
       - choose:
           - conditions:
               - condition: template
@@ -294,9 +282,9 @@ automation:
                   entity_id: button.set_livingroom_channel_to_tv
               - delay:
                   seconds: 1
-              - service: switch.turn_off
+              - service: scene.turn_on
                 data:
-                  entity_id: switch.amplifier_power
+                  entity_id: scene.amplifier_turntable_before
 
   - alias: "[areas|mediacenter]Update Plex library if torrent completed"
     id: areas_mediacenter_update_plex_library_if_torrent_completed

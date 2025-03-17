@@ -30,6 +30,21 @@ wifi:
 status_led:
   pin: GPIO15
 
+select:
+  - platform: template
+    name: "${room} Receiver Audio Channel"
+    id: receiver_audio_channel
+    optimistic: true
+    options:
+      - "TV"
+      - "Phono"
+    set_action:
+      - lambda: |-
+          if (id(receiver_audio_channel).state == "TV") {
+            id(set_tv_channel).press();
+          } else if (id(receiver_audio_channel).state == "Phono") {
+            id(set_phono_channel).press();
+          }
 # remote_receiver:
 #   pin:
 #     number: GPIO7
@@ -47,13 +62,15 @@ remote_transmitter:
 button:
   - platform: template
     name: "Turn On ${room} Receiver"
+    id: turn_on_receiver
     icon: "mdi:power"
     on_press:
       - remote_transmitter.transmit_pronto:
           data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 0046 000a 001f 000a 001e 000a 001e 000a 001f 000a 0046 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001f 000a 001f 000a 0046 000a 0047 000a 0046 000a 0046 000a 001f 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
 
   - platform: template
-    name: "Turn Off ${room} Receiver"
+    name: "Turn Off ${roo} Receiver"
+    id: turn_off_receiver
     icon: "mdi:power-off"
     on_press:
       - remote_transmitter.transmit_pronto:
@@ -61,6 +78,7 @@ button:
 
   - platform: template
     name: "Turn On/Off ${room} Speakers"
+    id: turn_on_off_speakers
     icon: "mdi:speaker-wireless"
     on_press:
       - remote_transmitter.transmit_pronto:
@@ -68,6 +86,7 @@ button:
 
   - platform: template
     name: "${room} Volume Up"
+    id: volume_up
     icon: "mdi:volume-plus"
     on_press:
       - remote_transmitter.transmit_pronto:
@@ -75,6 +94,7 @@ button:
 
   - platform: template
     name: "${room} Volume Down"
+    id: volume_down
     icon: "mdi:volume-minus"
     on_press:
       - remote_transmitter.transmit_pronto:
@@ -82,20 +102,29 @@ button:
 
   - platform: template
     name: "Set ${room} Channel to TV"
+    id: set_tv_channel
     icon: "mdi:television-classic"
     on_press:
       - remote_transmitter.transmit_pronto:
           data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 0046 000a 001f 000b 001e 000a 0046 000a 001f 000a 001e 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001e 000a 001f 000a 0046 000a 0047 000b 001e 000a 0046 000a 0047 000a 001e 000a 001e 000b 0046 000a 0046 000a 06a2"
+      - select.set:
+          id: receiver_audio_channel
+          option: "TV"
 
   - platform: template
     name: "Set ${room} Channel to Phono"
+    id: set_phono_channel
     icon: "mdi:record-player"
     on_press:
       - remote_transmitter.transmit_pronto:
           data: "0000 006b 0000 0020 000a 001f 000a 0047 000a 001e 000a 001e 000a 001f 000a 0046 000a 0047 000a 001e 000a 001e 000a 001f 000a 001e 000a 0047 000b 0046 000a 001e 000a 001f 000a 06a1 000b 001e 000a 0046 000a 001f 000a 001e 000a 001e 000a 001f 000a 001e 000a 0047 000a 0046 000a 0046 000a 0047 000a 001e 000a 001f 000b 0046 000a 0046 000a 06a2"
+      - select.set:
+          id: receiver_audio_channel
+          option: "Phono"
 
   - platform: template
     name: "Mute ${room} Speakers"
+    id: mute_speakers
     icon: "mdi:volume-mute"
     on_press:
       - remote_transmitter.transmit_pronto:
