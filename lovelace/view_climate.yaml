@@ -93,6 +93,19 @@ cards:
             align_to: 5
             apex_config:
               forceNiceScale: True
+          - id: power
+            min: 0
+            max: ~1000
+            decimals: 0
+            align_to: 200
+            opposite: true
+            show: true
+          - id: binary
+            min: 0
+            max: 1
+            decimals: 0
+            align_to: 1
+            show: false
         all_series_config:
           group_by:
             func: avg
@@ -102,33 +115,43 @@ cards:
         series:
           - entity: sensor.heatpump_flow_out_temperature
             name: "Current Flow Temperature"
+            yaxis_id: temp
             type: line
             color: "#1E88E5"  # Royal Blue (clear and distinct)
           - entity: sensor.heatpump_flow_out_temperature_target
             name: "Target Flow Temperature"
+            yaxis_id: temp
             type: line
             stroke_dash: 3
             color: "#D32F2F"  # Dashed Warm Red (stands out without overpowering)
           - entity: sensor.heatpump_status
             name: "Heating On"
+            yaxis_id: binary
             stroke_width: 0
             type: area
-            transform: "return x === 'heating' ? 30 : 10;"
+            transform: "return x === 'heating' ? 1 : 0;"
             color: "#FF7043"  # Fiery Orange (better contrast)
-            opacity: 0.3
+            opacity: 0.4
             show:
               legend_value: false
               in_header: false
           - entity: sensor.heatpump_status
             name: "Tapwater On"
+            yaxis_id: binary
             stroke_width: 0
             type: area
-            transform: "return x === 'hot water' ? 30 : 10;"
+            transform: "return x === 'hot water' ? 1 : 0;"
             color: "#00897B"  # Teal (better contrast for water)
-            opacity: 0.3
+            opacity: 0.4
             show:
               legend_value: false
               in_header: false
+          - entity: sensor.shelly_heatpump_energy_power
+            name: "Power"
+            yaxis_id: power
+            type: line
+            stroke_width: 2
+            color: "#FF851B"  # Dashed Warm Red (stands out without overpowering)
       - type: history-graph
         title: Heat Pump Status
         hours_to_show: 48
@@ -192,22 +215,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.tamara
         attribute: current_temperature
         name: Tamara Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#9300A9'
         opacity: 0.7
       - entity: climate.tamara
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#B10DC9'
         opacity: 1
@@ -217,6 +249,7 @@ cards:
       - entity: climate.tamara
         attribute: temperature
         name: Tamara Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -225,6 +258,7 @@ cards:
       - entity: climate.tamara
         attribute: temperature
         name: Setpoint
+        yaxis_id: main
         extend_to: now
         color: '#0074D9'
         type: area
@@ -235,10 +269,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
@@ -275,22 +311,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.woonkamer
         attribute: current_temperature
         name: Woonkamer Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#C00026'
         opacity: 0.7
       - entity: climate.woonkamer
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#FF4136'
         opacity: 1
@@ -300,6 +345,7 @@ cards:
       - entity: climate.woonkamer
         attribute: temperature
         name: Woonkamer Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -307,6 +353,7 @@ cards:
         opacity: 0.2
       - entity: climate.woonkamer
         attribute: temperature
+        yaxis_id: main
         name: Setpoint
         extend_to: now
         color: '#0074D9'
@@ -318,10 +365,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
@@ -359,22 +408,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.logeerkamer
         attribute: current_temperature
         name: Logeerkamer Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#008B8B'
         opacity: 0.7
       - entity: climate.logeerkamer
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#39CCCC'
         opacity: 1
@@ -384,6 +442,7 @@ cards:
       - entity: climate.logeerkamer
         attribute: temperature
         name: Logeerkamer Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -392,6 +451,7 @@ cards:
       - entity: climate.logeerkamer
         attribute: temperature
         name: Setpoint
+        yaxis_id: main
         extend_to: now
         color: '#0074D9'
         type: area
@@ -402,10 +462,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
@@ -442,22 +504,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.slaapkamer
         attribute: current_temperature
         name: Slaapkamer Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#C46310'
         opacity: 0.7
       - entity: climate.slaapkamer
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#FF851B'
         opacity: 1
@@ -467,6 +538,7 @@ cards:
       - entity: climate.slaapkamer
         attribute: temperature
         name: Slaapkamer Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -474,6 +546,7 @@ cards:
         opacity: 0.2
       - entity: climate.slaapkamer
         attribute: temperature
+        yaxis_id: main
         name: Setpoint
         extend_to: now
         color: '#0074D9'
@@ -485,10 +558,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
@@ -525,22 +600,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.babykamer
         attribute: current_temperature
         name: Babykamer Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#C4A000'
         opacity: 0.7
       - entity: climate.babykamer
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#FFDC00'
         opacity: 1
@@ -550,6 +634,7 @@ cards:
       - entity: climate.babykamer
         attribute: temperature
         name: Babykamer Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -557,6 +642,7 @@ cards:
         opacity: 0.2
       - entity: climate.babykamer
         attribute: temperature
+        yaxis_id: main
         name: Setpoint
         extend_to: now
         color: '#0074D9'
@@ -568,10 +654,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
@@ -608,22 +696,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.studeerkamer
         attribute: current_temperature
         name: Studeerkamer Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#228B22'
         opacity: 0.7
       - entity: climate.studeerkamer
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#2ECC40'
         opacity: 1
@@ -633,6 +730,7 @@ cards:
       - entity: climate.studeerkamer
         attribute: temperature
         name: Studeerkamer Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -641,6 +739,7 @@ cards:
       - entity: climate.studeerkamer
         attribute: temperature
         name: Setpoint
+        yaxis_id: main
         extend_to: now
         color: '#0074D9'
         type: area
@@ -651,10 +750,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
@@ -691,22 +792,31 @@ cards:
         legend_value: false
         name_in_header: true
     yaxis:
-      - min: ~18
+      - id: main
+        min: ~18
         max: ~22
         decimals: 0
         align_to: 2
         apex_config:
           forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
     series:
       - entity: climate.badkamer
         attribute: current_temperature
         name: Badkamer Yesterday
+        yaxis_id: main
         offset: '-1d'
         color: '#00509E'
         opacity: 0.7
       - entity: climate.badkamer
         attribute: current_temperature
         name: Current Temperature
+        yaxis_id: main
         extend_to: now
         color: '#0074D9'
         opacity: 1
@@ -716,6 +826,7 @@ cards:
       - entity: climate.badkamer
         attribute: temperature
         name: Badkamer Setpoint
+        yaxis_id: main
         offset: '-1d'
         color: '#0074D9'
         type: area
@@ -724,6 +835,7 @@ cards:
       - entity: climate.badkamer
         attribute: temperature
         name: Setpoint
+        yaxis_id: main
         extend_to: now
         color: '#0074D9'
         type: area
@@ -734,10 +846,12 @@ cards:
           legend_value: true
       - entity: sensor.heatpump_status
         name: "Heating On"
+        yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 22 : 18;"
+        transform: "return x === 'heating' ? 1 : 0;"
         color: "#FF7043"  # Fiery Orange (better contrast)
+        extend_to: now
         opacity: 0.3
         group_by:
           func: last
