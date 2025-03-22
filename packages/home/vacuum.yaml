@@ -666,6 +666,39 @@ automation:
                 target:
                   entity_id: camera.alfred_map
 
+  - alias: "[home|vacuum] Reset Utility Meter on Sudden Area Jump"
+    id: home_vacuum_reset_utility_meter_on_sudden_area_jump
+    description: Reset the utility meter if there's an abnormal sudden increase in cleaned area
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.moeke_area_cleaned_today
+    condition:
+      - condition: template
+        value_template: >-
+          {% set old = trigger.from_state.state | float(0) %}
+          {% set new = trigger.to_state.state | float(0) %}
+          {{ (new - old) > 10 }}
+      - condition: template
+        value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+      - condition: state
+        entity_id: vacuum.moeke
+        state:
+          - 'docked'
+          - 'paused'
+          - 'idle'
+    action:
+      - service: utility_meter.calibrate
+        target:
+          entity_id: sensor.moeke_area_cleaned_today
+        data:
+          value: "0"
+      - service: system_log.write
+        data:
+          message: >-
+            Reset moeke_area_cleaned_today due to sudden jump from
+            {{ trigger.from_state.state }} to {{ trigger.to_state.state }} m²
+          level: info
 
 ################
 #    SCENES    #
