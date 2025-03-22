@@ -284,8 +284,11 @@ automation:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 3) }}"
       - condition: template
-        value_template: |
-          {{ 'ring' in trigger.event.data.new_state.attributes.event_types }}
+        value_template: >-
+          {{
+            ('ring' in trigger.event.data.new_state.attributes.event_types) and
+            (trigger.event.data.new_state_attributes.event_type == 'ring')
+           }}
     action:
       - action: system_log.write
         data:
