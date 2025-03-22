@@ -55,6 +55,260 @@ template:
           forecast: "{{ forecast['weather.home']['forecast'] }}"
           last_update: "{{ now().isoformat() }}"
 
+  - trigger:
+      - platform: time_pattern
+        hours: "/1"
+    action:
+      - service: weather.get_forecasts
+        data:
+          type: daily
+        target:
+          entity_id:
+            - weather.home
+            - weather.home_2
+        response_variable: forecast_response
+    sensor:
+      - name: "Forecast Templow First Quartile" # First quartile templow
+        unique_id: yaml_template_sensor_forecast_templow_first_quartile
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-low
+        state: >
+          {% set templows = (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='templow')
+            | select('is_number')
+            | map('float')
+            | sort
+            | list %}
+          {% if templows | length == 0 %}
+            unavailable
+          {% else %}
+            {% set n = (templows | length - 1) * 0.25 %}
+            {% set lower_index = n | int %}
+            {% set upper_index = (lower_index + 1) if (n % 1 > 0) else lower_index %}
+            {% set fraction = n - lower_index %}
+            {% if upper_index < (templows | length) %}
+              {% set q1 = templows[lower_index] + (fraction * (templows[upper_index] - templows[lower_index])) %}
+            {% else %}
+              {% set q1 = templows[lower_index] %}
+            {% endif %}
+            {{ q1 | round(1) }}
+          {% endif %}
+        availability: >
+          {{ forecast_response is defined
+              and forecast_response['weather.home']['forecast'] is defined
+              and forecast_response['weather.home_2']['forecast'] is defined }}
+        attributes:
+          templow_values: >
+            {{ (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='templow')
+            | select('is_number')
+            | map('float')
+            | list }}
+          last_updated: "{{ now().isoformat() }}"
+      - name: "Forecast Templow Third Quartile" # Third quartile templow
+        unique_id: yaml_template_sensor_forecast_templow_third_quartile
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-low
+        state: >
+          {% set templows = (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='templow')
+            | select('is_number')
+            | map('float')
+            | sort
+            | list %}
+          {% if templows | length == 0 %}
+            unavailable
+          {% else %}
+            {% set n = (templows | length - 1) * 0.75 %}
+            {% set lower_index = n | int %}
+            {% set upper_index = (lower_index + 1) if (n % 1 > 0) else lower_index %}
+            {% set fraction = n - lower_index %}
+            {% if upper_index < (templows | length) %}
+              {% set q3 = templows[lower_index] + (fraction * (templows[upper_index] - templows[lower_index])) %}
+            {% else %}
+              {% set q3 = templows[lower_index] %}
+            {% endif %}
+            {{ q3 | round(1) }}
+          {% endif %}
+        availability: >
+          {{ forecast_response is defined
+              and forecast_response['weather.home']['forecast'] is defined
+              and forecast_response['weather.home_2']['forecast'] is defined }}
+        attributes:
+          templow_values: >
+            {{ (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='templow')
+            | select('is_number')
+            | map('float')
+            | list }}
+          last_updated: "{{ now().isoformat() }}"
+      - name: "Forecast Mean Templow" # Mean templow
+        unique_id: yaml_template_sensor_forecast_mean_templow
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-low
+        state: >
+          {% set temperatures = (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='templow')
+            | select('is_number')
+            | map('float')
+            | list %}
+          {% if temperatures | length == 0 %}
+            unavailable
+          {% else %}
+            {{ temperatures | average | round(1) }}
+          {% endif %}
+        availability: >
+          {{ forecast_response is defined
+              and forecast_response['weather.home']['forecast'] is defined
+              and forecast_response['weather.home_2']['forecast'] is defined }}
+        attributes:
+          temperature_values: >
+            {{ (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='templow')
+            | select('is_number')
+            | map('float')
+            | list }}
+          last_updated: "{{ now().isoformat() }}"
+      - name: "Forecast Temperature First Quartile" # First quartile temperature
+        unique_id: yaml_template_sensor_forecast_temperature_first_quartile
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer
+        state: >
+          {% set temps = (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='temperature')
+            | select('is_number')
+            | map('float')
+            | sort
+            | list %}
+          {% if temps | length == 0 %}
+            unavailable
+          {% else %}
+            {% set n = (temps | length - 1) * 0.25 %}
+            {% set lower_index = n | int %}
+            {% set upper_index = (lower_index + 1) if (n % 1 > 0) else lower_index %}
+            {% set fraction = n - lower_index %}
+            {% if upper_index < (temps | length) %}
+              {% set q1 = temps[lower_index] + (fraction * (temps[upper_index] - temps[lower_index])) %}
+            {% else %}
+              {% set q1 = temps[lower_index] %}
+            {% endif %}
+            {{ q1 | round(1) }}
+          {% endif %}
+        availability: >
+          {{ forecast_response is defined
+              and forecast_response['weather.home']['forecast'] is defined
+              and forecast_response['weather.home_2']['forecast'] is defined }}
+        attributes:
+          temperature_values: >
+            {{ (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='temperature')
+            | select('is_number')
+            | map('float')
+            | list }}
+          last_updated: "{{ now().isoformat() }}"
+      - name: "Forecast Temperature Third Quartile"  # Third quartile temperature
+        unique_id: yaml_template_sensor_forecast_temperature_third_quartile
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer
+        state: >
+          {% set temps = (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='temperature')
+            | select('is_number')
+            | map('float')
+            | sort
+            | list %}
+          {% if temps | length == 0 %}
+            unavailable
+          {% else %}
+            {% set n = (temps | length - 1) * 0.75 %}
+            {% set lower_index = n | int %}
+            {% set upper_index = (lower_index + 1) if (n % 1 > 0) else lower_index %}
+            {% set fraction = n - lower_index %}
+            {% if upper_index < (temps | length) %}
+              {% set q3 = temps[lower_index] + (fraction * (temps[upper_index] - temps[lower_index])) %}
+            {% else %}
+              {% set q3 = temps[lower_index] %}
+            {% endif %}
+            {{ q3 | round(1) }}
+          {% endif %}
+        availability: >
+          {{ forecast_response is defined
+              and forecast_response['weather.home']['forecast'] is defined
+              and forecast_response['weather.home_2']['forecast'] is defined }}
+        attributes:
+          temperature_values: >
+            {{ (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='temperature')
+            | select('is_number')
+            | map('float')
+            | list }}
+          last_updated: "{{ now().isoformat() }}"
+      - name: "Forecast Mean Temperature" # Mean temperature
+        unique_id: yaml_template_sensor_forecast_mean_temperature
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer
+        state: >
+          {% set temperatures = (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='temperature')
+            | select('is_number')
+            | map('float')
+            | list %}
+          {% if temperatures | length == 0 %}
+            unavailable
+          {% else %}
+            {{ temperatures | average | round(1) }}
+          {% endif %}
+        availability: >
+          {{ forecast_response is defined
+              and forecast_response['weather.home']['forecast'] is defined
+              and forecast_response['weather.home_2']['forecast'] is defined }}
+        attributes:
+          temperature_values: >
+            {{ (
+              forecast_response['weather.home']['forecast']
+              + forecast_response['weather.home_2']['forecast']
+            )
+            | map(attribute='temperature')
+            | select('is_number')
+            | map('float')
+            | list }}
+          last_updated: "{{ now().isoformat() }}"
+
+
+
 #################
 #    SENSORS    #
 #################
