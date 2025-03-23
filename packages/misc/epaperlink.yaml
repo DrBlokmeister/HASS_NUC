@@ -28,7 +28,7 @@ template:
             'sensor.00000218736e3b1e_last_seen',
             'sensor.0000021d7356341f_last_seen',
             'sensor.0000039223703418_last_seen',
-            'sensor.garbage_monitor_tag_last_seen',
+            'sensor.00000219a2923b10_last_seen',
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.0000021f3abd3415_last_seen',
             'sensor.00007e1f8b30b297_last_seen',
@@ -58,7 +58,7 @@ template:
             'sensor.00000218736e3b1e_last_seen',
             'sensor.0000021d7356341f_last_seen',
             'sensor.0000039223703418_last_seen',
-            'sensor.garbage_monitor_tag_last_seen',
+            'sensor.00000219a2923b10_last_seen',
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.0000021f3abd3415_last_seen',
             'sensor.00007e1f8b30b297_last_seen',
@@ -445,91 +445,93 @@ automation:
                   display_device_id: 29d7d4483b27d042b60d86ac92541aa2
 
   - alias: "[misc|epaperlink]Notify if tag not seen"
+    id: yaml_automation_misc_epaperlink_notify_if_tag_not_seen
     mode: restart
     trigger:
       - platform: time_pattern
         minutes: "/10"  # Check every 10 minutes
-    condition:
-      - condition: template
-        value_template: >
-          {%- set outdated = namespace(found=false) -%}
-          {%- for sensor in [
-              "sensor.0000021c3bc6341b_last_seen",
-              "sensor.00000218736e3b1e_last_seen",
-              "sensor.0000039223703418_last_seen",
-              "sensor.garbage_monitor_tag_last_seen",
-              "sensor.0000021d7356341f_last_seen",
-              "sensor.00007e225dc2b29f_last_seen",
-              "sensor.00007e22cc92b292_last_seen",
-              "sensor.00007e1f8b30b297_last_seen",
-              "sensor.0000021f3abd3415_last_seen",
-              "sensor.0000021d1c8e3413_last_seen"
-            ] -%}
-              {%- set last_seen = states(sensor) -%}
-              {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
-                {%- set outdated.found = true -%}
-              {%- endif -%}
-          {% endfor %}
-          {{ outdated.found }}
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.uptime'))) > 300 }}"
+    condition: []
+      # - condition: template
+      #   value_template: >
+      #     {%- set outdated = namespace(found=false) -%}
+      #     {%- for sensor in [
+      #         "sensor.0000021c3bc6341b_last_seen",
+      #         "sensor.00000218736e3b1e_last_seen",
+      #         "sensor.0000039223703418_last_seen",
+      #         "sensor.00000219a2923b10_last_seen",
+      #         "sensor.0000021d7356341f_last_seen",
+      #         "sensor.00007e225dc2b29f_last_seen",
+      #         "sensor.00007e22cc92b292_last_seen",
+      #         "sensor.00007e1f8b30b297_last_seen",
+      #         "sensor.0000021f3abd3415_last_seen",
+      #         "sensor.0000021d1c8e3413_last_seen"
+      #       ] -%}
+      #         {%- set last_seen = states(sensor) -%}
+      #         {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
+      #           {%- set outdated.found = true -%}
+      #         {%- endif -%}
+      #     {% endfor %}
+      #     {{ outdated.found }}
     action:
       # - condition: template
       #   value_template: "{{ trigger.to_state.state == 'unavailable' or (as_timestamp(now()) - as_timestamp(trigger.to_state.last_changed)) > 300 }}"
-      - service: persistent_notification.create
-        data_template:
-          title: "Tag Not Seen Alert"
-          notification_id: tag_not_seen_alert
-          message: >
-            One or more tags have not been seen for more than 5 minutes:
-            {% for sensor in [
-                "sensor.0000021c3bc6341b_last_seen",
-                "sensor.00000218736e3b1e_last_seen",
-                "sensor.0000039223703418_last_seen",
-                "sensor.garbage_monitor_tag_last_seen",
-                "sensor.0000021d7356341f_last_seen",
-                "sensor.00007e225dc2b29f_last_seen",
-                "sensor.00007e22cc92b292_last_seen",
-                "sensor.00007e1f8b30b297_last_seen",
-                "sensor.0000021f3abd3415_last_seen",
-                "sensor.0000021d1c8e3413_last_seen"
-              ] %}
-                {%- set last_seen = states(sensor) -%}
-                {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
-                  {%- if not state_attr(sensor, 'friendly_name') == None -%}
-                    {{ state_attr(sensor, 'friendly_name') | replace(' Last Seen', '') }}{% if not loop.last %}, {% endif %}
-                  {%- else -%}
-                    {{ state_attr(sensor, 'entity_id') }}{% if not loop.last %}, {% endif %}
-                  {%- endif -%}
-                {%- endif -%}
-            {%- endfor -%}
-      - wait_for_trigger:
-          - platform: template
-            value_template: >
-              {% set recent_seen = true %}
-              {% for sensor in [
-                    "sensor.0000021c3bc6341b_last_seen",
-                    "sensor.00000218736e3b1e_last_seen",
-                    "sensor.0000039223703418_last_seen",
-                    "sensor.garbage_monitor_tag_last_seen",
-                    "sensor.0000021d7356341f_last_seen",
-                    "sensor.00007e225dc2b29f_last_seen",
-                    "sensor.00007e22cc92b292_last_seen",
-                    "sensor.00007e1f8b30b297_last_seen",
-                    "sensor.0000021f3abd3415_last_seen",
-                    "sensor.0000021d1c8e3413_last_seen"
-                ] %}
-                  {%- set last_seen = states(sensor) -%}
-                  {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
-                    {% set recent_seen = false %}
-                  {%- endif -%}
-              {% endfor %}
-              {{ recent_seen }}
-            for:
-              minutes: 1  # Wait to ensure all sensors have recently been seen for at least 1 minute
-      - service: persistent_notification.dismiss
-        data:
-          notification_id: tag_not_seen_alert
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {%- set outdated = namespace(found=false) -%}
+                  {%- for sensor in [
+                      "sensor.0000021c3bc6341b_last_seen",
+                      "sensor.00000218736e3b1e_last_seen",
+                      "sensor.0000039223703418_last_seen",
+                      "sensor.00000219a2923b10_last_seen",
+                      "sensor.0000021d7356341f_last_seen",
+                      "sensor.00007e225dc2b29f_last_seen",
+                      "sensor.00007e22cc92b292_last_seen",
+                      "sensor.00007e1f8b30b297_last_seen",
+                      "sensor.0000021f3abd3415_last_seen",
+                      "sensor.0000021d1c8e3413_last_seen"
+                    ] -%}
+                      {%- set last_seen = states(sensor) -%}
+                      {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
+                        {%- set outdated.found = true -%}
+                      {%- endif -%}
+                  {% endfor %}
+                  {{ outdated.found }}
+              - condition: template
+                value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.uptime'))) > 300 }}"
+            sequence:
+              - service: persistent_notification.create
+                data_template:
+                  title: "Tag Not Seen Alert"
+                  notification_id: tag_not_seen_alert
+                  message: >
+                    One or more tags have not been seen for more than 5 minutes:
+                    {% for sensor in [
+                        "sensor.0000021c3bc6341b_last_seen",
+                        "sensor.00000218736e3b1e_last_seen",
+                        "sensor.0000039223703418_last_seen",
+                        "sensor.00000219a2923b10_last_seen",
+                        "sensor.0000021d7356341f_last_seen",
+                        "sensor.00007e225dc2b29f_last_seen",
+                        "sensor.00007e22cc92b292_last_seen",
+                        "sensor.00007e1f8b30b297_last_seen",
+                        "sensor.0000021f3abd3415_last_seen",
+                        "sensor.0000021d1c8e3413_last_seen"
+                      ] %}
+                        {%- set last_seen = states(sensor) -%}
+                        {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
+                          {%- if not state_attr(sensor, 'friendly_name') == None -%}
+                            {{ state_attr(sensor, 'friendly_name') | replace(' Last Seen', '') }}{% if not loop.last %}, {% endif %}
+                          {%- else -%}
+                            {{ state_attr(sensor, 'entity_id') }}{% if not loop.last %}, {% endif %}
+                          {%- endif -%}
+                        {%- endif -%}
+                    {%- endfor -%}
+        default:
+          - service: persistent_notification.dismiss
+            data:
+              notification_id: tag_not_seen_alert
 
   - alias: "[misc|epaperlink]Trigger Reload When Last Seen Exceeds 5 Minutes"
     description: "Reloads config entry if the median last check-in time is more than 5 minutes. In this case, it is likely that the integration has failed and needs a restart."
