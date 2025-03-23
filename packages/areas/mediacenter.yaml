@@ -170,13 +170,17 @@ automation:
     action:
       - service: scene.create
         data:
-          scene_id: amplifier_tv_before
+          scene_id: amplifier_power_tv_before
           snapshot_entities:
             - switch.amplifier_power
+      - service: scene.create
+        data:
+          scene_id: amplifier_channel_tv_before
+          snapshot_entities:
             - select.livingroom_receiver_audio_channel
-      # - service: switch.turn_on
-      #   continue_on_error: true
-      #   entity_id: switch.amplifier_power
+      - service: switch.turn_on
+        continue_on_error: true
+        entity_id: switch.amplifier_power
       - service: switch.turn_on
         continue_on_error: true
         entity_id: switch.ambilight
@@ -202,7 +206,12 @@ automation:
           seconds: 2
       - service: scene.turn_on
         data:
-          entity_id: scene.amplifier_tv_before
+          entity_id: scene.amplifier_channel_tv_before
+      - delay:
+          seconds: 2
+      - service: scene.turn_on
+        data:
+          entity_id: scene.amplifier_power_tv_before
       # - service: switch.turn_off
       #   continue_on_error: true
       #   entity_id: switch.amplifier_power
@@ -256,9 +265,13 @@ automation:
     action:
       - service: scene.create
         data:
-          scene_id: amplifier_turntable_before
+          scene_id: amplifier_power_turntable_before
           snapshot_entities:
             - switch.amplifier_power
+      - service: scene.create
+        data:
+          scene_id: amplifier_channel_turntable_before
+          snapshot_entities:
             - select.livingroom_receiver_audio_channel
       - choose:
           - conditions:
@@ -284,7 +297,12 @@ automation:
                   seconds: 1
               - service: scene.turn_on
                 data:
-                  entity_id: scene.amplifier_turntable_before
+                  entity_id: scene.amplifier_channel_turntable_before
+              - delay:
+                  seconds: 2
+              - service: scene.turn_on
+                data:
+                  entity_id: scene.amplifier_power_turntable_before
 
   - alias: "[areas|mediacenter]Update Plex library if torrent completed"
     id: areas_mediacenter_update_plex_library_if_torrent_completed
