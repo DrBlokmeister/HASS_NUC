@@ -131,19 +131,85 @@ cards:
           - entity: sensor.guest_room_co2
             name: Guest Room
             icon: mdi:bed
-      - type: custom:mini-graph-card
-        name: Ventilation
-        entities:
+      - type: custom:apexcharts-card
+        header:
+          title: Ventilation
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 1m
+        graph_span: 24h
+        apex_config:
+          chart:
+            toolbar:
+              show: false
+            height: 250px
+          legend:
+            show: false
+          grid:
+            show: false
+            padding:
+              left: 0
+              right: 0
+              bottom: 0
+              top: -20
+          annotations:
+            position: front
+            yaxis:
+              - y: 25
+                borderColor: '#32CD32'
+                label:
+                  position: left
+                  offsetY: -5
+                  offsetX: 40
+                  borderColor: '#32CD32'
+                  text: '25%'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#32CD32'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 50
+                borderColor: '#FFD700'
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FFD700'
+                  text: '50%'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#FFD700'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 100
+                borderColor: '#FF4500'
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FF4500'
+                  text: '100%'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#FF4500'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+        yaxis:
+          - min: 0
+            max: 100
+            show: false
+        layout: minimal
+        all_series_config:
+          type: area
+          group_by:
+            func: avg
+            duration: 5min
+          stroke_width: 3
+          fill_raw: zero
+        series:
           - entity: fan.ventilation_system
-            name: Current Speed
-            icon: mdi:fan
+            name: Home Ventilation
             attribute: percentage
-        hours_to_show: 24
-        points_per_hour: 10
-        line_width: 4
-        upper_bound: 100
-        lower_bound: 0
-        hour24: true
+
       - type: glance
         title: Home Ventilation
         entities:
@@ -425,16 +491,16 @@ cards:
         series:
           - entity: sensor.shed_aqm_temperature
             name: Shed AQM
-            color: '#33ff63'  # Bold yellow
-          - entity: sensor.rabbits_temperature
-            name: Rabbits
-            color: '#33ffff'  # Soft bold yellow
+            color: '#33ff63'
           - entity: sensor.temperature_outside
             name: Outside
-            color: '#66FF66'  # Teal blue
+            color: '#66FF66'
+          - entity: sensor.rabbits_temperature
+            name: Rabbits
+            color: '#33ffff'
           - entity: sensor.temperature_fridge
             name: Fridge
-            color: '#336dff'  # Light teal blue
+            color: '#336dff'
 
   - type: custom:apexcharts-card
     header:
