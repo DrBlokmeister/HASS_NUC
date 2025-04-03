@@ -240,34 +240,76 @@ sensor:
         value_template: "{{ states('sensor.total_power_consumption_watt')|float/1000 }}"
         unit_of_measurement: "kW"
         availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number }}"
+
       average_electricity_price_today:
-        friendly_name: "Average Electricity Price Today"
+        friendly_name: \"Average Electricity Price Today\"
         unique_id: yaml_template_sensor_average_electricity_price_today
         icon_template: mdi:currency-eur
-        value_template: "{{ (states('sensor.total_electricity_cost_daily_energy_use')|float(0) / states('sensor.daily_energy_use')|float(1))|round(3) }}"
-        unit_of_measurement: "€/kWh"
-        availability_template: "{{ states('sensor.total_electricity_cost_daily_energy_use')|is_number and states('sensor.daily_energy_use')|is_number }}"
+        unit_of_measurement: \"€/kWh\"
+        value_template: >-
+          {% if now().hour == 0 %}
+            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+          {% else %}
+            {{ (states('sensor.total_electricity_cost_daily_energy_use')|float(0) / states('sensor.daily_energy_use')|float(1))|round(3) }}
+          {% endif %}
+        availability_template: >-
+          {{
+            (states('sensor.total_electricity_cost_daily_energy_use')|is_number and states('sensor.daily_energy_use')|is_number)
+            or
+            (now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+          }}
       average_electricity_price_this_week:
         friendly_name: "Average Electricity Price This Week"
         unique_id: yaml_template_sensor_average_electricity_price_this_week
         icon_template: mdi:currency-eur
-        value_template: "{{ (states('sensor.total_electricity_cost_weekly_energy_use')|float(0) / states('sensor.weekly_energy_use')|float(1))|round(3) }}"
         unit_of_measurement: "€/kWh"
-        availability_template: "{{ states('sensor.total_electricity_cost_weekly_energy_use')|is_number and states('sensor.weekly_energy_use')|is_number }}"
+        value_template: >-
+          {% if now().weekday() == 0 and now().hour == 0 %}
+            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+          {% else %}
+            {{ (states('sensor.total_electricity_cost_weekly_energy_use')|float(0) / states('sensor.weekly_energy_use')|float(1))|round(3) }}
+          {% endif %}
+        availability_template: >-
+          {{
+            (states('sensor.total_electricity_cost_weekly_energy_use')|is_number and states('sensor.weekly_energy_use')|is_number)
+            or
+            (now().weekday() == 0 and now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+          }}
       average_electricity_price_this_month:
         friendly_name: "Average Electricity Price This Month"
         unique_id: yaml_template_sensor_average_electricity_price_this_month
         icon_template: mdi:currency-eur
-        value_template: "{{ (states('sensor.total_electricity_cost_monthly_energy_use')|float(0) / states('sensor.monthly_energy_use')|float(1))|round(3) }}"
         unit_of_measurement: "€/kWh"
-        availability_template: "{{ states('sensor.total_electricity_cost_monthly_energy_use')|is_number and states('sensor.monthly_energy_use')|is_number }}"
+        value_template: >-
+          {% if now().day == 1 and now().hour == 0 %}
+            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+          {% else %}
+            {{ (states('sensor.total_electricity_cost_monthly_energy_use')|float(0) / states('sensor.monthly_energy_use')|float(1))|round(3) }}
+          {% endif %}
+        availability_template: >-
+          {{
+            (states('sensor.total_electricity_cost_monthly_energy_use')|is_number and states('sensor.monthly_energy_use')|is_number)
+            or
+            (now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+          }}
       average_electricity_price_this_year:
         friendly_name: "Average Electricity Price This Year"
         unique_id: yaml_template_sensor_average_electricity_price_this_year
         icon_template: mdi:currency-eur
-        value_template: "{{ (states('sensor.total_electricity_cost_yearly_energy_use')|float(0) / states('sensor.yearly_energy_use')|float(1))|round(3) }}"
         unit_of_measurement: "€/kWh"
-        availability_template: "{{ states('sensor.total_electricity_cost_yearly_energy_use')|is_number and states('sensor.yearly_energy_use')|is_number }}"
+        value_template: >-
+          {% if now().month == 1 and now().day == 1 and now().hour == 0 %}
+            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+          {% else %}
+            {{ (states('sensor.total_electricity_cost_yearly_energy_use')|float(0) / states('sensor.yearly_energy_use')|float(1))|round(3) }}
+          {% endif %}
+        availability_template: >-
+          {{
+            (states('sensor.total_electricity_cost_yearly_energy_use')|is_number and states('sensor.yearly_energy_use')|is_number)
+            or
+            (now().month == 1 and now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+          }}
+
 
 
     #Fitted powers using model based on temperatures
@@ -1089,7 +1131,7 @@ automation:
         # for:
         #   minutes: 1
     action:
-      - service: notify.mobile_app_blokmeisters21u
+      - service: notify.mobile_app_blokmeisterp9pro
         data:
           title: "Warning: Power Usage!"
           message: "Unknown power is <b>{{ states('sensor.unknown_power') }} W</b> for a total of <b>{{ states('sensor.total_power_consumption_watt') }} W</b>"
@@ -1110,7 +1152,7 @@ automation:
               entity_id: sensor.unknown_power
               above: 1500
           sequence:
-            - service: notify.mobile_app_blokmeisters21u
+            - service: notify.mobile_app_blokmeisterp9pro
               data:
                 title: "Warning: Power Usage!"
                 message: "Unknown power is <b>{{ states('sensor.unknown_power') }} W</b> for a total of <b>{{ states('sensor.total_power_consumption_watt') }} W</b>"
