@@ -8,7 +8,7 @@ cards:
     header:
       show: true
       title: Electricity Price Last 7 Days
-      show_states: false
+      show_states: true
       colorize_states: true
     now:
       show: true
@@ -29,15 +29,21 @@ cards:
       float_precision: 3
       transform: "return Math.round(x * 1000) / 1000;"
       unit: €/kWh
-      # group_by:
-      #   func: avg
-      #   duration: 15min
+      show:
+        in_header: false
+        legend_value: false
     series:
       - entity: sensor.nordpool_energy_price
         name: Today
         color: '#f9d423' # Bright yellow for visibility
         stroke_width: 4 # Thicker line for Today
-        extend_to: now
+        show:
+          in_header: true
+        #extend_to: now
+        data_generator: |
+          return entity.attributes.raw_today.map((start, index) => {
+            return [new Date(start["start"]).getTime(), entity.attributes.raw_today[index]["value"]];
+          });
       - entity: sensor.nordpool_energy_price
         offset: '-1d'
         name: Yesterday
@@ -97,6 +103,7 @@ cards:
               tickAmount: 5
               forceNiceScale: True
         all_series_config:
+          stroke_width: 2
           extend_to: now
           group_by:
             func: avg
@@ -135,7 +142,7 @@ cards:
           - entity: sensor.average_electricity_price_today
             aggregate_func: last
         name: Daily Average Price
-        hours_to_show: 168
+        hours_to_show: 336 # 14 days
         hour24: true
         lower_bound: ~0
         upper_bound: ~0.5
