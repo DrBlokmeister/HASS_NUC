@@ -44,10 +44,16 @@ cards:
           service: vacuum.start
           service_data:
             entity_id: vacuum.alfred
+
   - type: vertical-stack
     cards:
+      - type: button
+        name: "Moeke: Go to Device Settings"
+        tap_action:
+          action: navigate
+          navigation_path: "/config/devices/device/fbfd7b8ba43fffa14307a6d20c8e153d"
       - type: custom:xiaomi-vacuum-map-card
-        title: Moeke
+        #title: Moeke
         preset_name: Live map
         map_locked: true
         entity: vacuum.moeke
@@ -58,28 +64,20 @@ cards:
         debug: true
       - type: entities
         entities:
-          - entity: sensor.moeke_area_cleaned_today
-            name: Moeke Cleaned Today
+          # - entity: sensor.moeke_area_cleaned_today
+          #   name: Moeke Cleaned Today
           - entity: select.moeke_cleaning_mode
           - entity: binary_sensor.moeke_reservoir_leak_sensor
             name: Clean Water Reservoir
-
-  - type: vertical-stack
-    cards:
-      - type: custom:xiaomi-vacuum-map-card
-        title: Argus
-        preset_name: Live map
-        map_locked: true
-        entity: vacuum.argus
-        map_source:
-          camera: camera.argus_map
-        calibration_source:
-          camera: true
-        debug: true
-      - type: entities
-        entities:
-          - entity: sensor.argus_area_cleaned_today
-            name: Argus Cleaned Today
+          - entity: sensor.moeke_detergent_left
+            name: Detergent Level
+            hold_action:
+              confirmation:
+                text: "Reset detergent level?"
+              action: call-service
+              service: button.press
+              target:
+                entity_id: button.moeke_reset_detergent
       - type: glance
         title: Clean Areas
         columns: 4
@@ -102,11 +100,103 @@ cards:
             tap_action:
               action: call-service
               service: script.vacuum_livingroom_twice
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.moeke_area_cleaned_today
+            aggregate_func: last
+            name: Area Cleaned Today
+        name: Moeke Cleaned Area
+        line_color: '#8891d0'
+        hours_to_show: 336 # 14 days
+        group_by: date
+        points_per_hour: 1
+        line_width: 8
+        font_size: 75
+        font_size_header: 14
+        align_state: right
+        lower_bound: 0
+        upper_bound: ~60
+        show:
+          graph: bar
+          icon: false
+          points: false
 
   - type: vertical-stack
     cards:
+      - type: button
+        name: "Argus: Go to Device Settings"
+        tap_action:
+          action: navigate
+          navigation_path: "/config/devices/device/5b526629f18568d13731a63d0c9b2ab4"
       - type: custom:xiaomi-vacuum-map-card
-        title: Alfred
+        #title: Argus
+        preset_name: Live map
+        map_locked: true
+        entity: vacuum.argus
+        map_source:
+          camera: camera.argus_map
+        calibration_source:
+          camera: true
+        debug: true
+      # - type: entities
+      #   entities:
+      #     - entity: sensor.argus_area_cleaned_today
+      #       name: Argus Cleaned Today
+      - type: glance
+        title: Clean Areas
+        columns: 5
+        entities:
+          - entity: script.vacuum_bedroom_twice
+            icon: mdi:bed
+            name: Bedroom
+            tap_action:
+              action: call-service
+              service: script.vacuum_bedroom_twice
+          - entity: script.vacuum_bathroom_twice
+            icon: mdi:bathtub
+            name: Bathroom
+            tap_action:
+              action: call-service
+              service: script.vacuum_bathroom_twice
+          - entity: script.vacuum_babyroom
+            icon: mdi:baby
+            name: Baby Room
+            tap_action:
+              action: call-service
+              service: script.vacuum_babyroom
+        show_icon: true
+        show_name: true
+        show_state: false
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.argus_area_cleaned_today
+            aggregate_func: last
+            name: Area Cleaned Today
+        name: Argus Cleaned Area
+        line_color: '#8891d0'
+        hours_to_show: 336 # 14 days
+        group_by: date
+        points_per_hour: 1
+        line_width: 8
+        font_size: 75
+        font_size_header: 14
+        align_state: right
+        lower_bound: 0
+        upper_bound: ~60
+        show:
+          graph: bar
+          icon: false
+          points: false
+
+  - type: vertical-stack
+    cards:
+      - type: button
+        name: "Alfred: Go to Device Settings"
+        tap_action:
+          action: navigate
+          navigation_path: "/config/devices/device/63a45cb7ef7ef16a7cb28ab9d99936ea"
+      - type: custom:xiaomi-vacuum-map-card
+        #title: Alfred
         preset_name: Live map
         map_locked: true
         entity: vacuum.alfred
@@ -115,10 +205,10 @@ cards:
         calibration_source:
           camera: true
         debug: true
-      - type: entities
-        entities:
-          - entity: sensor.alfred_area_cleaned_today
-            name: Alfred Cleaned Today
+      # - type: entities
+      #   entities:
+      #     - entity: sensor.alfred_area_cleaned_today
+      #       name: Alfred Cleaned Today
       - type: glance
         title: Clean Areas
         columns: 5
@@ -150,4 +240,24 @@ cards:
         show_icon: true
         show_name: true
         show_state: false
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.alfred_area_cleaned_today
+            aggregate_func: last
+            name: Area Cleaned Today
+        name: Alfred Cleaned Area
+        line_color: '#8891d0'
+        hours_to_show: 336 # 14 days
+        group_by: date
+        points_per_hour: 1
+        line_width: 8
+        font_size: 75
+        font_size_header: 14
+        align_state: right
+        lower_bound: 0
+        upper_bound: ~60
+        show:
+          graph: bar
+          icon: false
+          points: false
 
