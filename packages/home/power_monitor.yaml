@@ -109,7 +109,7 @@ template:
     sensor:
       - name: "Cheapest Night Price"
         unique_id: "cheapest_night_price_sensor"
-        unit_of_measurement: '€'
+        unit_of_measurement: '€/kWh'
         state: >
           {%- set current_time = now() -%}
           {%- set ns = namespace(cheapest=None) -%}
@@ -165,7 +165,7 @@ template:
   - sensor:
       - name: "Lowest Quartile Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
-        unit_of_measurement: '€'
+        unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[5] }}"
         attributes:
           difference_to_minimum: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[5] - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
@@ -173,7 +173,7 @@ template:
         availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
       - name: "Highest Quartile Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
-        unit_of_measurement: '€'
+        unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[17] }}"
         attributes:
           difference_to_maximum: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | sort())[17] }}"
@@ -181,7 +181,7 @@ template:
         availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
       - name: "Interquartile Range Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
-        unit_of_measurement: '€'
+        unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5] }}"
         attributes:
           difference_to_range: "{{ (((state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min())) - ((state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5])) | round(3) }}"
@@ -189,7 +189,7 @@ template:
         availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
       - name: "Total Range Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
-        unit_of_measurement: '€'
+        unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
         availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
 
@@ -242,10 +242,10 @@ sensor:
         availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number }}"
 
       average_electricity_price_today:
-        friendly_name: \"Average Electricity Price Today\"
+        friendly_name: "Average Electricity Price Today"
         unique_id: yaml_template_sensor_average_electricity_price_today
         icon_template: mdi:currency-eur
-        unit_of_measurement: \"€/kWh\"
+        unit_of_measurement: "€kWh"
         value_template: >-
           {% if now().hour == 0 %}
             {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
