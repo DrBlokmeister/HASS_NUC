@@ -216,11 +216,15 @@ automation:
                   - condition: numeric_state
                     entity_id: sensor.proximity_sander_distance
                     below: 50000
-              - condition: not
+              - condition: or
                 conditions:
-                  - condition: time
-                    weekday:
-                      - sun
+                  - condition: not
+                    conditions:
+                      - condition: time
+                        weekday:
+                          - sun
+              - condition: template
+                value_template: "{{ trigger.id == 'heat_up_nightly_cheapest' }}"
             sequence:
               - service: number.set_value
                 data_template:
