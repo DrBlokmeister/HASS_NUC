@@ -276,24 +276,28 @@ automation:
     mode: single
     max_exceeded: silent
     trigger:
-      - trigger: event
-        event_type: state_changed
-        event_data:
-          entity_id: event.g4_doorbell_pro_doorbell
+      - trigger: state
+        entity_id: binary_sensor.g4_doorbell_pro_doorbell
+        from: 'off'
+        to: 'on'
+      # - trigger: event
+      #   event_type: state_changed
+      #   event_data:
+      #     entity_id: event.g4_doorbell_pro_doorbell
     condition:
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 3) }}"
-      - condition: template
-        value_template: >-
-          {{
-            ('ring' in trigger.event.data.new_state.attributes.event_types) and
-            (trigger.event.data.new_state.attributes.event_type == 'ring')
-           }}
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 5) }}"
+      # - condition: template
+      #   value_template: >-
+      #     {{
+      #       ('ring' in trigger.event.data.new_state.attributes.event_types) and
+      #       (trigger.event.data.new_state.attributes.event_type == 'ring')
+      #      }}
     action:
-      - action: system_log.write
-        data:
-          message: "Doorbell has been rung with event type: {{ trigger.event.data.new_state.attributes.event_types }} and attributes {{ trigger.event.data.new_state.attributes }}"
-          level: info
+      # - action: system_log.write
+      #   data:
+      #     message: "Doorbell has been rung with event type: {{ trigger.event.data.new_state.attributes.event_types }} and attributes {{ trigger.event.data.new_state.attributes }}"
+      #     level: info
       # - service: camera.snapshot
       #   data:
       #     entity_id: camera.g4_doorbell_pro_high_resolution_channel
@@ -332,7 +336,7 @@ automation:
                           entity_id: binary_sensor.front_door_sensor
                           state: 'on'
                         - condition: template
-                          value_template: "{{ repeat.index > 5 }}"
+                          value_template: "{{ repeat.index > 3 }}"
                   sequence:
                     - service: tts.cloud_say
                       target:
@@ -351,7 +355,7 @@ automation:
                           group: "doorbell_reminder"
                           notification_icon: "mdi:bell-ring"
                     - delay:
-                        seconds: 4
+                        seconds: 10
               - wait_for_trigger:
                   - platform: state
                     entity_id: binary_sensor.front_door_sensor
