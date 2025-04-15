@@ -89,21 +89,28 @@ sensor:
 ##### BATTERY ESTIMATIONS #####
       alfred_battery:
         friendly_name: "Alfred Battery"
+        unique_id: yaml_template_sensor_alfred_battery
         unit_of_measurement: "%"
-        device_class: "battery"
-        #icon: mdi:battery
+        device_class: battery
+        icon_template: mdi:battery
         value_template: "{{ state_attr('vacuum.alfred', 'battery_level') }}"
         availability_template: "{{ states('vacuum.alfred') not in ['None', 'Unavailable', 'unknown', None] }}"
       argus_battery:
         friendly_name: "Argus Battery"
+        unique_id: yaml_template_sensor_argus_battery
         unit_of_measurement: "%"
-        device_class: "battery"
-        #icon: mdi:battery
+        device_class: battery
+        icon_template: mdi:battery
         value_template: "{{ state_attr('vacuum.argus', 'battery_level') }}"
         availability_template: "{{ states('vacuum.argus') not in ['None', 'Unavailable', 'unknown', None] }}"
 
 ##### POWER ESTIMATION #####
       moeke_power_estimate:
+        friendly_name: "Moeke Power Estimate"
+        unique_id: yaml_template_sensor_moeke_power_estimate
+        unit_of_measurement: "W"
+        device_class: power
+        icon_template: mdi:flash
         value_template: >-
           {% if is_state('vacuum.moeke', 'docked') and states('sensor.moeke_battery_level')|int < 100 and is_state('sensor.moeke_self_wash_base_status', 'drying') %}
             60
@@ -116,10 +123,13 @@ sensor:
           {% else %}
             0
           {% endif %}
-        unit_of_measurement: "W"
-        device_class: 'power'
         availability_template: "{{ states('vacuum.moeke') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
       argus_power_estimate:
+        friendly_name: "Argus Power Estimate"
+        unique_id: yaml_template_sensor_argus_power_estimate
+        unit_of_measurement: "W"
+        device_class: power
+        icon_template: mdi:flash
         value_template: >-
           {% if states.vacuum.argus == None or states.vacuum.argus.state in ['unknown', 'unavailable', None] %}
             0
@@ -130,10 +140,13 @@ sensor:
           {% else %}
             0
           {% endif %}
-        unit_of_measurement: "W"
-        device_class: 'power'
         availability_template: "{{ states('vacuum.argus') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
       alfred_power_estimate:
+        friendly_name: "Alfred Power Estimate"
+        unique_id: yaml_template_sensor_alfred_power_estimate
+        unit_of_measurement: "W"
+        device_class: power
+        icon_template: mdi:flash
         value_template: >-
           {% if states.vacuum.alfred == None or states.vacuum.alfred.state in ['unknown', 'unavailable', None] %}
             0
@@ -144,8 +157,6 @@ sensor:
           {% else %}
             0
           {% endif %}
-        unit_of_measurement: "W"
-        device_class: 'power'
         availability_template: "{{ states('vacuum.alfred') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
 
   - platform: min_max
@@ -198,7 +209,11 @@ binary_sensor:
   - platform: template
     sensors:
       tamara_or_sander_downstairs:
-        value_template: "{{ is_state_attr('device_tracker.tamaraphone_unifi', 'ap_mac', 'd0:21:f9:64:06:39') or is_state_attr('device_tracker.blokmeisters21u_unifi', 'ap_mac', 'd0:21:f9:64:06:39') }}"
+        friendly_name: "Tamara or Sander Downstairs"
+        unique_id: yaml_template_binary_sensor_tamara_or_sander_downstairs
+        device_class: occupancy
+        icon_template: mdi:stairs-down
+        value_template: "{{ not is_state_attr('device_tracker.tamaraphone_unifi', 'ap_mac', 'd0:21:f9:64:06:39') and not is_state_attr('device_tracker.blokmeisterp9pro_unifi', 'ap_mac', 'd0:21:f9:64:06:39') }}"
         availability_template: "{{ not is_state('device_tracker.tamaraphone_unifi', 'unavailable') or not is_state('device_tracker.blokmeisters21u_unifi', 'unavailable') }}"
 ##################
 #    SWITCHES    #

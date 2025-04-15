@@ -8,6 +8,9 @@ sensor:
   - platform: template
     sensors:
       guest_wifi_clients:
+        friendly_name: "Guest WiFi Clients"
+        unique_id: yaml_template_sensor_guest_wifi_clients
+        icon_template: mdi:account-group
         value_template: >-
           {% set ns = namespace(counter=0) %}
           {% for entity in states.device_tracker %}
@@ -25,6 +28,9 @@ binary_sensor:
   - platform: template
     sensors:
       house_occupied:
+        friendly_name: "House occupied"
+        unique_id: yaml_template_binary_sensor_house_occupied
+        icon_template: mdi:home
         device_class: occupancy
         value_template: >-
           {{
@@ -36,7 +42,6 @@ binary_sensor:
             is_state('device_tracker.a55_van_heidi', 'home') or
             states('sensor.guest_wifi_clients')|int(0) > 0
           }}
-        # Removed    is_state('calendar.gasten_in_huis', 'on') or
         availability_template: >-
           {{
             states('person.sander_blok') not in ['unavailable', 'unknown', 'none', None] or
@@ -47,10 +52,10 @@ binary_sensor:
             states('device_tracker.a55_van_heidi') not in ['unavailable', 'unknown', 'none', None] or
             states('sensor.guest_wifi_clients') | is_number()
           }}
-        # Removed:             or states('calendar.gasten_in_huis') not in ['unavailable', 'unknown', 'none', None]
       sander_home_alone:
         friendly_name: "Sander home alone"
-        unique_id: yaml_template_sensor_sander_home_alone
+        unique_id: yaml_template_binary_sensor_sander_home_alone
+        icon_template: mdi:home
         device_class: occupancy
         value_template: >-
           {{
@@ -91,6 +96,8 @@ switch:
     switches:
       tamara_mode:
         friendly_name: "Tamara mode"
+        unique_id: yaml_template_switch_tamara_mode
+        icon_template: mdi:account-heart
         value_template: "{{ is_state('input_boolean.tamara_mode', 'on') }}"
         turn_on:
           service: input_boolean.turn_on
@@ -98,6 +105,7 @@ switch:
         turn_off:
           service: input_boolean.turn_off
           entity_id: input_boolean.tamara_mode
+
 
 #####################
 #    AUTOMATIONS    #

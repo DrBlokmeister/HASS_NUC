@@ -194,11 +194,15 @@ sensor:
     sensors:
       warmtebron_in_uit_delta:
         friendly_name: Warmtebron in-uit Delta T
+        unique_id: yaml_template_sensor_warmtebron_in_uit_delta
+        icon_template: mdi:thermometer-lines
         unit_of_measurement: '°C'
         value_template: "{{ states('sensor.heatpump_heat_source_output_temperature')|float - states('sensor.heatpump_heat_source_input_temperature')|float}}"
         availability_template: "{{ states.sensor.heatpump_heat_source_output_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_heat_source_input_temperature not in ['unavailable', 'unknown', 'none', None] }}"
       vloerverwarming_in_uit_delta:
         friendly_name: Vloerverwarming in-uit Delta T
+        unique_id: yaml_template_sensor_vloerverwarming_in_uit_delta
+        icon_template: mdi:thermometer-lines
         unit_of_measurement: '°C'
         value_template: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
         availability_template: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
@@ -218,11 +222,15 @@ sensor:
       #   availability_template: "{{ states('sensor.heatpump_heat_amount_heating')|is_number() }}"
       heatpump_efficiency:
         friendly_name: Heatpump Efficiency
+        unique_id: yaml_template_sensor_heatpump_efficiency
+        icon_template: mdi:percent
         unit_of_measurement: '%'
         value_template: "{{ (100 * (states('sensor.heatpump_current_heat_output')|float(0)) / states('sensor.shelly_heatpump_energy_power')|float(1))|round(0) }}"
         availability_template: "{{ states.sensor.heatpump_current_heat_output not in ['unavailable', 'unknown', 'none', None] and states.sensor.shelly_heatpump_energy_power not in ['unavailable', 'unknown', 'none', None] }}"
       heatpump_source_heat_dissipation:
         friendly_name: Heatpump Source Heat Dissipation
+        unique_id: yaml_template_sensor_heatpump_source_heat_dissipation
+        icon_template: mdi:fire
         unit_of_measurement: 'kW'
         value_template: "{{ (states('sensor.warmtebron_in_uit_delta')|float * states('sensor.heatpump_heat_source_flow_rate')|float * 4186 / 3600 / 1000)|round(2) }}"
         availability_template: "{{ states('sensor.warmtebron_in_uit_delta')|is_number and states('sensor.heatpump_heat_source_flow_rate')|is_number}}"
@@ -230,7 +238,6 @@ sensor:
       #   friendly_name: Heatpump Floor Heat Dissipation
       #   unit_of_measurement: 'kW'
       #   value_template: "{{ states('sensor.vloerverwarming_in_uit_delta')|float * states('sensor.heatpump_heat_source_flow_rate')|float * 4186 / 3600 / 1000}}"
-
       bathroom_alphahome_temperature:
         friendly_name: Bathroom Alpha Home Temperature
         unique_id: "yaml_template_sensor_bathroom_alphahome_temperature"
@@ -287,16 +294,16 @@ sensor:
         icon_template: mdi:thermostat
         value_template: "{{ state_attr('climate.woonkamer', 'current_temperature') }}"
         availability_template: "{{ state_attr('climate.woonkamer', 'current_temperature')|is_number }}"
-
       tapwater_heat_up_energy_required:
         friendly_name: Tapwater Heat-Up Energy Required
+        unique_id: yaml_template_sensor_tapwater_heat_up_energy_required
         device_class: energy
         unit_of_measurement: kWh
+        icon_template: mdi:lightning-bolt
         value_template: >-
           {{ (((0.0012 * states('input_number.tapwater_heat_up_temperature')|float()**2) + (-0.0593 * states('input_number.tapwater_heat_up_temperature')|float) + 0.6177) -
              ((0.0012 * states('sensor.heatpump_tapwater_temperature')|float()**2) + (-0.0593 * states('sensor.heatpump_tapwater_temperature')|float) + 0.6177))|round(2) }}
         availability_template: "{{ states('input_number.tapwater_heat_up_temperature')|is_number and states('sensor.heatpump_tapwater_temperature')|is_number }}"
-
 
 
   # CO2 calibration notification helpers

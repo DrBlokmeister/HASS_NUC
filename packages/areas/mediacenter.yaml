@@ -110,7 +110,10 @@ binary_sensor:
 switch:
   - platform: template
     switches:
-      ambilight: # is_state('switch.hyperion_apa102_component_led_device', 'on') is excluded from the value template. For some reason this doesn't work.
+      ambilight:
+        friendly_name: "Ambilight"
+        unique_id: yaml_template_switch_ambilight
+        icon_template: mdi:television-ambient-light
         value_template: >-
           {{
             is_state('switch.ambilight', 'on') and
@@ -124,6 +127,7 @@ switch:
           service: script.turn_off_ambilight
       tv_json_cec:
         friendly_name: "TV json CEC"
+        unique_id: yaml_template_switch_tv_json_cec
         icon_template: mdi:television
         value_template: "{{ is_state('device_tracker.tv', 'home') }}"
         availability_template: "{{ is_state('device_tracker.coreelec', 'home') and not is_state('media_player.coreelec', 'unavailable') }}"
@@ -143,6 +147,7 @@ switch:
             addonid: script.json-cec
             params:
               command: standby
+
 #####################
 #    AUTOMATIONS    #
 #####################

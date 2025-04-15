@@ -143,6 +143,9 @@ switch:
   - platform: template
     switches:
       heatpump_tapwater_power_saving_mode:
+        friendly_name: "Heatpump Tapwater Power Saving Mode"
+        unique_id: yaml_template_switch_heatpump_tapwater_power_saving_mode
+        icon_template: mdi:water-boiler-off
         value_template: "{{ states('number.heatpump_tapwater_target_temperature')|int <= 45 and states('number.heatpump_tapwater_hysteresis')|float() >= 5 }}"
         turn_on:
           - service: number.set_value
@@ -156,7 +159,12 @@ switch:
         turn_off:
           delay:
             seconds: 1
+        availability_template: >-
+         {{ states('number.heatpump_tapwater_target_temperature')|is_number and states('number.heatpump_tapwater_hysteresis')|is_number }}
       heatpump_tapwater_heatup_mode:
+        friendly_name: "Heatpump Tapwater Heatup Mode"
+        unique_id: yaml_template_switch_heatpump_tapwater_heatup_mode
+        icon_template: mdi:water-boiler
         value_template: "{{ states('number.heatpump_tapwater_target_temperature')|int >= 55 and states('number.heatpump_tapwater_hysteresis')|float() < 5 }}"
         turn_on:
           - service: number.set_value
@@ -170,6 +178,9 @@ switch:
         turn_off:
           delay:
             seconds: 1
+        availability_template: >-
+         {{ states('number.heatpump_tapwater_target_temperature')|is_number and states('number.heatpump_tapwater_hysteresis')|is_number }}
+
 
 #####################
 #    AUTOMATIONS    #

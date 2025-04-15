@@ -89,29 +89,56 @@ binary_sensor:
   - platform: template
     sensors:
       bathroom_shower_occupied:
-        friendly_name: "Bathroom Shower Occupation"
+        friendly_name: "Bathroom Shower Occupied"
+        unique_id: yaml_template_binary_sensor_bathroom_shower_occupied
         value_template: "{{ states('sensor.humidity_bathroom')|int(0) > states('sensor.humidity_bathroom_median')|int(0) + 15 }}"
         device_class: occupancy
+        icon_template: mdi:shower
         availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_median', 'unavailable') }}"
+
       bathroom_shower_left:
         friendly_name: "Bathroom Shower Left"
+        unique_id: yaml_template_binary_sensor_bathroom_shower_left
         value_template: "{{ states('sensor.humidity_bathroom')|int(0) < states('sensor.humidity_bathroom_max')|int(0) - 15 }}"
         device_class: occupancy
+        icon_template: mdi:shower-head
         availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_max', 'unavailable') }}"
       bathroom_bayesian_test_humidity_contition:
+        friendly_name: "Bathroom Bayesian Test - Humidity"
+        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_humidity_contition
         value_template: "{{ (states('sensor.humidity_bathroom')|int(0) - states('sensor.humidity_bathroom_min')|int(0)) > 15 }}"
+        device_class: moisture
+        icon_template: mdi:water-percent
       bathroom_bayesian_test_light_contition:
+        friendly_name: "Bathroom Bayesian Test - Light"
+        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_light_contition
         value_template: "{{ is_state('light.bathroom', 'on') }}"
+        device_class: light
+        icon_template: mdi:lightbulb-on
       bathroom_bayesian_test_water_usage_contition:
+        friendly_name: "Bathroom Bayesian Test - Water Usage"
+        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_water_usage_contition
         value_template: "{{ states('sensor.water_meter_current_water_consumption')|int(0) > 20 }}"
+        device_class: moisture
+        icon_template: mdi:water-pump
       water_usage_above_5_l_min:
+        friendly_name: "Water Usage > 5 L/min"
+        unique_id: yaml_template_binary_sensor_water_usage_above_5_l_min
         value_template: "{{ states('sensor.water_usage')|int(0) > 5 }}"
+        device_class: moisture
+        icon_template: mdi:water
       hot_water_used:
+        friendly_name: "Hot Water Used"
+        unique_id: yaml_template_binary_sensor_hot_water_used
         value_template: >
-                          {{
-                            states('sensor.water_usage_above_5_l_min')|float(0) > 0 and
-                            states('sensor.tapwater_temperature_change_5min')|float(0) <= -1
-                          }}
+          {{
+            states('sensor.water_usage_above_5_l_min')|float(0) > 0 and
+            states('sensor.tapwater_temperature_change_5min')|float(0) <= -1
+          }}
+        device_class: moisture
+        icon_template: mdi:water-boiler
+
+
 
   - platform: bayesian
     name: Shower Occupied

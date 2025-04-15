@@ -59,8 +59,11 @@ sensor:
   - platform: template
     sensors:
       vibration_sensor_attributes:
-        value_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation'), state_attr('binary_sensor.vibration_sensor', 'tiltangle') }}"
-        availability_template: "{{ state_attr('binary_sensor.vibration_sensor', 'orientation')|is_number and state_attr('binary_sensor.vibration_sensor', 'tiltangle')|is_number }}"
+        friendly_name: "Vibration Sensor Attributes"
+        unique_id: yaml_template_sensor_vibration_sensor_attributes
+        icon_template: mdi:vibrate
+        value_template: "{{ state_attr('binary_sensor.vibration_sensor_desk_chair', 'orientation'), state_attr('binary_sensor.vibration_sensor_desk_chair', 'tiltangle') }}"
+        availability_template: "{{ not states('binary_sensor.vibration_sensor_desk_chair') in ['unavailable', 'unknown', 'none', None] }}"
   - platform: group
     name: "Study Average Illuminance"
     unique_id: yaml_sensor_group_study_average_illuminance
@@ -88,15 +91,11 @@ sensor:
 binary_sensor:
   - platform: template
     sensors:
-      # computer_on:
-      #   device_class: power
-      #   value_template: >-
-      #     {{
-      #       states('sensor.blitzwolf_computer_energy_power')|float > 100
-      #     }}
-      #   availability_template: "{{ states('sensor.blitzwolf_computer_energy_power')|is_number }}"
       study_motion_combined:
+        friendly_name: "Study Combined Motion"
+        unique_id: yaml_template_binary_sensor_study_motion_combined
         device_class: motion
+        icon_template: mdi:motion-sensor
         value_template: >-
           {{
             is_state('binary_sensor.study_motion_1', 'on') or
@@ -105,9 +104,15 @@ binary_sensor:
         availability_template: "{{ (states('binary_sensor.study_motion_1') in ['on', 'off']) and (states('binary_sensor.study_motion_2') in ['on', 'off']) }}"
       power_above_soldering_power:
         friendly_name: "Power Above Soldering Power"
-        #device_class: power
-        value_template: "{{ (states('sensor.plug_study_workbench_power')|float(0) - states('sensor.alfred_power_estimate')|float(0)) | float >= 35 }}" # Correct for estimated Alfred power draw
-
+        unique_id: yaml_template_binary_sensor_power_above_soldering_power
+        device_class: power
+        icon_template: mdi:soldering-iron
+        value_template: "{{ (states('sensor.plug_study_workbench_power')|float(0) - states('sensor.alfred_power_estimate')|float(0)) | float >= 35 }}"
+        availability_template: >-
+          {{
+            states('sensor.plug_study_workbench_power')|is_number and
+            states('sensor.alfred_power_estimate')|is_number
+          }}
 ########################
 #    INPUT BOOLEANS    #
 ########################
