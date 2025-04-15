@@ -76,11 +76,21 @@ cards:
               });
       - type: 'custom:apexcharts-card'
         graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
         header:
           title: Temperature Forecast
           show: true
-        span:
-          start: hour
+          show_states: true
+          colorize_states: true
+        apex_config:
+          chart:
+            height: 300px
+            type: line
+          legend:
+            show: false
         yaxis:
           - show: true
             decimals: 0
@@ -92,14 +102,41 @@ cards:
               forceNiceScale: true
               labels:
                 offsetX: -15
+        all_series_config:
+          stroke_width: 3
+          curve: smooth
+          fill_raw: last
         series:
           - entity: sensor.weather_forecast_hourly
             float_precision: 1
             type: line
+            color: '#ffad42'
             data_generator: |
               return entity.attributes.forecast.map(item => {
                 return [new Date(item.datetime).getTime(), item.temperature];
               });
+            show:
+              in_header: true
+          - entity: sensor.weather_forecast_hourly
+            float_precision: 1
+            offset: '+1d'
+            type: line
+            extend_to: now
+            color: '#e69537'
+            data_generator: |
+              return entity.attributes.forecast.map(item => {
+                return [new Date(item.datetime).getTime(), item.temperature];
+              });
+            opacity: 0.5
+            show:
+              in_header: false
+          - entity: sensor.weather_forecast_hourly
+            float_precision: 1
+            type: line
+            color: '#ffad42'
+            extend_to: now
+            show:
+              in_header: true
   - type: vertical-stack
     cards:
       - type: glance
