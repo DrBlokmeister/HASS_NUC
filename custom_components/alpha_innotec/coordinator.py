@@ -26,7 +26,7 @@ class AlphaInnotecCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Alpha Innotec",
-            update_interval=timedelta(seconds=60),
+            update_interval=timedelta(seconds=10),
         )
 
         self.config_entry = config_entry
