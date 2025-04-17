@@ -234,45 +234,146 @@ cards:
         labels: true
         average: true
         labels_secondary: true
-    - type: custom:apexcharts-card
-      header:
-        title: Router Speeds
-        show: true
-        show_states: true
-        colorize_states: true
-      graph_span: 24h
-      apex_config:
-        chart:
-          height: 250px
-        legend:
-          show: false
-      all_series_config:
-        group_by:
-          func: median
-          duration: 15min
-        stroke_width: 2
+
+  - type: custom:apexcharts-card
+    header:
+      title: Router Speeds
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 250px
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 15min
+      stroke_width: 2
+      type: area
+    yaxis:
+      - min: 0
+        max: ~500
+        decimals: 0
+        align_to: 100
+        apex_config:
+          #tickAmount: 4
+          forceNiceScale: True
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} Mbps`;
+              }
+    #layout: minimal
+    series:
+      - entity: sensor.unifi_dream_machine_kib_s_received
+        name: Down
+        color: '#36A2EB'  # Blue
+      - entity: sensor.unifi_dream_machine_kib_s_sent
+        name: Up
+        color: '#FF6384'  # Red
+
+  - type: custom:apexcharts-card
+    header:
+      title: Network Device Temperatures
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 250px
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 5min
+      stroke_width: 3
+    yaxis:
+      - min: ~20
+        max: ~50
+        decimals: 0
+        align_to: 10
+        apex_config:
+          stepSize: 10
+          #forceNiceScale: true
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} °C`;
+              }
+    series:
+      - entity: sensor.usw_pro_max_16_poe_temperature
+        name: PoE Switch
+        color: '#008FFB' # Bright blue
+      - entity: sensor.temperature_utility_cabinet
+        name: Ambient
+        color: '#00E396' # Green-teal
         type: area
-      yaxis:
-        - min: 0
-          max: ~500
-          decimals: 0
-          align_to: 100
-          apex_config:
-            #tickAmount: 4
-            forceNiceScale: True
-            labels:
-              formatter: |
-                EVAL:function(value) {
-                  return `${value} Mbps`;
-                }
-      #layout: minimal
-      series:
-        - entity: sensor.unifi_dream_machine_kib_s_received
-          name: Down
-          color: '#36A2EB'  # Blue
-        - entity: sensor.unifi_dream_machine_kib_s_sent
-          name: Up
-          color: '#FF6384'  # Red
+        stroke_width: 3
+      - entity: sensor.udmpro_cpu_temperature
+        name: UDM Pro
+        color: '#FEB019' # Warm yellow
+      - entity: sensor.udmpro_udmpro_phy_temperature
+        name: UDM Pro SFP+
+        color: '#FF4560' # Reddish for caution
+
+  - type: custom:apexcharts-card
+    header:
+      title: Network CPU Utilization
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    apex_config:
+      chart:
+        height: 250px
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 5min
+      stroke_width: 3
+    yaxis:
+      - min: 0
+        max: ~50
+        decimals: 0
+        align_to: 10
+        apex_config:
+          stepSize: 10
+          #forceNiceScale: true
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} %`;
+              }
+    series:
+      - entity: sensor.udmpro_cpu_utilization
+        name: UDM Pro CPU
+        color: '#FEB019' # Same warm yellow as temp
+      - entity: sensor.usw_pro_max_16_poe_cpu_utilization
+        name: USW-Pro PoE Switch CPU
+        color: '#008FFB' # Same bright blue as temp
+      - entity: sensor.usw_flex_xg_cpu_utilization
+        name: USW-Flex XG CPU
+        color: '#775DD0' # Purple
+      - entity: sensor.u6_lr_cpu_utilization
+        name: U6-LR Access Point CPU
+        color: '#00E396' # Teal green
+      - entity: sensor.ap_lite_1st_floor_cpu_utilization
+        name: AP Lite (1st Floor) CPU
+        color: '#FF66C3' # Pink
+      - entity: sensor.u6_pro_2nd_floor_cpu_utilization
+        name: U6-Pro (2nd Floor) CPU
+        color: '#4BC0C0' # Cyan
+      - entity: sensor.ap_lite_outside_cpu_utilization
+        name: AP Lite (Outside) CPU
+        color: '#F86624' # Orange-red
+
 
   - type: grid
     title: Firewall Rules
