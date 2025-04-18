@@ -178,10 +178,10 @@ cards:
                 return `${value} %`;
               }
     series:
-      - entity: sensor.nas_cpu_temperature_file
+      - entity: sensor.tower_cpu_temperature
         name: CPU Temperature
         color: '#FF6384'
-      - entity: sensor.nas_cpu_usage_file
+      - entity: sensor.tower_cpu_usage
         name: CPU Usage
         color: '#36A2EB'
 
@@ -205,7 +205,7 @@ cards:
       # transform: "return (x / 1024).toFixed(2);"
     yaxis:
       - min: 0
-        max: 32000
+        max: 100
         decimals: 0
         apex_config:
           forceNiceScale: True
@@ -213,10 +213,10 @@ cards:
           labels:
             formatter: |
               EVAL:function(value) {
-                return `${value/1000} GB`;
+                return `${value} %`;
               }
     series:
-      - entity: sensor.nas_used_memory_file
+      - entity: sensor.tower_ram_usage
         name: Used Memory
         color: '#FF9F40'
 
@@ -252,25 +252,25 @@ cards:
                 return `${(value)} °C`;
               }
     series:
-      - entity: sensor.nas_parity_temperature_file
+      - entity: sensor.unraid_parity_temperature
         name: Parity Disk Temperature
         color: '#4BC0C0'
-      - entity: sensor.nas_disk_1_temperature_file
+      - entity: sensor.unraid_disk_1_temperature
         name: Disk 1 Temperature
         color: '#9966FF'
-      - entity: sensor.nas_disk_2_temperature_file
+      - entity: sensor.unraid_disk_2_temperature
         name: Disk 2 Temperature
         color: '#C9CBCF'
-      - entity: sensor.nas_disk_3_temperature_file
+      - entity: sensor.unraid_disk_3_temperature
         name: Disk 3 Temperature
         color: '#7E57C2'
-      - entity: sensor.nas_dev_1_temperature_file
-        name: Dev 1 Temperature
+      - entity: sensor.unraid_disk_4_temperature
+        name: Disk 4 Temperature
         color: '#FFCE56'
-      - entity: sensor.nas_dev_2_temperature_file
-        name: Dev 2 Temperature
+      - entity: sensor.unraid_disk_5_temperature
+        name: Disk 5 Temperature
         color: '#FF9F40'
-      - entity: sensor.nas_nvme_composite_temperature_file
+      - entity: sensor.unraid_cache_pool_temperature
         name: NVMe Composite Temperature
         color: '#36A2EB'
         transform: "return x == 83.8 ? null : x;"
@@ -287,10 +287,10 @@ cards:
         name: Disk 2
       - entity: binary_sensor.disk_3_spun_up
         name: Disk 3
-      - entity: binary_sensor.dev_1_spun_up
-        name: Dev 1
-      - entity: binary_sensor.dev_2_spun_up
-        name: Dev 2
+      - entity: binary_sensor.disk_4_spun_up
+        name: Disk 4
+      - entity: binary_sensor.disk_5_spun_up
+        name: Disk 5
 
   - type: custom:apexcharts-card
     header:
@@ -400,53 +400,53 @@ cards:
       #     {{ state_attr('sensor.nas_portainer_endpoints_local', 'Dockerversion') }}
       # Dynamic display of running Docker containers
       # Display important containers always
-      - type: history-graph
-        title: Important Docker Containers History
-        hours_to_show: 24  # Adjust based on how much history you want to display
-        refresh_interval: 60  # Refresh every minute
-        entities:
-          - entity: switch.apache_guacamole_container
-            name: Guacamole
-            icon: mdi:remote-desktop
-          - entity: switch.firefox_container
-            name: Firefox
-            icon: mdi:firefox
-          # - entity: sensor.nas_portainer_glances
-          #   name: Glances
-          #   icon: mdi:eye-circle-outline
-          # - entity: sensor.nas_portainer_hddtemp
-          #   name: HDDTemp
-          #   icon: mdi:harddisk
-          # - entity: sensor.nas_portainer_ntp
-          #   name: NTP
-          #   icon: mdi:clock-outline
-          - entity: switch.onedrive_container
-            name: OneDrive
-            icon: mdi:cloud-outline
-          - entity: switch.photoprism_container
-            name: PhotoPrism
-            icon: mdi:folder-multiple-image
-          - entity: switch.plex_container
-            name: Plex
-            icon: mdi:plex
-          # - entity: switch.portainer_ce_container
-          #   name: Portainer CE
-          #   icon: mdi:docker
-          - entity: switch.transmission_container
-            name: Transmission
-            icon: mdi:car-shift-pattern
-          - entity: switch.hddtemp_container
-            name: HDDTemp
-            icon: mdi:harddisk
-          - entity: switch.glances_container
-            name: Glances
-            icon: mdi:eye-circle-outline
-          - entity: switch.ntp_container
-            name: NTP
-            icon: mdi:clock-outline
-          - entity: switch.swag_container
-            name: SWAG
-            icon: mdi:web
+      # - type: history-graph
+      #   title: Important Docker Containers History
+      #   hours_to_show: 24  # Adjust based on how much history you want to display
+      #   refresh_interval: 60  # Refresh every minute
+      #   entities:
+      #     - entity: switch.apache_guacamole_container
+      #       name: Guacamole
+      #       icon: mdi:remote-desktop
+      #     - entity: switch.firefox_container
+      #       name: Firefox
+      #       icon: mdi:firefox
+      #     # - entity: sensor.nas_portainer_glances
+      #     #   name: Glances
+      #     #   icon: mdi:eye-circle-outline
+      #     # - entity: sensor.nas_portainer_hddtemp
+      #     #   name: HDDTemp
+      #     #   icon: mdi:harddisk
+      #     # - entity: sensor.nas_portainer_ntp
+      #     #   name: NTP
+      #     #   icon: mdi:clock-outline
+      #     - entity: switch.onedrive_container
+      #       name: OneDrive
+      #       icon: mdi:cloud-outline
+      #     - entity: switch.photoprism_container
+      #       name: PhotoPrism
+      #       icon: mdi:folder-multiple-image
+      #     - entity: switch.plex_container
+      #       name: Plex
+      #       icon: mdi:plex
+      #     # - entity: switch.portainer_ce_container
+      #     #   name: Portainer CE
+      #     #   icon: mdi:docker
+      #     - entity: switch.transmission_container
+      #       name: Transmission
+      #       icon: mdi:car-shift-pattern
+      #     - entity: switch.hddtemp_container
+      #       name: HDDTemp
+      #       icon: mdi:harddisk
+      #     - entity: switch.glances_container
+      #       name: Glances
+      #       icon: mdi:eye-circle-outline
+      #     - entity: switch.ntp_container
+      #       name: NTP
+      #       icon: mdi:clock-outline
+      #     - entity: switch.swag_container
+      #       name: SWAG
+      #       icon: mdi:web
       - type: history-graph
         title: All Docker Containers
         hours_to_show: 24  # Adjust based on how much history you want to display
@@ -533,51 +533,51 @@ cards:
           - entity: switch.tower_docker_glances
             name: Glances
             icon: mdi:eye-circle-outline
-          - entity: switch.tower_docker_jackett
-            name: Jackett
-            icon: mdi:download-box-outline
-          - entity: switch.tower_docker_telegraf
-            name: Telegraf
-            icon: mdi:chart-bar
-          - entity: switch.tower_docker_influxdb
-            name: InfluxDB
-            icon: mdi:database
-          - entity: switch.tower_docker_readarr
-            name: Readarr
-            icon: mdi:book-open-page-variant
-          - entity: switch.tower_docker_sonarr
-            name: Sonarr
-            icon: mdi:television-classic
-          - entity: switch.tower_docker_prowlarr
-            name: Prowlarr
-            icon: mdi:cloud-search-outline
-          - entity: switch.tower_docker_grafana
-            name: Grafana
-            icon: mdi:chart-line
-          - entity: switch.tower_docker_hungry_dubinsky
-            name: Hungry Dubinsky (??)
-            icon: mdi:help-circle-outline
-          - entity: switch.tower_docker_influxdb_1_8
-            name: InfluxDB 1.8
-            icon: mdi:database
-          - entity: switch.tower_docker_flexget
-            name: FlexGet
-            icon: mdi:script-text-outline
-          - entity: switch.tower_docker_transmission_vpn
-            name: Transmission VPN
-            icon: mdi:shield-key
-          - entity: switch.tower_docker_nginx_proxy_manager_official
-            name: NGINX Proxy Manager
-            icon: mdi:reverse-proxy
-          - entity: switch.tower_docker_traefik
-            name: Traefik
-            icon: mdi:traffic-light
-          - entity: switch.tower_docker_borgserver
-            name: Borg Server
-            icon: mdi:database-lock
-          - entity: switch.tower_docker_watchtower
-            name: Watchtower
-            icon: mdi:ship-wheel
+          # - entity: switch.tower_docker_jackett
+          #   name: Jackett
+          #   icon: mdi:download-box-outline
+          # - entity: switch.tower_docker_telegraf
+          #   name: Telegraf
+          #   icon: mdi:chart-bar
+          # - entity: switch.tower_docker_influxdb
+          #   name: InfluxDB
+          #   icon: mdi:database
+          # - entity: switch.tower_docker_readarr
+          #   name: Readarr
+          #   icon: mdi:book-open-page-variant
+          # - entity: switch.tower_docker_sonarr
+          #   name: Sonarr
+          #   icon: mdi:television-classic
+          # - entity: switch.tower_docker_prowlarr
+          #   name: Prowlarr
+          #   icon: mdi:cloud-search-outline
+          # - entity: switch.tower_docker_grafana
+          #   name: Grafana
+          #   icon: mdi:chart-line
+          # - entity: switch.tower_docker_hungry_dubinsky
+          #   name: Hungry Dubinsky (??)
+          #   icon: mdi:help-circle-outline
+          # - entity: switch.tower_docker_influxdb_1_8
+          #   name: InfluxDB 1.8
+          #   icon: mdi:database
+          # - entity: switch.tower_docker_flexget
+          #   name: FlexGet
+          #   icon: mdi:script-text-outline
+          # - entity: switch.tower_docker_transmission_vpn
+          #   name: Transmission VPN
+          #   icon: mdi:shield-key
+          # - entity: switch.tower_docker_nginx_proxy_manager_official
+          #   name: NGINX Proxy Manager
+          #   icon: mdi:reverse-proxy
+          # - entity: switch.tower_docker_traefik
+          #   name: Traefik
+          #   icon: mdi:traffic-light
+          # - entity: switch.tower_docker_borgserver
+          #   name: Borg Server
+          #   icon: mdi:database-lock
+          # - entity: switch.tower_docker_watchtower
+          #   name: Watchtower
+          #   icon: mdi:ship-wheel
       - type: entity-filter
         entities:
           - entity: switch.apache_guacamole_container
@@ -799,8 +799,8 @@ cards:
                 func: avg
                 duration: 10min
               stroke_width: 3
-              transform: |
-                EVAL:return (parseFloat(x) === -1.0 ? null : x);
+              transform: | #EVAL:return (parseFloat(x) === -1.0 ? null : x);
+                EVAL:return (isNaN(x) ? 0 : x);
             yaxis:
               - min: 0
                 max: ~100
@@ -808,40 +808,66 @@ cards:
                 apex_config:
                   forceNiceScale: False
                   tickAmount: 5
+                  labels:
+                    formatter: |
+                      EVAL:function(value) {
+                        return `${value} %`;
+                      }
             series:
-              - entity: sensor.transmission_cpu_usage
-                name: Transmission CPU
-                color: '#FF6384'
-              - entity: sensor.plex_cpu_usage
-                name: Plex CPU
-                color: '#36A2EB'
-              # - entity: sensor.portainer_ce_cpu_usage
-              #   name: Portainer-CE CPU
-              #   color: '#FFCE56'
-              - entity: sensor.firefox_cpu_usage
-                name: Firefox CPU
-                color: '#4BC0C0'
-              - entity: sensor.apacheguacamole_cpu_usage
-                name: ApacheGuacamole CPU
-                color: '#008080'
-              - entity: sensor.photoprism_cpu_usage
-                name: PhotoPrism CPU
-                color: '#C9CBCF'
-              - entity: sensor.onedrive_cpu_usage
-                name: OneDrive CPU
-                color: '#003366'
-              - entity: sensor.hddtemp_cpu_usage
-                name: HDDTemp CPU
-                color: '#990099'
-              - entity: sensor.glances_cpu_usage
-                name: Glances CPU
-                color: '#660066'
-              - entity: sensor.ntp_cpu_usage
-                name: NTP CPU
-                color: '#3366cc'
-              - entity: sensor.swag_cpu_usage
-                name: SWAG CPU
-                color: '#999966'
+              - entity: sensor.docker_tower_apacheguacamole_cpu
+                name: Apache Guacamole
+                color: '#4E79A7'
+              - entity: sensor.docker_tower_audiobookshelf_cpu
+                name: Audiobookshelf
+                color: '#A0CBE8'
+              - entity: sensor.docker_tower_diskspeed_cpu
+                name: Disk Speed
+                color: '#F28E2B'
+              - entity: sensor.docker_tower_dupeguru_cpu
+                name: DupeGuru
+                color: '#FFBE7D'
+              - entity: sensor.docker_tower_firefox_cpu
+                name: Firefox
+                color: '#59A14F'
+              - entity: sensor.docker_tower_frigate_cpu
+                name: Frigate
+                color: '#8CD17D'
+              - entity: sensor.docker_tower_hddtemp_cpu
+                name: HDD Temp
+                color: '#B6992D'
+              - entity: sensor.docker_tower_immich_cpu
+                name: Immich
+                color: '#F1CE63'
+              - entity: sensor.docker_tower_iperf3_cpu
+                name: iPerf3
+                color: '#499894'
+              - entity: sensor.docker_tower_ntp_cpu
+                name: NTP
+                color: '#86BCB6'
+              - entity: sensor.docker_tower_onedrive_cpu
+                name: OneDrive
+                color: '#E15759'
+              - entity: sensor.docker_tower_photoprism_cpu
+                name: PhotoPrism
+                color: '#FF9D9A'
+              - entity: sensor.docker_tower_plex_cpu
+                name: Plex
+                color: '#79706E'
+              - entity: sensor.docker_tower_qdirstat_cpu
+                name: QDirStat
+                color: '#BAB0AC'
+              - entity: sensor.docker_tower_swag_cpu
+                name: SWAG
+                color: '#FABFD2'
+              - entity: sensor.docker_tower_thelounge_cpu
+                name: The Lounge
+                color: '#B07AA1'
+              - entity: sensor.docker_tower_transmission_cpu
+                name: Transmission
+                color: '#D4A6C8'
+              - entity: sensor.docker_tower_watchtower_cpu
+                name: Watchtower
+                color: '#9D7660'
 
           - type: custom:apexcharts-card
             header:
@@ -860,6 +886,8 @@ cards:
                 func: avg
                 duration: 10min
               stroke_width: 3
+              transform: |
+                EVAL:return (parseFloat(x) === -1.0 ? null : x/1024);
             yaxis:
               - min: 0
                 max: ~16
@@ -868,40 +896,84 @@ cards:
                 apex_config:
                   forceNiceScale: False
                   tickAmount: 4
+                  labels:
+                    formatter: |
+                      EVAL:function(value) {
+                        return `${value} GB`;
+                      }
             series:
-              - entity: sensor.transmission_memory_usage
-                name: Transmission Memory
-                color: '#FF6384'
-              - entity: sensor.plex_memory_usage
-                name: Plex Memory
-                color: '#36A2EB'
-              # - entity: sensor.portainer_ce_memory_usage
-              #   name: Portainer-CE Memory
-              #   color: '#FFCE56'
-              - entity: sensor.firefox_memory_usage
-                name: Firefox Memory
-                color: '#4BC0C0'
-              - entity: sensor.apacheguacamole_memory_usage
-                name: ApacheGuacamole Memory
-                color: '#008080'
-              - entity: sensor.photoprism_memory_usage
-                name: PhotoPrism Memory
-                color: '#C9CBCF'
-              - entity: sensor.onedrive_memory_usage
-                name: OneDrive Memory
-                color: '#003366'
-              - entity: sensor.hddtemp_memory_usage
-                name: HDDTemp Memory
-                color: '#990099'
-              - entity: sensor.glances_memory_usage
-                name: Glances Memory
-                color: '#660066'
-              - entity: sensor.ntp_memory_usage
-                name: NTP Memory
-                color: '#3366cc'
-              - entity: sensor.swag_memory_usage
-                name: SWAG Memory
-                color: '#999966'
+              - entity: sensor.docker_tower_apacheguacamole_memory
+                name: Apache Guacamole
+                color: '#4E79A7'
+                unit: GiB
+              - entity: sensor.docker_tower_audiobookshelf_memory
+                name: Audiobookshelf
+                color: '#A0CBE8'
+                unit: GiB
+              - entity: sensor.docker_tower_diskspeed_memory
+                name: Disk Speed
+                color: '#F28E2B'
+                unit: GiB
+              - entity: sensor.docker_tower_dupeguru_memory
+                name: DupeGuru
+                color: '#FFBE7D'
+                unit: GiB
+              - entity: sensor.docker_tower_firefox_memory
+                name: Firefox
+                color: '#59A14F'
+                unit: GiB
+              - entity: sensor.docker_tower_frigate_memory
+                name: Frigate
+                color: '#8CD17D'
+                unit: GiB
+              - entity: sensor.docker_tower_hddtemp_memory
+                name: HDD Temp
+                color: '#B6992D'
+                unit: GiB
+              - entity: sensor.docker_tower_immich_memory
+                name: Immich
+                color: '#F1CE63'
+                unit: GiB
+              - entity: sensor.docker_tower_iperf3_memory
+                name: iPerf3
+                color: '#499894'
+                unit: GiB
+              - entity: sensor.docker_tower_ntp_memory
+                name: NTP
+                color: '#86BCB6'
+                unit: GiB
+              - entity: sensor.docker_tower_onedrive_memory
+                name: OneDrive
+                color: '#E15759'
+                unit: GiB
+              - entity: sensor.docker_tower_photoprism_memory
+                name: PhotoPrism
+                color: '#FF9D9A'
+                unit: GiB
+              - entity: sensor.docker_tower_plex_memory
+                name: Plex
+                color: '#79706E'
+                unit: GiB
+              - entity: sensor.docker_tower_qdirstat_memory
+                name: QDirStat
+                color: '#BAB0AC'
+                unit: GiB
+              - entity: sensor.docker_tower_swag_memory
+                name: SWAG
+                color: '#FABFD2'
+                unit: GiB
+              - entity: sensor.docker_tower_thelounge_memory
+                name: The Lounge
+                color: '#B07AA1'
+                unit: GiB
+              - entity: sensor.docker_tower_transmission_memory
+                name: Transmission
+                color: '#D4A6C8'
+                unit: GiB
+              - entity: sensor.docker_tower_watchtower_memory
+                name: Watchtower
+                color: '#9D7660'
+                unit: GiB
 
       - type: history-graph
         title: Important Docker Containers History
