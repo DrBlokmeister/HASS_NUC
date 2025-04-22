@@ -52,6 +52,16 @@ input_select:
     initial: Adaptive
     icon: mdi:lightbulb-group
 
+  study_rotary_selection:
+    name: "Study Rotary Selection"
+    icon: mdi:cursor-pointer
+    options:
+      - "None"
+      - light.study_lights
+      - light.study_cabinet_a_rgb_ledstrip
+      - light.study_desk_a_rgb_ledstrip
+      - light.ledstrip_study_workbench
+    initial: "None"
 #################
 #    SENSORS    #
 #################
@@ -77,14 +87,14 @@ sensor:
   #     - sensor.study_motion_2_illuminace
   #     - sensor.study_light_1
   #     - sensor.study_light_1
-  # - platform: history_stats
-  #   name: "Power Above Soldering Power Last 5 Minutes"
-  #   entity_id: binary_sensor.power_above_soldering_power
-  #   state: "on"
-  #   type: ratio
-  #   end: "{{ now() }}"
-  #   duration:
-  #     minutes: 5
+  - platform: history_stats
+    name: "Power Above Soldering Power Last 5 Minutes"
+    entity_id: binary_sensor.power_above_soldering_power
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      minutes: 5
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -346,10 +356,10 @@ automation:
         event_type: deconz_event
         event_data:
           id: study_tap_dial
-      - platform: event
-        event_type: deconz_relative_rotary_event
-        event_data:
-          id: relativerotary_111
+      # - platform: event
+      #   event_type: deconz_relative_rotary_event
+      #   event_data:
+      #     id: relativerotary_111
     action:
       - choose:
           - conditions:
@@ -417,15 +427,104 @@ automation:
                       brightness_pct: 100
                       hs_color: [0,0] # Hue, Saturation
                       #color_temp_kelvin: 4000
+          # - conditions:
+          #     - condition: template
+          #       value_template: "{{ trigger.event_type == deconz_relative_rotary_event }}"
+          #   sequence:
+          #     - service: light.turn_on
+          #       data:
+          #         entity_id: light.study_lights
+          #         transition: 0.4
+          #         brightness_step_pct: "{{ trigger.event.data.rotation/15 }}"
+
+  - alias: "[study|lights] Study Rotary Selection"
+    description: "Long‑press buttons 1–4 to pick which light the dial will control"
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_tap_dial
+          event: 1001  # Button 1 long‑press
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_tap_dial
+          event: 2001  # Button 2 long‑press
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_tap_dial
+          event: 3001  # Button 3 long‑press
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_tap_dial
+          event: 4001  # Button 4 long‑press
+    action:
+      - choose:
           - conditions:
-              - condition: template
-                value_template: "{{ trigger.event_type == deconz_relative_rotary_event }}"
+              - "{{ trigger.event.data.event == 1001 }}"
             sequence:
-              - service: light.turn_on
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.study_rotary_selection
                 data:
-                  entity_id: light.study_lights
-                  transition: 0.4
-                  brightness_step_pct: "{{ trigger.event.data.rotation/15 }}"
+                  option: light.study_lights
+          - conditions:
+              - "{{ trigger.event.data.event == 2001 }}"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.study_rotary_selection
+                data:
+                  option: light.study_cabinet_a_rgb_ledstrip
+          - conditions:
+              - "{{ trigger.event.data.event == 3001 }}"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.study_rotary_selection
+                data:
+                  option: light.study_desk_a_rgb_ledstrip
+          - conditions:
+              - "{{ trigger.event.data.event == 4001 }}"
+            sequence:
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.study_rotary_selection
+                data:
+                  option: light.ledstrip_study_workbench
+      - service: script.flash_selected_light
+        data:
+          entity_id: "{{ states('input_select.study_rotary_selection') }}"
+      - delay: "00:00:30"
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.study_rotary_selection
+        data:
+          option: light.study_lights
+
+
+  - alias: "[study|lights] Study Rotary Brightness Adjustment"
+    description: "Turn the dial to dim/brighten only the selected light"
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: deconz_relative_rotary_event
+        event_data:
+          id: relativerotary_111
+    condition:
+      - condition: template
+        value_template: "{{ states('input_select.study_rotary_selection') != 'None' }}"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: "{{ states('input_select.study_rotary_selection') }}"
+        data:
+          transition: 0.4
+          brightness_step_pct: "{{ trigger.event.data.rotation / 15 }}"
+
 
   - alias: "[areas|study] Soldering Mode Control"
     mode: queued
@@ -913,6 +1012,42 @@ script:
                       seconds: 5
             - service: switch.turn_off
               entity_id: switch.powerstrip_study_desk_socket_1
+
+  flash_selected_light:
+    alias: "Flash selected study light"
+    description: "Quickly flash the selected light for visual feedback and restore its prior state"
+    fields:
+      entity_id:
+        description: "Light entity to flash"
+    sequence:
+      # 1. Snapshot current state into a temporary scene
+      - service: scene.create
+        data:
+          scene_id: flash_restore_scene
+          snapshot_entities:
+            - "{{ entity_id }}"
+      # 2. Flash on/off twice
+      - repeat:
+          count: 2
+          sequence:
+            - service: light.turn_on
+              target:
+                entity_id: "{{ entity_id }}"
+              data:
+                transition: 0.25
+                brightness_pct: 100
+            - delay: "00:00:00.25"
+            - service: light.turn_off
+              target:
+                entity_id: "{{ entity_id }}"
+              data:
+                transition: 0.25
+            - delay: "00:00:00.25"
+      # 3. Restore the saved state
+      - service: scene.turn_on
+        target:
+          entity_id: scene.flash_restore_scene
+
 
 ################
 #    SCENES    #
