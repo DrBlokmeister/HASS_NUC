@@ -1076,40 +1076,6 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: "Power state on HA start-up"
-    trigger:
-      platform: homeassistant
-      event: start
-    action:
-      - service: mqtt.publish
-        data:
-          topic: "sonoffs/cmnd/state"
-          payload: ""
-
-# Example automations.yaml entry
-  - id: 'sonoff_firmware_installed'
-    alias: Sonoff Firmware Installed
-    trigger:
-    - event: start
-      platform: homeassistant
-    action:
-    - data:
-        payload: '2'
-        topic: sonoffs/cmnd/status
-      service: mqtt.publish
-    initial_state: 'true'
-
-# Example automations.yaml entry
-  - alias: "Enable MQTT discovery for all devices"
-    trigger:
-      platform: homeassistant
-      event: start
-    action:
-      - service: mqtt.publish
-        data:
-          topic: "cmnd/sonoffs/SetOption19"
-          payload: "1"
-
   - alias: "[power|warning] Send message when power usage is too high and not at home"
     mode: single
     trigger:
@@ -1166,6 +1132,7 @@ automation:
                 minutes: 1
 
   - alias: "[home|power] Turn off solar panels if energy price is below zero"
+    id: yaml_automation_home_power_turn_off_solar_panels_if_energy_price_is_below_zero
     mode: single
     trigger:
       - platform: numeric_state
@@ -1200,6 +1167,7 @@ automation:
                     - number.grid_export_limit
 
   - alias: "[home|power] Utilize negative electricity prices"
+    id: yaml_automation_home_power_utilize_negative_electricity_prices
     mode: single
     trigger:
       - platform: numeric_state

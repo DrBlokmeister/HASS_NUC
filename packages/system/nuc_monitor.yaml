@@ -470,7 +470,44 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[System] Hass Stopped'
+  - alias: "[System|NUC]Power state on HA start-up"
+    id: yaml_automation_system_nuc_power_state_on_ha_startup
+    trigger:
+      platform: homeassistant
+      event: start
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "sonoffs/cmnd/state"
+          payload: ""
+
+# Example automations.yaml entry
+  - id: 'yaml_automation_system_nuc_sonoff_firmware_installed'
+    alias: "[System|NUC]Sonoff Firmware Installed"
+    trigger:
+    - event: start
+      platform: homeassistant
+    action:
+    - data:
+        payload: '2'
+        topic: sonoffs/cmnd/status
+      service: mqtt.publish
+    initial_state: 'true'
+
+# Example automations.yaml entry
+  - alias: "[System|NUC]Enable MQTT discovery for all devices"
+    id: yaml_automation_system_nuc_enable_mqtt_discovery_for_all_devices
+    trigger:
+      platform: homeassistant
+      event: start
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "cmnd/sonoffs/SetOption19"
+          payload: "1"
+
+  - alias: '[System|NUC] Hass Stopped'
+    id: yaml_automation_system_nuc_hass_stopped
     initial_state: on
     trigger:
       platform: homeassistant
@@ -507,7 +544,8 @@ automation:
       #   entity_id: switch.plexmediaserver
 
 
-  - alias: '[System] Hass Started'
+  - alias: '[System|NUC] Hass Started'
+    id: yaml_automation_system_nuc_hass_started
     initial_state: on
     trigger:
       platform: homeassistant
@@ -563,7 +601,8 @@ automation:
       #   data:
       #     addon: core_check_config
 
-  - alias: '[system|database] Update MariaDB database size sensor'
+  - alias: '[System|Database] Update MariaDB database size sensor'
+    id: yaml_automation_system_database_update_mariadb_database_size_sensor
     mode: single
     trigger:
       platform: time_pattern
@@ -587,7 +626,8 @@ automation:
             #- sensor.mariadb_status
 
 
-  - alias: '[system|database] Auto purge database'
+  - alias: '[System|Database] Auto purge database'
+    id: yaml_automation_system_database_auto_purge_database
     mode: single
     trigger:
       - platform: time
