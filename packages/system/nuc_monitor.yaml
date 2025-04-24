@@ -71,19 +71,6 @@ notify:
 #       - status
 #       - memory
 
-counter:
-  log_errors:
-    name: "Log Errors"
-    icon: mdi:alert-octagon
-    initial: 0
-    step: 1
-    restore: False
-  log_warnings:
-    name: "Log Warnings"
-    icon: mdi:alert
-    initial: 0
-    step: 1
-    restore: False
 
 #############
 #    SQL    #
@@ -373,11 +360,22 @@ command_line:
       unit_of_measurement: packages
       json_attributes:
         - updatable_packages
+
   - sensor:
       name: 'Home Assistant Log Error Count'
-      unit_of_measurement: ''
-      scan_interval: 60
+      unique_id: yaml_command_line_sensor_home_assistant_log_error_count
+      scan_interval: 300
+      unit_of_measurement: "errors"
+      icon: mdi:alert-circle
       command: "grep -c 'ERROR' /config/home-assistant.log"
+  - sensor:
+      name: 'Home Assistant Log Warning Count'
+      unique_id: yaml_command_line_sensor_home_assistant_log_warning_count
+      scan_interval: 300
+      unit_of_measurement: "warnings"
+      icon: mdi:alert
+      command: "grep -c 'WARNING' /config/home-assistant.log"
+
 
 #################
 #    SENSORS    #
@@ -767,46 +765,6 @@ automation:
             data:
               keep_days: 14
               repack: false
-
-  - alias: "[System Monitor] Monitor log for errors"
-    id: yaml_automation_system_monitor_monitor_log_for_errors
-    mode: queued
-    trigger:
-      - platform: event
-        event_type: system_log_event
-    condition:
-      - condition: template
-        value_template: "{{ trigger.event.data.level in ['WARNING', 'ERROR'] }}"
-    action:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.level == 'ERROR' }}"
-            sequence:
-              - service: counter.increment
-                target:
-                  entity_id: counter.log_errors
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.level == 'WARNING' }}"
-            sequence:
-              - service: counter.increment
-                target:
-                  entity_id: counter.log_warnings
-
-  - alias: "[System Monitor] Notify on log error"
-    mode: single
-    id: yaml_automation_system_monitor_notify_on_log_error
-    trigger:
-      - platform: event
-        event_type: system_log_event
-        event_data:
-          level: 'ERROR'
-    action:
-      - service: persistent_notification.create
-        data:
-          title: "Log Error Detected"
-          message: "Error: {{ trigger.event.data.message }}"
 
   - alias: "[system|nuc]Periodic Profiler"
     mode: single
