@@ -125,6 +125,22 @@ switch:
           service: script.turn_on_ambilight
         turn_off:
           service: script.turn_off_ambilight
+      ambilight_hyperhdr:
+        friendly_name: "Ambilight HyperHDR"
+        unique_id: yaml_template_switch_ambilight_hyperhdr
+        icon_template: mdi:television-ambient-light
+        value_template: >-
+          {{
+            is_state('switch.ambilight', 'on') and
+            is_state('light.atmoorb_left', 'on') and is_state('light.atmoorb_right', 'on') and is_state('light.ledstrip_falcon', 'on') and
+            is_state_attr('light.atmoorb_left', 'effect', 'E1.31') and is_state_attr('light.atmoorb_right', 'effect', 'E1.31') and is_state_attr('light.ledstrip_falcon', 'effect', 'E1.31') and
+            is_state('light.hyperhdr_atmoorb_left', 'on') and is_state('light.hyperhdr_atmoorb_right', 'on') and is_state('light.hyperhdr_falconlights', 'on') and
+            is_state('switch.hyperhdr_atmoorb_left_component_led_device', 'on') and is_state('switch.hyperhdr_atmoorb_right_component_led_device', 'on') and is_state('switch.hyperhdr_falconlights_component_led_device', 'on')
+          }}
+        turn_on:
+          service: script.turn_on_ambilight_hyperhdr
+        turn_off:
+          service: script.turn_off_ambilight_hyperhdr
       tv_json_cec:
         friendly_name: "TV json CEC"
         unique_id: yaml_template_switch_tv_json_cec
@@ -188,7 +204,7 @@ automation:
         entity_id: switch.amplifier_power
       - service: switch.turn_on
         continue_on_error: true
-        entity_id: switch.ambilight
+        entity_id: switch.ambilight_hyperhdr
       - service: button.press
         continue_on_error: true
         target:
@@ -206,7 +222,7 @@ automation:
               minutes: 2
       - service: switch.turn_off
         continue_on_error: true
-        entity_id: switch.ambilight
+        entity_id: switch.ambilight_hyperhdr
       - delay:
           seconds: 2
       - service: scene.turn_on
@@ -656,6 +672,160 @@ script:
       - service: switch.turn_off
         continue_on_error: true
         entity_id: switch.ambilight_power
+
+  turn_on_ambilight_hyperhdr:
+    alias: "[home|mediacenter] Turn on Ambilight HyperHDR"
+    icon: mdi:television-ambient-light
+    description: "Turns on Ambilight setup using HyperHDR entities."
+    sequence:
+      - service: switch.turn_on
+        continue_on_error: true
+        entity_id:
+          - switch.ambilight_power
+      - delay:
+          seconds: 2
+      - repeat:
+          until:
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
+                    - condition: state
+                      entity_id: switch.hyperhdr_atmoorb_left_component_led_device
+                      state: 'on'
+                    - condition: state
+                      entity_id: switch.hyperhdr_atmoorb_right_component_led_device
+                      state: 'on'
+                    - condition: state
+                      entity_id: switch.hyperhdr_falconlights_component_led_device
+                      state: 'on'
+                - condition: template
+                  value_template: "{{ repeat.index > 10 }}"
+          sequence:
+            - service: switch.turn_on
+              continue_on_error: true
+              entity_id:
+                - switch.hyperhdr_atmoorb_left_component_led_device
+                - switch.hyperhdr_atmoorb_right_component_led_device
+                - switch.hyperhdr_falconlights_component_led_device
+                - switch.hyperhdr_atmoorb_left_component_usb_capture
+                - switch.hyperhdr_atmoorb_right_component_usb_capture
+                - switch.hyperhdr_falconlights_component_usb_capture
+            - delay:
+                seconds: 0.5
+      - delay:
+          seconds: 0.5
+      - repeat:
+          until:
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
+                    - condition: state
+                      entity_id: light.livingroom_tv_ambilight
+                      state: 'on'
+                    - condition: state
+                      entity_id: light.atmoorb_left
+                      state: 'on'
+                    - condition: state
+                      entity_id: light.atmoorb_right
+                      state: 'on'
+                    - condition: state
+                      entity_id: light.falconlights
+                      state: 'on'
+                - condition: template
+                  value_template: "{{ repeat.index > 10 }}"
+          sequence:
+            - service: light.turn_on
+              continue_on_error: true
+              data:
+                brightness: 255
+                effect: E1.31
+                entity_id:
+                  - light.livingroom_tv_ambilight
+                  - light.atmoorb_left
+                  - light.atmoorb_right
+                  - light.falconlights
+            - delay:
+                seconds: 0.5
+      - service: light.turn_on
+        continue_on_error: true
+        data:
+          entity_id:
+            - light.hyperhdr_atmoorb_left
+            - light.hyperhdr_atmoorb_right
+            - light.hyperhdr_falconlights
+          brightness: 255
+          effect: Rainbow swirl fast
+      - delay:
+          seconds: 5
+      - repeat:
+          until:
+            - condition: or
+              conditions:
+                - condition: and
+                  conditions:
+                    - condition: state
+                      entity_id: light.hyperhdr_atmoorb_left
+                      state: 'off'
+                    - condition: state
+                      entity_id: light.hyperhdr_atmoorb_right
+                      state: 'off'
+                    - condition: state
+                      entity_id: light.hyperhdr_falconlights
+                      state: 'off'
+                - condition: template
+                  value_template: "{{ repeat.index > 10 }}"
+          sequence:
+            - service: light.turn_off
+              continue_on_error: true
+              data:
+                entity_id:
+                  - light.hyperhdr_atmoorb_left
+                  - light.hyperhdr_atmoorb_right
+                  - light.hyperhdr_falconlights
+            - delay:
+                seconds: 0.5
+
+  turn_off_ambilight_hyperhdr:
+    alias: "[home|mediacenter] Turn off Ambilight HyperHDR"
+    icon: mdi:television-off
+    description: "Nicely turns off the Ambilight system using HyperHDR."
+    sequence:
+      - service: light.turn_on
+        continue_on_error: true
+        data:
+          entity_id:
+            - light.hyperhdr_atmoorb_left
+            - light.hyperhdr_atmoorb_right
+            - light.hyperhdr_falconlights
+          effect: "Cinema dim lights"
+      - delay:
+          seconds: 5
+      - service: switch.turn_off
+        continue_on_error: true
+        entity_id:
+          - switch.hyperhdr_atmoorb_left_component_led_device
+          - switch.hyperhdr_atmoorb_right_component_led_device
+          - switch.hyperhdr_falconlights_component_led_device
+          - switch.hyperhdr_atmoorb_left_component_usb_capture
+          - switch.hyperhdr_atmoorb_right_component_usb_capture
+          - switch.hyperhdr_falconlights_component_usb_capture
+      - delay:
+          seconds: 0.5
+      - service: light.turn_off
+        continue_on_error: true
+        entity_id:
+          - light.livingroom_tv_ambilight
+          - light.atmoorb_left
+          - light.atmoorb_right
+          - light.falconlights
+      - delay:
+          seconds: 2
+      - service: switch.turn_off
+        continue_on_error: true
+        entity_id: switch.ambilight_power
+
 
   toggle_tv_ledstrip:
     alias: "[home|mediacenter] Toggle TV LED Strip"
