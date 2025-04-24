@@ -941,6 +941,27 @@ automation:
         target:
           entity_id: switch.powerstrip_study_desk_socket_1
 
+  - alias: "[study|light] Sync Desk LED Strip With Cabinet Strip"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: switch.powerstrip_study_desk_socket_3
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: light.study_cabinet_a_rgb_ledstrip
+        state: "on"
+    action:
+      - delay: "00:00:05"
+      - service: light.turn_on
+        target:
+          entity_id: light.study_desk_a_rgb_ledstrip
+        data:
+          brightness: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'brightness') }}"
+          rgbw_color: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'rgbw_color') }}"
+          #effect: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'effect') }}"
+          transition: 10
+
 
 #################
 #    SCRIPTS    #
