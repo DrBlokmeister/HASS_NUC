@@ -1,29 +1,4 @@
 homeassistant:
-  # customize_glob:
-  #   sensor.*db_size:
-  #     icon: mdi:database
-  #   sensor.mediacenter_cabinet_*:
-  #     device_class: temperature
-  #     unit_of_measurement: '°C'
-  #     templates:
-  #       icon_color: >-
-  #         var maxval = 35;
-  #         var minval = 15;
-  #         var maxhue = 0;
-  #         var minhue = 140;
-  #         if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
-  #         if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
-  #         var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
-  #         return 'hsl(' + hue.toString() + ',80%,50%)';
-  #   switch.*_mounted:
-  #     templates:
-  #       icon: >
-  #         if (state === 'on' ) return 'mdi:check-network-outline'; else return 'mdi:close-network-outline';
-  # customize:
-  #   switch.plexmediaserver:
-  #     icon: mdi:plex
-  #   binary_sensor.plexmediaserver:
-  #     icon: mdi:plex
 
 notify:
   - name: ha_mariadb_command
@@ -32,44 +7,6 @@ notify:
     username: !secret mariadb_user
     password: !secret mariadb_pass
     db: homeassistant
-
-# monitor_docker:
-#   - name: Docker
-#     url: tcp://10.0.0.252:2375
-#     containers:
-#       - addon_core_mariadb
-#       - addon_core_deconz
-#       - homeassistant
-#       - hassio_supervisor
-#       - addon_a0d7b954_vscode
-#       - addon_a0d7b954_tautulli
-#       - addon_a0d7b954_ssh
-#       - addon_a0d7b954_influxdb
-#       - addon_a0d7b954_portainer
-#       - addon_core_mosquitto
-#       - hassio_multicast
-#       - hassio_dns
-#       - hassio_cli
-#       - hassio_audio
-#     rename:
-#       addon_core_mariadb: MariaDB database
-#       addon_core_deconz: Deconz Zigbee
-#       homeassistant: Home Assistant
-#       hassio_supervisor: Supervisor
-#       addon_a0d7b954_vscode: VScode
-#       addon_a0d7b954_tautulli: Tautulli
-#       addon_a0d7b954_ssh: SSH
-#       addon_a0d7b954_influxdb: InfluxDB
-#       addon_a0d7b954_portainer: Portainer
-#       addon_core_mosquitto: Mosquitto
-#     monitored_conditions:
-#       - version
-#       - containers_running
-#       - containers_total
-#       - containers_cpu_percentage
-#       - cpu_percentage
-#       - status
-#       - memory
 
 
 #############
@@ -381,78 +318,6 @@ command_line:
 #    SENSORS    #
 #################
 sensor:
-  # - platform: systemmonitor
-  #   resources:
-  #     - type: disk_use_percent
-  #       arg: /
-  #     - type: memory_free
-  #     - type: memory_use
-  #     - type: load_1m
-  #     - type: load_5m
-  #     - type: load_15m
-  #     - type: processor_use
-  #     - type: last_boot
-  #     - type: processor_use
-  #     - type: processor_temperature
-
-  # - platform: sql
-  #   db_url: !secret mariadb_URL
-  #   queries:
-  #     - name: MariaDB size
-  #       query: >
-  #           SELECT SUM(data_length + index_length) / 1024 / 1024 AS db_size_mb FROM information_schema.TABLES WHERE table_schema = 'homeassistant';
-  #       column: 'value'
-  #       device_class: data_size
-  #       unit_of_measurement: MB
-
-      # - name: MariaDB most recorded entities
-      #   query: >
-      #       SELECT
-      #         COUNT(*) AS cnt,
-      #         COUNT(*) * 100 / (SELECT COUNT(*) FROM states) AS cnt_pct,
-      #         states_meta.entity_id
-      #       FROM states
-      #       INNER JOIN states_meta ON states.metadata_id=states_meta.metadata_id
-      #       GROUP BY states_meta.entity_id
-      #       ORDER BY cnt DESC
-      #       LIMIT 10
-      #   column: 'entity_id'
-
-  # - platform: influxdb
-  #   username: !secret influxdb_user
-  #   password: !secret influxdb_pass
-  #   queries:
-  #     - name: InfluxDB Size
-  #       unit_of_measurement: MB
-  #       value_template: '{{ value | float | round(1) }}'
-  #       group_function: sum
-  #       measurement: '"_internal".."tsm1_engine"'
-  #       database: _internal
-  #       where: 'time > now() - 10m'
-  #       field: diskBytes
-
-  # - platform: influxdb
-  #   username: !secret influxdb_user
-  #   password: !secret influxdb_pass
-  #   queries:
-  #     - name: InfluxDB Size
-  #       unit_of_measurement: MB
-  #       value_template: '{{ (value | float / 1024 /1024) | round(1) }}'
-  #       group_function: sum
-  #       measurement: '"monitor"."shard"'
-  #       database: _internal
-  #       where: 'time > now() - 10s'
-  #       field: diskBytes
-  # - platform: template
-  #   sensors:
-  #     hassio_uptime_human_readable:
-  #       friendly_name: "Home Assistant uptime"
-  #       value_template: >
-  #         {{ (states( 'sensor.uptime' )|float * 60 | round(0) - 3600) | timestamp_custom(('%H:%M:%S')) }}
-  #     uptime_seconds:
-  #       device_class: timestamp
-  #       value_template: >
-  #         {{ states( 'sensor.uptime' )|float * 60 | float }}
   - platform: template
     sensors:
       running_automations:
