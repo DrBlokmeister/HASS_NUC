@@ -2,138 +2,77 @@
 from __future__ import annotations
 
 import logging
-import warnings
 
-from homeassistant.config_entries import ConfigEntry  # type: ignore
-from homeassistant.const import (  # type: ignore
-    CONF_HOST,
-    CONF_PASSWORD,
-    CONF_PORT,
-    CONF_USERNAME,
-)
-from homeassistant.core import HomeAssistant  # type: ignore
-from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
-from cryptography.utils import CryptographyDeprecationWarning  # type: ignore
-from homeassistant.helpers.importlib import async_import_module  # type: ignore
-
-from .const import (
-    CONF_HOSTNAME,
-    DOMAIN,
-    PLATFORMS,
-    CONF_GENERAL_INTERVAL,
-    CONF_DISK_INTERVAL,
-    DEFAULT_DISK_INTERVAL,
-    DEFAULT_PORT,
-    CONF_HAS_UPS,
-)
-
-# Suppress deprecation warnings for paramiko
-warnings.filterwarnings(
-    "ignore",
-    category=CryptographyDeprecationWarning,
-    message="TripleDES has been moved"
-)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
+# Import only what's needed for setup
+DOMAIN = "unraid"
+
+# Define platforms to load
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.BUTTON,
+]
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Unraid component."""
-    hass.data.setdefault(DOMAIN, {})
+    """Set up the Unraid integration."""
+    # This function is called when the integration is loaded via configuration.yaml
+    # We don't support configuration.yaml setup, so just return True
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Unraid from a config entry."""
-    _LOGGER.debug("Setting up Unraid integration")
+    # Import dependencies lazily to avoid blocking the event loop
+    from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
+    from homeassistant.exceptions import ConfigEntryNotReady
+
+    # Import local modules lazily
+    from .coordinator import UnraidDataUpdateCoordinator
+    from .unraid import UnraidAPI
+    from .api.logging_helper import LogManager
+    from . import services
+
+    # Create a log manager instance here to avoid module-level instantiation
+    log_manager = LogManager()
+    log_manager.configure()
+
+    # Set up data structures
+    hass.data.setdefault(DOMAIN, {})
 
     try:
-        # Import required modules asynchronously
-        modules = {}
-        for module_name in ["unraid", "coordinator", "services", "migrations"]:
-            try:
-                modules[module_name] = await async_import_module(
-                    hass, f"custom_components.{DOMAIN}.{module_name}"
-                )
-            except ImportError as err:
-                _LOGGER.error("Error importing module %s: %s", module_name, err)
-                raise ConfigEntryNotReady from err
+        # Extract configuration
+        host = entry.data[CONF_HOST]
+        username = entry.data[CONF_USERNAME]
+        password = entry.data[CONF_PASSWORD]
+        port = entry.data.get(CONF_PORT, 22)
 
-        # Import platform modules
-        for platform in PLATFORMS:
-            try:
-                await async_import_module(
-                    hass, f"custom_components.{DOMAIN}.{platform}"
-                )
-            except ImportError as err:
-                _LOGGER.error("Error importing platform %s: %s", platform, err)
-                raise ConfigEntryNotReady from err
+        # Create API client
+        api = UnraidAPI(host, username, password, port)
 
-        # Migrate data from data to options if necessary
-        if CONF_GENERAL_INTERVAL not in entry.options:
-            options = dict(entry.options)
-            old_interval = entry.data.get("check_interval", 300)
-            minutes = max(1, old_interval // 60)
-            
-            options.update({
-                CONF_GENERAL_INTERVAL: minutes,
-                CONF_DISK_INTERVAL: DEFAULT_DISK_INTERVAL,
-                CONF_PORT: entry.data.get(CONF_PORT, DEFAULT_PORT),
-                CONF_HAS_UPS: entry.data.get(CONF_HAS_UPS, False),
-            })
-            
-            hass.config_entries.async_update_entry(entry, options=options)
+        # Create coordinator
+        coordinator = UnraidDataUpdateCoordinator(hass, api, entry)
 
-        # Create API instance using imported module
-        api = modules["unraid"].UnraidAPI(
-            host=entry.data[CONF_HOST],
-            username=entry.data[CONF_USERNAME],
-            password=entry.data[CONF_PASSWORD],
-            port=entry.options.get(CONF_PORT, DEFAULT_PORT),
-        )
+        # Get initial data
+        await coordinator.async_config_entry_first_refresh()
 
-        # Initialize disk operations
-        await api.disk_operations.initialize()
-
-        # Get hostname during setup if not already stored
-        if CONF_HOSTNAME not in entry.data:
-            try:
-                hostname = await api.get_hostname()
-                if hostname:
-                    data = dict(entry.data)
-                    data[CONF_HOSTNAME] = hostname
-                    hass.config_entries.async_update_entry(entry, data=data)
-                    _LOGGER.info("Updated configuration with hostname: %s", hostname)
-            except Exception as hostname_err:
-                _LOGGER.warning("Could not get hostname: %s", hostname_err)
-
-        # Run entity migrations before setting up new entities
-        await modules["migrations"].async_migrate_entities(hass, entry)
-
-        # Create coordinator using imported module
-        coordinator = modules["coordinator"].UnraidDataUpdateCoordinator(hass, api, entry)
-        
-        # Initialize coordinator
-        await coordinator.async_setup()
-        
-        # Perform first refresh
-        try:
-            await coordinator.async_config_entry_first_refresh()
-        except Exception as refresh_err:
-            _LOGGER.warning(
-                "Initial refresh failed, continuing setup: %s", 
-                refresh_err
-            )
-
-        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+        # Store coordinator in hass.data
+        hass.data[DOMAIN][entry.entry_id] = coordinator
 
         # Set up platforms
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        
-        # Set up services using imported module
-        await modules["services"].async_setup_services(hass)
 
-        # Add update listener
-        entry.async_on_unload(entry.add_update_listener(async_update_listener))
-        
+        # Set up services
+        await services.async_setup_services(hass)
+
+        # Register update listener for options
+        entry.async_on_unload(entry.add_update_listener(update_listener))
+
         return True
 
     except Exception as err:
@@ -142,54 +81,78 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    # Stop coordinator and cleanup connections
-    await coordinator.async_unload()
-    
-    # Import services module for unloading
-    try:
-        services_module = await async_import_module(
-            hass, f"custom_components.{DOMAIN}.services"
-        )
-        
-        # Unload platforms
-        if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-            hass.data[DOMAIN].pop(entry.entry_id)
-            await services_module.async_unload_services(hass)
-            return unload_ok
-        
-        return False
-        
-    except ImportError as err:
-        _LOGGER.error("Error importing services module for unload: %s", err)
-        return False
+    # Unload platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
-    try:
+    # Clean up coordinator
+    if unload_ok and entry.entry_id in hass.data[DOMAIN]:
         coordinator = hass.data[DOMAIN][entry.entry_id]
-    except KeyError:
-        _LOGGER.error("Could not find coordinator for config entry %s", entry.entry_id)
-        return
+        await coordinator.async_stop()
+        hass.data[DOMAIN].pop(entry.entry_id)
 
-    try:
-        # Handle UPS status updates
-        if CONF_HAS_UPS in entry.options:
-            try:
-                await coordinator.async_update_ups_status(entry.options[CONF_HAS_UPS])
-            except Exception as err:
-                _LOGGER.error("Error updating UPS status: %s", err)
-        
-        # Reload the config entry
-        await hass.config_entries.async_reload(entry.entry_id)
-        
-    except Exception as err:
-        _LOGGER.error("Error handling options update: %s", err)
+    return unload_ok
 
-async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Update options."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    # Update UPS status
-    await coordinator.async_update_ups_status(entry.options.get(CONF_HAS_UPS, False))
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    # Reload the integration
+    await hass.config_entries.async_reload(entry.entry_id)
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old entry to new version.
+
+    This function handles migration of config entries from older versions to the current version.
+    It supports:
+    - Migration from version 1 to version 2
+    - Migration from no version (None) to version 2
+    - Migration from any lower version to the current version
+
+    Returns True if migration is successful, False otherwise.
+    """
+    from .const import MIGRATION_VERSION
+    from .migrations import async_migrate_with_rollback
+
+    _LOGGER.debug("Migrating from version %s.%s to %s.%s",
+                 entry.version, getattr(entry, 'minor_version', 0),
+                 MIGRATION_VERSION, 0)
+
+    # If the user has downgraded from a future version, we can't migrate
+    if entry.version is not None and entry.version > MIGRATION_VERSION:
+        _LOGGER.error(
+            "Cannot migrate from version %s to %s (downgrade not supported)",
+            entry.version, MIGRATION_VERSION
+        )
+        return False
+
+    # Handle migration from version 1 to version 2
+    if entry.version == 1:
+        try:
+            if await async_migrate_with_rollback(hass, entry):
+                # Update entry version after successful migration
+                hass.config_entries.async_update_entry(
+                    entry,
+                    version=MIGRATION_VERSION
+                )
+                _LOGGER.info("Successfully migrated entry %s from version 1 to %s",
+                            entry.entry_id, MIGRATION_VERSION)
+                return True
+        except Exception as err:
+            _LOGGER.error("Migration failed: %s", err)
+            return False
+
+    # Handle any entry with no version (None) or other versions
+    elif entry.version is None or entry.version < MIGRATION_VERSION:
+        _LOGGER.info("Migrating entry %s from version %s to %s",
+                    entry.entry_id, entry.version, MIGRATION_VERSION)
+
+        # Simply update the version without any data changes
+        # This is safe because we're not changing the data structure
+        hass.config_entries.async_update_entry(
+            entry,
+            version=MIGRATION_VERSION
+        )
+
+        _LOGGER.info("Migration to version %s successful", MIGRATION_VERSION)
+        return True
+
+    # If we get here, the entry is already at the current version
+    return True

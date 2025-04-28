@@ -11,17 +11,16 @@ from homeassistant.const import PERCENTAGE # type: ignore
 from homeassistant.core import callback # type: ignore
 
 from .base import UnraidSensorBase
-from .const import DOMAIN, UnraidSensorEntityDescription
+from .const import UnraidSensorEntityDescription
 from ..coordinator import UnraidDataUpdateCoordinator
 from ..helpers import (
     DiskDataHelperMixin,
     format_bytes,
     get_disk_identifiers,
-    get_pool_info,
-    is_solid_state_drive,
+    get_pool_info
 )
 
-from ..naming import EntityNaming
+# from ..helpers import EntityNaming
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,17 +69,11 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
         self._disk_number = get_disk_number(disk_name)
         self._last_value: Optional[float] = None
         self._last_temperature: Optional[int] = None
-        
-        # Initialize entity naming
-        naming = EntityNaming(
-            domain=DOMAIN,
-            hostname=coordinator.hostname,
-            component="disk"
-        )
-        
-        # Get pretty name using naming utility
-        component_type = "cache" if disk_name == "cache" else "disk"
-        pretty_name = naming.get_entity_name(disk_name, component_type)
+
+
+
+        # Get pretty name with capitalized first letter
+        pretty_name = disk_name.capitalize()
 
         # Initialize base sensor class
         super().__init__(
@@ -102,7 +95,7 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
 
         # Get device and serial using the helper
         self._device, self._serial = get_disk_identifiers(coordinator.data, disk_name)
-        
+
         _LOGGER.debug(
             "Initialized disk sensor for %s (device: %s, serial: %s)",
             disk_name,
@@ -117,7 +110,7 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
             for disk in data.get("system_stats", {}).get("individual_disks", []):
                 if disk.get("name") == self._disk_name:
                     is_standby = disk.get("state") == "standby"
-                    
+
                     # Calculate percentage from total and used
                     if "total" in disk and "used" in disk:
                         percentage = self._calculate_usage_percentage(
@@ -126,7 +119,7 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
                         )
                         if percentage is not None:
                             self._last_value = percentage
-                            
+
                     # Fallback to percentage field if available
                     elif "percentage" in disk:
                         percentage = float(disk["percentage"])
@@ -156,9 +149,9 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
                 if disk.get("name") == self._disk_name:
                     # Get device and serial using helper
                     device, serial = get_disk_identifiers(self.coordinator.data, self._disk_name)
-                    
+
                     is_standby = disk.get("state") == "standby"
-                    
+
                     # Base attributes using DiskDataHelperMixin method
                     attrs = self._get_storage_attributes(
                         total=disk.get("total", 0),
@@ -180,7 +173,7 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
                     temp = disk.get("temperature")
                     if not is_standby and temp is not None:
                         self._last_temperature = temp
-                    
+
                     attrs["temperature"] = self._get_temperature_str(
                         self._last_temperature if is_standby else temp,
                         is_standby
@@ -215,7 +208,7 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
         """Handle updated data from the coordinator."""
         # Update device and serial using helper
         new_device, new_serial = get_disk_identifiers(self.coordinator.data, self._disk_name)
-        
+
         # Log device changes
         if new_device != self._device:
             _LOGGER.debug(
@@ -225,7 +218,7 @@ class UnraidDiskSensor(UnraidSensorBase, DiskDataHelperMixin):
                 new_device or "unknown"
             )
             self._device = new_device
-        
+
         # Update serial if changed
         if new_serial != self._serial:
             _LOGGER.debug(
@@ -243,16 +236,11 @@ class UnraidArraySensor(UnraidSensorBase, DiskDataHelperMixin):
 
     def __init__(self, coordinator) -> None:
         """Initialize the sensor."""
-        # Initialize entity naming
-        naming = EntityNaming(
-            domain=DOMAIN,
-            hostname=coordinator.hostname,
-            component="array"
-        )
+
 
         description = UnraidSensorEntityDescription(
             key="array_usage",
-            name=f"{naming.get_entity_name('array', 'array')} Usage",
+            name="Array Usage",
             native_unit_of_measurement=PERCENTAGE,
             device_class=None,
             state_class=SensorStateClass.MEASUREMENT,
@@ -303,19 +291,14 @@ class UnraidPoolSensor(UnraidSensorBase, DiskDataHelperMixin):
         self._pool_name = pool_name
         self._last_value: Optional[float] = None
         self._last_temperature: Optional[int] = None
-        
+
         # Get device and serial using the helper BEFORE using them in get_pool_icon
         self._device, self._serial = get_disk_identifiers(coordinator.data, pool_name)
 
-        # Initialize entity naming
-        naming = EntityNaming(
-            domain=DOMAIN,
-            hostname=coordinator.hostname,
-            component="pool"
-        )
 
-        # Get pretty name using naming utility
-        pretty_name = naming.get_entity_name(pool_name, "pool")
+
+        # Get pretty name with capitalized first letter
+        pretty_name = pool_name.capitalize()
 
         # Initialize base sensor class
         super().__init__(
@@ -339,12 +322,16 @@ class UnraidPoolSensor(UnraidSensorBase, DiskDataHelperMixin):
         """Get appropriate icon based on device type."""
         pool_name = self._pool_name.lower()
         try:
+            # ZFS support removed
+
+            # Check for NVMe devices
             if (self._device and "nvme" in self._device.lower()) or "nvme" in pool_name:
                 return "mdi:harddisk"
-        except AttributeError:
+        except (AttributeError, KeyError) as err:
             _LOGGER.debug(
-                "Device not available for pool %s when getting icon",
-                self._pool_name
+                "Error determining icon for pool %s: %s",
+                self._pool_name,
+                err
             )
         return "mdi:harddisk"
 
@@ -385,9 +372,9 @@ class UnraidPoolSensor(UnraidSensorBase, DiskDataHelperMixin):
                         self.coordinator.data,
                         self._pool_name
                     )
-                    
+
                     is_standby = disk.get("state") == "standby"
-                    
+
                     attrs = self._get_storage_attributes(
                         total=disk.get("total", 0),
                         used=disk.get("used", 0),
@@ -408,7 +395,7 @@ class UnraidPoolSensor(UnraidSensorBase, DiskDataHelperMixin):
                     temp = disk.get("temperature")
                     if not is_standby and temp is not None:
                         self._last_temperature = temp
-                    
+
                     attrs["temperature"] = self._get_temperature_str(
                         self._last_temperature if is_standby else temp,
                         is_standby
@@ -445,116 +432,4 @@ class UnraidStorageSensors:
         # Add array sensor
         self.entities.append(UnraidArraySensor(coordinator))
 
-        try:
-            disk_data = coordinator.data.get("system_stats", {}).get("individual_disks", [])
-            if not isinstance(disk_data, list):
-                _LOGGER.error("Invalid disk data format - expected list")
-                disk_data = []
 
-            # Define ignored mounts and filesystem types
-            ignored_mounts = {
-                "disks", "remotes", "addons", "rootshare",
-                "user/0", "dev/shm"
-            }
-
-            # Track processed disks
-            processed_disks = set()
-
-            # Sort and process array disks (spinning drives)
-            array_disks = []
-            solid_state_disks = []
-            
-            # First, categorize all disks
-            for disk in disk_data:
-                if not isinstance(disk, dict):
-                    _LOGGER.warning("Invalid disk entry format: %s", disk)
-                    continue
-
-                disk_name = disk.get("name", "")
-                mount_point = disk.get("mount_point", "")
-                filesystem = disk.get("filesystem", "")
-
-                # Skip invalid or ignored disks
-                if not disk_name:
-                    continue
-                if filesystem == "tmpfs":
-                    continue
-                if any(mount in mount_point for mount in ignored_mounts):
-                    continue
-                if disk_name == "parity":
-                    continue
-
-                # Route disk to appropriate list based on type
-                if is_solid_state_drive(disk):
-                    solid_state_disks.append(disk)
-                elif disk_name.startswith("disk"):
-                    try:
-                        disk_num = get_disk_number(disk_name)
-                        if disk_num is not None:
-                            array_disks.append((disk_num, disk))
-                    except ValueError:
-                        _LOGGER.warning("Invalid disk number format: %s", disk_name)
-
-            # Process spinning drives with UnraidDiskSensor
-            for _, disk in sorted(array_disks, key=lambda x: x[0]):
-                try:
-                    disk_name = disk.get("name", "")
-                    if disk_name not in processed_disks:
-                        self.entities.append(
-                            UnraidDiskSensor(
-                                coordinator=coordinator,
-                                disk_name=disk_name
-                            )
-                        )
-                        processed_disks.add(disk_name)
-                        _LOGGER.debug("Added spinning disk sensor: %s", disk_name)
-                except ValueError as err:
-                    _LOGGER.warning("Error adding disk sensor: %s", err)
-
-            # Process pools and SSDs
-            pool_info = get_pool_info(coordinator.data.get("system_stats", {}))
-            
-            # First handle SSDs and NVMEs that aren't part of a pool
-            for disk in solid_state_disks:
-                try:
-                    disk_name = disk.get("name", "")
-                    if not disk_name or disk_name in processed_disks:
-                        continue
-                        
-                    # Check if this disk is part of a pool
-                    is_pool_member = False
-                    for pool_name, pool_data in pool_info.items():
-                        if disk.get("device") in pool_data.get("devices", []):
-                            is_pool_member = True
-                            break
-                            
-                    # Only create individual sensor if not part of a pool
-                    if not is_pool_member:
-                        self.entities.append(
-                            UnraidPoolSensor(
-                                coordinator=coordinator,
-                                pool_name=disk_name
-                            )
-                        )
-                        processed_disks.add(disk_name)
-                        _LOGGER.debug("Added SSD/NVME sensor: %s", disk_name)
-                except ValueError as err:
-                    _LOGGER.warning("Error adding SSD sensor: %s", err)
-
-            # Then handle pools
-            for pool_name in pool_info:
-                try:
-                    if pool_name not in processed_disks:
-                        self.entities.append(
-                            UnraidPoolSensor(
-                                coordinator=coordinator,
-                                pool_name=pool_name
-                            )
-                        )
-                        processed_disks.add(pool_name)
-                        _LOGGER.debug("Added pool sensor: %s", pool_name)
-                except ValueError as err:
-                    _LOGGER.warning("Error adding pool sensor: %s", err)
-
-        except Exception as err:
-            _LOGGER.error("Error setting up sensors: %s", err, exc_info=True)

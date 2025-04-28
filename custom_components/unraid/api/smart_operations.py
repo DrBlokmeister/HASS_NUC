@@ -9,6 +9,9 @@ import re
 from typing import Dict, Any, Optional
 from enum import IntEnum
 
+from .disk_mapper import DiskMapper
+from .error_handling import with_error_handling, safe_parse
+
 _LOGGER = logging.getLogger(__name__)
 
 class SmartctlExitCode(IntEnum):
@@ -23,19 +26,20 @@ class SmartctlExitCode(IntEnum):
 
 class SmartDataManager:
     """Manager for SMART data operations."""
-    
+
     def __init__(self, instance: Any):
         self._instance = instance
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._cache_timeout = timedelta(minutes=5)
         self._last_update: Dict[str, datetime] = {}
         self._lock = asyncio.Lock()
+        self._disk_mapper = DiskMapper(instance.execute_command)
 
     def _convert_nvme_temperature(self, temp_value: Any) -> Optional[int]:
         """Convert NVMe temperature to Celsius with enhanced format detection."""
         if not temp_value:
             return None
-            
+
         try:
             # Handle string values with units
             if isinstance(temp_value, str):
@@ -48,39 +52,54 @@ class SmartDataManager:
                     return int(num - 273)
                 elif 'c' in temp_str:  # Celsius
                     return int(num)
-                    
+
             # Handle numeric values
             temp = float(temp_value)
-            
+
+            # Fix for NVMe temperature values reported in tenths of a degree
+            if temp > 100 and temp < 1000:
+                _LOGGER.debug("NVMe temperature %d appears to be in tenths of a degree, dividing by 10", temp)
+                temp = temp / 10
             # Convert Kelvin if needed (typically > 273)
-            if temp > 100:
+            elif temp > 273:
                 temp = temp - 273
                 _LOGGER.debug("Converting from Kelvin: %dK -> %d°C", temp + 273, temp)
-            
+
             # Expanded validation range (-40°C to 125°C)
             if -40 <= temp <= 125:
                 return int(temp)
-            
+
             _LOGGER.warning(
                 "Temperature %d°C outside expected range (-40°C to 125°C) - raw value: %s",
                 temp,
                 temp_value
             )
             return None
-                
+
         except (TypeError, ValueError) as err:
             _LOGGER.error("Temperature conversion error for value '%s': %s", temp_value, err)
             return None
-    
+
+    async def _map_logical_to_physical_device(self, device_path: str) -> str:
+        """Map logical md devices to physical devices using DiskMapper."""
+        # Use the DiskMapper to handle the mapping
+        return await self._disk_mapper.map_logical_to_physical_device(device_path)
+
+    @with_error_handling(fallback_return={
+        "state": "error",
+        "error": "Failed to get SMART data",
+        "temperature": None,
+        "device_type": "unknown"
+    })
     async def get_smart_data(
-        self, 
+        self,
         device: str,
         force_refresh: bool = False
         ) -> Dict[str, Any]:
         """Get SMART data for a disk with enhanced data processing."""
         async with self._lock:
             now = datetime.now(timezone.utc)
-            
+
             # Format device path correctly
             device_path = device
             if not device.startswith('/dev/'):
@@ -101,11 +120,31 @@ class SmartDataManager:
                     _LOGGER.error("Unrecognized device format: %s", device)
                     return {"state": "error", "error": "Invalid device name", "temperature": None}
 
+            # Strip partition numbers from device path for SMART data collection
+            # For example, convert /dev/nvme0n1p1 to /dev/nvme0n1
+            if 'nvme' in device_path and 'p' in device_path:
+                device_path = re.sub(r'(nvme\d+n\d+)p\d+', r'\1', device_path)
+                _LOGGER.debug("Stripped partition number from NVME device path: %s", device_path)
+
+            # Skip SMART data collection for USB boot drives
+            if device_path == "/dev/sda":
+                _LOGGER.debug("Skipping SMART data collection for USB boot drive %s", device_path)
+                usb_boot_data = {
+                    "state": "unsupported",
+                    "error": "USB boot drive doesn't support SMART",
+                    "smart_status": "passed",  # Assume passed for USB boot drives
+                    "temperature": None,
+                    "device_type": "usb"
+                }
+                self._cache[device_path] = usb_boot_data
+                self._last_update[device_path] = now
+                return usb_boot_data
+
             # Cache check
             if not force_refresh and device_path in self._cache:
                 last_update = self._last_update.get(device_path)
                 if last_update and (now - last_update) < self._cache_timeout:
-                    _LOGGER.debug("Using cached SMART data for %s (age: %s)", 
+                    _LOGGER.debug("Using cached SMART data for %s (age: %s)",
                                 device_path, now - last_update)
                     return self._cache[device_path]
 
@@ -113,6 +152,16 @@ class SmartDataManager:
                         device, device_path, force_refresh)
 
             try:
+                # Map logical device to physical device if needed
+                try:
+                    physical_device = await self._map_logical_to_physical_device(device_path)
+                    if physical_device != device_path:
+                        _LOGGER.debug("Using physical device %s instead of logical device %s",
+                                    physical_device, device_path)
+                        device_path = physical_device
+                except Exception as err:
+                    _LOGGER.warning("Error mapping device, using original: %s", err)
+
                 is_nvme = "nvme" in str(device_path).lower()
                 _LOGGER.debug("Device %s detected as: type=%s", device_path,
                             "NVMe" if is_nvme else "SATA")
@@ -121,17 +170,17 @@ class SmartDataManager:
                     # Standby check for SATA
                     _LOGGER.debug("Checking standby state for SATA device %s", device_path)
                     result = await self._instance.execute_command(f"smartctl -n standby -j {device_path}")
-                    
+
                     _LOGGER.debug("SATA standby check for %s: exit_code=%d, stdout=%s",
                                 device_path, result.exit_status, result.stdout)
 
                     is_standby = result.exit_status == 2
-                    
+
                     if is_standby:
                         _LOGGER.debug("Device %s confirmed in standby", device_path)
                         standby_data = {
                             "state": "standby",
-                            "smart_status": "Unknown",
+                            "smart_status": "passed",  # Assume passed for standby disks
                             "temperature": None,
                             "device_type": "sata"
                         }
@@ -159,14 +208,23 @@ class SmartDataManager:
 
                 _LOGGER.debug("Executing SMART command for %s: %s", device_path, smart_cmd)
                 result = await self._instance.execute_command(smart_cmd)
-                
+
                 if result.exit_status == 0:
                     try:
-                        smart_data = json.loads(result.stdout)
+                        smart_data = safe_parse(
+                            json.loads,
+                            result.stdout,
+                            default={},
+                            error_msg=f"Failed to parse SMART JSON for {device_path}"
+                        )
                         _LOGGER.debug("Successfully parsed SMART data for %s", device)
 
+                        # Get SMART status and convert boolean to string
+                        smart_passed = smart_data.get("smart_status", {}).get("passed", True)
+                        smart_status = "passed" if smart_passed else "failed"
+
                         processed_data = {
-                            "smart_status": smart_data.get("smart_status", {}).get("passed", True),
+                            "smart_status": smart_status,
                             "temperature": None,
                             "power_on_hours": None,
                             "attributes": {},
@@ -183,7 +241,7 @@ class SmartDataManager:
                                 nvme_data = smart_data.get("nvme_smart_health_information_log", {})
                                 if isinstance(nvme_data, dict):
                                     temp = self._convert_nvme_temperature(nvme_data.get("temperature"))
-                                
+
                                 if temp is None and "temperature" in smart_data:
                                     temp_data = smart_data["temperature"]
                                     if isinstance(temp_data, dict):
@@ -221,7 +279,7 @@ class SmartDataManager:
                                                 temp
                                             )
                                             break
-                        
+
                         # Update cache
                         self._cache[device] = processed_data
                         self._last_update[device] = now
@@ -235,7 +293,7 @@ class SmartDataManager:
                         )
                         error_data = {
                             "state": "error",
-                            "error": "JSON parse failed", 
+                            "error": "JSON parse failed",
                             "temperature": None
                         }
                         self._cache[device] = error_data

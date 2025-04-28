@@ -14,6 +14,9 @@ from homeassistant.const import ( # type: ignore
 DOMAIN = "unraid"
 DEFAULT_PORT = 22
 
+# Migration version
+MIGRATION_VERSION = 2
+
 # Unraid Server Hostname
 CONF_HOSTNAME = "hostname"
 MAX_HOSTNAME_LENGTH = 32
@@ -22,10 +25,43 @@ DEFAULT_NAME = "unraid"  # Fallback name if no hostname
 # Update intervals
 MIN_UPDATE_INTERVAL = 1          # minutes
 MAX_GENERAL_INTERVAL = 60        # minutes
-MIN_DISK_INTERVAL = 1           # hours
-MAX_DISK_INTERVAL = 24          # hours
+
+# Disk update intervals
+MIN_DISK_INTERVAL_MINUTES = 5    # minutes
+MAX_DISK_INTERVAL_HOURS = 24     # hours
 DEFAULT_GENERAL_INTERVAL = 5     # minutes
-DEFAULT_DISK_INTERVAL = 1        # hours
+DEFAULT_DISK_INTERVAL = 60       # minutes (1 hour)
+
+# General update interval options in minutes
+GENERAL_INTERVAL_OPTIONS = [
+    1,    # 1 minute
+    2,    # 2 minutes
+    3,    # 3 minutes
+    5,    # 5 minutes
+    10,   # 10 minutes
+    15,   # 15 minutes
+    30,   # 30 minutes
+    60    # 60 minutes (1 hour)
+]
+
+# Disk update interval options in minutes
+DISK_INTERVAL_OPTIONS = [
+    5,    # 5 minutes
+    10,   # 10 minutes
+    15,   # 15 minutes
+    30,   # 30 minutes
+    45,   # 45 minutes
+    60,   # 1 hour
+    120,  # 2 hours
+    180,  # 3 hours
+    240,  # 4 hours
+    300,  # 5 hours
+    360,  # 6 hours
+    480,  # 8 hours
+    720,  # 12 hours
+    1440  # 24 hours
+]
+
 UPDATE_FAILED_RETRY_DELAY: Final = 30  # seconds
 MAX_FAILED_UPDATE_COUNT: Final = 3
 MAX_UPDATE_METRICS_HISTORY: Final = 10
@@ -34,6 +70,9 @@ MAX_UPDATE_METRICS_HISTORY: Final = 10
 CONF_GENERAL_INTERVAL = "general_interval"
 CONF_DISK_INTERVAL = "disk_interval"
 CONF_HAS_UPS = "has_ups"
+CONF_HOST = "host"
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
 
 
 # Platforms

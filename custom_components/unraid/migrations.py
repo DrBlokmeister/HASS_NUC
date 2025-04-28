@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Dict, Any
 
 from homeassistant.core import HomeAssistant # type: ignore
 from homeassistant.helpers import entity_registry as er # type: ignore
@@ -12,96 +13,185 @@ from .const import DOMAIN, CONF_HOSTNAME, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
-def clean_entity_id(entity_id: str, hostname: str) -> str:
-    """Clean entity ID by removing duplicate hostname occurrences.
-    
+def clean_and_validate_unique_id(unique_id: str, hostname: str) -> str:
+    """Clean and validate unique ID format.
+
     Args:
-        entity_id: Original entity ID
-        hostname: Current hostname
-        
+        unique_id: Original unique ID
+        hostname: Server hostname
+
     Returns:
-        Cleaned entity ID without hostname duplicates
+        Cleaned and validated unique ID
     """
-    # Convert everything to lowercase for comparison
     hostname_lower = hostname.lower()
-    
-    # Split into parts
-    parts = entity_id.split('_')
-    
-    # Remove any parts that are exactly the hostname
-    cleaned_parts = [part for part in parts if part != hostname_lower]
-    
-    # Reconstruct the ID
+    parts = unique_id.split('_')
+
+    # Remove hostname duplicates while preserving structure
+    cleaned_parts = [part for part in parts if part.lower() != hostname_lower]
+
+    # Ensure proper structure
+    if not cleaned_parts[0:2] == ['unraid', 'server']:
+        cleaned_parts = ['unraid', 'server'] + cleaned_parts
+
+    # Insert hostname after unraid_server prefix
+    if len(cleaned_parts) >= 2:
+        cleaned_parts.insert(2, hostname_lower)
+
     return '_'.join(cleaned_parts)
 
-async def async_migrate_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Migrate entities to use hostname-based naming."""
-    ent_reg = er.async_get(hass)
-    hostname = entry.data.get(CONF_HOSTNAME, DEFAULT_NAME).capitalize()
+async def perform_rollback(
+    ent_reg: er.EntityRegistry,
+    original_states: Dict[str, Any]
+) -> None:
+    """Rollback entities to original state.
 
-    # Find all entities for this config entry
-    entity_entries = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
-    
-    migrated_count = 0
-    
-    for entity_entry in entity_entries:
+    Args:
+        ent_reg: Entity registry
+        original_states: Dictionary of original entity states
+    """
+    for entity_id, original in original_states.items():
         try:
-            # Check if entity needs migration (has IP-based naming or duplicate hostname)
-            ip_pattern = r'unraid_server_\d+_\d+_\d+_\d+_'
-            needs_migration = bool(re.search(ip_pattern, entity_entry.unique_id))
-            
-            # Also check for duplicate hostname
-            hostname_count = entity_entry.unique_id.lower().count(hostname.lower())
-            needs_migration = needs_migration or hostname_count > 1
-            
-            if needs_migration:
-                # Clean the entity type by removing any hostname duplicates
-                cleaned_id = clean_entity_id(entity_entry.unique_id, hostname)
-                # Ensure we have the correct prefix
-                if not cleaned_id.startswith("unraid_server_"):
-                    cleaned_id = f"unraid_server_{cleaned_id}"
-                # Create new unique_id with single hostname instance
-                new_unique_id = f"unraid_server_{hostname}_{cleaned_id.split('_')[-1]}"
-                
-                if new_unique_id != entity_entry.unique_id:
-                    _LOGGER.debug(
-                        "Migrating entity %s to new unique_id %s",
-                        entity_entry.entity_id,
-                        new_unique_id
-                    )
-                    
-                    # Check if target ID already exists
-                    existing = ent_reg.async_get_entity_id(
-                        entity_entry.domain,
-                        DOMAIN,
-                        new_unique_id
-                    )
-                    
-                    if existing and existing != entity_entry.entity_id:
-                        _LOGGER.debug(
-                            "Removing existing entity %s before migration",
-                            existing
-                        )
-                        ent_reg.async_remove(existing)
-
-                    # Update entity with new unique_id
-                    ent_reg.async_update_entity(
-                        entity_entry.entity_id,
-                        new_unique_id=new_unique_id
-                    )
-                    migrated_count += 1
-                    
-        except Exception as err:
-            _LOGGER.error(
-                "Error migrating entity %s: %s",
-                entity_entry.entity_id,
-                err
+            ent_reg.async_update_entity(
+                entity_id,
+                new_unique_id=original["unique_id"],
+                new_name=original["name"]
             )
-            continue
+        except Exception as err:
+            _LOGGER.error("Rollback failed for %s: %s", entity_id, err)
 
-    if migrated_count > 0:
-        _LOGGER.info(
-            "Successfully migrated %s entities to use hostname %s",
-            migrated_count,
-            hostname
-        )
+async def update_entity_safely(
+    ent_reg: er.EntityRegistry,
+    entity_entry: er.RegistryEntry,
+    new_unique_id: str
+) -> None:
+    """Safely update entity with new unique ID."""
+    # First remove any existing entities with the new ID
+    # to prevent duplicates - this is important during reinstallation
+    existing_id = ent_reg.async_get_entity_id(
+        entity_entry.domain,
+        DOMAIN,
+        new_unique_id
+    )
+
+    if existing_id and existing_id != entity_entry.entity_id:
+        _LOGGER.info("Removing duplicate entity %s with unique_id: %s", existing_id, new_unique_id)
+        ent_reg.async_remove(existing_id)
+
+    # Now update the entity with the new unique_id
+    _LOGGER.debug("Updating entity %s with new unique_id: %s", entity_entry.entity_id, new_unique_id)
+    ent_reg.async_update_entity(
+        entity_entry.entity_id,
+        new_unique_id=new_unique_id
+    )
+
+async def async_cleanup_orphaned_entities(hass: HomeAssistant, entry: ConfigEntry) -> int:
+    """Clean up orphaned entities from previous installations.
+
+    This function removes all entities for the current config entry to ensure
+    a clean slate for entity creation.
+
+    Args:
+        hass: HomeAssistant instance
+        entry: ConfigEntry instance
+
+    Returns:
+        Number of entities removed
+    """
+    ent_reg = er.async_get(hass)
+    removed_count = 0
+
+    # Get all entities for this config entry
+    all_entities = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+    entity_count = len(all_entities)
+
+    if entity_count > 0:
+        _LOGGER.info("Found %s entities for config entry %s", entity_count, entry.entry_id)
+
+        # Remove all entities for THIS config entry
+        for entity_entry in all_entities:
+            try:
+                _LOGGER.debug("Removing entity: %s", entity_entry.entity_id)
+                ent_reg.async_remove(entity_entry.entity_id)
+                removed_count += 1
+            except Exception as err:
+                _LOGGER.error("Failed to remove entity %s: %s", entity_entry.entity_id, err)
+    else:
+        _LOGGER.debug("No entities found for config entry %s - may be a new installation", entry.entry_id)
+
+    if removed_count > 0:
+        _LOGGER.info("Removed %s entities during cleanup", removed_count)
+
+    return removed_count
+
+
+async def async_migrate_with_rollback(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate entities with rollback support.
+
+    This function handles migration of entity unique IDs to the new format.
+    It includes rollback support in case of failures.
+
+    Args:
+        hass: HomeAssistant instance
+        entry: ConfigEntry instance
+
+    Returns:
+        True if migration was successful, False otherwise
+    """
+    ent_reg = er.async_get(hass)
+
+    # Store original states for rollback
+    original_states = {
+        entity.entity_id: {
+            "unique_id": entity.unique_id,
+            "name": entity.name
+        }
+        for entity in er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+    }
+
+    try:
+        hostname = entry.data.get(CONF_HOSTNAME, DEFAULT_NAME)
+        migrated_count = 0
+
+        for entity_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+            try:
+                # Check if migration is needed (has IP-based naming or duplicate hostname)
+                ip_pattern = r'unraid_server_\d+_\d+_\d+_\d+_'
+                needs_migration = bool(re.search(ip_pattern, entity_entry.unique_id))
+
+                hostname_count = entity_entry.unique_id.lower().count(hostname.lower())
+                needs_migration = needs_migration or hostname_count > 1
+
+                if needs_migration:
+                    new_unique_id = clean_and_validate_unique_id(
+                        entity_entry.unique_id,
+                        hostname
+                    )
+
+                    if new_unique_id != entity_entry.unique_id:
+                        await update_entity_safely(ent_reg, entity_entry, new_unique_id)
+                        migrated_count += 1
+
+            except Exception as entity_err:
+                _LOGGER.error(
+                    "Failed to migrate entity %s: %s",
+                    entity_entry.entity_id,
+                    entity_err
+                )
+                continue
+
+        if migrated_count:
+            _LOGGER.info(
+                "Successfully migrated %s entities for %s",
+                migrated_count,
+                hostname
+            )
+
+        return True
+
+    except Exception as err:
+        _LOGGER.error("Migration failed, rolling back: %s", err)
+        await perform_rollback(ent_reg, original_states)
+        return False
+
+# Legacy function migrate_entity_id_format has been removed as it's no longer needed
+# All entities now use the new format (unraid_hostname_component_name) by default

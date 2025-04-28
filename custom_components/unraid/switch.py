@@ -15,6 +15,7 @@ from .const import (
     DOMAIN,
 )
 
+from .entity_naming import EntityNaming
 from .coordinator import UnraidDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,29 +40,27 @@ class UnraidSwitchEntity(CoordinatorEntity, SwitchEntity):
         """Initialize the switch."""
         super().__init__(coordinator)
         self.entity_description = description
-        
-        hostname = coordinator.hostname.capitalize()
-        
-        # Clean the key of any existing hostname instances
-        clean_key = description.key
-        hostname_variations = [hostname.lower(), hostname.capitalize(), hostname.upper()]
-        for variation in hostname_variations:
-            clean_key = clean_key.replace(f"{variation}_", "")
-        
-        # Construct unique_id with guaranteed single hostname instance
-        self._attr_unique_id = f"unraid_server_{hostname}_{clean_key}"
-        _LOGGER.debug("Entity initialized | unique_id: %s | hostname: %s | clean_key: %s",
-            self._attr_unique_id, hostname, clean_key)
-        
+
+        # Initialize entity naming helper
+        naming = EntityNaming(
+            domain=DOMAIN,
+            hostname=coordinator.hostname,
+            component=description.key.split('_')[0]  # Get first part of key as component
+        )
+
+        # Set consistent entity ID
+        self._attr_unique_id = naming.get_entity_id(description.key)
+
         # Keep the name simple and human-readable
-        self._attr_name = f"{hostname} {description.name}"
-        _LOGGER.debug("Entity initialized | name: %s | hostname: %s | description: %s",
-            self._attr_name, hostname, description.name)
-        
+        self._attr_name = f"{description.name}"
+
+        _LOGGER.debug("Entity initialized | unique_id: %s | name: %s",
+            self._attr_unique_id, self._attr_name)
+
         # All switches belong to main server device
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.entry.entry_id)},
-            "name": f"Unraid Server ({hostname})",
+            "name": f"{coordinator.hostname.title()}",
             "manufacturer": "Lime Technology",
             "model": "Unraid Server",
         }
@@ -104,7 +103,7 @@ class UnraidDockerContainerSwitch(UnraidSwitchEntity):
             coordinator,
             UnraidSwitchEntityDescription(
                 key=f"docker_{container_name}",
-                name=f"Docker {container_name}",
+                name=f"{container_name}",
                 icon="mdi:docker",
                 value_fn=self._get_container_state,
             )
@@ -150,20 +149,20 @@ class UnraidVMSwitch(UnraidSwitchEntity):
         """Initialize the VM switch."""
         self._vm_name = vm_name
         self._last_known_state = None
-        
+
         # Remove any leading numbers and spaces for the entity ID
         cleaned_name = ''.join(c for c in vm_name if not c.isdigit()).strip()
-        
+
         super().__init__(
             coordinator,
             UnraidSwitchEntityDescription(
                 key=f"vm_{cleaned_name}",
-                name=f"VM {vm_name}",
+                name=f"{vm_name}",
                 value_fn=self._get_vm_state,
             )
         )
         self._attr_entity_registry_enabled_default = True
-        
+
         # Get OS type for specific model info
         for vm in coordinator.data.get("vms", []):
             if vm["name"] == vm_name and "os_type" in vm:
@@ -196,7 +195,7 @@ class UnraidVMSwitch(UnraidSwitchEntity):
         """Return if the switch is available."""
         if not self.coordinator.last_update_success:
             return False
-            
+
         vms_enabled = "vms" in self.coordinator.data and isinstance(self.coordinator.data["vms"], list)
         return vms_enabled and any(vm["name"] == self._vm_name for vm in self.coordinator.data.get("vms", []))
 
@@ -207,7 +206,7 @@ class UnraidVMSwitch(UnraidSwitchEntity):
             "status": "unknown",
             "os_type": "unknown",
         }
-        
+
         for vm in self.coordinator.data.get("vms", []):
             if vm["name"] == self._vm_name:
                 attrs.update({
@@ -215,7 +214,7 @@ class UnraidVMSwitch(UnraidSwitchEntity):
                     "os_type": vm.get("os_type", "unknown"),
                 })
                 break
-                
+
         return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:

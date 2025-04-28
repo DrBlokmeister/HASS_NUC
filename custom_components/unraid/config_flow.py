@@ -1,16 +1,34 @@
-"""Config flow for Unraid integration."""
+"""Config flow for Unraid integration.
+
+This module provides the configuration flow for the Unraid integration.
+It includes:
+- Initial setup flow with validation
+- Options flow for updating settings
+- Reauthorization flow for updating credentials
+- Validation functions for hostname, port, and credentials
+
+The config flow includes advanced validation to ensure that the user provides
+valid information before attempting to connect to the Unraid server, improving
+the overall user experience and reducing connection failures.
+"""
 from __future__ import annotations
 
 import logging
-from typing import Any
+import re
+import socket
+from typing import Any, Dict
 from dataclasses import dataclass
 
 import voluptuous as vol # type: ignore
 from homeassistant import config_entries # type: ignore
+from homeassistant.config_entries import ConfigEntry # type: ignore
 from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD, CONF_PORT # type: ignore
 from homeassistant.data_entry_flow import FlowResult # type: ignore
 from homeassistant.exceptions import HomeAssistantError # type: ignore
-from homeassistant.core import callback # type: ignore
+from homeassistant.core import HomeAssistant, callback # type: ignore
+# from homeassistant.helpers import importlib as ha_importlib # type: ignore
+
+from .migrations import async_migrate_with_rollback
 
 from .const import (
     DOMAIN,
@@ -19,11 +37,10 @@ from .const import (
     CONF_DISK_INTERVAL,
     DEFAULT_GENERAL_INTERVAL,
     DEFAULT_DISK_INTERVAL,
-    MIN_UPDATE_INTERVAL,
-    MAX_GENERAL_INTERVAL,
-    MIN_DISK_INTERVAL,
-    MAX_DISK_INTERVAL,
+    DISK_INTERVAL_OPTIONS,
+    GENERAL_INTERVAL_OPTIONS,
     CONF_HAS_UPS,
+    MIGRATION_VERSION,
 )
 from .unraid import UnraidAPI
 
@@ -48,7 +65,18 @@ def get_schema_base(
     include_auth: bool = False,
     has_ups: bool = False,
 ) -> vol.Schema:
-    """Get base schema with sliders for both intervals."""
+    """Get base schema with dropdowns for both intervals."""
+    # Create a list of options for the disk interval selector
+    disk_interval_options = {
+        option: f"{option // 60} hours" if option >= 60 else f"{option} minutes"
+        for option in DISK_INTERVAL_OPTIONS
+    }
+
+    # Create a list of options for the general interval selector
+    general_interval_options = {
+        option: f"{option} minutes" for option in GENERAL_INTERVAL_OPTIONS
+    }
+
     if include_auth:
         # Initial setup schema with correct field order
         schema = {
@@ -59,27 +87,11 @@ def get_schema_base(
             vol.Required(
             CONF_GENERAL_INTERVAL,
             default=general_interval
-            ): vol.All(
-            vol.Coerce(int),
-            vol.Range(
-                min=MIN_UPDATE_INTERVAL,
-                max=MAX_GENERAL_INTERVAL,
-                msg="General interval must be between "
-                f"{MIN_UPDATE_INTERVAL} and {MAX_GENERAL_INTERVAL} minutes"
-            )
-            ),
+            ): vol.In(general_interval_options),
             vol.Required(
             CONF_DISK_INTERVAL,
             default=disk_interval
-            ): vol.All(
-            vol.Coerce(int),
-            vol.Range(
-                min=MIN_DISK_INTERVAL,
-                max=MAX_DISK_INTERVAL,
-                msg="Disk interval must be between "
-                f"{MIN_DISK_INTERVAL} and {MAX_DISK_INTERVAL} hours"
-            )
-            ),
+            ): vol.In(disk_interval_options),
             vol.Required(CONF_HAS_UPS, default=has_ups): bool,
         }
     else:
@@ -89,23 +101,11 @@ def get_schema_base(
             vol.Required(
                 CONF_GENERAL_INTERVAL,
                 default=general_interval
-            ): vol.All(
-                vol.Coerce(int),
-                vol.Range(
-                    min=MIN_UPDATE_INTERVAL,
-                    max=MAX_GENERAL_INTERVAL
-                )
-            ),
+            ): vol.In(general_interval_options),
             vol.Required(
                 CONF_DISK_INTERVAL,
                 default=disk_interval
-            ): vol.All(
-                vol.Coerce(int),
-                vol.Range(
-                    min=MIN_DISK_INTERVAL,
-                    max=MAX_DISK_INTERVAL
-                )
-            ),
+            ): vol.In(disk_interval_options),
             vol.Required(CONF_HAS_UPS, default=has_ups): bool,
         }
 
@@ -131,9 +131,51 @@ def get_options_schema(
 
 async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
-    
-    Data has already been validated through schema.
+
+    This function performs comprehensive validation of the user input:
+    1. Validates the hostname/IP address format
+    2. Validates the port number is within range
+    3. Validates the credentials are not empty
+    4. Attempts to connect to the Unraid server
+
+    The function raises specific exceptions for different types of validation failures,
+    which allows the config flow to provide specific error messages to the user.
+
+    Args:
+        data: A dictionary containing the user input (host, username, password, port)
+
+    Returns:
+        A dictionary containing the title for the config entry
+
+    Raises:
+        InvalidHost: If the hostname is empty or invalid
+        InvalidPort: If the port is not within the valid range
+        InvalidCredentials: If the username or password is empty
+        CannotConnect: If the connection to the Unraid server fails
     """
+    # Validate hostname/IP
+    host_errors = validate_hostname(data[CONF_HOST])
+    if host_errors:
+        if "host" in host_errors and host_errors["host"] == "empty_host":
+            raise InvalidHost("Host cannot be empty")
+        elif "host" in host_errors and host_errors["host"] == "invalid_host":
+            raise InvalidHost("Invalid hostname or IP address")
+
+    # Validate port
+    port_errors = validate_port(data[CONF_PORT])
+    if port_errors:
+        if "port" in port_errors and port_errors["port"] == "invalid_port":
+            raise InvalidPort("Invalid port number")
+
+    # Validate credentials
+    cred_errors = validate_credentials(data[CONF_USERNAME], data[CONF_PASSWORD])
+    if cred_errors:
+        if "username" in cred_errors and cred_errors["username"] == "empty_username":
+            raise InvalidCredentials("Username cannot be empty")
+        elif "password" in cred_errors and cred_errors["password"] == "empty_password":
+            raise InvalidCredentials("Password cannot be empty")
+
+    # If all validation passes, try to connect
     api = UnraidAPI(data[CONF_HOST], data[CONF_USERNAME], data[CONF_PASSWORD], data[CONF_PORT])
 
     try:
@@ -148,7 +190,7 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Unraid."""
 
-    VERSION = 1
+    VERSION = MIGRATION_VERSION
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -181,6 +223,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 await self.hass.config_entries.async_reload(self.reauth_entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
+            except InvalidCredentials as err:
+                _LOGGER.error("Invalid credentials: %s", err)
+                if "username" in str(err).lower():
+                    errors["username"] = "empty_username"
+                else:
+                    errors["password"] = "empty_password"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
@@ -210,15 +258,31 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 self._host = user_input[CONF_HOST]
                 info = await validate_input(user_input)
-                
+
                 await self.async_set_unique_id(
                     self._host.lower(),
                     raise_on_progress=True
                 )
                 self._abort_if_unique_id_configured()
-                
+
                 return self.async_create_entry(title=info["title"], data=user_input)
+            except InvalidHost as err:
+                _LOGGER.error("Invalid host: %s", err)
+                if "empty" in str(err).lower():
+                    errors["host"] = "empty_host"
+                else:
+                    errors["host"] = "invalid_host"
+            except InvalidPort:
+                _LOGGER.error("Invalid port")
+                errors["port"] = "invalid_port"
+            except InvalidCredentials as err:
+                _LOGGER.error("Invalid credentials: %s", err)
+                if "username" in str(err).lower():
+                    errors["username"] = "empty_username"
+                else:
+                    errors["password"] = "empty_password"
             except CannotConnect:
+                _LOGGER.error("Cannot connect to Unraid server")
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception")
@@ -239,7 +303,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "How often to update non-disk sensors (1-60 minutes)"
                 ),
                 "disk_interval_description": (
-                    "How often to update disk information (1-24 hours)"
+                    "How often to update disk information (5 minutes to 24 hours)"
                 ),
             },
         )
@@ -247,6 +311,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_import(self, import_data: dict[str, Any]) -> FlowResult:
         """Handle import from configuration.yaml."""
         return await self.async_step_user(import_data)
+
+    # Migration is now handled in __init__.py to follow best practices
+    # This method is kept for backward compatibility but delegates to the handler in __init__.py
+    async def async_migrate_entry(self, hass: HomeAssistant, entry: ConfigEntry) -> bool:
+        """Handle migration of config entries."""
+        _LOGGER.debug("Delegating migration to handler in __init__.py")
+        # Import the migration handler from __init__.py
+        from . import async_migrate_entry as init_migrate_entry
+        return await init_migrate_entry(hass, entry)
 
     @staticmethod
     def async_get_options_flow(
@@ -288,28 +361,27 @@ class UnraidOptionsFlowHandler(config_entries.OptionsFlow):
                 },
             )
 
+        # Create a list of options for the disk interval selector
+        disk_interval_options = {
+            option: f"{option // 60} hours" if option >= 60 else f"{option} minutes"
+            for option in DISK_INTERVAL_OPTIONS
+        }
+
+        # Create a list of options for the general interval selector
+        general_interval_options = {
+            option: f"{option} minutes" for option in GENERAL_INTERVAL_OPTIONS
+        }
+
         schema = vol.Schema({
             vol.Optional(CONF_PORT, default=self._port): vol.Coerce(int),
             vol.Required(
                 CONF_GENERAL_INTERVAL,
                 default=self._general_interval
-            ): vol.All(
-                vol.Coerce(int),
-                vol.Range(
-                    min=MIN_UPDATE_INTERVAL,
-                    max=MAX_GENERAL_INTERVAL
-                )
-            ),
+            ): vol.In(general_interval_options),
             vol.Required(
                 CONF_DISK_INTERVAL,
                 default=self._disk_interval
-            ): vol.All(
-                vol.Coerce(int),
-                vol.Range(
-                    min=MIN_DISK_INTERVAL,
-                    max=MAX_DISK_INTERVAL
-                )
-            ),
+            ): vol.In(disk_interval_options),
             vol.Required(CONF_HAS_UPS, default=self._has_ups): bool,
         })
 
@@ -321,10 +393,106 @@ class UnraidOptionsFlowHandler(config_entries.OptionsFlow):
                     "How often to update non-disk sensors (1-60 minutes)"
                 ),
                 "disk_interval_description": (
-                    "How often to update disk information (1-24 hours)"
+                    "How often to update disk information (5 minutes to 24 hours)"
                 ),
             },
         )
+
+def validate_hostname(hostname: str) -> Dict[str, str]:
+    """Validate hostname or IP address.
+
+    This function performs several checks on the provided hostname:
+    1. Checks if the hostname is empty
+    2. Checks if the hostname is a valid IP address
+    3. If not an IP address, checks if it's a valid hostname format
+    4. Attempts to resolve the hostname (but doesn't fail if resolution fails)
+
+    Args:
+        hostname: The hostname or IP address to validate
+
+    Returns:
+        A dictionary of errors, where the key is the field name and the value is the error code.
+        An empty dictionary means no errors were found.
+    """
+    errors: Dict[str, str] = {}
+
+    # Check if hostname is empty
+    if not hostname:
+        errors["host"] = "empty_host"
+        return errors
+
+    # Check if hostname is a valid IP address
+    try:
+        socket.inet_aton(hostname)
+        # It's a valid IP address
+        return errors
+    except socket.error:
+        # Not an IP address, check if it's a valid hostname
+        # Using a more efficient regex that avoids potential exponential backtracking
+        if not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$", hostname):
+            errors["host"] = "invalid_host"
+            return errors
+
+        # Try to resolve the hostname
+        try:
+            socket.gethostbyname(hostname)
+        except socket.gaierror:
+            # Hostname doesn't resolve, but we'll still allow it
+            # as it might be resolvable in the user's network
+            _LOGGER.warning("Hostname %s doesn't resolve, but allowing it", hostname)
+
+    return errors
+
+def validate_port(port: int) -> Dict[str, str]:
+    """Validate port number.
+
+    This function checks if the provided port number is within the valid range (1-65535).
+
+    Args:
+        port: The port number to validate
+
+    Returns:
+        A dictionary of errors, where the key is the field name and the value is the error code.
+        An empty dictionary means no errors were found.
+    """
+    errors: Dict[str, str] = {}
+
+    if port < 1 or port > 65535:
+        errors["port"] = "invalid_port"
+
+    return errors
+
+def validate_credentials(username: str, password: str) -> Dict[str, str]:
+    """Validate username and password.
+
+    This function checks if the provided username and password are not empty.
+
+    Args:
+        username: The username to validate
+        password: The password to validate
+
+    Returns:
+        A dictionary of errors, where the key is the field name and the value is the error code.
+        An empty dictionary means no errors were found.
+    """
+    errors: Dict[str, str] = {}
+
+    if not username:
+        errors["username"] = "empty_username"
+
+    if not password:
+        errors["password"] = "empty_password"
+
+    return errors
+
+class InvalidHost(HomeAssistantError):
+    """Error raised when the host is invalid."""
+
+class InvalidPort(HomeAssistantError):
+    """Error raised when the port is invalid."""
+
+class InvalidCredentials(HomeAssistantError):
+    """Error raised when the credentials are invalid."""
 
 class CannotConnect(HomeAssistantError):
     """Error raised when we cannot connect to the Unraid server."""

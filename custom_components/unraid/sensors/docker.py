@@ -1,26 +1,25 @@
 """Docker-related sensors for Unraid."""
 from __future__ import annotations
 
-import logging
 from typing import Any, Callable
 from dataclasses import dataclass, field
 
 from homeassistant.components.sensor import ( # type: ignore
-    SensorEntityDescription,
+    SensorEntityDescription
 )
 from homeassistant.const import EntityCategory # type: ignore
 
 from .base import UnraidSensorBase, UnraidDiagnosticMixin
 from .const import DOMAIN
-from ..naming import EntityNaming
+from ..entity_naming import EntityNaming
 
-_LOGGER = logging.getLogger(__name__)
+# _LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class UnraidSensorEntityDescription(SensorEntityDescription):
     """Describes Unraid sensor entity."""
-    value_fn: Callable[[dict[str, Any]], Any] = field(default=lambda x: None)
-    available_fn: Callable[[dict[str, Any]], bool] = field(default=lambda x: True)
+    value_fn: Callable[[dict[str, Any]], Any] = field(default=lambda _: None)
+    available_fn: Callable[[dict[str, Any]], bool] = field(default=lambda _: True)
 
 # Simplified sensor types - only basic container stats
 DOCKER_SENSOR_TYPES = (
@@ -52,15 +51,16 @@ class UnraidDockerSensor(UnraidSensorBase, UnraidDiagnosticMixin):
 
     def __init__(self, coordinator, description: UnraidSensorEntityDescription) -> None:
         """Initialize the sensor."""
+        super().__init__(coordinator, description)
+        UnraidDiagnosticMixin.__init__(self)
+        self._attr_has_entity_name = True
+
+        # Get naming helper from base class initialization
         naming = EntityNaming(
             domain=DOMAIN,
             hostname=coordinator.hostname,
             component="docker"
         )
-
-        super().__init__(coordinator, description)
-        UnraidDiagnosticMixin.__init__(self)
-        self._attr_has_entity_name = True
 
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.entry.entry_id}_docker")},
@@ -84,16 +84,10 @@ class UnraidDockerContainerSensor(UnraidSensorBase, UnraidDiagnosticMixin):
     def __init__(self, coordinator, container_name: str) -> None:
         """Initialize the sensor."""
         self.container_name = container_name
-        
-        naming = EntityNaming(
-            domain=DOMAIN,
-            hostname=coordinator.hostname,
-            component="docker"
-        )
-        
+
         description = UnraidSensorEntityDescription(
             key=f"docker_{container_name.lower()}",
-            name=naming.get_entity_name(container_name, "docker"),
+            name=container_name,
             icon="mdi:docker",
             value_fn=self._get_container_state,
             available_fn=self._is_container_available,
@@ -102,10 +96,10 @@ class UnraidDockerContainerSensor(UnraidSensorBase, UnraidDiagnosticMixin):
         super().__init__(coordinator, description)
         UnraidDiagnosticMixin.__init__(self)
         self._attr_has_entity_name = True
-        
+
         self._attr_device_info = {
             "identifiers": {(DOMAIN, f"{coordinator.entry.entry_id}_docker")},
-            "name": f"Unraid Docker ({naming.clean_hostname()})",
+            "name": f"Unraid Docker ({coordinator.hostname.replace('_', ' ').title()})",
             "manufacturer": "Docker",
             "model": "Container Engine",
             "via_device": (DOMAIN, coordinator.entry.entry_id),
@@ -167,3 +161,5 @@ class UnraidDockerSensors:
                         container_name=container_name
                     )
                 )
+
+
