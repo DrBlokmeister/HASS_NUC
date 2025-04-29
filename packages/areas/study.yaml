@@ -74,19 +74,7 @@ sensor:
         icon_template: mdi:vibrate
         value_template: "{{ state_attr('binary_sensor.vibration_sensor_desk_chair', 'orientation'), state_attr('binary_sensor.vibration_sensor_desk_chair', 'tiltangle') }}"
         availability_template: "{{ not states('binary_sensor.vibration_sensor_desk_chair') in ['unavailable', 'unknown', 'none', None] }}"
-  # - platform: group
-  #   name: "Study Average Illuminance"
-  #   unique_id: yaml_sensor_group_study_average_illuminance
-  #   type: mean
-  #   ignore_non_numeric: true
-  #   state_class: measurement
-  #   device_class: illuminance
-  #   unit_of_measurement: lx
-  #   entities:
-  #     - sensor.study_motion_1_illuminance
-  #     - sensor.study_motion_2_illuminace
-  #     - sensor.study_light_1
-  #     - sensor.study_light_1
+
   - platform: history_stats
     name: "Power Above Soldering Power Last 5 Minutes"
     entity_id: binary_sensor.power_above_soldering_power
@@ -161,9 +149,9 @@ automation:
         #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
         value_template: >-
           {% if is_state('light.study_lights', 'on') %}
-            {{ states('sensor.study_average_illuminance')|int < states('input_number.study_illumination_limit_lighton')|int }}
+            {{ states('sensor.study_light_1')|int < states('input_number.study_illumination_limit_lighton')|int }}
           {% else %}
-            {{ states('sensor.study_average_illuminance')|int < states('input_number.study_illumination_limit_lightoff')|int }}
+            {{ states('sensor.study_light_1')|int < states('input_number.study_illumination_limit_lightoff')|int }}
           {% endif %}
     action:
       - service: light.turn_on
@@ -188,7 +176,7 @@ automation:
             for:
               minutes: 5
           - platform: template
-            value_template: "{{ states('sensor.study_average_illuminance')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
+            value_template: "{{ states('sensor.study_light_1')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
             for:
               minutes: 5
         timeout:
