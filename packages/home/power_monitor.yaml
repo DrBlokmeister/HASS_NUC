@@ -103,6 +103,9 @@ template:
       - platform: time
         at:
           - "15:05"
+          - "16:05"
+          - "17:05"
+          - "18:05"
           - "8:05"
       # - platform: time_pattern
       #   minutes: "/30"
@@ -160,7 +163,9 @@ template:
             {%- endfor -%}
             {{- ns.cheapest.start.hour if ns.cheapest else 'Unavailable' -}}
           whole_night_included: >
-            {{- 'Yes' if now().hour >= 15 else 'No' -}}
+            {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') %}
+            {{- 'Yes' if not (raw_tomorrow is not defined or raw_tomorrow == none or (raw_tomorrow | length == 0)) else 'No' -}}
+            {# {{- 'Yes' if now().hour >= 15 else 'No' -}} #}
 
   - sensor:
       - name: "Lowest Quartile Electricity Price Today"
@@ -1304,6 +1309,35 @@ automation:
   #         entity_id: input_number.water_meter_total_consumption
   #         value: "{{ states('sensor.water_meter_main_water_consumption')|int }}"
 
+  - alias: "Reload Nordpool if tomorrow's prices are missing"
+    id: yaml_automation_home_power_monitor_reload_nordpool_if_tomorrow_prices_missing
+    mode: single
+    trigger:
+      - platform: time
+        at: "15:10:00"
+    condition:
+      - condition: template
+        value_template: >
+          {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') %}
+          {{ raw_tomorrow is not defined or raw_tomorrow == none or (raw_tomorrow | length == 0) }}
+    action:
+      - service: homeassistant.reload_config_entry
+        data:
+          entry_id: "3685b0b85a41baf2b54cbb2216636d79"
+      - delay:
+          seconds: 30
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') %}
+                  {{ raw_tomorrow is not defined or raw_tomorrow == none or (raw_tomorrow | length == 0) }}
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "Nordpool prices missing"
+                  message: "Tomorrow's electricity prices are still missing even after reloading Nordpool integration."
+                  notification_id: "nordpool_prices_missing"
 
 ################
 #    SCENES    #
