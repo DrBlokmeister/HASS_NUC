@@ -148,7 +148,6 @@ font:
       "\U000F1C65"    # Information
     ]
 
-
 display:
   - platform: ssd1306_i2c
     model: "SSD1306 128x64"
@@ -160,12 +159,12 @@ display:
       # Default Page 1: Temperature and Humidity
       - id: default_page_0
         lambda: |-
-          int x_icon = 0;
-          int x_value = 30;
-          int y_temp = 0;
-          int y_hum = 30;
+          const int x_icon = 0;
+          const int x_value = 30;
+          const int y_temp = 0;
+          const int y_hum = 30;
           // Temperature
-          it.print(x_icon, y_temp, id(icon_font_22), "\U000F050F");  // Thermometer icon
+          it.print(x_icon, y_temp, id(icon_font_22), "\U000F050F");
           if (id(temp).has_state()) {
             it.printf(x_value, y_temp, id(arial22), "%.1f", id(temp).state);
             it.print(x_value + 45, y_temp + 5, id(arial15), "°C");
@@ -173,7 +172,7 @@ display:
             it.print(x_value, y_temp, id(arial22), "N/A");
           }
           // Humidity
-          it.print(x_icon, y_hum, id(icon_font_22), "\U000F058E");  // Water Percent icon
+          it.print(x_icon, y_hum, id(icon_font_22), "\U000F058E");
           if (id(hum).has_state()) {
             it.printf(x_value, y_hum, id(arial22), "%.0f", id(hum).state);
             it.print(x_value + 45, y_hum + 5, id(arial15), "%");
@@ -181,26 +180,31 @@ display:
             it.print(x_value, y_hum, id(arial22), "N/A");
           }
 
-      # Default Page 2: PM2.5 and CO2
+      # Default Page 2: PM2.5 and CO₂ (fixed spacing)
       - id: default_page_1
         lambda: |-
-          int x_label = 0;
-          int x_value = 60;
-          int y_pm = 0;
-          int y_co2 = 30;
-          // PM2.5
-          it.print(x_label, y_pm, id(arial22), "PM2.5:");
+          // Font metrics (approx):
+          //  - arial15: height=15, avg-width≈8px
+          //  - arial30: height=30, avg-width≈18px
+          // We’ll put the value at x=64 (halfway) and unit at x=88 (128−40px unit width).
+          const int x_label = 0;
+          const int x_value = 64;
+          const int x_unit  = 88;
+          const int y_pm    = 0;
+          const int y_co2   = 30;
+          // PM₂.₅
+          it.print(x_label, y_pm, id(arial15), "PM2.5:");
           if (id(pm2_5).has_state()) {
-            it.printf(x_value, y_pm, id(arial22), "%.0f", id(pm2_5).state);
-            it.print(x_value + 40, y_pm + 5, id(arial15), "µg/m³");
+            it.printf(x_value, y_pm - 2, id(arial30), "%.0f", id(pm2_5).state);
+            it.print(x_unit, y_pm + 5, id(arial15), "µg/m³");
           } else {
             it.print(x_value, y_pm, id(arial22), "N/A");
           }
           // CO₂
-          it.print(x_label, y_co2, id(icon_font_22), "\U000F07E4");  // Molecule CO₂ icon
+          it.print(x_label, y_co2, id(icon_font_22), "\U000F07E4");
           if (id(co2).has_state()) {
-            it.printf(x_value, y_co2, id(arial22), "%.0f", id(co2).state);
-            it.print(x_value + 40, y_co2 + 5, id(arial15), "ppm");
+            it.printf(x_value, y_co2 + 2, id(arial22), "%.0f", id(co2).state);
+            it.print(x_unit, y_co2 + 7, id(arial15), "ppm");
           } else {
             it.print(x_value, y_co2, id(arial22), "N/A");
           }
@@ -208,19 +212,19 @@ display:
       # Diagnostic Page 1: Pressure and TVOC
       - id: diagnostic_page_0
         lambda: |-
-          int x_icon = 0;
-          int x_value = 30;
-          int y_pressure = 0;
-          int y_tvoc = 25;
+          const int x_icon  = 0;
+          const int x_value = 30;
+          const int y_pressure = 0;
+          const int y_tvoc     = 25;
           // Pressure
-          it.print(x_icon, y_pressure, id(icon_font_15), "\U000F029A");  // Gauge icon
+          it.print(x_icon, y_pressure, id(icon_font_15), "\U000F029A");
           if (id(press).has_state()) {
             it.printf(x_value, y_pressure, id(arial15), "%.0f", id(press).state);
             it.print(x_value + 40, y_pressure + 4, id(arial10), "hPa");
           } else {
             it.print(x_value, y_pressure, id(arial15), "N/A");
           }
-          // TVOC (no icon available, using text label)
+          // TVOC
           it.print(x_icon, y_tvoc, id(arial15), "TVOC:");
           if (id(tvoc).has_state()) {
             it.printf(x_value, y_tvoc, id(arial15), "%.1f", id(tvoc).state);
@@ -232,12 +236,12 @@ display:
       # Diagnostic Page 2: PM1 and PM10
       - id: diagnostic_page_1
         lambda: |-
-          int x_label = 0;
-          int x_value = 50;
-          int y_pm1 = 0;
-          int y_pm10 = 25;
+          const int x_icon  = 0;
+          const int x_value = 30;
+          const int y_pm1   = 0;
+          const int y_pm10  = 25;
           // PM1
-          it.print(x_label, y_pm1, id(arial15), "PM1:");
+          it.print(x_icon, y_pm1, id(arial15), "PM1:");
           if (id(pm1).has_state()) {
             it.printf(x_value, y_pm1, id(arial15), "%.0f", id(pm1).state);
             it.print(x_value + 35, y_pm1 + 4, id(arial10), "µg/m³");
@@ -245,7 +249,7 @@ display:
             it.print(x_value, y_pm1, id(arial15), "N/A");
           }
           // PM10
-          it.print(x_label, y_pm10, id(arial15), "PM10:");
+          it.print(x_icon, y_pm10, id(arial15), "PM10:");
           if (id(pm10).has_state()) {
             it.printf(x_value, y_pm10, id(arial15), "%.0f", id(pm10).state);
             it.print(x_value + 35, y_pm10 + 4, id(arial10), "µg/m³");
@@ -253,13 +257,12 @@ display:
             it.print(x_value, y_pm10, id(arial15), "N/A");
           }
 
-      # Diagnostic Page 3: eCO2
+      # Diagnostic Page 3: eCO₂
       - id: diagnostic_page_2
         lambda: |-
-          int x_icon = 0;
-          int x_value = 35;
-          int y_eco2 = 15;
-          // eCO₂ (using Molecule CO₂ icon)
+          const int x_icon  = 0;
+          const int x_value = 35;
+          const int y_eco2  = 15;
           it.print(x_icon, y_eco2, id(icon_font_22), "\U000F07E4");
           if (id(eco2).has_state()) {
             it.printf(x_value, y_eco2, id(arial30), "%.0f", id(eco2).state);
