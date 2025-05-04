@@ -931,10 +931,13 @@ script:
                                   not (is_state(current_update, 'off') or is_state(current_update, 'unavailable'))
                                 }}
                           sequence:
-                            - service: notify.notify
+                            - service: notify.mobile_app_blokmeisterp9pro
                               data:
                                 title: "Firmware Update Failed"
                                 message: "Update failed for {{ current_update }}."
+                                data:
+                                  group: esphome
+                                  tag: esphome_update
                             - service: script.turn_off
                               # Aborts the current script by turning it off
                               data:
@@ -945,10 +948,13 @@ script:
                   data:
                     message: "Skipping entity {{ current_update }} because it is not an update entity or no update is available."
                     level: info
-      - service: notify.notify
+      - service: notify.mobile_app_blokmeisterp9pro
         data:
-          title: "Firmware Update Complete"
-          message: "All devices in {{ group_entity }} have been updated successfully."
+          title: "Firmware Update Failed"
+          message: "Update failed for {{ current_update }}."
+          data:
+            group: esphome
+            tag: esphome_update
 
   run_profiler_every_minute:
     alias: "Run Profiler Every Minute"
