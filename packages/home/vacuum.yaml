@@ -488,7 +488,7 @@ automation:
           filename: "/config/www/tmp/snapshot_vacuum_error.jpg"
       - delay:
           seconds: 5
-      - service: notify.mobile_app_blokmeisterp9pro
+      - service: notify.sander_and_tamara_phones
         continue_on_error: true
         data:
           title: "Error with {{ trigger.id }}"
@@ -522,7 +522,7 @@ automation:
         data:
           entity_id: "scene.atmoorb_bulbs_before"
           transition: 1
-      - service: notify.mobile_app_blokmeisterp9pro
+      - service: notify.sander_and_tamara_phones
         data:
           message: "clear_notification"
           data:
@@ -714,6 +714,53 @@ automation:
             Reset moeke_area_cleaned_today due to sudden jump from
             {{ trigger.from_state.state }} to {{ trigger.to_state.state }} m²
           level: info
+
+
+  - alias: "[home|vacuum]Moeke: Detergent low warning and reset option"
+    id: yaml_automation_home_vacuum_moeke_detergent_low_warning_and_reset_option
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.moeke_detergent_left
+        below: 60
+    action:
+      - variables:
+          notification_tag: moeke_detergent_warning
+      - service: notify.sander_and_tamara_phones
+        data:
+          title: "Moeke: Detergent almost empty"
+          message: "The detergent level is below 60%. Do you want to reset it now?"
+          data:
+            tag: "{{ notification_tag }}"
+            actions:
+              - action: RESET_MOEKE_DETERGENT
+                title: "✅ Reset detergent level"
+              - action: CANCEL_MOEKE_DETERGENT
+                title: "❌ Cancel"
+      - wait_for_trigger:
+          - platform: event
+            event_type: mobile_app_notification_action
+            event_data:
+              action: RESET_MOEKE_DETERGENT
+          - platform: event
+            event_type: mobile_app_notification_action
+            event_data:
+              action: CANCEL_MOEKE_DETERGENT
+        timeout: "01:00:00"
+        continue_on_timeout: false
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ wait.trigger.event.data.action == 'RESET_MOEKE_DETERGENT' }}"
+            sequence:
+              - service: button.press
+                target:
+                  entity_id: button.moeke_reset_detergent
+              - service: notify.sander_and_tamara_phones
+                data:
+                  message: "clear_notification"
+                  data:
+                    tag: "{{ notification_tag }}"
 
 ################
 #    SCENES    #
