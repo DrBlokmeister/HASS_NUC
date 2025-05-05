@@ -33,6 +33,28 @@ fan:
     name: "Ventilation System"
     id: ventilationsystem
 
+text_sensor:
+  - platform: template
+    name: "Ventilation Determining Factor"
+    id: ventilation_determining_factor
+    update_interval: 5s
+    lambda: |-
+      if (id(fan_speed_override).state) {
+        return {"Manual Override"};
+      }
+
+      float co2 = id(fan_setting_co2).state;
+      float humidity = id(fan_setting_humidity).state;
+      float bathroom = id(fan_setting_bathroom_humidity).state;
+
+      if (co2 >= humidity && co2 >= bathroom) {
+        return {"CO2"};
+      } else if (humidity >= co2 && humidity >= bathroom) {
+        return {"Humidity"};
+      } else {
+        return {"Bathroom Humidity"};
+      }
+
 sensor:
   # ADC sensors
   - platform: adc
@@ -275,6 +297,8 @@ number:
     max_value: 100
     optimistic: true
     id: override_fan_speed
+    internal: false
+    entity_category: "config"
 
   - platform: template
     name: Override Fan Duration
@@ -285,6 +309,8 @@ number:
     max_value: 600
     optimistic: true
     id: override_fan_duration
+    internal: false
+    entity_category: "config"
 
   - platform: template
     name: "CO2 Offset"
@@ -295,6 +321,9 @@ number:
     max_value: 1000
     step: 1
     id: number_co2_offset
+    internal: false
+    entity_category: "config"
+
   - platform: template
     name: "CO2 Fan Sensitivity"
     optimistic: true
@@ -304,6 +333,8 @@ number:
     max_value: 10
     step: 0.01
     id: number_co2_fan_sensitivity
+    internal: false
+    entity_category: "config"
 
 switch:
   - platform: template
