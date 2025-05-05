@@ -352,25 +352,25 @@ sensor:
       heatpump_tapwater_power:
         value_template: >-
           {% if is_state('sensor.heatpump_status', 'hot water')%}
-            {{ states('sensor.shelly_heatpump_energy_power') }}
+            {{ states('sensor.shelly_heat_pump_power') }}
           {% elif is_state('sensor.heatpump_status', 'heating') %}
             0
           {% else %}
-            {{ (states('sensor.shelly_heatpump_energy_power')|float())/2 }}
+            {{ (states('sensor.shelly_heat_pump_power')|float())/2 }}
           {% endif %}
         unit_of_measurement: "W"
-        availability_template: "{{ states('sensor.shelly_heatpump_energy_power')|is_number }}" #Should also include sensor.heatpump_status being available
+        availability_template: "{{ states('sensor.shelly_heat_pump_power')|is_number }}" #Should also include sensor.heatpump_status being available
       heatpump_heating_power:
         value_template: >-
           {% if is_state('sensor.heatpump_status', 'heating')%}
-            {{ states('sensor.shelly_heatpump_energy_power') }}
+            {{ states('sensor.shelly_heat_pump_power') }}
           {% elif is_state('sensor.heatpump_status', 'hot water')%}
             0
           {% else %}
-            {{ (states('sensor.shelly_heatpump_energy_power')|float())/2 }}
+            {{ (states('sensor.shelly_heat_pump_power')|float())/2 }}
           {% endif %}
         unit_of_measurement: "W"
-        availability_template: "{{ states('sensor.shelly_heatpump_energy_power')|is_number }}" #Should also include sensor.heatpump_status being available
+        availability_template: "{{ states('sensor.shelly_heat_pump_power')|is_number }}" #Should also include sensor.heatpump_status being available
 
       # Template sensor for projected costs per hour
       current_electricity_cost_per_hour:
@@ -957,7 +957,7 @@ sensor:
     type: sum
     entity_ids:
       - sensor.plug_dishwasher_power
-      - sensor.shelly_heatpump_energy_power #Heatpump
+      - sensor.shelly_heat_pump_power #Heatpump
 
   - platform: min_max
     name: Phase 3 Known Power
@@ -1029,7 +1029,7 @@ sensor:
     device_class: voltage
     entities:
       - sensor.plug_dishwasher_voltage
-      - sensor.shelly_heatpump_energy_voltage
+      - sensor.shelly_heat_pump_voltage
 
   - platform: group
     name: Phase 3 Voltage
@@ -1052,7 +1052,7 @@ sensor:
       - sensor.shelly_bathroom_voltage
       - sensor.shelly_bedroom_voltage
       - sensor.shelly_dinner_table_voltage
-      # - sensor.shelly_heatpump_energy_voltage
+      # - sensor.shelly_heat_pump_voltage
       - sensor.shelly_tamara_s_room_voltage
       # - sensor.shelly_washroom_relay_supply_voltage
 
@@ -1407,7 +1407,7 @@ group:
       - sensor.shelly_bathroom_channel_2_power
       - sensor.shelly_bedroom_power
       - sensor.shelly_dinner_table_power
-      # - sensor.shelly_heatpump_energy_power #Excluded as this is going through heatpump_heating_power and heatpump_tapwater_power
+      # - sensor.shelly_heat_pump_power #Excluded as this is going through heatpump_heating_power and heatpump_tapwater_power
       - sensor.shelly_tamara_s_room_power
       - sensor.shellies_background_power_estimate
 

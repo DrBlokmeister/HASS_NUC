@@ -1,0 +1,69 @@
+#See config here: https://devices.esphome.io/devices/Shelly-Plus-PM-Mini
+
+esphome:
+  name: "${espname}"
+  platformio_options:
+    board_build.f_cpu: 160000000L
+  comment: "Shelly Plus PM Mini"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+packages:
+  wifi: !include /config/esphome/common/wifi.yaml
+  network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
+  base_config: !include /config/esphome/common/base_config.yaml
+  power: !include /config/esphome/common/power.yaml
+  ntc_sensor: !include
+    file: /config/esphome/templates/shelly_functions/shelly_ntc_sensors.yaml
+    vars:
+      #ntc_b_constant: "3350"
+      #ntc_reference_temperature: "298.15K"
+      ntc_reference_resistance: "10kOhm"
+      resistor_value: "10kOhm"
+      adc_attenuation: "12db"
+      adc_pin: "GPIO3"
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO6
+  rx_pin: GPIO7
+  baud_rate: 9600
+  stop_bits: 1
+
+# Sensors with general information.
+sensor:
+  - platform: total_daily_energy
+    name: "${device_name} Energy Today"
+    power_id: power
+    id: daily_energy
+    filters:
+      # Multiplication factor from W to kW is 0.001
+      - multiply: 0.001
+    unit_of_measurement: kWh
+    icon: mdi:calendar-clock
+  - platform: bl0942
+    uart_id: uart_bus
+    update_interval: 0.5s
+    <<: !include plug_functions/plug_default_power_sensor_settings.yaml
+
+status_led:
+  pin:
+    number: GPIO0
+    inverted: true
+
+binary_sensor:
+  # Button on device
+  - platform: gpio
+    name: "${device_name} Button"
+    internal: true
+    pin:
+      number: 1
+      inverted: yes
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on_off: 5ms
