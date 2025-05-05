@@ -210,12 +210,17 @@ automation:
     condition:
     action:
       - choose:
-            # Regular heat-up during cheapest time
+            # Regular heat-up during cheapest time (not on Sundays)
           - conditions:
               - condition: template
                 value_template: "{{ trigger.id == 'heat_up_total_cheapest' }}"
               - condition: template
                 value_template: "{{ now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour }}"
+              - condition: not
+                conditions:
+                  - condition: time
+                    weekday:
+                      - sun
               - condition: or
                 conditions:
                   - condition: state
@@ -227,11 +232,6 @@ automation:
                   - condition: numeric_state
                     entity_id: sensor.proximity_sander_distance
                     below: 50000
-                  - condition: not
-                    conditions:
-                      - condition: time
-                        weekday:
-                          - sun
             sequence:
               - service: number.set_value
                 data_template:
