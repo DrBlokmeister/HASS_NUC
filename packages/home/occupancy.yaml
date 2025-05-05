@@ -1,6 +1,46 @@
 homeassistant:
   customize: {}
 
+
+template:
+  - trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.bedroom_motion_1
+          - binary_sensor.entry_motion_1
+          - binary_sensor.entry_motion_2
+          - binary_sensor.hallway_1st_floor_motion_1
+          - binary_sensor.hallway_1st_floor_motion_2
+          - binary_sensor.stairs_lower_motion_1
+          - binary_sensor.hallway_2nd_floor_motion_1
+          - binary_sensor.hallway_2nd_floor_motion_2
+          - binary_sensor.stairs_upper_motion_1
+          - binary_sensor.livingroom_motion_1
+          - binary_sensor.livingroom_motion_2
+          - binary_sensor.livingroom_motion_3
+          - binary_sensor.kitchen_motion_1
+          - binary_sensor.kitchen_motion_2
+          - binary_sensor.study_motion_1
+          - binary_sensor.study_motion_2
+          - binary_sensor.bathroom_motion_1
+          - binary_sensor.babyroom_motion_1
+          - binary_sensor.babycam_motion
+          - binary_sensor.outside_motion_1
+        to: 'on'
+        id: motion
+    sensor:
+      - name: "Last Triggered Motion Sensor"
+        unique_id: yaml_template_sensor_last_triggered_motion_sensor
+        state: "{{ trigger.entity_id }}"
+        attributes:
+          friendly_name: "{{ state_attr(trigger.entity_id, 'friendly_name') if state_attr(trigger.entity_id, 'friendly_name') else trigger.entity_id }}"
+          time: "{{ now().strftime('%d-%m-%Y %H:%M:%S') }}"
+      - name: "Total Motion Events"
+        unique_id: yaml_template_sensor_total_motion_events
+        unit_of_measurement: "events"
+        state: >
+          {{ (states('sensor.total_motion_events') | int(0)) + 1 }}
+
 #################
 #    SENSORS    #
 #################
@@ -33,6 +73,19 @@ sensor:
               {%- endif -%}
             {%- endfor -%}
             {{ clients.list | join(', ') if clients.list else 'No clients' }}
+
+  # - platform: statistics
+  #   name: "Motion Events per Minute"
+  #   entity_id: sensor.total_motion_events
+  #   state_characteristic: count
+  #   max_age:
+  #     minutes: 5
+  - platform: derivative
+    name: "Motion Events per Minute"
+    source: sensor.total_motion_events
+    unit_time: min
+    time_window: "00:05:00"
+
 ########################
 #    BINARY SENSORS    #
 ########################
