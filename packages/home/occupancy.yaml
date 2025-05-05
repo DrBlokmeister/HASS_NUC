@@ -11,6 +11,7 @@ sensor:
         friendly_name: "Guest WiFi Clients"
         unique_id: yaml_template_sensor_guest_wifi_clients
         icon_template: mdi:account-group
+        unit_of_measurement: "clients"
         value_template: >-
           {% set ns = namespace(counter=0) %}
           {% for entity in states.device_tracker %}
@@ -21,6 +22,17 @@ sensor:
             {% endif %}
           {% endfor %}
           {{ ns.counter }}
+        attribute_templates:
+          clients: >-
+            {% set clients = namespace(list=[]) %}
+            {%- for entity in states.device_tracker -%}
+              {%- set attrs = entity.attributes -%}
+              {%- if 'essid' in attrs and attrs.essid == 'BlokmeisterWIFI_Guest' -%}
+                {%- set name = attrs.friendly_name if attrs.friendly_name is defined else entity.entity_id -%}
+                {%- set clients.list = clients.list + [name] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ clients.list | join(', ') if clients.list else 'No clients' }}
 ########################
 #    BINARY SENSORS    #
 ########################
