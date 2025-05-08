@@ -324,7 +324,22 @@ automation:
         then:
           - service: notify.mobile_app_blokmeisterp9pro
             data:
-              message: "Started scheduled cleanup"
+              message: >
+                {% set vacuums = {
+                  'Moeke': 'vacuum.moeke',
+                  'Argus': 'vacuum.argus',
+                  'Alfred': 'vacuum.alfred'
+                } %}
+                {% set active = vacuums | dictsort | selectattr('1', 'in', states | selectattr('state', 'equalto', 'cleaning') | map(attribute='entity_id') | list) | map(attribute='0') | list %}
+                {% if active | length == 0 %}
+                  Scheduled cleanup triggered but no vacuums started.
+                {% elif active | length == 1 %}
+                  Started scheduled cleanup with vacuum {{ active[0] }}
+                {% elif active | length == 2 %}
+                  Started scheduled cleanup with vacuums {{ active | join(' and ') }}
+                {% else %}
+                  Started scheduled cleanup with vacuums {{ active[:-1] | join(', ') }} and {{ active[-1] }}
+                {% endif %}
               title: "Home Assistant - Vacuum"
               data:
                 group: info
