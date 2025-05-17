@@ -565,109 +565,51 @@ cards:
               return entity.attributes.raw_tomorrow.map((start, index) => {
                 return [new Date(start["start"]).getTime(), entity.attributes.raw_tomorrow[index]["value"]];
               });
-    - type: horizontal-stack
-      cards:
-      - type: custom:mini-graph-card
-        entities:
-          - sensor.plug_nas_power
-        name: NAS
-        line_color: '#d74242'
-        hours_to_show: 24
-        points_per_hour: 6
-        line_width: 8
-        font_size: 75
-        font_size_header: 10
-        align_state: right
-        lower_bound: 0
-        #upper_bound: 600
-        show:
-          icon: false
-          points: false
-      - type: custom:mini-graph-card
-        entities:
-          - sensor.plug_study_desk_power
-        name: Computer
-        line_color: '#d7b242'
-        hours_to_show: 24
-        points_per_hour: 6
-        line_width: 8
-        font_size: 75
-        font_size_header: 10
-        align_state: right
-        lower_bound: 0
-        #upper_bound: 500
-        show:
-          icon: false
-          points: false
-      - type: custom:mini-graph-card
-        entities:
-          - sensor.plug_nuc_power
-        name: NUC
-        line_color: '#8cd742'
-        hours_to_show: 24
-        points_per_hour: 6
-        line_width: 8
-        font_size: 75
-        font_size_header: 10
-        align_state: right
-        lower_bound: 0
-        #upper_bound: 50
-        show:
-          icon: false
-          points: false
-    - type: horizontal-stack
-      cards:
-        - type: custom:mini-graph-card
-          entities:
-            - sensor.blitzwolf_ambilight_amplifier_power
-          name: Ambilight/Amplifier
-          line_color: '#42d767'
-          hours_to_show: 24
-          points_per_hour: 6
-          line_width: 8
-          font_size: 75
-          font_size_header: 10
-          align_state: right
-          lower_bound: 0
-          value_factor: 3 #Kilowatts to Watts, 3 orders of magnitude
-          unit: W
-          #upper_bound: 60
-          show:
-            icon: false
-            points: false
-        - type: custom:mini-graph-card
-          aggregate_func: max
-          entities:
-            - sensor.plug_watercooker_power
-          name: Watercooker
-          line_color: '#42d7d7'
-          hours_to_show: 24
-          points_per_hour: 6
-          line_width: 8
-          font_size: 75
-          font_size_header: 10
-          align_state: right
-          lower_bound: 0
-          #upper_bound: 2000
-          show:
-            icon: false
-            points: false
-        - type: custom:mini-graph-card
-          entities:
-            - sensor.plug_3d_printer_power
-          name: Ender3
-          line_color: '#4267d7'
-          hours_to_show: 24
-          points_per_hour: 6
-          line_width: 8
-          font_size: 75
-          font_size_header: 10
-          align_state: right
-          lower_bound: 0
-          #upper_bound: 20
-          show:
-            icon: false
-            points: false
+
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: custom:decluttering-card
+        template: mini_power_graph
+        variables:
+          - entity: sensor.plug_nas_power
+          - name: NAS
+          - color: '#d74242'
+      - type: custom:decluttering-card
+        template: mini_power_graph
+        variables:
+          - entity: sensor.plug_study_desk_power
+          - name: Computer
+          - color: '#d7b242'
+      - type: custom:decluttering-card
+        template: mini_power_graph
+        variables:
+          - entity: sensor.plug_nuc_power
+          - name: NUC
+          - color: '#8cd742'
+      - type: custom:decluttering-card
+        template: mini_power_graph
+        variables:
+          - entity: sensor.blitzwolf_ambilight_amplifier_power
+          - name: Ambilight/Amplifier
+          - color: '#42d767'
+          - factor: 3
+          - unit: W
+      - type: custom:decluttering-card
+        template: mini_power_graph
+        variables:
+          - entity: sensor.plug_watercooker_power
+          - name: Watercooker
+          - color: '#42d7d7'
+          - aggregate_func: max
+      - type: custom:decluttering-card
+        template: mini_power_graph
+        variables:
+          - entity: sensor.plug_3d_printer_power
+          - name: Ender3
+          - color: '#4267d7'
+
   - type: vertical-stack
     cards:
       - type: gauge
