@@ -105,3 +105,101 @@ mini_power_graph:
     show:
       icon: false
       points: false
+
+climate_apexchart:
+  card:
+    type: custom:apexcharts-card
+    header:
+      title: '[[title]]'
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
+    apex_config:
+      chart:
+        height: 180px
+      legend:
+        show: false
+    all_series_config:
+      group_by:
+        func: median
+        duration: 10min
+      stroke_width: 3
+      fill_raw: last
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: true
+    yaxis:
+      - id: main
+        min: ~18
+        max: ~22
+        decimals: 0
+        align_to: 2
+        apex_config:
+          forceNiceScale: True
+      - id: binary
+        min: 0
+        max: 1
+        decimals: 0
+        align_to: 1
+        show: false
+    series:
+      - entity: '[[entity]]'
+        attribute: current_temperature
+        name: '[[title]] Yesterday'
+        yaxis_id: main
+        offset: '-1d'
+        color: '[[color_yesterday]]'
+        opacity: 0.7
+      - entity: '[[entity]]'
+        attribute: current_temperature
+        name: Current Temperature
+        yaxis_id: main
+        extend_to: now
+        color: '[[color_today]]'
+        opacity: 1
+        show:
+          in_header: true
+          legend_value: true
+      - entity: '[[entity]]'
+        attribute: temperature
+        name: Setpoint Yesterday
+        yaxis_id: main
+        offset: '-1d'
+        color: '#ffffff'
+        type: area
+        stroke_width: 0
+        opacity: 0.1
+      - entity: '[[entity]]'
+        attribute: temperature
+        name: Setpoint
+        yaxis_id: main
+        extend_to: now
+        color: '#ffffff'
+        type: area
+        stroke_width: 0
+        opacity: 0.3
+        show:
+          in_header: true
+          legend_value: true
+      - entity: sensor.heatpump_status
+        name: "Heating On"
+        yaxis_id: binary
+        stroke_width: 0
+        type: area
+        transform: "return x === 'heating' ? 1 : 0;"
+        color: "#FF7043"
+        extend_to: now
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
+
