@@ -70,8 +70,20 @@ cards:
         icon: mdi:volume-mute
         name: Mute Speakers
 
-  - type: media-control
-    entity: media_player.plex_plexkodiconnect_kodi_coreelec
+  - type: vertical-stack
+    cards:
+      - type: media-control
+        entity: media_player.plex_plexkodiconnect_kodi_coreelec
+        name: "Plex (Coreelec)"
+      - type: media-control
+        entity: media_player.coreelec
+        name: "Kodi (Coreelec)"
+      - type: media-control
+        entity: media_player.65_oled
+        name: "TV (Smartthings)"
+      - type: media-control
+        entity: media_player.samsung_tv
+        name: "TV (Samsung)"
 
   - type: entities
     title: Ambilight Controls
@@ -121,97 +133,97 @@ cards:
     title: Powerstrip Controls
     entities:
       - entity: switch.powerstrip_mediacenter_socket_1
-        name: Socket 1
+        name: "Odroid N2 (Socket 1)"
       - entity: switch.powerstrip_mediacenter_socket_2
-        name: Socket 2
+        name: "Epaper AP (Socket 2)"
       - entity: switch.powerstrip_mediacenter_socket_3
-        name: Socket 3
+        name: "AQM (Socket 3)"
       - entity: switch.powerstrip_mediacenter_socket_usb
-        name: USB Socket
-        
-  - type: custom:apexcharts-card
-    header:
-      title: Power Monitoring
-      show: true
-      show_states: true
-      colorize_states: true
-    update_interval: 1m
-    graph_span: 24h
-    apex_config:
-      chart:
-        toolbar:
-          show: false
-        height: 250px
-      legend:
-        show: false
-      grid:
-        show: false
-        padding:
-          left: 0
-          right: 0
-          bottom: 0
-          top: -100
-      annotations:
-        position: front
-        yaxis:
-          - y: 0
-            borderColor: '#32CD32'
-            label:
-              position: left
-              offsetY: -5
-              offsetX: 40
-              borderColor: '#32CD32'
-              text: '0W'
-              style:
-                background: '#1E1E1E'  # Dark background for dark theme
-                color: '#32CD32'
-                fontSize: '10px'
-                fontFamily: 'Helvetica, Arial, sans-serif'
-          - y: 100
-            borderColor: '#FFD700'
-            label:
-              position: left
-              offsetX: 40
-              borderColor: '#FFD700'
-              text: '100W'
-              style:
-                background: '#1E1E1E'  # Dark background for dark theme
-                color: '#FFD700'
-                fontSize: '10px'
-                fontFamily: 'Helvetica, Arial, sans-serif'
-          - y: 200
-            borderColor: '#FF4500'
-            label:
-              position: left
-              offsetX: 40
-              borderColor: '#FF4500'
-              text: '200W'
-              style:
-                background: '#1E1E1E'  # Dark background for dark theme
-                color: '#FF4500'
-                fontSize: '10px'
-                fontFamily: 'Helvetica, Arial, sans-serif'
-    yaxis:
-      - min: 0
-        max: ~300
-        show: false
-    layout: minimal
-    all_series_config:
-      type: area
-      group_by:
-        func: avg
-        duration: 5min
-      stroke_width: 3
-      fill_raw: zero
-    series:
-      - entity: sensor.blitzwolf_ambilight_amplifier_power
-        name: Ambilight Amplifier Power
-      - entity: sensor.plug_tv_power
-        name: TV Plug Power
+        name: "HDMI Splitter (USB Socket)"
 
-      
-  - type: vertical-stack
+  - type: custom:collapsable-cards
+    title: Graphs
     cards:
+      - type: custom:apexcharts-card
+        header:
+          title: Power Monitoring
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 1m
+        graph_span: 24h
+        apex_config:
+          chart:
+            toolbar:
+              show: false
+            height: 250px
+          legend:
+            show: false
+          grid:
+            show: false
+            padding:
+              left: 0
+              right: 0
+              bottom: 0
+              top: -100
+          annotations:
+            position: front
+            yaxis:
+              - y: 0
+                borderColor: '#32CD32'
+                label:
+                  position: left
+                  offsetY: -5
+                  offsetX: 40
+                  borderColor: '#32CD32'
+                  text: '0W'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#32CD32'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 100
+                borderColor: '#FFD700'
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FFD700'
+                  text: '100W'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#FFD700'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 200
+                borderColor: '#FF4500'
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FF4500'
+                  text: '200W'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#FF4500'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+        yaxis:
+          - min: 0
+            max: ~300
+            show: false
+        layout: minimal
+        all_series_config:
+          type: area
+          group_by:
+            func: avg
+            duration: 5min
+          stroke_width: 3
+          fill_raw: zero
+        series:
+          - entity: sensor.blitzwolf_ambilight_amplifier_power
+            name: Ambilight Amplifier Power
+          - entity: sensor.plug_tv_power
+            name: TV Plug Power
+
       - type: custom:apexcharts-card
         header:
           title: Odroid Temperatures
