@@ -40,6 +40,11 @@ template:
         unit_of_measurement: "events"
         state: >
           {{ (states('sensor.total_motion_events') | int(0)) + 1 }}
+        attributes:
+          last_triggered_time: "{{ now().strftime('%d-%m-%Y %H:%M:%S') }}"
+          last_triggered_friendly_name: "{{ state_attr(states('sensor.last_triggered_motion_sensor'), 'friendly_name') if state_attr(states('sensor.last_triggered_motion_sensor'), 'friendly_name') else states('sensor.last_triggered_motion_sensor') }}"
+          last_triggered_entity_id: "{{ states('sensor.last_triggered_motion_sensor') }}"
+          last_triggered_state: "{{ states(trigger.entity_id) }}"
 
 #################
 #    SENSORS    #

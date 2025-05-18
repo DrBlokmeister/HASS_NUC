@@ -8,35 +8,6 @@ timer:
 #    SENSORS    #
 #################
 sensor:
-  # - platform: template
-  #   sensors:
-  #     location_of_last_motion:
-  #       value_template: >-
-  #         {%- set sensors = [states.binary_sensor.bedroom_motion_1,states.binary_sensor.motion_sensor_hallway,states.binary_sensor.motion_sensor_livingroom,states.binary_sensor.motion_sensor_livingroom2,states.binary_sensor.study_motion_1,states.binary_sensor.motion_sensor_livingroomnew,states.binary_sensor.motion_sensor_kitchen] %}
-  #         {% for sensor in sensors %}
-  #           {% if as_timestamp(sensor.last_changed) == as_timestamp(sensors | map(attribute='last_changed') | max) %}
-  #             {{ sensor.name }}
-  #           {% endif %}
-  #         {% endfor %}
-  # - platform: template
-  #   sensors:
-  #     last_triggered_motion_sensor:
-  #       friendly_name: Last Triggered Motion Sensor
-  #       icon_template: mdi:motion-sensor
-  #       value_template: >-
-  #         {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
-  #         {{ states.binary_sensor|selectattr('attributes.device_class','eq','motion')|selectattr('last_changed', 'eq', lastchangedtime)|map(attribute='attributes.friendly_name')|list|join(', ') }}
-  #       attribute_templates:
-  #         time: >-
-  #           {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
-  #           {{ lastchangedtime|as_timestamp|timestamp_custom('%d-%m-%Y %H:%M:%S') }}
-  #         timestamp: >-
-  #           {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
-  #           {{ lastchangedtime }}
-  #         entity_id: >-
-  #           {%- set lastchangedtime = (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined'])|map(attribute='last_changed')|max) %}
-  #           {{ states.binary_sensor|selectattr('attributes.device_class','eq','motion')|selectattr('last_changed', 'eq', lastchangedtime)|map(attribute='entity_id')|list|join(', ') }}
-  #       availability_template: "{{ (states.binary_sensor|selectattr('attributes.device_class','eq','motion')|rejectattr('entity_id', 'in', ['binary_sensor.entry_motion_combined', 'binary_sensor.livingroom_motion_combined', 'binary_sensor.study_motion_combined']))|rejectattr('state', 'in', ['unavailable', 'unknown', 'none'])|list|count > 0}}"
 
 ########################
 #    BINARY SENSORS    #
@@ -52,47 +23,45 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[security|alert]Restart or Start timer when motion is detected'
+  - alias: "[security|alert] Notify if motion detected while away"
+    id: yaml_automation_security_alert_notify_if_motion_detected_while_away
+    mode: single
     trigger:
-      - platform: state
-        entity_id: sensor.last_triggered_motion_sensor
+      - platform: numeric_state
+        entity_id: sensor.motion_events_per_minute
+        above: 3
+        for:
+          seconds: 20
     condition:
       - condition: state
         entity_id: binary_sensor.house_occupied
-        state: 'off'
+        state: "off"
         for:
           minutes: 15
       - condition: state
         entity_id: input_boolean.guest_mode
-        state: 'off'
+        state: "off"
     action:
-      - service: timer.cancel
-        data:
-          entity_id: timer.motion_detected
-      - service: timer.start
-        data:
-          entity_id: timer.motion_detected
-          duration: '00:30:00'
-
-  - alias: '[security|alert]Enable detection monitoring'
-    trigger:
-      - platform: event
-        event_type: timer.started
-        event_data:
-          entity_id: timer.motion_detected
-    action:
-      - service: homeassistant.turn_on
-        entity_id: automation.security_alert_message_phone_if_motion_is_detected_when_im_not_home
-
-  - alias: '[security|alert]Disable detection monitoring'
-    trigger:
-      - platform: event
-        event_type: timer.finished
-        event_data:
-          entity_id: timer.motion_detected
-    action:
-      - service: homeassistant.turn_off
-        entity_id: automation.security_alert_message_phone_if_motion_is_detected_when_im_not_home
+      - repeat:
+          while:
+            - condition: numeric_state
+              entity_id: sensor.motion_events_per_minute
+              above: 3
+            - condition: state
+              entity_id: binary_sensor.house_occupied
+              state: "on"
+          sequence:
+            - service: notify.sander_and_tamara_phones
+              data:
+                title: >
+                  ⚠️ Motion Alert ({{ states('sensor.motion_events_per_minute') }} per min)
+                message: >
+                  Last motion: {{ state_attr('sensor.total_motion_events', 'last_triggered_friendly_name') }} at {{ state_attr('sensor.total_motion_events', 'last_triggered_time') }}.
+                data:
+                  tag: motion_alert
+                  icon: mdi:motion-sensor
+            - delay:
+                seconds: 30
 
   - alias: '[security|alert]Message phone if motion is detected when Im not home'
     trigger:
@@ -140,32 +109,6 @@ automation:
             icon_url: local/icons/door-open.png
             timeout: 10800
 
-  # - alias: '[security|alert]Kitchen door opened'
-  #   trigger:
-  #     - platform: state
-  #       entity_id: binary_sensor.kitchen_door_window_sensor
-  #       to: 'on'
-  #   condition:
-  #     - condition: state
-  #       entity_id: person.sander_blok
-  #       state: 'not_home'
-  #     - condition: state
-  #       entity_id: person.tamara
-  #       state: 'not_home'
-  #     - condition: state
-  #       entity_id: input_boolean.guest_mode
-  #       state: 'off'
-  #   action:
-  #     - service: notify.mobile_app_blokmeisterp9pro
-  #       data:
-  #         message: "Kitchen door has been opened!"
-  #         title: "Home Assistant - Warning"
-  #         data:
-  #           group: info
-  #           tag: security
-  #           icon_url: local/icons/door-open.png
-  #           timeout: 10800
-
 
 ################
 #    SCENES    #
@@ -178,10 +121,7 @@ scene:
 group:
   security_alert_notifications:
     entities:
-      - automation.security_alert_restart_or_start_timer_when_motion_is_detected
-      - automation.security_alert_enable_detection_monitoring
-      - automation.security_alert_disable_detection_monitoring
-      - automation.security_alert_message_phone_if_motion_is_detected_when_im_not_home
+      - automation.security_alert_notify_if_motion_detected_while_away
       #- automation.security_alert_front_door_opened
       #- automation.security_alert_kitchen_door_opened
 #################
