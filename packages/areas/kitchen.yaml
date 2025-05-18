@@ -234,17 +234,42 @@ automation:
       multiswitch.
     mode: queued
     trigger:
-      platform: event
-      event_type: deconz_event
-      event_data:
-        id: kitchen_multiswitch
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: kitchen_multiswitch
+          event: 1000
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: kitchen_multiswitch
+          event: 2000
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: kitchen_multiswitch
+          event: 3000
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: kitchen_multiswitch
+          event: 4000
     condition: []
+      # - condition: template
+      #   value_template: "{{ trigger.event.data.event in [1000, 2000, 3000, 4000] }}"
     action:
+      - wait_for_trigger:
+          - platform: event
+            event_type: deconz_event
+            event_data:
+              id: kitchen_multiswitch
+        timeout:
+          seconds: 20
       - choose:
           # Short press button 1 - Toggle kitchen lights
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1002 }}"
+                value_template: "{{ wait.trigger.event.data.event == 1002 }}"
             sequence:
               - service: light.toggle
                 target:
@@ -255,7 +280,7 @@ automation:
           # Long press button 1 - Full brightness kitchen lights
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1001 }}"
+                value_template: "{{ wait.trigger.event.data.event == 1001 }}"
             sequence:
               - service: light.turn_on
                 target:
@@ -267,7 +292,7 @@ automation:
           # Short press button 2 - Vacuum the kitchen
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 2002 }}"
+                value_template: "{{ wait.trigger.event.data.event == 2002 }}"
               - condition: template
                 value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
             sequence:
@@ -286,7 +311,7 @@ automation:
               #     zone: [[-7781,-464,-5148,1452]]
           - conditions: # Pause if vacuum is running
               - condition: template
-                value_template: "{{ trigger.event.data.event == 2002 }}"
+                value_template: "{{ wait.trigger.event.data.event == 2002 }}"
               - condition: state
                 entity_id: vacuum.moeke
                 state: cleaning
@@ -296,7 +321,7 @@ automation:
           # Long press button 2 - Mop the kitchen
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 2001 }}"
+                value_template: "{{ wait.trigger.event.data.event == 2001 }}"
               - condition: template
                 value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
             sequence:
@@ -315,7 +340,7 @@ automation:
               #     zone: [[-7781,-464,-5148,1452]]
           - conditions: # Pause if vacuum is running
               - condition: template
-                value_template: "{{ trigger.event.data.event == 2001 }}"
+                value_template: "{{ wait.trigger.event.data.event == 2001 }}"
               - condition: state
                 entity_id: vacuum.moeke
                 state: cleaning
@@ -326,7 +351,7 @@ automation:
           # Short press button 3 - Vacuum the entire ground floor
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 3002 }}"
+                value_template: "{{ wait.trigger.event.data.event == 3002 }}"
               - condition: template
                 value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
             sequence:
@@ -342,7 +367,7 @@ automation:
                   entity_id: vacuum.moeke
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 3002 }}"
+                value_template: "{{ wait.trigger.event.data.event == 3002 }}"
               - condition: state
                 entity_id: vacuum.moeke
                 state: cleaning
@@ -352,7 +377,7 @@ automation:
           # Long press button 3 - Mop the entire ground floor
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 3001 }}"
+                value_template: "{{ wait.trigger.event.data.event == 3001 }}"
               - condition: template
                 value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
             sequence:
