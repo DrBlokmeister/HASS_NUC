@@ -317,24 +317,24 @@ automation:
             entity_id: vacuum.moeke
       - delay:
           seconds: 10
-      - if:
-          - condition: state
-            entity_id:
-              - vacuum.moeke
-              - vacuum.argus
-              - vacuum.alfred
-            match: any
-            state: 'cleaning'
+      # - if:
+      #     - condition: state
+      #       entity_id:
+      #         - vacuum.moeke
+      #         - vacuum.argus
+      #         - vacuum.alfred
+      #       match: any
+      #       state: 'cleaning'
         then:
           - service: notify.mobile_app_blokmeisterp9pro
             data:
               message: >
-                {% set vacuums = {
-                  'Moeke': 'vacuum.moeke',
-                  'Argus': 'vacuum.argus',
-                  'Alfred': 'vacuum.alfred'
-                } %}
-                {% set active = vacuums | dictsort | selectattr('1', 'in', states | selectattr('state', 'equalto', 'cleaning') | map(attribute='entity_id') | list) | map(attribute='0') | list %}
+                {% set vacuums = [
+                  states.vacuum.moeke,
+                  states.vacuum.argus,
+                  states.vacuum.alfred
+                ] %}
+                {% set active = vacuums | selectattr('state', 'equalto', 'cleaning') | map(attribute='name') | list %}
                 {% if active | length == 0 %}
                   Scheduled cleanup triggered but no vacuums started.
                 {% elif active | length == 1 %}
