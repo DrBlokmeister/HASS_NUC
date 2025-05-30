@@ -239,7 +239,7 @@ counter:
 #####################
 automation:
 #Auto clean whole house when I'm not home on mon, wed, fri
-  - alias: '[home|vacuum]scheduled_cleanup'
+  - alias: '[home|vacuum] Scheduled Cleanup'
     id: home_vacuum_scheduled_cleanup
     mode: single
     trigger:
@@ -317,39 +317,30 @@ automation:
             entity_id: vacuum.moeke
       - delay:
           seconds: 10
-      # - if:
-      #     - condition: state
-      #       entity_id:
-      #         - vacuum.moeke
-      #         - vacuum.argus
-      #         - vacuum.alfred
-      #       match: any
-      #       state: 'cleaning'
-        then:
-          - service: notify.mobile_app_blokmeisterp9pro
-            data:
-              message: >
-                {% set vacuums = [
-                  states.vacuum.moeke,
-                  states.vacuum.argus,
-                  states.vacuum.alfred
-                ] %}
-                {% set active = vacuums | selectattr('state', 'equalto', 'cleaning') | map(attribute='name') | list %}
-                {% if active | length == 0 %}
-                  Scheduled cleanup triggered but no vacuums started.
-                {% elif active | length == 1 %}
-                  Started scheduled cleanup with vacuum {{ active[0] }}
-                {% elif active | length == 2 %}
-                  Started scheduled cleanup with vacuums {{ active | join(' and ') }}
-                {% else %}
-                  Started scheduled cleanup with vacuums {{ active[:-1] | join(', ') }} and {{ active[-1] }}
-                {% endif %}
-              title: "Home Assistant - Vacuum"
-              data:
-                group: info
-                tag: vacuum
-                icon_url: local/icons/robot-vacuum.png
-                timeout: 1800
+      - service: notify.mobile_app_blokmeisterp9pro
+        data:
+          message: >
+              {% set vacuums = [
+                states.vacuum.moeke,
+                states.vacuum.argus,
+                states.vacuum.alfred
+              ] %}
+              {% set active = vacuums | selectattr('state', 'equalto', 'cleaning') | map(attribute='name') | list %}
+              {% if active | length == 0 %}
+                Scheduled cleanup triggered but no vacuums started.
+              {% elif active | length == 1 %}
+                Started scheduled cleanup with vacuum {{ active[0] }}
+              {% elif active | length == 2 %}
+                Started scheduled cleanup with vacuums {{ active | join(' and ') }}
+              {% else %}
+                Started scheduled cleanup with vacuums {{ active[:-1] | join(', ') }} and {{ active[-1] }}
+              {% endif %}
+          title: "Home Assistant - Vacuum"
+          data:
+            group: info
+            tag: vacuum
+            icon_url: local/icons/robot-vacuum.png
+            timeout: 1800
 
   - alias: '[home|vacuum]backup cleanup' #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
     id: home_vacuum_backup_cleanup
