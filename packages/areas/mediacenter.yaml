@@ -93,6 +93,50 @@ command_line:
         root@10.0.20.50
         df -h /storage | awk '{ if (NR==2) print $5}' | tr -d '%' || echo -1
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
+  - sensor:
+      name: CoreELEC HDMI Info
+      scan_interval: 60
+      command_timeout: 40
+      icon: mdi:television
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.20.50
+        "awk 'BEGIN{print \"{\"}
+              /VIC:/{printf \"  \\\"vic\\\": \\\"%s\\\",\\n  \\\"vic_desc\\\": \\\"%s\\\",\\n\", \
+                     \$2, substr(\$0, index(\$0, \$3))}
+              /Colour depth:/{printf \"  \\\"color_depth\\\": \\\"%s\\\",\\n\", \$3}
+              /Colourspace:/{printf \"  \\\"color_space\\\": \\\"%s\\\",\\n\", \$2}
+              /Colour range:/{printf \"  \\\"color_range\\\": \\\"%s\\\",\\n\", \$3}
+              /EOTF:/{printf \"  \\\"eotf\\\": \\\"%s\\\",\\n\", \$2}
+              /Colourimetry:/{printf \"  \\\"colorimetry\\\": \\\"%s\\\"\\n\", \$2}
+              END{print \"}\"}' /sys/class/amhdmitx/amhdmitx0/config"
+      value_template: "{{ value_json.vic }}"
+      json_attributes:
+        - vic_desc
+        - color_depth
+        - color_space
+        - color_range
+        - eotf
+        - colorimetry
+
+template:
+  - sensor:
+      - name: "CoreELEC Resolution"
+        unique_id: yaml_template_sensor_coreelec_resolution
+        state: "{{ state_attr('sensor.coreelec_hdmi_info', 'vic_desc') }}"
+        icon: mdi:television
+      - name: "CoreELEC HDR Mode"
+        unique_id: yaml_template_sensor_coreelec_hdr_mode
+        state: "{{ state_attr('sensor.coreelec_hdmi_info', 'eotf') }}"
+        icon: mdi:hdr
+      - name: "CoreELEC Colorimetry"
+        unique_id: yaml_template_sensor_coreelec_colorimetry
+        state: "{{ state_attr('sensor.coreelec_hdmi_info', 'colorimetry') }}"
+        icon: mdi:hdr
+      - name: "CoreELEC Color Space"
+        unique_id: yaml_template_sensor_coreelec_color_space
+        state: "{{ state_attr('sensor.coreelec_hdmi_info', 'color_space') }}"
+        icon: mdi:hdr
+
 
 #################
 #    SENSORS    #
