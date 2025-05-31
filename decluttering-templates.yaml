@@ -1,3 +1,6 @@
+#############################
+## EPAPER DIAGNOSTICS CARD ##
+#############################
 epaper_device_card:
   card:
     type: custom:collapsable-cards
@@ -21,18 +24,55 @@ epaper_device_card:
               navigation_path: /config/devices/device/[[device_id]]
           - type: entities
             entities:
-              - entity: 'sensor.[[tag_mac]]_battery_percentage'
-                name: Battery Percentage
-              - entity: 'sensor.[[tag_mac]]_lqi'
-                name: Link Quality
-              - entity: 'sensor.[[tag_mac]]_battery_voltage'
-                name: Battery Voltage
-              - entity: 'sensor.[[tag_mac]]_rssi'
-                name: RSSI
+              - type: custom:multiple-entity-row
+                entity: sensor.[[tag_mac]]_battery_percentage   # big icon / main value
+                name: Battery
+                unit: "%"
+                styles:
+                  width: 70px
+                  text-align: right
+                entities:           # small inline values
+                  - entity: sensor.[[tag_mac]]_battery_voltage
+                    name: V
+                    unit: mV
+                    styles:
+                      width: 70px
+                      text-align: center
+              - type: custom:multiple-entity-row
+                entity: sensor.[[tag_mac]]_lqi   # big icon / main value
+                name: Connection
+                unit: "%"
+                styles:
+                  width: 70px
+                  text-align: right
+                entities:           # small inline values
+                  - entity: sensor.[[tag_mac]]_rssi
+                    name: RSSI
+                    unit: dB
+                    styles:
+                      width: 70px
+                      text-align: center
+              - type: custom:multiple-entity-row
+                entity: sensor.[[tag_mac]]_pending_updates   # big icon / main value
+                name: Transfers
+                unit: "Pending"
+                styles:
+                  width: 70px
+                  text-align: right
+                entities:           # small inline values
+                  - entity: sensor.[[tag_mac]]_update_count
+                    name: Update Count
+                    unit: dB
+                    styles:
+                      width: 70px
+                      text-align: center
+                  - entity: sensor.[[tag_mac]]_block_requests
+                    name: Block Requests
+                    styles:
+                      width: 70px
+                      text-align: center
               - entity: 'sensor.[[tag_mac]]_last_seen'
                 name: Last Seen
-              - entity: 'sensor.[[tag_mac]]_pending_updates'
-                name: Pending Transfers
               - entity: '[[script]]'
                 name: Script
                 secondary_info: last-triggered
@@ -41,7 +81,26 @@ epaper_device_card:
                   service: '[[script]]'
                   service_data:
                     display_device_id: '[[device_id]]'
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.[[tag_mac]]_update_count
+            name: Daily Updates
+            hours_to_show: 168
+            aggregate_func: diff
+            group_by: date
+            points_per_hour: 1
+            show:
+              name: true
+              icon: false
+              labels: true         # just the line
+              state: false           # latest number on the right
+              graph: bar
+            height: 40
+            lower_bound: 0
 
+###########################
+## ENERGY BAR GRAPH CARD ##
+###########################
 energy_bar_graph_card:
   default:
     - icon: mdi:lightning-bolt
@@ -76,6 +135,9 @@ energy_bar_graph_card:
         aggregate_func: '[[aggregate]]'
         name: Max
 
+###########################
+## MINI POWER GRAPH CARD ##
+###########################
 mini_power_graph:
   default:
     - hours: 24
@@ -106,6 +168,9 @@ mini_power_graph:
       icon: false
       points: false
 
+############################
+## MINI ENERGY GRAPH CARD ##
+############################
 mini_energy_bar_graph:
   default:
     - lower_bound: 0
@@ -131,6 +196,9 @@ mini_energy_bar_graph:
     show:
       graph: bar
 
+####################################
+## APEXCHARTS CLIMATE TEMPERATURE ##
+####################################
 climate_apexchart:
   card:
     type: custom:apexcharts-card
