@@ -40,9 +40,6 @@ cards:
             double_tap_action:
               action: navigate
               navigation_path: /config/devices/device/ab2cc25333c1b320c6dcfe0e88048130
-  - type: grid
-    columns: 3
-    cards:
       - type: glance
         entities:
           - entity: sensor.epaperlink_livingroom_ap_round_trip_time_average
@@ -62,6 +59,34 @@ cards:
             double_tap_action:
               action: navigate
               navigation_path: /config/devices/device/b40e7d861918eed2f7c7936787b3ba57
+
+  - type: custom:auto-entities
+    card:
+      type: entities
+      title: Unupdated Epaper Tags
+      show_header_toggle: false
+      state_color: true
+    filter:
+      include:
+        - domain: sensor
+          entity_id: "sensor.*_last_seen"
+          attributes:
+            device_class: timestamp
+          last_updated: "> 5m ago"
+      exclude:
+        - entity_id: "sensor.780105561a342201*"
+        - entity_id: "sensor.000000000000341b*"
+        - entity_id: "sensor.000000000000341b*"
+        - entity_id: "sensor.00007e225dd0b29c*"
+        - entity_id: "sensor.00600b561c92b300*"
+        - entity_id: "sensor.7801055600817600*"
+        - entity_id: "sensor.00007e1f8186b290*"
+        - entity_id: "sensor.00000065f4813418*"
+        - entity_id: "sensor.00007e225dceb293*"
+    sort:
+      method: state
+      reverse: true
+      numeric: false
 
   - type: custom:decluttering-card
     template: epaper_device_card
