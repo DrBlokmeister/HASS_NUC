@@ -54,31 +54,63 @@ class UnraidCPUUsageSensor(UnraidSensorBase):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional state attributes."""
+        """Return additional state attributes with user-friendly formatting."""
         data = self.coordinator.data.get("system_stats", {})
+
+
 
         attributes = {
             "last_update": dt_util.now().isoformat(),
-            "core_count": data.get("cpu_cores", 0),
-            "architecture": data.get("cpu_arch", "unknown"),
-            "model": data.get("cpu_model", "unknown"),
-            "threads_per_core": data.get("cpu_threads_per_core", 0),
-            "physical_sockets": data.get("cpu_sockets", 0),
-            "max_frequency": f"{data.get('cpu_max_freq', 0)} MHz",
-            "min_frequency": f"{data.get('cpu_min_freq', 0)} MHz",
         }
 
-        # Add temperature info if available
-        if "cpu_temp" in data:
-            attributes.update({
-                "temperature": f"{data['cpu_temp']}°C",
-                "temperature_warning": data.get("cpu_temp_warning", False),
-                "temperature_critical": data.get("cpu_temp_critical", False),
-            })
+        # Add CPU information with user-friendly formatting
+        if core_count := data.get("cpu_cores", 0):
+            attributes["processor_cores"] = f"{core_count} cores"
 
-        # Only include non-zero/unknown values
-        return {k: v for k, v in attributes.items()
-                if v not in (0, "unknown", "0 MHz")}
+        if arch := data.get("cpu_arch"):
+            if arch != "unknown":
+                attributes["processor_architecture"] = arch.upper()
+
+        if model := data.get("cpu_model"):
+            if model != "unknown":
+                attributes["processor_model"] = model
+
+        if threads := data.get("cpu_threads_per_core", 0):
+            if threads > 0:
+                attributes["threads_per_core"] = f"{threads} threads"
+
+        if sockets := data.get("cpu_sockets", 0):
+            if sockets > 0:
+                attributes["physical_sockets"] = f"{sockets} socket{'s' if sockets > 1 else ''}"
+
+        # Format frequencies with proper units
+        if max_freq := data.get("cpu_max_freq", 0):
+            if max_freq > 0:
+                if max_freq >= 1000:
+                    attributes["maximum_frequency"] = f"{max_freq / 1000:.2f} GHz"
+                else:
+                    attributes["maximum_frequency"] = f"{max_freq} MHz"
+
+        if min_freq := data.get("cpu_min_freq", 0):
+            if min_freq > 0:
+                if min_freq >= 1000:
+                    attributes["minimum_frequency"] = f"{min_freq / 1000:.2f} GHz"
+                else:
+                    attributes["minimum_frequency"] = f"{min_freq} MHz"
+
+        # Add temperature info with status indicators if available
+        if cpu_temp := data.get("cpu_temp"):
+            attributes["temperature"] = f"{cpu_temp}°C"
+
+            # Add temperature status with user-friendly descriptions
+            if data.get("cpu_temp_critical", False):
+                attributes["temperature_status"] = "Critical - Immediate attention required"
+            elif data.get("cpu_temp_warning", False):
+                attributes["temperature_status"] = "Warning - Monitor closely"
+            else:
+                attributes["temperature_status"] = "Normal"
+
+        return attributes
 
 class UnraidRAMUsageSensor(UnraidSensorBase):
     """RAM usage sensor for Unraid."""
@@ -548,39 +580,93 @@ class UnraidUptimeSensor(UnraidSensorBase):
             "last_update": dt_util.now().isoformat(),
         }
 
-class UnraidMemoryUsageSensor(UnraidSensorBase):
-    """Memory usage sensor for Unraid."""
+
+class UnraidIntelGPUSensor(UnraidSensorBase):
+    """Intel GPU usage sensor for Unraid."""
 
     def __init__(self, coordinator) -> None:
         """Initialize the sensor."""
         description = UnraidSensorEntityDescription(
-            key="memory_usage",
-            name="Memory Usage",
+            key="intel_gpu_usage",
+            name="Intel GPU Usage",
             native_unit_of_measurement=PERCENTAGE,
             device_class=SensorDeviceClass.POWER_FACTOR,
             state_class=SensorStateClass.MEASUREMENT,
-            icon="mdi:memory",
+            icon="mdi:expansion-card",
             suggested_display_precision=1,
-            value_fn=lambda data: round(
-                data.get("system_stats", {})
-                .get("memory_usage", {})
-                .get("percentage", 0), 1
+            value_fn=self._get_gpu_usage,
+            available_fn=lambda data: (
+                "system_stats" in data
+                and data.get("system_stats", {}).get("intel_gpu") is not None
             ),
         )
         super().__init__(coordinator, description)
 
+    def _get_gpu_usage(self, data: dict) -> float | None:
+        """Get Intel GPU usage percentage."""
+        try:
+            gpu_data = data.get("system_stats", {}).get("intel_gpu", {})
+            if not gpu_data:
+                return None
+
+            # Get GPU usage percentage
+            usage = gpu_data.get("usage_percentage")
+            if usage is not None:
+                return round(float(usage), 1)
+
+            return None
+        except (TypeError, ValueError) as err:
+            _LOGGER.debug("Error getting Intel GPU usage: %s", err)
+            return None
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        memory = self.coordinator.data.get("system_stats", {}).get("memory_usage", {})
-        return {
-            "total": memory.get("total", "unknown"),
-            "used": memory.get("used", "unknown"),
-            "free": memory.get("free", "unknown"),
-            "cached": memory.get("cached", "unknown"),
-            "buffers": memory.get("buffers", "unknown"),
-            "last_update": dt_util.now().isoformat(),
-        }
+        try:
+            gpu_data = self.coordinator.data.get("system_stats", {}).get("intel_gpu", {})
+            if not gpu_data:
+                return {}
+
+            attrs = {
+                "GPU Model": gpu_data.get("model", "Unknown Intel GPU"),
+                "Last Updated": dt_util.now().isoformat(),
+            }
+
+            # Add power consumption if available
+            if power := gpu_data.get("power_watts"):
+                attrs["Power Draw"] = f"{power} W"
+
+            # Add frequency information if available
+            if freq := gpu_data.get("frequency_mhz"):
+                attrs["GPU Frequency"] = f"{freq} MHz"
+
+            # Add memory bandwidth if available
+            if read_bw := gpu_data.get("memory_bandwidth_read"):
+                attrs["Memory Read Bandwidth"] = f"{read_bw} MB/s"
+
+            if write_bw := gpu_data.get("memory_bandwidth_write"):
+                attrs["Memory Write Bandwidth"] = f"{write_bw} MB/s"
+
+            # Add engine utilization breakdown if available
+            engines = gpu_data.get("engines", {})
+            if engines:
+                for engine_name, engine_usage in engines.items():
+                    if engine_usage is not None:
+                        # Clean up engine names for better readability
+                        clean_name = engine_name.replace("/", " ").replace("0", "").strip()
+                        if clean_name.endswith(" "):
+                            clean_name = clean_name[:-1]
+                        attrs[f"{clean_name} Engine"] = f"{engine_usage}%"
+
+            return attrs
+
+        except Exception as err:
+            _LOGGER.debug("Error getting Intel GPU attributes: %s", err)
+            return {
+                "GPU Model": "Unknown Intel GPU",
+                "Last Updated": dt_util.now().isoformat(),
+            }
+
 
 class UnraidArrayStatusSensor(UnraidSensorBase):
     """Array status sensor for Unraid."""
@@ -672,7 +758,6 @@ class UnraidSystemSensors:
         self.entities = [
             UnraidCPUUsageSensor(coordinator),
             UnraidRAMUsageSensor(coordinator),
-            UnraidMemoryUsageSensor(coordinator),
             # Array Status sensor moved to binary sensors
             UnraidUptimeSensor(coordinator),
             UnraidCPUTempSensor(coordinator),
@@ -681,6 +766,18 @@ class UnraidSystemSensors:
             UnraidLogFileSystemSensor(coordinator),
             UnraidBootUsageSensor(coordinator),
         ]
+
+        # Add Intel GPU sensor if Intel GPU is detected
+        intel_gpu_data = (
+            coordinator.data.get("system_stats", {})
+            .get("intel_gpu")
+        )
+        if intel_gpu_data:
+            self.entities.append(UnraidIntelGPUSensor(coordinator))
+            _LOGGER.debug(
+                "Added Intel GPU sensor: %s",
+                intel_gpu_data.get("model", "Unknown Intel GPU")
+            )
 
         # Add fan sensors if available
         fan_data = (

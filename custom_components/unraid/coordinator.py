@@ -136,20 +136,28 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidDataDict]):
         self._cache_ttls = {
             # Static or rarely changing data
             "disk_mapping": 3600,  # 1 hour
-            "disk_info": 1800,     # 30 minutes
-            "smart_data": 1800,    # 30 minutes
+            "disk_serial": 3600,   # 1 hour - device serials never change
+            "disk_model": 3600,    # 1 hour - device models never change
             "docker_info": 600,    # 10 minutes
             "vm_info": 600,        # 10 minutes
 
-            # Semi-dynamic data
-            "system_stats": 120,    # 2 minutes
-            "array_state": 60,      # 1 minute
-            "ups_info": 120,        # 2 minutes
+            # Semi-dynamic data (automation-friendly)
+            "disk_info": 300,      # 5 minutes - reduced from 30 min for power state changes
+            "smart_health": 600,   # 10 minutes - SMART health status changes slowly
+            "system_stats": 120,   # 2 minutes
+            "array_state": 60,     # 1 minute
+            "ups_info": 120,       # 2 minutes
 
-            # Highly dynamic data
-            "cpu_info": 30,         # 30 seconds
-            "memory_info": 30,      # 30 seconds
-            "network_stats": 15,    # 15 seconds
+            # Real-time monitoring data (automation-critical)
+            "disk_temperature": 60,    # 1 minute - for temperature monitoring automations
+            "disk_power_state": 30,    # 30 seconds - for spinup/spindown automations
+            "smart_critical": 30,      # 30 seconds - for immediate health alerts
+            "cpu_info": 30,            # 30 seconds
+            "memory_info": 30,         # 30 seconds
+            "network_stats": 15,       # 15 seconds
+
+            # Legacy compatibility (will be phased out)
+            "smart_data": 300,     # 5 minutes - reduced from 30 min, but use specific keys above
         }
 
         # Resource monitoring
@@ -918,10 +926,10 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidDataDict]):
             memory_info = process.memory_info()
             memory_mb = memory_info.rss / 1024 / 1024
 
-            # Log warning if over 90MB
+            # Log info if over 90MB (advisory, not actionable by user)
             if memory_mb > 90 and not self._memory_warning_emitted:
-                _LOGGER.warning(
-                    "High memory usage detected: %.1f MB - consider adjusting cache size",
+                _LOGGER.info(
+                    "High memory usage detected: %.1f MB - automatic optimization active",
                     memory_mb
                 )
                 self._memory_warning_emitted = True
@@ -931,8 +939,8 @@ class UnraidDataUpdateCoordinator(DataUpdateCoordinator[UnraidDataDict]):
 
             # If extremely high, force garbage collection and cache cleanup
             if memory_mb > 110:
-                _LOGGER.warning(
-                    "Critically high memory usage: %.1f MB - forcing cache cleanup",
+                _LOGGER.debug(
+                    "Critically high memory usage: %.1f MB - automatic cleanup triggered",
                     memory_mb
                 )
 

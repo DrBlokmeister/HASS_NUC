@@ -441,36 +441,54 @@ class DiskDataHelperMixin:
         device: Optional[str] = None,
         is_standby: bool = False
     ) -> Dict[str, Any]:
-        """Get common storage attributes with unified calculation."""
+        """Get common storage attributes with user-friendly formatting."""
         try:
             # Use centralized percentage calculation
             usage = self._calculate_usage_percentage(total, used)
             percentage = 0.0 if usage is None else usage
 
             attrs = {
-                "total_size": format_bytes(total),
-                "used_space": format_bytes(used),
-                "free_space": format_bytes(free),
-                "percentage": percentage,
-                "power_state": "standby" if is_standby else "active",
-                "last_update": dt_util.utcnow().isoformat()
+                "Total Capacity": format_bytes(total),
+                "Space Used": format_bytes(used),
+                "Space Available": format_bytes(free),
+                "Usage Percentage": f"{percentage:.1f}%",
+                "Power State": "Standby (Spun Down)" if is_standby else "Active",
+                "Last Updated": dt_util.utcnow().isoformat()
             }
 
+            # Add mount point with user-friendly label
             if mount_point:
-                attrs["mount_point"] = mount_point
+                attrs["Mount Location"] = mount_point
+
+            # Add device with user-friendly label
             if device:
-                attrs["device"] = device
+                attrs["Device Path"] = device
+
+            # Add capacity utilization description
+            if percentage is not None:
+                if percentage >= 95:
+                    attrs["Capacity Status"] = "Critical - Nearly Full"
+                elif percentage >= 85:
+                    attrs["Capacity Status"] = "Warning - High Usage"
+                elif percentage >= 70:
+                    attrs["Capacity Status"] = "Moderate Usage"
+                else:
+                    attrs["Capacity Status"] = "Normal"
+            else:
+                attrs["Capacity Status"] = "Unknown"
 
             return attrs
 
         except Exception as err:
             _LOGGER.error("Error creating storage attributes: %s", err)
             return {
-                "total_size": "unknown",
-                "used_space": "unknown",
-                "free_space": "unknown",
-                "percentage": 0.0,
-                "last_update": dt_util.utcnow().isoformat()
+                "Total Capacity": "Unknown",
+                "Space Used": "Unknown",
+                "Space Available": "Unknown",
+                "Usage Percentage": "0.0%",
+                "Power State": "Unknown",
+                "Capacity Status": "Unknown",
+                "Last Updated": dt_util.utcnow().isoformat()
             }
 
     def _get_temperature_str(
@@ -509,8 +527,9 @@ def parse_speed_string(speed_str: str) -> float:
 
     Handles multiple formats:
     - Raw bytes/sec (e.g., "124194045")
-    - Formatted speed (e.g., "125.5 MB/s")
+    - Formatted speed (e.g., "125.5 MB/s", "84,8 MB/s")
     - Special values (e.g., "Unavailable", "nan B/s", "0")
+    - European number format with comma decimal separator
     """
     try:
         # Clean up the string
@@ -520,9 +539,11 @@ def parse_speed_string(speed_str: str) -> float:
         if speed_str in ["Unavailable", "nan B/s", "0"]:
             return 0.0
 
-        # Try parsing as raw bytes/sec first
+        # Try parsing as raw bytes/sec first (handle European format)
         try:
-            return float(speed_str)
+            # Handle European number format for raw bytes
+            raw_value = speed_str.replace(',', '.') if ',' in speed_str and '.' not in speed_str else speed_str
+            return float(raw_value)
         except ValueError:
             pass
 
@@ -534,14 +555,19 @@ def parse_speed_string(speed_str: str) -> float:
         parts = speed_str.split()
         if len(parts) != 2:
             # Try extracting numbers if units are stuck to value
+            # Updated regex to handle both dot and comma decimal separators
             import re
-            match = re.match(r"(\d+\.?\d*)([A-Za-z]+)", speed_str)
+            match = re.match(r"(\d+[.,]?\d*)([A-Za-z]+)", speed_str)
             if match:
                 value, unit = match.groups()
             else:
                 raise ValueError(f"Invalid speed format: {speed_str}")
         else:
             value, unit = parts
+
+        # Convert European number format (comma decimal) to standard format (dot decimal)
+        if ',' in value and '.' not in value:
+            value = value.replace(',', '.')
 
         # Convert value to float
         speed = float(value)
