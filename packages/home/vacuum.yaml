@@ -256,67 +256,79 @@ automation:
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'off'
-    action:
-      - if:
-          - condition: numeric_state
-            entity_id: sensor.alfred_area_cleaned_today
-            below: 20
-        then:
-          - service: vacuum.set_fan_speed
-            entity_id: vacuum.alfred
-            continue_on_error: true
-            data:
-              fan_speed: Medium
-          - service: vacuum.start
-            entity_id: vacuum.alfred
-            continue_on_error: true
-      - if:
-          - condition: numeric_state
-            entity_id: sensor.argus_area_cleaned_today
-            below: 20
-        then:
-          - service: vacuum.set_fan_speed
-            entity_id: vacuum.argus
-            continue_on_error: true
-            data:
-              fan_speed: Medium
-          - service: vacuum.start
-            entity_id: vacuum.argus
-            continue_on_error: true
-      - if:
+      - condition: or
+        conditions:
           - condition: numeric_state
             entity_id: sensor.moeke_area_cleaned_today
             below: 20
-        then:
-          - service: vacuum.set_fan_speed
-            entity_id: vacuum.moeke
-            continue_on_error: true
-            data:
-              fan_speed: Strong
-          - service: select.select_option
-            continue_on_error: true
-            target:
-              entity_id: select.moeke_cleaning_mode
-            data:
-              option: >
-                  {% if
-                    is_state('sensor.moeke_error', 'the_dirty_water_tank_is_full_or_not_installed') or
-                    not is_state('sensor.moeke_low_water_warning', 'no_warning') or
-                    is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-                  %}
-                    sweeping
-                  {% else %}
-                    sweeping_and_mopping
-                  {% endif %}
-              #option: "sweeping_and_mopping"
-              #option: "sweeping"
-          - delay:
-              seconds: 3
-          - service: vacuum.start
-            continue_on_error: true
-            entity_id: vacuum.moeke
+          - condition: numeric_state
+            entity_id: sensor.argus_area_cleaned_today
+            below: 20
+          - condition: numeric_state
+            entity_id: sensor.alfred_area_cleaned_today
+            below: 20
+    action:
+      - parallel:
+          - if:   #Start Alfred
+              - condition: numeric_state
+                entity_id: sensor.alfred_area_cleaned_today
+                below: 20
+            then:
+              - service: vacuum.set_fan_speed
+                entity_id: vacuum.alfred
+                continue_on_error: true
+                data:
+                  fan_speed: Medium
+              - service: vacuum.start
+                entity_id: vacuum.alfred
+                continue_on_error: true
+          - if:   #Start Argus
+              - condition: numeric_state
+                entity_id: sensor.argus_area_cleaned_today
+                below: 20
+            then:
+              - service: vacuum.set_fan_speed
+                entity_id: vacuum.argus
+                continue_on_error: true
+                data:
+                  fan_speed: Medium
+              - service: vacuum.start
+                entity_id: vacuum.argus
+                continue_on_error: true
+          - if:   #Start Moeke
+              - condition: numeric_state
+                entity_id: sensor.moeke_area_cleaned_today
+                below: 20
+            then:
+              - service: vacuum.set_fan_speed
+                entity_id: vacuum.moeke
+                continue_on_error: true
+                data:
+                  fan_speed: Strong
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: >
+                      {% if
+                        is_state('sensor.moeke_error', 'the_dirty_water_tank_is_full_or_not_installed') or
+                        not is_state('sensor.moeke_low_water_warning', 'no_warning') or
+                        is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+                      %}
+                        sweeping
+                      {% else %}
+                        sweeping_and_mopping
+                      {% endif %}
+                  #option: "sweeping_and_mopping"
+                  #option: "sweeping"
+              - delay:
+                  seconds: 2
+              - service: vacuum.start
+                continue_on_error: true
+                entity_id: vacuum.moeke
       - delay:
-          seconds: 10
+          seconds: 30
       - service: notify.mobile_app_blokmeisterp9pro
         data:
           message: >
