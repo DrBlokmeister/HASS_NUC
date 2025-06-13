@@ -16,6 +16,16 @@ homeassistant:
 
 input_number:
 
+input_select:
+  vacuum_scheduled_cleaning_mode:
+    name: Vacuum Scheduled Cleaning Mode
+    options:
+      - "Once Daily"
+      - "Multiple Times Daily"
+      - "Off"
+    initial: "Once Daily"
+    icon: mdi:robot-vacuum
+
 camera:
   - platform: xiaomi_cloud_map_extractor
     name: "Argus Map"
@@ -256,6 +266,11 @@ automation:
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'off'
+      - condition: state
+        entity_id: input_select.vacuum_scheduled_cleaning_mode
+        state:
+          - "Once Daily"
+          - "Multiple Times Daily"
       - condition: or
         conditions:
           - condition: numeric_state
@@ -267,6 +282,9 @@ automation:
           - condition: numeric_state
             entity_id: sensor.alfred_area_cleaned_today
             below: 20
+          - condition: state
+            entity_id: input_select.vacuum_scheduled_cleaning_mode
+            state: "Multiple Times Daily"
     action:
       - parallel:
           - if:   #Start Alfred
