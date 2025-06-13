@@ -3639,3 +3639,422 @@ script:
                   width: 3
                   joint: curve
                   color: black
+
+  drawcustom_snapshot_examples:
+    alias: "Generate drawcustom snapshots"
+    mode: single
+    fields:
+      display_device_id:
+        description: "Device ID of the display to be updated"
+        example: "5f61de1a08a9f1dcb162b383d8be9a4e"
+      camera_entity:
+        description: "Camera entity capturing the display"
+        example: "camera.0000021e6b5b3b17_content"
+    sequence:
+      # Debug Grid
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: debug_grid
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_debug_grid.jpg"
+      - delay: "00:00:05"
+
+      # Text
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: text
+              value: "Hello World!"
+              x: 10
+              y: 10
+              size: 20
+              color: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_text.jpg"
+      - delay: "00:00:05"
+
+      # Multiline Text
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: multiline
+              value: "Line 1|Line 2|Line 3"
+              delimiter: "|"
+              x: 10
+              offset_y: 20
+              size: 20
+              color: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_multiline_text.jpg"
+      - delay: "00:00:05"
+
+      # Line
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: line
+              x_start: 5
+              x_end: 152
+              y_start: 20
+              y_end: 20
+              width: 1
+              fill: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_line.jpg"
+      - delay: "00:00:05"
+
+      # Rectangle
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: rectangle
+              x_start: 10
+              x_end: 80
+              y_start: 30
+              y_end: 60
+              width: 2
+              fill: red
+              outline: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_rectangle.jpg"
+      - delay: "00:00:05"
+
+      # Rectangle Pattern
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: rectangle_pattern
+              x_start: 5
+              x_size: 35
+              x_offset: 10
+              y_start: 28
+              y_size: 18
+              y_offset: 2
+              x_repeat: 1
+              y_repeat: 4
+              fill: white
+              outline: red
+              width: 1
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_rectangle_pattern.jpg"
+      - delay: "00:00:05"
+
+      # Polygon
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: polygon
+              points:
+                - [10, 10]
+                - [50, 10]
+                - [50, 50]
+                - [10, 50]
+              fill: red
+              outline: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_polygon.jpg"
+      - delay: "00:00:05"
+
+      # Circle
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: circle
+              x: 60
+              y: 60
+              radius: 20
+              fill: red
+              outline: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_circle.jpg"
+      - delay: "00:00:05"
+
+      # Ellipse
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: ellipse
+              x_start: 50
+              x_end: 100
+              y_start: 40
+              y_end: 80
+              fill: red
+              outline: black
+              width: 1
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_ellipse.jpg"
+      - delay: "00:00:05"
+
+      # Arc / Pie Slice
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: arc
+              x: 100
+              y: 60
+              radius: 30
+              start_angle: 0
+              end_angle: 90
+              fill: red
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_arc.jpg"
+      - delay: "00:00:05"
+
+      # Icon
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: icon
+              value: mdi:account-cowboy-hat
+              x: 60
+              y: 60
+              size: 40
+              color: black
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_icon.jpg"
+      - delay: "00:00:05"
+
+      # Icon Sequence
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: icon_sequence
+              x: 10
+              y: 100
+              icons:
+                - mdi:home
+                - mdi:arrow-right
+                - mdi:office-building
+              size: 24
+              direction: right
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_icon_sequence.jpg"
+      - delay: "00:00:05"
+
+      # Download Image
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: dlimg
+              url: "https://upload.wikimedia.org/wikipedia/en/7/73/Trollface.png"
+              x: 2
+              y: 2
+              xsize: 120
+              ysize: 120
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_dlimg.jpg"
+      - delay: "00:00:05"
+
+      # QR Code
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: qrcode
+              data: "https://tweakers.net/pricewatch/"
+              x: 0
+              y: 0
+              boxsize: 2
+              border: 1
+              color: black
+              bgcolor: white
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_qrcode.jpg"
+      - delay: "00:00:05"
+
+      # Plot
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: plot
+              x_start: 10
+              y_start: 5
+              x_end: 140
+              y_end: 140
+              low: 10
+              high: 30
+              duration: 36000
+              ylegend:
+                color: black
+                position: left
+                size: 10
+                width: -1
+              yaxis:
+                width: 1
+                color: black
+                tick_width: 2
+                tick_every: 5
+                grid: true
+                grid_color: black
+                grid_style: dotted
+              xlegend:
+                format: "%H:%M"
+                interval: 10800
+                snap_to_hours: true
+                color: black
+                position: bottom
+                size: 10
+                width: -1
+              xaxis:
+                width: 1
+                color: black
+                grid: 5
+                grid_color: gray
+                grid_style: dotted
+                tick_width: 2
+                tick_length: 4
+                tick_every: 1.0
+              data:
+                - entity: sensor.shed_aqm_temperature
+                  color: red
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_plot.jpg"
+      - delay: "00:00:05"
+
+      # Progress Bar
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          dry-run: true
+          payload:
+            - type: progress_bar
+              x_start: 5
+              y_start: 5
+              x_end: 147
+              y_end: 30
+              fill: red
+              outline: black
+              width: 1
+              progress: 42
+              direction: right
+              show_percentage: true
+              font: "ppb.ttf"
+      - delay: "00:00:02"
+      - service: camera.snapshot
+        data:
+          entity_id: "{{ camera_entity }}"
+          filename: "/config/www/epapertag_snapshots/example_progress_bar.jpg"
+      - delay: "00:00:05"
