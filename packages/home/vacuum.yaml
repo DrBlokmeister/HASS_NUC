@@ -498,6 +498,56 @@ automation:
           vacuumentityid: "{{ trigger.entity_id }}"
           vacuumentityname: "{{ 'vacuum.moeke' if trigger.id == 'Moeke' else trigger.entity_id }}"
           errordescription: "{{ states('sensor.moeke_error') if trigger.id == 'Moeke' else 'Error' }}"
+      - choose:
+          # Case 1: Moeke
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'Moeke' }}"
+            sequence:
+              - service: conversation.process
+                response_variable: gpt_vacuum_error_response
+                data:
+                  agent_id: conversation.chatgpt
+                  text: >
+                    You are a helpful assistant. Write a short phone notification message
+                    to inform the user that their ground floor robot vacuum cleaner "Moeke"
+                    (Dreame L10S Ultra with self-cleaning base) has reported an error.
+
+                    Goal: Help the user understand what might be wrong using the sensor data below.
+                    Write no more than 2 short sentences (max ~200 characters total). Be friendly and clear.
+
+                    Sensor data:
+                    - Current state: {{ states.vacuum.moeke.state }}
+                    - Error description: {{ states.vacuum.moeke.attributes.error }}
+                    - Low water warning (from vacuum): {{ states.vacuum.moeke.attributes.low_water_warning }}
+                    - Water detected in clean reservoir (leak sensor): {{ states('binary_sensor.moeke_reservoir_leak_sensor') }}
+
+                    Context notes:
+                    - Moeke uses clean water for mop washing. The leak sensor hangs inside this reservoir.
+                    - If the leak sensor is 'off', the tank is truly empty.
+                    - If the leak sensor is 'on' and low water warning is 'No warning', everything is fine — do not mention a water issue.
+                    - A water refill might be needed if leak sensor is 'off' or low water warning is indicates this.
+                    - If there’s a known error description, summarize it briefly and clearly.
+                    - If everything seems okay but a transient error occurred, say it might be a fluke.
+                    - End with a relevant emoji (💧 if water, 🧼 if cleaning-related, 🤖 otherwise).
+                    - No markdown, titles, or formatting — just the plain text.
+        # Case 2: Argus or Alfred
+        default:
+          - service: conversation.process
+            response_variable: gpt_vacuum_error_response
+            data:
+              agent_id: conversation.chatgpt
+              text: >
+                Write a short and clear phone notification to inform the user
+                that their robot vacuum cleaner (Roborock S7 Max with auto empty dock) encountered an error.
+
+                Vacuum name: {{ trigger.id }}
+                Floor location: {% if trigger.id == 'Argus' %}First floor{% else %}Second floor{% endif %}
+                Entity state: {{ states(trigger.entity_id) }}
+
+                Mention the floor and the name, say it's in error, and be brief (~150 characters).
+                One friendly sentence is enough. Add a relevant emoji.
+
       - service: homeassistant.update_entity
         target:
           entity_id: "camera.{{ vacuumentityname.split('.')[1] }}_map"
@@ -514,7 +564,7 @@ automation:
         continue_on_error: true
         data:
           title: "Error with {{ trigger.id }}"
-          message: "Vacuum {{ trigger.id }} has an error{% if trigger.id == 'Moeke' %} with description '{{ errordescription }}'.{% else %}.{% endif %}"
+          message: "{{gpt_vacuum_error_response.response.speech.plain.speech}}"
           data:
             group: vacuum
             tag: vacuumerror
