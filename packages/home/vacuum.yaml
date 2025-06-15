@@ -347,7 +347,7 @@ automation:
                 entity_id: vacuum.moeke
       - delay:
           seconds: 30
-      - service: notify.mobile_app_blokmeisterp9pro
+      - service: service: notify.sander_and_tamara_phones
         data:
           message: >
               {% set vacuums = [
@@ -367,6 +367,7 @@ automation:
               {% endif %}
           title: "Home Assistant - Vacuum"
           data:
+            sticky: "true"
             group: info
             tag: vacuum
             icon_url: local/icons/robot-vacuum.png
@@ -525,7 +526,7 @@ automation:
               - service: conversation.process
                 response_variable: gpt_vacuum_error_response
                 data:
-                  agent_id: conversation.chatgpt
+                  agent_id: conversation.chatgpt_4o_mini
                   text: >
                     You are a helpful assistant. Write a short phone notification message
                     to inform the user that their ground floor robot vacuum cleaner "Moeke"
@@ -554,7 +555,7 @@ automation:
           - service: conversation.process
             response_variable: gpt_vacuum_error_response
             data:
-              agent_id: conversation.chatgpt
+              agent_id: conversation.chatgpt_4o_mini
               text: >
                 Write a short and clear phone notification to inform the user
                 that their robot vacuum cleaner (Roborock S7 Max with auto empty dock) encountered an error.
@@ -584,6 +585,7 @@ automation:
           title: "Error with {{ trigger.id }}"
           message: "{{gpt_vacuum_error_response.response.speech.plain.speech}}"
           data:
+            sticky: "true"
             group: vacuum
             tag: vacuumerror
             icon_url: "/local/icons/robot-vacuum.png"
@@ -636,7 +638,7 @@ automation:
         for:
           minutes: 5
     action:
-      - service: notify.mobile_app_blokmeisterp9pro
+      - service: notify.sander_and_tamara_phones
         continue_on_error: true
         data:
           title: "Moeke water reservoir empty"
@@ -677,7 +679,7 @@ automation:
         data:
           entity_id: scene.atmoorb_right_bulb_before
           transition: 1
-      - service: notify.mobile_app_blokmeisterp9pro
+      - service: notify.sander_and_tamara_phones
         data:
           message: "clear_notification"
           data:
@@ -821,6 +823,7 @@ automation:
           title: "Moeke: Detergent almost empty"
           message: "The detergent level is below 60%. Do you want to reset it now?"
           data:
+            sticky: "true"
             tag: "{{ notification_tag }}"
             actions:
               - action: RESET_MOEKE_DETERGENT

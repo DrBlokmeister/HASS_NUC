@@ -1107,9 +1107,10 @@ automation:
           title: "Warning: Power Usage!"
           message: "Unknown power is <b>{{ states('sensor.unknown_power') }} W</b> for a total of <b>{{ states('sensor.total_power_consumption_watt') }} W</b>"
           data:
+            sticky: "true"
             group: notification
             tag: powerwarning
-            clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
+            clickAction: '/lovelace-default/9' # action when clicking main notification
             ledColor: "orange"
             channel: warning
       - delay:
@@ -1128,9 +1129,10 @@ automation:
                 title: "Warning: Power Usage!"
                 message: "Unknown power is <b>{{ states('sensor.unknown_power') }} W</b> for a total of <b>{{ states('sensor.total_power_consumption_watt') }} W</b>"
                 data:
+                  sticky: "true"
                   group: notification
                   tag: powerwarning
-                  clickAction: '/lovelace-dashboard/view/6' # action when clicking main notification
+                  clickAction: '/lovelace-default/9' # action when clicking main notification
                   ledColor: "orange"
                   channel: warning
             - delay:
@@ -1338,6 +1340,50 @@ automation:
                   title: "Nordpool prices missing"
                   message: "Tomorrow's electricity prices are still missing even after reloading Nordpool integration."
                   notification_id: "nordpool_prices_missing"
+
+  - alias: '[home|electricityprice] Message forecast electricity prices for tomorrow'
+    id: yaml_automation_home_electricityprice_message_forecast_electricity_prices_for_tomorrow
+    description: >
+      Sends a message with the forecast of tomorrow's electricity prices and solar production.
+    mode: single
+    trigger:
+      - platform: time
+        at: '15:20:00'
+    action:
+      - service: conversation.process
+        data:
+          agent_id: conversation.chatgpt_4o
+          text: >
+            You are a helpful assistant summarizing tomorrow's electricity prices and solar production to help the user plan energy usage. Write a friendly, precise summary in clear language (max 350 chars, two paragraphs).
+
+            - Analyze the price pattern for tomorrow: Are there any flat or low windows (several consecutive hours where prices remain within around €0.050 of the minimum)? Clearly identify and then state these time ranges and the lowest price.
+            - Also note any distinct peak or expensive window (hours where price is within €0.030 of the maximum), and give the range and value.
+            - Compare tomorrow’s median, max, and min prices to today’s. If differences are less than 10%, say “similar”. If not, say clearly “higher” or “lower”.
+            - Explicitly mention if lowest prices tomorrow are well below the monthly average ({{ states('sensor.average_electricity_price_this_month') }} €/kWh).
+            - Only mention negative prices if present: state how many hours and lowest value (in € cents), and use an emoji.
+            - Only mention prices above €0.600 if present: state the hour(s) and highest value, and use an emoji.
+            - Summarize the solar production difference. Say “significantly higher/lower” if ≥20%, otherwise say “similar,” and include the values.
+            - Do not use markdown, bullet points, or generic trend words. Focus on describing time ranges/windows and prices directly.
+            - End with an emoji.
+
+            Data:
+            - Hourly prices today: {{ state_attr('sensor.nordpool_energy_price', 'today') }}
+            - Hourly prices tomorrow: {{ state_attr('sensor.nordpool_energy_price', 'tomorrow') }}
+            - Today min, max, median: {{ state_attr('sensor.nordpool_energy_price', 'today') | min }}, {{ state_attr('sensor.nordpool_energy_price', 'today') | max }}, {{ state_attr('sensor.nordpool_energy_price', 'today') | median }}
+            - Tomorrow min, max, median: {{ state_attr('sensor.nordpool_energy_price', 'tomorrow') | min }}, {{ state_attr('sensor.nordpool_energy_price', 'tomorrow') | max }}, {{ state_attr('sensor.nordpool_energy_price', 'tomorrow') | median }}
+            - Monthly average price: {{ states('sensor.average_electricity_price_this_month') }} €/kWh
+            - Solar production today: {{ states('sensor.energy_production_today')|round(1) }} kWh
+            - Solar production tomorrow: {{ states('sensor.energy_production_tomorrow')|round() }} kWh
+        response_variable: gpt_electricity_response
+      - alias: 'Send forecast as notification'
+        service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "Electricity Trend Update ⚡"
+          message: "{{ gpt_electricity_response.response.speech.plain.speech }}"
+          data:
+            sticky: "true"
+            tag: electricity_trend_update
+            clickAction: "/lovelace-default/9"
 
 ################
 #    SCENES    #
