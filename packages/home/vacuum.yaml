@@ -563,8 +563,9 @@ automation:
                 Vacuum name: {{ trigger.id }}
                 Floor location: {% if trigger.id == 'Argus' %}First floor{% else %}Second floor{% endif %}
                 Entity state: {{ states(trigger.entity_id) }}
+                Error description: {% if (states.vacuum.alfred.attributes.error is defined) %}{{ states.vacuum.alfred.attributes.error }}{% else %}No error description{% endif %}
 
-                Mention the floor and the name, say it's in error, and be brief (~150 characters).
+                Mention the floor and the name, say it's in error, describe the type of error if available, and be brief (~150 characters).
                 One friendly sentence is enough. Add a relevant emoji.
 
       - service: homeassistant.update_entity
@@ -589,7 +590,8 @@ automation:
             group: vacuum
             tag: vacuumerror
             icon_url: "/local/icons/robot-vacuum.png"
-            image: "/local/tmp/snapshot_vacuum_error.jpg"
+            image: "/api/camera_proxy/camera.{{ vacuumentityname.split('.')[1] }}_map"
+            #image: "/local/tmp/snapshot_vacuum_error.jpg"
       - service: scene.create
         data:
           scene_id: "atmoorb_bulbs_before"
