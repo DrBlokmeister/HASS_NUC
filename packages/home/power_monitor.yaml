@@ -198,6 +198,15 @@ template:
         state: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
         availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
 
+  - binary_sensor:
+      - name: "Tomorrow's Electricity Prices Available"
+        unique_id: yaml_template_binary_sensor_tomorrows_electricity_prices_available
+        state: >-
+          {{ state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') is not none and
+            state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') != [] }}
+        icon: mdi:calendar-today
+        device_class: connectivity
+
 #######################
 #    INPUT NUMBERS    #
 #######################
