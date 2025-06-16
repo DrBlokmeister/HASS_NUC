@@ -26,37 +26,37 @@ template:
         icon: mdi:harddisk
         device_class: running
         availability: "{{ states.binary_sensor.tower_parity_health.attributes.power_state is defined }}"
-        state: "{{ states.binary_sensor.tower_parity_health.attributes.power_state == 'active' }}"
+        state: "{{ state_attr('binary_sensor.tower_parity_health', 'power_state') == 'active' }}"
       - name: "Disk 1 Spun Up"
         unique_id: "yaml_template_binary_sensor_nas_disk_1_spun_up"
         icon: mdi:harddisk
         device_class: running
-        availability: "{{ states.binary_sensor.tower_disk1_health.attributes.power_state is defined }}"
-        state: "{{ states.binary_sensor.tower_disk1_health.attributes.power_state == 'active' }}"
+        availability: "{{ states.binary_sensor.tower_disk1_health.attributes['Power State'] is defined }}"
+        state: "{{ state_attr('binary_sensor.tower_disk1_health', 'Power State') == 'Active' }}"
       - name: "Disk 2 Spun Up"
         unique_id: "yaml_template_binary_sensor_nas_disk_2_spun_up"
         icon: mdi:harddisk
         device_class: running
-        availability: "{{ states.binary_sensor.tower_disk2_health.attributes.power_state is defined }}"
-        state: "{{ states.binary_sensor.tower_disk2_health.attributes.power_state == 'active' }}"
+        availability: "{{ states.binary_sensor.tower_disk2_health.attributes['Power State'] is defined }}"
+        state: "{{ state_attr('binary_sensor.tower_disk2_health', 'Power State') == 'Active' }}"
       - name: "Disk 3 Spun Up"
         unique_id: "yaml_template_binary_sensor_nas_disk_3_spun_up"
         icon: mdi:harddisk
         device_class: running
-        availability: "{{ states.binary_sensor.tower_disk3_health.attributes.power_state is defined }}"
-        state: "{{ states.binary_sensor.tower_disk3_health.attributes.power_state == 'active' }}"
+        availability: "{{ states.binary_sensor.tower_disk3_health.attributes['Power State'] is defined }}"
+        state: "{{ state_attr('binary_sensor.tower_disk3_health', 'Power State') == 'Active' }}"
       - name: "Disk 4 Spun Up"
         unique_id: "yaml_template_binary_sensor_nas_disk_4_spun_up"
         icon: mdi:harddisk
         device_class: running
-        availability: "{{ states.binary_sensor.tower_disk4_health.attributes.power_state is defined }}"
-        state: "{{ states.binary_sensor.tower_disk4_health.attributes.power_state == 'active' }}"
+        availability: "{{ states.binary_sensor.tower_disk4_health.attributes['Power State'] is defined }}"
+        state: "{{ state_attr('binary_sensor.tower_disk4_health', 'Power State') == 'Active' }}"
       - name: "Disk 5 Spun Up"
         unique_id: "yaml_template_binary_sensor_nas_disk_5_spun_up"
         icon: mdi:harddisk
         device_class: running
-        availability: "{{ states.binary_sensor.tower_disk5_health.attributes.power_state is defined }}"
-        state: "{{ states.binary_sensor.tower_disk5_health.attributes.power_state == 'active' }}"
+        availability: "{{ states.binary_sensor.tower_disk5_health.attributes['Power State'] is defined }}"
+        state: "{{ state_attr('binary_sensor.tower_disk5_health', 'Power State') == 'Active' }}"
 
   - sensor:
       - name: "Unraid Parity Temperature"
@@ -65,105 +65,93 @@ template:
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_parity_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_parity_health', 'temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
-        availability: >
-          {{ not is_state('binary_sensor.tower_parity_health', 'unavailable') and
-              state_attr('binary_sensor.tower_parity_health', 'power_state') == 'active' }}
+          {%- endif %}
+        availability: "{{ state_attr('binary_sensor.tower_parity_health', 'power_state') == 'Active' }}"
       - name: "Unraid Disk 1 Temperature"
         unique_id: "yaml_template_unraid_disk1_temperature"
         device_class: temperature
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_disk1_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_disk1_health', 'Temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
-        availability: >
-          {{ not is_state('binary_sensor.tower_disk1_health', 'unavailable') and
-              state_attr('binary_sensor.tower_disk1_health', 'power_state') == 'active' }}
+          {%- endif %}
+        availability: "{{ state_attr('binary_sensor.tower_disk1_health', 'Power State') == 'Active' }}"
       - name: "Unraid Disk 2 Temperature"
         unique_id: "yaml_template_unraid_disk2_temperature"
         device_class: temperature
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_disk2_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_disk2_health', 'Temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
-        availability: >
-          {{ not is_state('binary_sensor.tower_disk2_health', 'unavailable') and
-              state_attr('binary_sensor.tower_disk2_health', 'power_state') == 'active' }}
+          {%- endif %}
+        availability: "{{ state_attr('binary_sensor.tower_disk2_health', 'Power State') == 'Active' }}"
       - name: "Unraid Disk 3 Temperature"
         unique_id: "yaml_template_unraid_disk3_temperature"
         device_class: temperature
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_disk3_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_disk3_health', 'Temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
-        availability: >
-          {{ not is_state('binary_sensor.tower_disk3_health', 'unavailable') and
-              state_attr('binary_sensor.tower_disk3_health', 'power_state') == 'active' }}
+          {%- endif %}
+        availability: "{{ state_attr('binary_sensor.tower_disk3_health', 'Power State') == 'Active' }}"
       - name: "Unraid Disk 4 Temperature"
         unique_id: "yaml_template_unraid_disk4_temperature"
         device_class: temperature
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_disk4_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_disk4_health', 'Temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
-        availability: >
-          {{ not is_state('binary_sensor.tower_disk4_health', 'unavailable') and
-              state_attr('binary_sensor.tower_disk4_health', 'power_state') == 'active' }}
+          {%- endif %}
+        availability: "{{ state_attr('binary_sensor.tower_disk4_health', 'Power State') == 'Active' }}"
       - name: "Unraid Disk 5 Temperature"
         unique_id: "yaml_template_unraid_disk5_temperature"
         device_class: temperature
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_disk5_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_disk5_health', 'Temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
-        availability: >
-          {{ not is_state('binary_sensor.tower_disk5_health', 'unavailable') and
-              state_attr('binary_sensor.tower_disk5_health', 'power_state') == 'active' }}
+          {%- endif %}
+        availability: "{{ state_attr('binary_sensor.tower_disk5_health', 'Power State') == 'Active' }}"
       - name: "Unraid Cache Temperature"
         unique_id: "yaml_template_unraid_cache_pool_temperature"
         device_class: temperature
         unit_of_measurement: "°C"
         icon: mdi:thermometer
         state: >
-          {% set raw = state_attr('binary_sensor.tower_pool_health', 'temperature') %}
-          {% if raw is string and raw.endswith('°C') %}
+          {%- set raw = state_attr('binary_sensor.tower_cache_health', 'Temperature') %}
+          {%- if raw is string and raw.endswith('°C') %}
             {{ raw.replace('°C', '') | float(-1) }}
-          {% else %}
+          {%- else %}
             -1
-          {% endif %}
+          {%- endif %}
         availability: >
-          {{ not is_state('binary_sensor.tower_pool_health', 'unavailable') and
-              state_attr('binary_sensor.tower_pool_health', 'power_state') == 'active' }}
+          {{ not is_state('binary_sensor.tower_cache_health', 'unavailable') and
+              state_attr('binary_sensor.tower_cache_health', 'Power State') == 'Active' }}
 
 
 
@@ -437,6 +425,7 @@ automation:
         title: "Torrent completed!"
         message: "{{ trigger.event.data.name }} has finished downloading!"
         data:
+          sticky: "true"
           group: reminder
           tag: transmission
           icon_url: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Transmission_icon.png"
