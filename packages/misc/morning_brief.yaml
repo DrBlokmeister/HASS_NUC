@@ -1,0 +1,57 @@
+automation:
+  - alias: '[notifications|calendar] Morning Agenda After Wakeup'
+    id: yaml_automation_misc_morning_brief_morning_agenda_after_wakeup
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >
+          {{ is_state('sensor.sleepasandroid_sander', 'sleep_tracking_stopped') or
+            is_state('sensor.sleepasandroid_sander', 'alarm_alert_dismiss') or
+            is_state('sensor.sleepasandroid_sander', 'alarm_rescheduled')}}
+        for:
+          minutes: 10
+
+    action:
+      - alias: 'Fetch calendar events for next 48h'
+        service: calendar.get_events
+        target:
+          entity_id:
+            - calendar.sander_blok_gmail_com
+            - calendar.feestdagen_in_nederland
+            - calendar.theater
+            - calendar.optredens_in_bandsintown
+        data:
+          duration:
+            hours: 48
+        response_variable: calendar_events
+
+      - alias: 'Generate ChatGPT agenda summary'
+        service: conversation.process
+        response_variable: gpt_calendar_response
+        data:
+          agent_id: conversation.chatgpt_4o_mini
+          text: >
+            You are a helpful assistant writing a short morning briefing based on the user's calendar for the next 48 hours.
+            The user just woke up and it's currently {{ states('sensor.time') }} local time.
+
+            Provide a short and friendly summary of key events today and tomorrow (max 2 sentences, under 250 characters).
+
+            Instructions:
+            - Prioritize events from "calendar.sander_blok_gmail_com", as that is the user’s personal calendar.
+            - Always mention the first event of the day and the time it starts. If there are no events today, mention that.
+            - If there’s an important early event today (starting before 11:00), make sure to highlight it.
+            - Include start times for specific appointments.
+            - If there are only holidays or FYI events (from other calendars), summarize them briefly but don’t treat them as urgent.
+            - Try to infer importance based on the title: meetings, appointments, travel, or social events are usually important.
+            - End with a warm note and an emoji (📅, ☀️, 😄).
+
+            Calendar data:
+            {{ calendar_events }}
+
+      - alias: 'Send notification to phone'
+        service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "Morning Briefing"
+          message: "{{ gpt_calendar_response.response.speech.plain.speech }}"
+          data:
+            sticky: true
