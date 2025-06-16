@@ -29,7 +29,7 @@ automation:
     trigger:
       - platform: numeric_state
         entity_id: sensor.motion_events_per_minute
-        above: 3
+        above: 5
         for:
           seconds: 20
     condition:
@@ -37,48 +37,40 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: "off"
         for:
-          minutes: 15
+          minutes: 5
       - condition: state
         entity_id: input_boolean.guest_mode
         state: "off"
     action:
-      - repeat:
-          while:
-            - condition: numeric_state
-              entity_id: sensor.motion_events_per_minute
-              above: 3
-            - condition: state
-              entity_id: binary_sensor.house_occupied
-              state: "on"
-          sequence:
-            - service: notify.sander_and_tamara_phones
-              data:
-                title: >
-                  ⚠️ Motion Alert ({{ states('sensor.motion_events_per_minute') }} per min)
-                message: >
-                  Last motion: {{ state_attr('sensor.total_motion_events', 'last_triggered_friendly_name') }} at {{ state_attr('sensor.total_motion_events', 'last_triggered_time') }}.
-                data:
-                  sticky: "true"
-                  tag: motion_alert
-                  icon: mdi:motion-sensor
-            - delay:
-                seconds: 30
-
-  - alias: '[security|alert]Message phone if motion is detected when Im not home'
-    trigger:
-      - platform: state
-        entity_id: sensor.last_triggered_motion_sensor
-    condition:
-      - condition: state
-        entity_id: binary_sensor.house_occupied
-        state: 'off'
-        for:
-          minutes: 15
-      - condition: state
-        entity_id: input_boolean.guest_mode
-        state: 'off'
-    action:
-      - service: script.message_someone_is_at_home
+      - delay: "00:00:30"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.house_occupied
+                state: "off"
+            sequence:
+              - repeat:
+                  while:
+                    - condition: numeric_state
+                      entity_id: sensor.motion_events_per_minute
+                      above: 3
+                    - condition: state
+                      entity_id: binary_sensor.house_occupied
+                      state: "on"
+                  sequence:
+                    - service: notify.sander_and_tamara_phones
+                      data:
+                        title: >
+                          ⚠️ Motion Alert ({{ states('sensor.motion_events_per_minute') }} per min)
+                        message: >
+                          Last motion: {{ state_attr('sensor.total_motion_events', 'last_triggered_friendly_name') }} at {{ state_attr('sensor.total_motion_events', 'last_triggered_time') }}.
+                        data:
+                          sticky: "true"
+                          tag: motion_alert
+                          icon: mdi:motion-sensor
+                          clickAction: "/lovelace-default/4"
+                    - delay:
+                        seconds: 30
 
   - alias: '[security|alert]Door opened'
     id: 'security_alert_door_opened'
@@ -94,22 +86,29 @@ automation:
         entity_id: binary_sensor.house_occupied
         state: 'off'
         for:
-          minutes: 15
+          minutes: 5
       - condition: state
         entity_id: input_boolean.guest_mode
         state: 'off'
     action:
-      - service: notify.mobile_app_blokmeisterp9pro
-        data:
-          message: >
-            "{{ trigger.to_state.name }} has been triggered!!"
-          title: "Home Assistant - Warning"
-          data:
-            group: info
-            tag: security
-            icon_url: local/icons/door-open.png
-            timeout: 10800
-
+      - delay: "00:00:30"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: binary_sensor.house_occupied
+                state: 'off'
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                data:
+                  message: "{{ trigger.to_state.name }} has been triggered!!"
+                  title: "Home Assistant - Warning"
+                  data:
+                    sticky: "true"
+                    group: info
+                    tag: security
+                    icon_url: local/icons/door-open.png
+                    timeout: 10800
+                    clickAction: "/lovelace-default/4"
 
 ################
 #    SCENES    #
@@ -129,33 +128,3 @@ group:
 #    SCRIPTS    #
 #################
 script:
-  message_someone_is_at_home:
-    alias: "Motion is detected at home"
-    sequence:
-      # - service: camera.snapshot
-      #   data:
-      #     entity_id: camera.tapo_camera_d6d4_hd
-      #     filename: "/config/www/snapshots/livingroom_last_snapshot.jpg"
-      # - delay:
-      #     seconds: 2
-      - service: notify.mobile_app_blokmeisterp9pro
-        data:
-          message: "Motion has been detected at home!"
-          title: "Home Assistant - Warning"
-          data:
-            sticky: "true"
-            group: info
-            tag: security
-            icon_url: local/icons/motion-sensor.png
-            timeout: 10800
-            # image: !secret last_snapshot_url
-      # - service: notify.mobile_app_blokmeisterp9pro
-      #   data:
-      #     message: "Motion has been detected for sensor {{states('sensor.last_triggered_motion_sensor')}}!"
-      #     title: "Home Assistant - Warning"
-      #     data:
-      #       group: info
-      #       tag: security
-      #       icon_url: local/icons/motion-sensor.png
-      #       timeout: 10800
-      #       image: !secret last_snapshot_url
