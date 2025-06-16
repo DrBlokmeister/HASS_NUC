@@ -347,7 +347,7 @@ automation:
                 entity_id: vacuum.moeke
       - delay:
           seconds: 30
-      - service: service: notify.sander_and_tamara_phones
+      - service: notify.sander_and_tamara_phones
         data:
           message: >
               {% set vacuums = [
@@ -563,9 +563,12 @@ automation:
                 Vacuum name: {{ trigger.id }}
                 Floor location: {% if trigger.id == 'Argus' %}First floor{% else %}Second floor{% endif %}
                 Entity state: {{ states(trigger.entity_id) }}
-                Error description: {% if (states.vacuum.alfred.attributes.error is defined) %}{{ states.vacuum.alfred.attributes.error }}{% else %}No error description{% endif %}
+                Error description: {% if (trigger.entity_id.attributes.error is defined) %}{{ state_attr(trigger.entity_id, 'error') }}{% else %}No error description{% endif %}
 
-                Mention the floor and the name, say it's in error, describe the type of error if available, and be brief (~150 characters).
+                Error description info:
+                  - Device Stuck, clean area: the device is stuck, the area around the robot needs to be cleared.
+
+                Mention the floor and the name, say it's in error, clearly describe the type of error if available, and be brief (~150 characters).
                 One friendly sentence is enough. Add a relevant emoji.
 
       - service: homeassistant.update_entity
