@@ -6,74 +6,96 @@ cards:
   - type: vertical-stack
     cards:
       - type: weather-forecast
+        name: Met.no Weather
         entity: weather.home
+        forecast_type: hourly
       - type: picture-glance
-        title: Living room
+        title: Buienradar
+        camera_view: auto
         entities:
-          - entity: weather.home
+          - entity: weather.home_2
             attribute: temperature
+            icon: mdi:thermometer
+            suffix: '°C'
             show_state: true
-          - entity: weather.home
+          - entity: weather.home_2
             attribute: humidity
-            show_state: true
+            icon: mdi:water-percent
             suffix: '%'
+            show_state: true
+          - entity: weather.home_2
+            attribute: pressure
+            suffix: ' mbar'
+            icon: mdi:gauge
+            show_state: true
+          - entity: weather.home_2
+            attribute: wind_speed
+            icon: mdi:weather-windy
+            show_state: true
+            suffix: 'km/h'
         camera_image: camera.buienradar
-      - type: 'custom:apexcharts-card'
-        graph_span: 2h
-        span:
-          start: minute
-        header:
-          title: Precipitation
-          show: true
-        apex_config:
-          annotations:
-            position: front
-            yaxis:
-              - y: 0.2
-                borderColor: '#00E396'  # Greenish color for low intensity
-                label:
-                  borderColor: '#00E396'
-                  text: 'Light'
-                  style:
-                    background: 'transparent'
-                    color: '#00E396'  # Text color matches the line color
-                    fontSize: '10px'
-                    fontFamily: 'Helvetica, Arial, sans-serif'
-              - y: 1
-                borderColor: '#FEB019'  # Amber color for medium intensity
-                label:
-                  borderColor: '#FEB019'
-                  text: 'Moderate'
-                  style:
-                    background: 'transparent'
-                    color: '#FEB019'
-                    fontSize: '10px'
-                    fontFamily: 'Helvetica, Arial, sans-serif'
-              - y: 2.5
-                borderColor: '#FF4560'  # Red color for high intensity
-                label:
-                  borderColor: '#FF4560'
-                  text: 'Heavy'
-                  style:
-                    background: 'transparent'
-                    color: '#FF4560'
-                    fontSize: '10px'
-                    fontFamily: 'Helvetica, Arial, sans-serif'
-        yaxis:
-          - min: 0
-            max: ~3
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: binary_sensor.rain_forecast
+            state: 'on'
+        card:
+          - type: 'custom:apexcharts-card'
+            graph_span: 2h
+            span:
+              start: minute
+            header:
+              title: Precipitation
+              show: true
             apex_config:
-              tickAmount: 1
-        series:
-          - entity: sensor.precipitation_forecast
-            float_precision: 1
-            type: area
-            color: '#87ceeb'
-            data_generator: |
-              console.log(entity.attributes.precipitation_raw.map(item => [new Date(item.datetime).getTime(), item.precipitation]));
-              return entity.attributes.precipitation_raw.map(item => {
-                return [new Date(item.datetime).getTime(), item.precipitation];
-              });
+              annotations:
+                position: front
+                yaxis:
+                  - y: 0.2
+                    borderColor: '#00E396'  # Greenish color for low intensity
+                    label:
+                      borderColor: '#00E396'
+                      text: 'Light'
+                      style:
+                        background: 'transparent'
+                        color: '#00E396'  # Text color matches the line color
+                        fontSize: '10px'
+                        fontFamily: 'Helvetica, Arial, sans-serif'
+                  - y: 1
+                    borderColor: '#FEB019'  # Amber color for medium intensity
+                    label:
+                      borderColor: '#FEB019'
+                      text: 'Moderate'
+                      style:
+                        background: 'transparent'
+                        color: '#FEB019'
+                        fontSize: '10px'
+                        fontFamily: 'Helvetica, Arial, sans-serif'
+                  - y: 2.5
+                    borderColor: '#FF4560'  # Red color for high intensity
+                    label:
+                      borderColor: '#FF4560'
+                      text: 'Heavy'
+                      style:
+                        background: 'transparent'
+                        color: '#FF4560'
+                        fontSize: '10px'
+                        fontFamily: 'Helvetica, Arial, sans-serif'
+            yaxis:
+              - min: 0
+                max: ~3
+                apex_config:
+                  tickAmount: 1
+            series:
+              - entity: sensor.precipitation_forecast
+                float_precision: 1
+                type: area
+                color: '#87ceeb'
+                data_generator: |
+                  console.log(entity.attributes.precipitation_raw.map(item => [new Date(item.datetime).getTime(), item.precipitation]));
+                  return entity.attributes.precipitation_raw.map(item => {
+                    return [new Date(item.datetime).getTime(), item.precipitation];
+                  });
       - type: 'custom:apexcharts-card'
         graph_span: 24h
         span:
@@ -151,10 +173,12 @@ cards:
             group_by:
               func: median
               duration: 10min
+  
   - type: vertical-stack
     cards:
       - type: glance
-        name: CO2
+        title: CO2 Levels
+        show_name: true
         columns: 4
         entities:
           - entity: sensor.bedroom_co2
@@ -175,141 +199,6 @@ cards:
           - entity: sensor.guest_room_co2
             name: Guest Room
             icon: mdi:bed
-      - type: custom:apexcharts-card
-        header:
-          title: Ventilation
-          show: true
-          show_states: true
-          colorize_states: true
-        update_interval: 1m
-        graph_span: 24h
-        apex_config:
-          chart:
-            toolbar:
-              show: false
-            height: 250px
-          legend:
-            show: false
-          grid:
-            show: false
-            padding:
-              left: 0
-              right: 0
-              bottom: 0
-              top: -20
-          annotations:
-            position: front
-            yaxis:
-              - y: 25
-                borderColor: '#32CD32'
-                label:
-                  position: left
-                  offsetY: -5
-                  offsetX: 40
-                  borderColor: '#32CD32'
-                  text: '25%'
-                  style:
-                    background: '#1E1E1E'  # Dark background for dark theme
-                    color: '#32CD32'
-                    fontSize: '10px'
-                    fontFamily: 'Helvetica, Arial, sans-serif'
-              - y: 50
-                borderColor: '#FFD700'
-                label:
-                  position: left
-                  offsetX: 40
-                  borderColor: '#FFD700'
-                  text: '50%'
-                  style:
-                    background: '#1E1E1E'  # Dark background for dark theme
-                    color: '#FFD700'
-                    fontSize: '10px'
-                    fontFamily: 'Helvetica, Arial, sans-serif'
-              - y: 100
-                borderColor: '#FF4500'
-                label:
-                  position: left
-                  offsetX: 40
-                  borderColor: '#FF4500'
-                  text: '100%'
-                  style:
-                    background: '#1E1E1E'  # Dark background for dark theme
-                    color: '#FF4500'
-                    fontSize: '10px'
-                    fontFamily: 'Helvetica, Arial, sans-serif'
-        yaxis:
-          - min: 0
-            max: 100
-            show: false
-        layout: minimal
-        all_series_config:
-          type: area
-          stroke_width: 3
-          #fill_raw: zero
-        series:
-          - entity: fan.ventilation_system
-            name: Home Ventilation
-            attribute: percentage
-            color: '#FFDD55'
-            group_by:
-              func: avg
-              duration: 5min
-          - entity: fan.ventilation_system
-            name: Home Ventilation
-            attribute: percentage
-            color: '#FF6699'
-            type: line
-            stroke_width: 1
-            group_by:
-              func: max
-              duration: 15min
-            show:
-              in_header: false
-
-      - type: glance
-        title: Home Ventilation
-        entities:
-          - entity: switch.fan_speed_override
-            name: Override
-            icon: mdi:fan-alert
-            tap_action:
-              action: toggle
-          - entity: number.override_fan_speed
-            name: Speed
-            icon: mdi:fan
-          - entity: number.override_fan_duration
-            name: Duration
-            icon: mdi:fan-clock
-      # - type: custom:mini-graph-card
-      #   entities:
-      #     - entity: sensor.temperature_outside
-      #       name: Outside
-      #       color: '#33ff61'
-      #       show_fill: false
-      #     - entity: sensor.temperature_livingroom
-      #       name: Living room
-      #       color: '#ffc733'
-      #       show_fill: false
-      #     - entity: sensor.study_multi_sensor_2_temperature
-      #       name: Study Down
-      #       color: '#ffe433'
-      #       show_fill: false
-      #     - entity: sensor.temperature_bedroom
-      #       name: Bedroom
-      #       color: '#ff7a33'
-      #       show_fill: false
-      #     - entity: sensor.temperature_bathroom
-      #       name: Bathroom
-      #       color: '#ff3c33'
-      #       show_fill: false
-      #   hours_to_show: 24
-      #   points_per_hour: 5
-      #   hour24: true
-      #   font_size: 70
-      #   height: 250
-      #   line_width: 4
-      #   show:
-      #     labels_secondary: false
 
       - type: custom:apexcharts-card
         header:
@@ -346,8 +235,8 @@ cards:
         yaxis:
           - show: true
             decimals: 1
-            min: ~15
-            max: ~25
+            min: 15
+            max: 25
             align_to: 1
             apex_config:
               tickAmount: 4
@@ -370,9 +259,6 @@ cards:
           - entity: sensor.living_room_aqm_temperature
             name: Living Room AQM
             color: '#FFDD55'  # Soft bold yellow
-          # - entity: sensor.study_multi_sensor_2_temperature
-          #   name: Study Down
-          #   color: '#33FFFF'  # Light teal blue
           - entity: sensor.study_aqm_temperature
             name: Study AQM
             color: '#66FFFF'  # Very light teal blue
@@ -388,16 +274,11 @@ cards:
           - entity: sensor.guest_room_aqm_temperature
             name: Guest Room AQM
             color: '#B266FF'  # Light purple
-          # - entity: sensor.weather_forecast_hourly
-          #   float_precision: 1
-          #   name: Forecast
-          #   type: line
-          #   #opacity: 1
-          #   stroke_width: 3
-          #   data_generator: |
-          #     return entity.attributes.forecast.map(item => {
-          #       return [new Date(item.datetime).getTime(), item.temperature];
-          #     });
+          - entity: sensor.shed_aqm_temperature
+            name: Shed AQM
+            color: '#33ff63'
+            stroke_width: 3
+            stroke_dash: 5
 
       - type: custom:apexcharts-card
         header:
@@ -668,3 +549,112 @@ cards:
         opacity: 0.5
         show:
           in_header: false
+
+  - type: custom:collapsable-cards
+    title: Ventilation
+    cards:
+      - type: custom:apexcharts-card
+        header:
+          title: Ventilation
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 1m
+        graph_span: 24h
+        apex_config:
+          chart:
+            toolbar:
+              show: false
+            height: 250px
+          legend:
+            show: false
+          grid:
+            show: false
+            padding:
+              left: 0
+              right: 0
+              bottom: 0
+              top: -20
+          annotations:
+            position: front
+            yaxis:
+              - y: 25
+                borderColor: '#32CD32'
+                label:
+                  position: left
+                  offsetY: -5
+                  offsetX: 40
+                  borderColor: '#32CD32'
+                  text: '25%'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#32CD32'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 50
+                borderColor: '#FFD700'
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FFD700'
+                  text: '50%'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#FFD700'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+              - y: 100
+                borderColor: '#FF4500'
+                label:
+                  position: left
+                  offsetX: 40
+                  borderColor: '#FF4500'
+                  text: '100%'
+                  style:
+                    background: '#1E1E1E'  # Dark background for dark theme
+                    color: '#FF4500'
+                    fontSize: '10px'
+                    fontFamily: 'Helvetica, Arial, sans-serif'
+        yaxis:
+          - min: 0
+            max: 100
+            show: false
+        layout: minimal
+        all_series_config:
+          type: area
+          stroke_width: 3
+          #fill_raw: zero
+        series:
+          - entity: fan.ventilation_system
+            name: Home Ventilation
+            attribute: percentage
+            color: '#FFDD55'
+            group_by:
+              func: avg
+              duration: 5min
+          - entity: fan.ventilation_system
+            name: Home Ventilation
+            attribute: percentage
+            color: '#FF6699'
+            type: line
+            stroke_width: 1
+            group_by:
+              func: max
+              duration: 15min
+            show:
+              in_header: false
+
+      - type: glance
+        title: Home Ventilation
+        entities:
+          - entity: switch.fan_speed_override
+            name: Override
+            icon: mdi:fan-alert
+            tap_action:
+              action: toggle
+          - entity: number.override_fan_speed
+            name: Speed
+            icon: mdi:fan
+          - entity: number.override_fan_duration
+            name: Duration
+            icon: mdi:fan-clock
