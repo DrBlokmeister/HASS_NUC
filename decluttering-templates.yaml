@@ -296,3 +296,176 @@ climate_apexchart:
           legend_value: false
           in_header: false
 
+###################################
+## APEXCHARTS ELECTRICITY PRICES ##
+###################################
+energy_price_apexchart:
+  default:
+    - graph_span: 24h
+    - now_label: Now
+    - series_offset: -30min
+    - span_offset: +0d
+    - day: today
+  card:
+    type: 'custom:apexcharts-card'
+    header:
+      title: 'Energy price [[day]] (€/kWh)'
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: '[[graph_span]]'
+    yaxis:
+      - min: ~0
+        max: ~0.50
+        decimals: 3
+        align_to: 0.1
+        apex_config:
+          forceNiceScale: true
+    span:
+      start: day
+      offset: '[[span_offset]]'
+    now:
+      show: true
+      label: '[[now_label]]'
+    experimental:
+      color_threshold: true
+    series:
+      - entity: sensor.nordpool_energy_price
+        float_precision: 3
+        type: column
+        color_threshold:
+          - value: -0.2
+            color: '#5963c0'
+          - value: -0.1
+            color: '#2681cb'
+          - value: -0
+            color: '#2599c8'
+          - value: 0.033
+            color: '#59adc0'
+          - value: 0.066
+            color: '#39afb4'
+          - value: 0.1
+            color: '#2bb09e'
+          - value: 0.133
+            color: '#3faf81'
+          - value: 0.166
+            color: '#5eab5f'
+          - value: 0.2
+            color: '#7ea53b'
+          - value: 0.233
+            color: '#9f9b13'
+          - value: 0.266
+            color: '#c18c00'
+          - value: 0.3
+            color: '#e27609'
+          - value: 0.333
+            color: '#ff5833'
+          - value: 0.366
+            color: '#ed4323'
+          - value: 0.4
+            color: '#db2b12'
+          - value: 0.433
+            color: '#c90000'
+          - value: 0.466
+            color: '#830505'
+          - value: 0.5
+            color: '#6e0505'
+          - value: 0.6
+            color: '#440505'
+          - value: 0.7
+            color: '#1c0303'
+          - value: 0.8
+            color: '#090101'
+        data_generator: "return entity.attributes.raw_[[day]].map((start, index) => [new Date(start['start']).getTime(), entity.attributes.raw_[[day]][index]['value']]);"
+        offset: '[[series_offset]]'
+
+############################
+## LAST 7 DAYS APEXCHARTS ##
+############################
+last_7_days_apexcharts_card:
+  default:
+    - title: "Last 7 Days"
+    - yaxis:
+        - min: 0
+          max: 100
+          decimals: 0
+          align_to: 10
+    - graph_span: 24h
+    - chart_type: line
+    - update_interval: 1m
+    - span_offset: +0h
+    - color_today: '#57c785'
+    - color_1day_ago: '#0da035'
+    - color_2days_ago: '#0da035'
+    - color_3days_ago: '#0da035'
+    - color_4days_ago: '#0da035'
+    - color_5days_ago: '#0da035'
+    - color_6days_ago: '#0da035'
+    - all_series_config:
+        stroke_width: 2
+        float_precision: 0
+        group_by:
+          func: avg
+          duration: 15min
+        show:
+          in_header: false
+          legend_value: false
+    - apex_config: []
+  card:
+    type: custom:apexcharts-card
+    graph_span: '[[graph_span]]'
+    chart_type: '[[chart_type]]'
+    update_interval: '[[update_interval]]'
+    header:
+      show: true
+      title: '[[title]]'
+      show_states: true
+      colorize_states: true
+    span:
+      start: day
+      offset: '[[span_offset]]'
+    now:
+      show: true
+    yaxis: '[[yaxis]]'
+    all_series_config: '[[all_series_config]]'
+    apex_config: '[[apex_config]]'
+    series:
+      - entity: '[[entity]]'
+        offset: '-6d'
+        name: 6 Days Ago
+        color: '[[color_6days_ago]]'
+        opacity: 0.10
+      - entity: '[[entity]]'
+        offset: '-5d'
+        name: 5 Days Ago
+        color: '[[color_5days_ago]]'
+        opacity: 0.15
+      - entity: '[[entity]]'
+        offset: '-4d'
+        name: 4 Days Ago
+        color: '[[color_4days_ago]]'
+        opacity: 0.20
+      - entity: '[[entity]]'
+        offset: '-3d'
+        name: 3 Days Ago
+        color: '[[color_3days_ago]]'
+        opacity: 0.25
+      - entity: '[[entity]]'
+        offset: '-2d'
+        name: 2 Days Ago
+        color: '[[color_2days_ago]]'
+        opacity: 0.50
+      - entity: '[[entity]]'
+        offset: '-1d'
+        name: Yesterday
+        color: '[[color_1day_ago]]'
+        opacity: 0.75
+      - entity: '[[entity]]'
+        name: Today
+        color: '[[color_today]]'
+        stroke_width: 4
+        extend_to: now
+        opacity: 1.00
+        show:
+          in_header: true
+          legend_value: true

@@ -1,74 +1,33 @@
 title: Power Diagnostics
 icon: mdi:lightning-bolt-circle
 cards:
-  - type: custom:apexcharts-card
-    graph_span: 16h
-    span:
-      start: day
-      offset: +6h
-    header:
-      show: true
-      title: Solar Production Last 7 Days
-      show_states: false
-      colorize_states: true
-    now:
-      show: true
-    apex_config:
-      legend:
-        show: false
-    chart_type: line
-    update_interval: 1m
-    yaxis:
-      - min: 0
-        max: ~1000
-        decimals: 0
-        apex_config:
-          tickAmount: 4
-    all_series_config:
-      stroke_width: 2
-      float_precision: 0
-      transform: "return Math.round(x);"
-      unit: W
-      group_by:
-        func: avg
-        duration: 15min
-    series:
+  - type: custom:decluttering-card
+    template: last_7_days_apexcharts_card
+    variables:
+      - title: "Solar Production Last 7 Days"
       - entity: sensor.solar_panel_power_production_available
-        offset: '-6d'
-        name: 6 Days Ago
-        color: '#0da035'
-        opacity: 0.1
-      - entity: sensor.solar_panel_power_production_available
-        offset: '-5d'
-        name: 5 Days Ago
-        color: '#0da035'
-        opacity: 0.15
-      - entity: sensor.solar_panel_power_production_available
-        offset: '-4d'
-        name: 4 Days Ago
-        color: '#0da035'
-        opacity: 0.2
-      - entity: sensor.solar_panel_power_production_available
-        offset: '-3d'
-        name: 3 Days Ago
-        color: '#0da035'
-        opacity: 0.25
-      - entity: sensor.solar_panel_power_production_available
-        offset: '-2d'
-        name: 2 Days Ago
-        color: '#0da035'
-        opacity: 0.5
-      - entity: sensor.solar_panel_power_production_available
-        offset: '-1d'
-        name: Yesterday
-        color: '#0da035'
-        opacity: 0.75
-      - entity: sensor.solar_panel_power_production_available
-        name: Today
-        color: '#57c785' # Lighter and slightly different hue for better visibility
-        stroke_width: 4 # Thicker line to ensure "Today" stands out
-        extend_to: now
-        opacity: 1 # Full opacity for "Today"
+      - header_title: "Solar Production Last 7 Days"
+      - span_offset: +6h
+      - graph_span: 16h
+      - yaxis:
+          - min: 0
+            max: 3000
+            decimals: 0
+            align_to: 500
+      - apex_config:
+          legend:
+            show: false
+      - all_series_config:
+          stroke_width: 2
+          float_precision: 0
+          transform: "return Math.round(x);"
+          unit: W
+          group_by:
+            func: avg
+            duration: 15min
+          show:
+            in_header: false
+            legend_value: false
 
   - type: grid
     square: false

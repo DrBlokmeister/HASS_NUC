@@ -408,164 +408,21 @@ cards:
       show:
         labels: true
         average: false
-    - type: 'custom:apexcharts-card'
-      graph_span: 24h
-      yaxis:
-        - min: ~0
-          max: ~0.50
-          decimals: 3
-          align_to: 0.1
-          apex_config:
-            #tickAmount: 5
-            forceNiceScale: True
-      header:
-        title: Energy price today (€/kWh)
-        show: true
-        show_states: true
-        colorize_states: true
-      span:
-        start: day
-      now:
-        show: true
-        label: Now
-      experimental:
-        color_threshold: true
-      series:
-        - entity: sensor.nordpool_energy_price
-          float_precision: 3
-          color_threshold:
-              # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
-              # default is: the default color of the serie
-              # Used this gradient generator: https://colordesigner.io/gradient-generator
-            - value: -0.2
-              color: '#5963c0'
-            - value: -0.1
-              color: '#2681cb'
-            - value: -0
-              color: '#2599c8'
-            - value: 0.033
-              color: '#59adc0'
-            - value: 0.066
-              color: '#39afb4'
-            - value: 0.1
-              color: '#2bb09e'
-            - value: 0.133
-              color: '#3faf81'
-            - value: 0.166
-              color: '#5eab5f'
-            - value: 0.2
-              color: '#7ea53b'
-            - value: 0.233
-              color: '#9f9b13'
-            - value: 0.266
-              color: '#c18c00'
-            - value: 0.3
-              color: '#e27609'
-            - value: 0.333
-              color: '#ff5833'
-            - value: 0.366
-              color: '#ed4323'
-            - value: 0.4
-              color: '#db2b12'
-            - value: 0.433
-              color: '#c90000'
-            - value: 0.466
-              color: '#830505'
-            - value: 0.5
-              color: '#6e0505'
-            - value: 0.6
-              color: '#440505'
-            - value: 0.7
-              color: '#1c0303'
-            - value: 0.8
-              color: '#090101'
-          type: column
-          data_generator: |
-            return entity.attributes.raw_today.map((start, index) => {
-              return [new Date(start["start"]).getTime(), entity.attributes.raw_today[index]["value"]];
-            });
-          offset: -30min
+    - type: custom:decluttering-card
+      template: energy_price_apexchart
+      variables:
+        - day: today
     - type: conditional
       conditions:
         - condition: state
           entity: binary_sensor.tomorrow_s_electricity_prices_available
           state: "on"
       card:
-        type: custom:apexcharts-card
-        graph_span: 1d
-        yaxis:
-          - min: ~0
-            max: ~0.50
-            decimals: 3
-            align_to: 0.1
-            apex_config:
-              #tickAmount: 5
-              forceNiceScale: True
-        header:
-          title: Energy price tomorrow (€/kWh)
-          show: true
-          show_states: true
-          colorize_states: true
-        span:
-          start: day
-          offset: +1d
-        experimental:
-          color_threshold: true
-        series:
-          - entity: sensor.nordpool_energy_price
-            float_precision: 3
-            type: column
-            color_threshold:
-                # color can be a color name, rgb(r, g, b), '#0000ff' or var(--color-variable)
-                # default is: the default color of the serie
-                # Used this gradient generator: https://colordesigner.io/gradient-generator
-              - value: -0.2
-                color: '#5963c0'
-              - value: -0.1
-                color: '#2681cb'
-              - value: -0
-                color: '#2599c8'
-              - value: 0.033
-                color: '#59adc0'
-              - value: 0.066
-                color: '#39afb4'
-              - value: 0.1
-                color: '#2bb09e'
-              - value: 0.133
-                color: '#3faf81'
-              - value: 0.166
-                color: '#5eab5f'
-              - value: 0.2
-                color: '#7ea53b'
-              - value: 0.233
-                color: '#9f9b13'
-              - value: 0.266
-                color: '#c18c00'
-              - value: 0.3
-                color: '#e27609'
-              - value: 0.333
-                color: '#ff5833'
-              - value: 0.366
-                color: '#ed4323'
-              - value: 0.4
-                color: '#db2b12'
-              - value: 0.433
-                color: '#c90000'
-              - value: 0.466
-                color: '#830505'
-              - value: 0.5
-                color: '#6e0505'
-              - value: 0.6
-                color: '#440505'
-              - value: 0.7
-                color: '#1c0303'
-              - value: 0.8
-                color: '#090101'
-            data_generator: |
-              return entity.attributes.raw_tomorrow.map((start, index) => {
-                return [new Date(start["start"]).getTime(), entity.attributes.raw_tomorrow[index]["value"]];
-              });
-
+        - type: custom:decluttering-card
+          template: energy_price_apexchart
+          variables:
+            - span_offset: +1d
+            - day: tomorrow
   - type: grid
     columns: 3
     square: false
