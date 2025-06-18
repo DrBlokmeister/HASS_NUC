@@ -287,43 +287,59 @@ automation:
         entity_id: binary_sensor.g4_doorbell_pro_doorbell
         from: 'off'
         to: 'on'
-      # - trigger: event
-      #   event_type: state_changed
-      #   event_data:
-      #     entity_id: event.g4_doorbell_pro_doorbell
     condition:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 5) }}"
-      # - condition: template
-      #   value_template: >-
-      #     {{
-      #       ('ring' in trigger.event.data.new_state.attributes.event_types) and
-      #       (trigger.event.data.new_state.attributes.event_type == 'ring')
-      #      }}
     action:
-      # - action: system_log.write
-      #   data:
-      #     message: "Doorbell has been rung with event type: {{ trigger.event.data.new_state.attributes.event_types }} and attributes {{ trigger.event.data.new_state.attributes }}"
-      #     level: info
-      # - service: camera.snapshot
-      #   data:
-      #     entity_id: camera.g4_doorbell_pro_high_resolution_channel
-      #     filename: "/config/www/snapshots/doorbell_snapshot.jpg"
-      # - delay:
-      #     milliseconds: 100
-      - service: notify.sander_and_tamara_phones
-        data:
-          message: "Someone's at the door!"
-          title: "Doorbell Alert"
-          data:
-            image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
-            clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
-            ttl: 0
-            priority: high
-            sticky: "true"
-            tag: doorbell
-            group: "doorbell"
-            notification_icon: "mdi:bell-ring"
+      - parallel:
+          - service: notify.sander_and_tamara_phones
+            data:
+              message: "Someone's at the door!"
+              title: "Doorbell Alert"
+              data:
+                image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
+                clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
+                ttl: 0
+                priority: high
+                sticky: "true"
+                tag: doorbell
+                group: "doorbell"
+                notification_icon: "mdi:bell-ring"
+          - sequence:
+              - service: camera.snapshot
+                data:
+                  entity_id: camera.g4_doorbell_pro_high_resolution_channel
+                  filename: "/config/www/tmp/doorbell_snapshot.jpg"
+                continue_on_error: true
+              - service: openai_conversation.generate_content
+                data:
+                  config_entry: 01JXMECP3GC7BHJNM2DH3A4KPD
+                  prompt: >-
+                    Someone has just rang my video doorbell and I want to know who is at the
+                    door or what is happening. Very briefly describe what you see in this image
+                    from my doorbell camera. Don't describe stationary objects like bushes or
+                    buildings. Focus on who is standing in front of my door. If it is clear who
+                    this person is (package delivery, charity, etc), mention this. Otherwise
+                    describe the person and make an educated guess. For context, I'm in The Netherlands.
+
+                    Your message needs to be around 150 characters.
+                  filenames: /config/www/tmp/doorbell_snapshot.jpg
+                response_variable: openai_response
+                continue_on_error: true
+              - service: notify.sander_and_tamara_phones
+                data:
+                  message: "{{ openai_response.text }}"
+                  title: "Doorbell Alert"
+                  data:
+                    image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
+                    clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
+                    ttl: 0
+                    priority: high
+                    sticky: "true"
+                    tag: doorbell
+                    group: "doorbell"
+                    notification_icon: "mdi:bell-ring"
+                continue_on_error: true
       - choose:
           - conditions:
               - condition: state
@@ -355,7 +371,7 @@ automation:
                         language: "en-IE"
                     - service: notify.sander_and_tamara_phones
                       data:
-                        message: "Reminder: Doorbell was pressed. Please check the door."
+                        message: "{{ openai_response.response.speech.plain.speech }}"
                         title: "Doorbell Reminder"
                         data:
                           image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
@@ -410,8 +426,6 @@ automation:
               - service: scene.turn_on
                 data:
                   entity_id: scene.porch_before
-              # - service: light.turn_off
-              #   entity_id: light.shelly_porch
 
   - alias: "[entry|litterbox] Reset Litterbox Count"
     id: automation_yaml_entry_litterbox_reset_litterbox_count
