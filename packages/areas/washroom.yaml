@@ -99,25 +99,27 @@ automation:
     trigger:
       - platform: state
         entity_id: sensor.washer_washer_machine_state
-        from: 'Stopped'
-        to: 'Running'
+        from:
+          - 'Stopped'
+          - 'stop'
+        to: 'run'
     variables:
-      start_time: "{{ now() }}"
+      start_time: "{{ now().isoformat() }}"
     action:
       - alias: "Start progress bar loop"
         repeat:
           while:
             - condition: state
               entity_id: sensor.washer_washer_machine_state
-              state: 'Running'
+              state: "run"
           sequence:
             - variables:
-                end_time: "{{ as_datetime(states('sensor.washer_washer_completion_time')) }}"
+                end_time: "{{ as_datetime(states('sensor.washer_washer_completion_time')).astimezone() }}"
                 progress: >
-                  {% set elapsed = (now() - start_time).total_seconds() / 60 %}
+                  {% set elapsed = (now() - as_datetime(start_time)).total_seconds() / 60 %}
                   {{ elapsed | round(0) }}
                 progress_max: >
-                  {% set total = (end_time - start_time).total_seconds() / 60 %}
+                  {% set total = (as_datetime(end_time) - as_datetime(start_time)).total_seconds() / 60 %}
                   {% if total > 0 %}{{ total | round(0) }}{% else %}1{% endif %}
                 percent_done: >
                   {% if progress_max|float(0) > 0 %}
@@ -153,6 +155,7 @@ automation:
           data:
             tag: "washing_machine_progress"
             progress: -1  # This removes the progress bar
+
 
 ################
 #    SCENES    #
