@@ -14,6 +14,7 @@
 #| Moeke Status Control       | 0000021ef7993413      | 1a55b4b3210d9df377ff1da5f8bd8ebe | Control group tag for Moeke Status       |
 #| Litterbox Status           | 0000021dc9ca341b      | 5f61de1a08a9f1dcb162b383d8be9a4e | Replaced 0000021DC9CA341B on 20250603    |
 #| Study Energy Control       | 0000021dc3bf3413      | 8a5608d777be457d781e79b5948c2332 | Control group tag for Study Energy       |
+#| Study Calendar             | 780105561c817600      | 0384f3ad3a85237fcb589d95931ddc60 |                                          |
 
 homeassistant:
   customize: {}
@@ -420,6 +421,18 @@ automation:
       - service: script.update_study_powerstrip_display
         data:
           display_device_id: fcf0279b783325a85401128ab88eefd4
+
+  - alias: "[misc|epaperlink] Update Calendar Displays"
+    id: yaml_script_misc_epaperlink_update_calendar_displays
+    mode: restart
+    trigger:
+      - platform: time
+        at: "05:00:00"
+    condition:
+    action:
+      - service: script.update_epaper_calendar_display
+        data:
+          display_device_id: 0384f3ad3a85237fcb589d95931ddc60
 
   - alias: "[misc|epaperlink] Tag Button Update of Displays"
     id: automation_yaml_misc_epaperlink_tag_button_update_of_displays
@@ -3703,6 +3716,299 @@ script:
                   width: 3
                   joint: curve
                   color: black
+
+  update_epaper_calendar_display:
+    alias: "[epaper|calendar] Update Epaper Tag with Calendar Events"
+    description: "Fetch next 48h calendar events, show top 5 on e-paper tag."
+    mode: single
+    fields:
+      display_device_id:
+        description: "The device ID of the OpenEPaperLink display to update."
+        example: "0384f3ad3a85237fcb589d95931ddc60"
+        required: true
+    sequence:
+      - alias: 'Fetch calendar events for next 48h'
+        service: calendar.get_events
+        target:
+          entity_id:
+            - calendar.sander_blok_gmail_com
+            - calendar.feestdagen_in_nederland
+            - calendar.theater
+            - calendar.optredens_in_bandsintown
+        data:
+          duration:
+            hours: 48
+        response_variable: calendar_events
+      - alias: "Prepare event list"
+        variables:
+          all_events: >
+            {{
+              (
+                calendar_events['calendar.sander_blok_gmail_com'].events +
+                calendar_events['calendar.feestdagen_in_nederland'].events +
+                calendar_events['calendar.theater'].events +
+                calendar_events['calendar.optredens_in_bandsintown'].events
+              )
+              | sort(attribute='start')
+            }}
+          show_events: "{{ all_events[:5] }}"
+      - alias: "Draw to Epaper"
+        service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          dither: 0
+          ttl: 60
+          background: white
+          dry-run: false
+          rotate: 270
+          payload:
+            # Row 1
+            - type: rectangle
+              x_start: 0
+              x_end: 184
+              y_start: 0
+              y_end: 76
+              outline: black
+              width: 2
+            - type: text
+              value: >
+                {% set ev = show_events[0] if show_events|count > 0 else None %}
+                {% if ev is not none %}
+                  {% if "T" in ev.start %}
+                    {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                  {% else %}
+                    {{ as_datetime(ev.start).strftime('%d %b') }}
+                  {% endif %}
+                {% else %}
+                  {{ " " }}
+                {% endif %}
+              x: 6
+              y: 6
+              size: 12
+              color: black
+            - type: text
+              value: >
+                {% set ev = show_events[0] if show_events|count > 0 else None %}
+                {{ ev.summary if ev is not none else " " }}
+              max_width: 174
+              x: 10
+              y: 20
+              size: 15
+              color: black
+
+            # Row 2
+            - type: rectangle
+              x_start: 0
+              x_end: 184
+              y_start: 76
+              y_end: 153
+              outline: black
+              width: 2
+            - type: text
+              value: >
+                {% set ev = show_events[1] if show_events|count > 1 else None %}
+                {% if ev is not none %}
+                  {% if "T" in ev.start %}
+                    {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                  {% else %}
+                    {{ as_datetime(ev.start).strftime('%d %b') }}
+                  {% endif %}
+                {% else %}
+                  {{ " " }}
+                {% endif %}
+              x: 6
+              y: 82
+              size: 12
+              color: black
+            - type: text
+              value: >
+                {% set ev = show_events[1] if show_events|count > 1 else None %}
+                {{ ev.summary if ev is not none else " " }}
+              max_width: 174
+              x: 10
+              y: 96
+              size: 15
+              color: black
+
+            # Row 3
+            - type: rectangle
+              x_start: 0
+              x_end: 184
+              y_start: 153
+              y_end: 230
+              outline: black
+              width: 2
+            - type: text
+              value: >
+                {% set ev = show_events[2] if show_events|count > 2 else None %}
+                {% if ev is not none %}
+                  {% if "T" in ev.start %}
+                    {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                  {% else %}
+                    {{ as_datetime(ev.start).strftime('%d %b') }}
+                  {% endif %}
+                {% else %}
+                  {{ " " }}
+                {% endif %}
+              x: 6
+              y: 159
+              size: 12
+              color: black
+            - type: text
+              value: >
+                {% set ev = show_events[2] if show_events|count > 2 else None %}
+                {{ ev.summary if ev is not none else " " }}
+              max_width: 174
+              x: 10
+              y: 173
+              size: 15
+              color: black
+
+            # Row 4
+            - type: rectangle
+              x_start: 0
+              x_end: 184
+              y_start: 230
+              y_end: 307
+              outline: black
+              width: 2
+            - type: text
+              value: >
+                {% set ev = show_events[3] if show_events|count > 3 else None %}
+                {% if ev is not none %}
+                  {% if "T" in ev.start %}
+                    {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                  {% else %}
+                    {{ as_datetime(ev.start).strftime('%d %b') }}
+                  {% endif %}
+                {% else %}
+                  {{ " " }}
+                {% endif %}
+              x: 6
+              y: 236
+              size: 12
+              color: black
+            - type: text
+              value: >
+                {% set ev = show_events[3] if show_events|count > 3 else None %}
+                {{ ev.summary if ev is not none else " " }}
+              max_width: 174
+              x: 10
+              y: 250
+              size: 15
+              color: black
+
+            # Row 5
+            - type: rectangle
+              x_start: 0
+              x_end: 184
+              y_start: 307
+              y_end: 384
+              outline: black
+              width: 2
+            - type: text
+              value: >
+                {% set ev = show_events[4] if show_events|count > 4 else None %}
+                {% if ev is not none %}
+                  {% if "T" in ev.start %}
+                    {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                  {% else %}
+                    {{ as_datetime(ev.start).strftime('%d %b') }}
+                  {% endif %}
+                {% else %}
+                  {{ " " }}
+                {% endif %}
+              x: 6
+              y: 313
+              size: 12
+              color: black
+            - type: text
+              value: >
+                {% set ev = show_events[4] if show_events|count > 4 else None %}
+                {{ ev.summary if ev is not none else " " }}
+              max_width: 174
+              x: 10
+              y: 327
+              size: 15
+              color: black
+
+  update_washing_machine_display:
+    alias: "[epaper|laundry] Update Washing Machine Display"
+    mode: queued
+    fields:
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "165750b668ea226052a89d9bf8239287"
+        default: "165750b668ea226052a89d9bf8239287"
+      progress_percent:
+        description: "Current progress as a percentage (0–100)"
+        example: 0
+        default: 0
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          payload:
+            # Job State (top, big, centered)
+            - type: text
+              value: "{{ states('sensor.washer_washer_job_state') }}"
+              font: ppb.ttf
+              x: 148
+              y: 25
+              size: 28
+              color: 'black'
+              anchor: mm
+            # Progress Bar (centered)
+            - type: progress_bar
+              x_start: 20
+              y_start: 55
+              x_end: 276
+              y_end: 75
+              fill: red
+              outline: black
+              width: 2
+              progress: "{{ progress_percent | int }}"
+              direction: right
+              show_percentage: true
+              font: "ppb.ttf"
+            # Completion Time (below progress bar, left)
+            - type: text
+              value: >
+                {%- set state = states('sensor.washer_washer_job_state') -%}
+                {%- if state != 'Finish' and state != 'Ready' %}
+                  Done @ {{ as_datetime(states('sensor.washer_washer_completion_time')).strftime('%a %d %b %H:%M') }}
+                {%- else -%}
+                  Ready!
+                {%- endif -%}
+              font: ppb.ttf
+              x: 20
+              y: 100
+              size: 18
+              color: 'black'
+              anchor: lb
+            # Percentage (below progress bar, right)
+            - type: text
+              value: "{{ progress_percent | int }}%"
+              font: ppb.ttf
+              x: 276
+              y: 90
+              size: 18
+              color: 'black'
+              anchor: rb
+            # Last updated (bottom right)
+            - type: text
+              value: "Updated: {{ now().strftime('%H:%M') }}"
+              font: ppb.ttf
+              x: 276
+              y: 120
+              size: 14
+              color: 'black'
+              anchor: rb
+
 
   drawcustom_snapshot_examples:
     alias: "Generate drawcustom snapshots"
