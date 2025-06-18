@@ -92,6 +92,68 @@ automation:
             priority: high
             tag: washing_machine_leak
 
+  - alias: "[washroom|notify] Washing machine progress bar notification"
+    id: yaml_automation_washroom_notify_washing_machine_progress_bar_notification
+    description: "Show a sticky progress bar notification for the washing machine on Android"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.washer_washer_machine_state
+        from: 'Stopped'
+        to: 'Running'
+    variables:
+      start_time: "{{ now() }}"
+    action:
+      - alias: "Start progress bar loop"
+        repeat:
+          while:
+            - condition: state
+              entity_id: sensor.washer_washer_machine_state
+              state: 'Running'
+          sequence:
+            - variables:
+                end_time: "{{ as_datetime(states('sensor.washer_washer_completion_time')) }}"
+                progress: >
+                  {% set elapsed = (now() - start_time).total_seconds() / 60 %}
+                  {{ elapsed | round(0) }}
+                progress_max: >
+                  {% set total = (end_time - start_time).total_seconds() / 60 %}
+                  {% if total > 0 %}{{ total | round(0) }}{% else %}1{% endif %}
+                percent_done: >
+                  {% if progress_max|float(0) > 0 %}
+                    {{ ((progress|float / progress_max|float) * 100) | round(0) }}
+                  {% else %}
+                    0
+                  {% endif %}
+            - service: notify.mobile_app_blokmeisterp9pro
+              data:
+                title: "Washing Machine"
+                message: >
+                  🧺 Laundry in progress: {{ progress|int }} / {{ progress_max|int }} min
+                  ({{ percent_done }}%)
+                data:
+                  tag: "washing_machine_progress"
+                  persistent: true
+                  sticky: true
+                  progress: "{{ progress|int }}"
+                  progress_max: "{{ progress_max|int }}"
+                  chronometer: true
+                  alert_once: true
+            - service: script.update_washing_machine_display
+              continue_on_error: true
+              data:
+                display_device_id: 165750b668ea226052a89d9bf8239287
+                progress_percent: "{{ percent_done }}"
+            - delay: "00:05:00"
+      - alias: "Remove progress bar when done"
+        service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "Washing Machine"
+          message: "Laundry finished!"
+          data:
+            tag: "washing_machine_progress"
+            progress: -1  # This removes the progress bar
+
 ################
 #    SCENES    #
 ################
