@@ -207,21 +207,23 @@ cards:
         entity: sensor.potential_electricity_usage_cost_mean_price
         name: Potential Mean Cost
 
-  - type: custom:decluttering-card
-    template: energy_price_apexchart
-    variables:
-      - day: today
-  - type: conditional
-    conditions:
-      - condition: state
-        entity: binary_sensor.tomorrow_s_electricity_prices_available
-        state: "on"
-    card:
+  - type: vertical-stack
+    cards:
       - type: custom:decluttering-card
         template: energy_price_apexchart
         variables:
-          - span_offset: +1d
-          - day: tomorrow
+          - day: today
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: binary_sensor.tomorrow_s_electricity_prices_available
+            state: "on"
+        card:
+          type: custom:decluttering-card
+          template: energy_price_apexchart
+          variables:
+            - span_offset: +1d
+            - day: tomorrow
 
   - type: grid
     square: false
