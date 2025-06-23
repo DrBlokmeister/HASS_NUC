@@ -127,14 +127,17 @@ automation:
                   {% else %}
                     0
                   {% endif %}
-            - service: notify.mobile_app_blokmeisterp9pro
+            - service: notify.sander_and_tamara_phones
+              continue_on_error: true
               data:
-                title: "Washing Machine"
+                title: "Washing Machine Progress"
                 message: >
                   🧺 Laundry in progress: {{ progress|int }} / {{ progress_max|int }} min
                   ({{ percent_done }}%)
+                  Done at {{ as_datetime(end_time).strftime('%H:%M') }}.
                 data:
                   tag: "washing_machine_progress"
+                  notification_icon: mdi:washing-machine
                   persistent: true
                   sticky: true
                   progress: "{{ progress|int }}"
@@ -148,13 +151,20 @@ automation:
                 progress_percent: "{{ percent_done }}"
             - delay: "00:05:00"
       - alias: "Remove progress bar when done"
-        service: notify.mobile_app_blokmeisterp9pro
+        service: notify.sander_and_tamara_phones
+        continue_on_error: true
         data:
           title: "Washing Machine"
           message: "Laundry finished!"
           data:
+            notification_icon: mdi:washing-machine
             tag: "washing_machine_progress"
             progress: -1  # This removes the progress bar
+      - service: script.update_washing_machine_display
+        continue_on_error: true
+        data:
+          display_device_id: 165750b668ea226052a89d9bf8239287
+          progress_percent: "100"
 
 
 ################
