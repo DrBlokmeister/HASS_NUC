@@ -53,6 +53,7 @@ command_line:
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
         cputemp | awk '{print $1}' || echo -1
+      value_template: "{{ value | float(-1) }}"
       #availability_template: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
       name: 'CoreELEC GPU temp'
@@ -63,6 +64,7 @@ command_line:
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
         gputemp | awk '{print $1}' || echo -1
+      value_template: "{{ value | float(-1) }}"
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
   - sensor:
       name: 'CoreELEC CPU Usage'
@@ -73,6 +75,7 @@ command_line:
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
         root@10.0.20.50
         top -bn1 | awk '/%Cpu\(s\):/ {print $2}' | tr -d '%' || echo -1
+      value_template: "{{ value | float(-1) }}"
   - sensor:
       name: 'CoreELEC Memory Usage'
       unit_of_measurement: '%'
@@ -83,6 +86,7 @@ command_line:
         root@10.0.20.50
         free -m | awk 'NR==2{printf "%.0f\n", $3*100/$2 }' || echo -1
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
+      value_template: "{{ value | float(-1) }}"
   - sensor:
       name: 'CoreELEC Disk Usage'
       unit_of_measurement: '%'
@@ -93,6 +97,7 @@ command_line:
         root@10.0.20.50
         df -h /storage | awk '{ if (NR==2) print $5}' | tr -d '%' || echo -1
       #availability: '{{ is_state('device_tracker.coreelec', 'home') }}'
+      value_template: "{{ value | float(-1) }}"
   - sensor:
       name: CoreELEC HDMI Info
       scan_interval: 60
@@ -108,7 +113,7 @@ command_line:
               /Colour range:/{printf \"  \\\"color_range\\\": \\\"%s\\\",\\n\", \$3}
               /EOTF:/{printf \"  \\\"eotf\\\": \\\"%s\\\",\\n\", \$2}
               /Colourimetry:/{printf \"  \\\"colorimetry\\\": \\\"%s\\\"\\n\", \$2}
-              END{print \"}\"}' /sys/class/amhdmitx/amhdmitx0/config"
+              END{print \"}\"}' /sys/class/amhdmitx/amhdmitx0/config" || echo '{}'
       value_template: "{{ value_json.vic }}"
       json_attributes:
         - vic_desc
