@@ -24,30 +24,28 @@ automation:
           duration:
             hours: 48
         response_variable: calendar_events
-
       - alias: 'Generate ChatGPT agenda summary'
         service: conversation.process
         response_variable: gpt_calendar_response
         data:
           agent_id: conversation.chatgpt_4o_mini
           text: >
-            You are a helpful assistant writing a short morning briefing based on the user's calendar for the next 48 hours.
-            The user just woke up and it's currently {{ states('sensor.time') }} local time.
+            You are a friendly assistant preparing a concise morning briefing based on the user's calendar for the next 48 hours. The user just woke up, and it's currently {{ states('sensor.time') }} local time.
 
-            Provide a short and friendly summary of key events today and tomorrow (max 2 sentences, under 250 characters).
+            Create a short, informal summary (max 2 sentences, under 250 chars) for today's and tomorrow's key events.
 
             Instructions:
-            - Prioritize events from "calendar.sander_blok_gmail_com", as that is the user’s personal calendar.
-            - Always mention the first event of the day and the time it starts. If there are no events today, mention that.
-            - If there’s an important early event today (starting before 11:00), make sure to highlight it.
-            - Include start times for specific appointments.
-            - If there are only holidays or FYI events (from other calendars), summarize them briefly but don’t treat them as urgent.
-            - Try to infer importance based on the title: meetings, appointments, travel, or social events are usually important.
-            - End with a warm note and an emoji (📅, ☀️, 😄).
+            - Clearly state today's earliest event and its start time, emphasizing if it's early (before 11:00 AM).
+            - Distinguish clearly between important appointments (meetings, social events, travel) and casual reminders (FYI or all-day events).
+            - Prioritize events from calendar.sander_blok_gmail_com.
+            - Feel free to translate Dutch event titles to English and interpret them naturally to clearly convey the event's purpose.
+            - Mention event titles naturally without awkward wording.
+            - Do not use markdown or special formatting—plain text only.
+            - Briefly mention if there are no important appointments today.
+            - End on a friendly note with a suitable emoji (📅, ☀️, 😄).
 
             Calendar data:
             {{ calendar_events }}
-
       - alias: 'Send notification to phone'
         service: notify.mobile_app_blokmeisterp9pro
         data:
