@@ -9,9 +9,20 @@
   #######################################################
 
   template:
-    - sensor:
+    - trigger:
+        - platform: time_pattern
+          minutes: "/1"  # Update every minute
+      sensor:
         - name: "Unavailable Entities"
-          state: "{{ expand('group.monitored_entities') | selectattr('state', 'in', ['unavailable', 'unknown', 'none', 'not_home']) | join(', ', attribute='attributes.friendly_name') | truncate(252) or 'Online' }}"
+          unique_id: yaml_template_sensor_unavailable_entities
+          icon: mdi:alert-circle-outline
+          state: >
+            {% set offline = expand('group.monitored_entities')
+                | selectattr('state', 'in',
+                    ['unavailable', 'unknown', 'none', 'not_home'])
+                | map(attribute='name')
+                | list %}
+            {{ offline | join(', ') if offline else 'Online' }}
   
     #######################################################
     ### Helper
@@ -161,7 +172,7 @@
         - binary_sensor.entry_motion_2
         - binary_sensor.livingroom_motion_1
         - binary_sensor.livingroom_motion_2
-        - binary_sensor.livingroom_motion_3
+        # - binary_sensor.livingroom_motion_3 #Unused sensor. Fell behind fridge...
         - binary_sensor.hallway_2nd_floor_motion_1
         - binary_sensor.stairs_upper_motion_1
         - binary_sensor.hallway_1st_floor_motion_2
@@ -173,7 +184,7 @@
         - binary_sensor.babycam_motion
         - binary_sensor.stairs_cabinet_door_sensor
         - binary_sensor.front_door_sensor
-        - binary_sensor.bedroom_closet_door_sensor
+        #- binary_sensor.bedroom_closet_door_sensor #Unused sensor.
         - binary_sensor.meterkast_door_sensor
         - binary_sensor.back_door_sensor
         - binary_sensor.washroom_door_sensor
@@ -216,8 +227,6 @@
         - light.hallway_2nd_floor_1
         - light.hallway_2nd_floor_2
         - light.hallway_2nd_floor_3
-        - light.hyperion_atmoorb_left
-        - light.hyperion_atmoorb_right
         - light.kitchen_1
         - light.kitchen_2
         - light.kitchen_3
@@ -289,3 +298,6 @@
         - sensor.temperature_utility_cabinet
         - sensor.study_multi_sensor_2_temperature
         - sensor.rabbits_temperature
+
+        #Others
+        - sensor.washer_washer_machine_state
