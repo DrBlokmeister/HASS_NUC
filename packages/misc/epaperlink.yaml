@@ -3955,7 +3955,12 @@ script:
           payload:
             # Job State (top, big, centered)
             - type: text
-              value: "{{ states('sensor.washer_washer_job_state') }}"
+              value: >
+                {% if is_state('sensor.washer_washer_job_state', 'none') %}
+                  Not Running
+                {% else %}
+                  {{ states('sensor.washer_washer_job_state') | title }}
+                {% endif %}
               font: ppb.ttf
               x: 148
               y: 25
@@ -3985,21 +3990,11 @@ script:
                   Ready!
                 {%- endif -%}
               font: ppb.ttf
-              x: 20
+              x: 148
               y: 100
               size: 18
               color: 'black'
-              anchor: lb
-            # Percentage (below progress bar, right)
-            # - type: text
-            #   value: "{{ progress_percent | int }}%"
-            #   font: ppb.ttf
-            #   x: 276
-            #   y: 90
-            #   size: 18
-            #   color: 'black'
-            #   anchor: rb
-            # Last updated (bottom right)
+              anchor: mb
             - type: text
               value: "Updated: {{ now().strftime('%H:%M') }}"
               font: ppb.ttf
