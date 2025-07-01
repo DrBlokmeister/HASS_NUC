@@ -1,15 +1,8 @@
-esphome:
-  name: epapercontroller
-
-esp32:
-  board: esp32doit-devkit-v1
-  # platformio_options:
-  #   platform: espressif32@3.2.0
-  #   board: az-delivery-devkit-v4
-  #   board_build.mcu: esp32
-  #   board_build.f_cpu: 240000000L
-
 substitutions:
+  device_name: "Epaper Controller"
+  device_friendly_name: "Epaper Controller"
+  location: "Bedroom Epapercontroller"
+  espname: "epapercontroller"
   devicename: AQI Display
   gpio_led_status: GPIO2
   gpio_i2c_sda: GPIO21
@@ -27,21 +20,27 @@ substitutions:
   gpio_led_green: GPIO23
   gpio_led_blue: GPIO18
 
+esphome:
+  name: ${espname}
+  comment: "ESP32 Doit Devkit v1"
+
+esp32:
+  board: esp32doit-devkit-v1
+  # platformio_options:
+  #   platform: espressif32@3.2.0
+  #   board: az-delivery-devkit-v4
+  #   board_build.mcu: esp32
+  #   board_build.f_cpu: 240000000L
+
 packages:
   wifi: !include /config/esphome/common/wifi.yaml
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
-
-# UART for MH-Z19C CO2 sensor
-uart:
-  rx_pin: $gpio_uart_rx_pin
-  tx_pin: $gpio_uart_tx_pin
-  baud_rate: 9600
-
-# status_led:
-#   pin:
-#     number: $gpio_led_status
-#     inverted: False
+  co2: !include
+    file: templates/aqm_components/co2.yaml
+    vars:
+      uart_rx_pin: ${gpio_uart_rx_pin}
+      uart_tx_pin: ${gpio_uart_tx_pin}
 
 spi:
   clk_pin: $gpio_spi_clk_pin
@@ -54,68 +53,6 @@ binary_sensor:
     id: connection
 
 sensor:
-  - platform: mhz19
-    id: mhz19_sensor
-    co2:
-      name: "MH-Z19 CO2 Value Internal"
-      accuracy_decimals: 0
-      id: mhz19_CO2_value_internal
-      unit_of_measurement: ppm
-      internal: true
-      filters:
-        - exponential_moving_average:
-            alpha: 0.2
-            send_every: 1
-        - or:
-            - throttle_average: 60s
-            - delta: 5
-    temperature:
-      name: "MH-Z19 Temperature Internal"
-      id: mhz19_temperature_internal
-      internal: true
-      filters:
-        - sliding_window_moving_average:
-            window_size: 5
-            send_every: 1
-        - or:
-            - throttle_average: 60s
-            - delta: 1
-    update_interval: 5s
-    automatic_baseline_calibration: false
-
-  - platform: template
-    id: mhz19_CO2_value
-    name: "MH-Z19 CO2 Value"
-    internal: false
-    force_update: true
-    accuracy_decimals: 0
-    update_interval: 1s
-    unit_of_measurement: ppm
-    lambda: |-
-      return id(mhz19_CO2_value_internal).state;
-    filters:
-      - sliding_window_moving_average:
-          window_size: 60
-          send_every: 60
-      - or:
-          - throttle_average: 60s
-          - delta: 5
-  - platform: template
-    id: mhz19_temperature
-    name: "MH-Z19 Temperature"
-    internal: false
-    update_interval: 1s
-    unit_of_measurement: °C
-    lambda: |-
-      return id(mhz19_temperature_internal).state;
-    filters:
-      - sliding_window_moving_average:
-          window_size: 60
-          send_every: 60
-      - or:
-          - throttle_average: 60s
-          - delta: 1
-
   - platform: homeassistant
     id: bedroomtemp
     entity_id:  sensor.temperature_bedroom
@@ -170,19 +107,6 @@ text_sensor:
   - platform: version
     name: "Epaperdisplay Version"
 
-  - platform: template
-    name: "Epaperdisplay Uptime"
-    icon: "mdi:timer"
-    update_interval: 60s
-    lambda: |-
-      int seconds = id(uptime_sensor).state;
-      int days = seconds / (24 * 3600);
-      seconds = seconds % (24 * 3600);
-      int hours = seconds / 3600;
-      seconds = seconds % 3600;
-      int minutes = seconds /  60;
-      return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m").c_str() };
-
   - platform: sun
     name: Sun Next Sunrise
     type: sunrise
@@ -203,23 +127,6 @@ interval:
     then:
       - display.page.show_next: my_display
       - component.update: my_display
-
-button:
-  - platform: template
-    name: "Calibrate MH-Z19"
-    on_press:
-      then:
-        - mhz19.calibrate_zero: mhz19_sensor
-
-switch:
-  - platform: template
-    name: "Calibrate MH-Z19"
-    optimistic: true
-    on_turn_on:
-      - mhz19.abc_enable: mhz19_sensor
-      - mhz19.calibrate_zero: mhz19_sensor
-    on_turn_off:
-      mhz19.abc_disable: mhz19_sensor
 
 display:
   - platform: waveshare_epaper
@@ -383,18 +290,18 @@ display:
           
           //CO2value
           x = 195, y = 103;
-          if (id(mhz19_CO2_value).has_state()) {
+          if (id(co2).has_state()) {
             it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F07E4"); // mdi-co20-molecule
-            it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.0f ppm", id(mhz19_CO2_value_internal).state);
+            it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.0f ppm", id(co2).state);
           } else {
             it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "NC"); //mdi-scale-off
           }
           
-          //it.graph(0, 20, id(mhz19_CO2_value_graph));
+          //it.graph(0, 20, id(co2_graph));
           
 # graph:
-#   - id: mhz19_CO2_value_graph
-#     sensor: mhz19_CO2_value
+#   - id: co2_graph
+#     sensor: co2
 #     duration: 1h
 #     width: 100
 #     height: 50
