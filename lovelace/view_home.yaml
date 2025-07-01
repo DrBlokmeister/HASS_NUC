@@ -36,6 +36,29 @@ cards:
             - entity: sensor.mijnafvalwijzer_afval_voor_gft
             - entity: sensor.mijnafvalwijzer_afval_voor_papier
             - entity: sensor.mijnafvalwijzer_afval_voor_restafval
+  - type: custom:auto-entities
+    filter:
+      # template: >
+      #   {{ expand('group.monitored_entities')
+      #     | selectattr('state', 'in',
+      #         ['unavailable', 'unknown', 'none', 'not_home'])
+      #     | map(attribute='entity_id')
+      #     | list }}
+      include:
+        - group: group.monitored_entities
+          state: unavailable
+          options:
+            secondary_info: last-changed
+            show_last_changed: true
+        - group: group.monitored_entities
+          state: not_home
+          options:
+            secondary_info: last-changed
+            show_last_changed: true
+    card:
+      type: entities
+      secondary_info: last-changed
+      show_last_changed: true
   - type: vertical-stack
     cards:
       - type: entity-filter
