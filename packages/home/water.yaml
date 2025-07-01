@@ -186,7 +186,7 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: "[home|climate] Heat up tapwater in the morning"
+  - alias: "[home|water] Heat up tapwater in the morning"
     id: home_climate_heat_up_tapwater_in_the_morning
     mode: single
     trigger:
@@ -202,10 +202,10 @@ automation:
         above: sensor.lowest_quartile_electricity_price_today
         id: "cool_down"
       - platform: template
-        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour'))|int(25) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
         id: "heat_up_nightly_cheapest"
       - platform: template
-        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour') + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 4) }}"
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')|int(25) + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 4) }}"
         id: "cool_down"
     condition:
     action:
