@@ -153,8 +153,29 @@ template:
           {{ not is_state('binary_sensor.tower_cache_health', 'unavailable') and
               state_attr('binary_sensor.tower_cache_health', 'Power State') == 'Active' }}
 
-
-
+      - name: "Plex Log SQLITE Mentions"
+        unique_id: yaml_template_sensor_plex_log_sqlite_mentions
+        state: "{{ state_attr('sensor.plex_log_overview', 'sqlite') | int(0) }}"
+        icon: mdi:database-alert
+        unit_of_measurement: errors
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+      - name: "Plex Log WARN Entries"
+        unique_id: yaml_template_sensor_plex_log_warn_entries
+        state: "{{ state_attr('sensor.plex_log_overview', 'warn') | int(0) }}"
+        icon: mdi:alert-outline
+        unit_of_measurement: warnings
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+      - name: "Plex Log ERROR Entries"
+        unique_id: yaml_template_sensor_plex_log_error_entries
+        state: "{{ state_attr('sensor.plex_log_overview', 'error') | int(0) }}"
+        icon: mdi:alert-circle-outline
+        unit_of_measurement: errors
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+      - name: "Plex Last Scan"
+        unique_id: yaml_template_sensor_plex_last_scan
+        state: "{{ state_attr('sensor.plex_log_overview', 'last_scan') or 'unavailable' }}"
+        icon: mdi:magnify-scan
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
 ##############
 #    REST    #
 ##############
@@ -323,50 +344,34 @@ command_line:
 
   # Plex Log: Count of SQLITE mentions
   - sensor:
-      name: "Plex Log SQLITE Mentions"
-      unique_id: yaml_command_line_sensor_plex_log_sqlite_mentions
-      icon: mdi:database-alert
-      unit_of_measurement: errors
+      name: "Plex Log Overview"
+      unique_id: yaml_command_line_sensor_plex_log_overview
+      icon: mdi:database-search
       scan_interval: 900
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.0.250 '
-        grep -c "SQLITE" "/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log" || echo 0'
-      value_template: "{{ value.split('\n')[0] | int(0) }}"
+          LOG="/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log";
+          SQLITE=$(grep -c "SQLITE" "$LOG" 2>/dev/null); SQLITE=${SQLITE:-0}
+          WARN=$(grep -c "WARN" "$LOG" 2>/dev/null); WARN=${WARN:-0}
+          ERROR=$(grep -c "ERROR" "$LOG" 2>/dev/null); ERROR=${ERROR:-0}
+          LAST_SCAN=$(grep -F "Activity: Ended activity" "$LOG" | tail -1 | awk "{print \$1, \$2, \$3}");
+          [ -z "$LAST_SCAN" ] && LAST_SCAN="";
+          # Escape double quotes in LAST_SCAN for JSON
+          LAST_SCAN=${LAST_SCAN//\"/\\\"}
+          echo "{\"sqlite\": $SQLITE, \"warn\": $WARN, \"error\": $ERROR, \"last_scan\": \"$LAST_SCAN\"}"
+        ' || echo '{}'
+      value_template: >
+        {% if value_json is defined and value_json.error is defined %}
+          {{ value_json.error | int(0) }}
+        {% else %}
+          0
+        {% endif %}
+      json_attributes:
+        - sqlite
+        - warn
+        - error
+        - last_scan
       availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-  - sensor:
-      name: "Plex Log WARN Entries"
-      unique_id: yaml_command_line_sensor_plex_log_warn_entries
-      icon: mdi:alert-outline
-      unit_of_measurement: warnings
-      scan_interval: 900
-      command: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.0.250 '
-        grep -c "WARN" "/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log" || echo 0'
-      value_template: "{{ value.split('\n')[0] | int(0) }}"
-      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-  - sensor:
-      name: "Plex Log ERROR Entries"
-      unique_id: yaml_command_line_sensor_plex_log_error_entries
-      icon: mdi:alert-circle-outline
-      unit_of_measurement: errors
-      scan_interval: 900
-      command: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.0.250 '
-        grep -c "ERROR" "/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log" || echo 0'
-      value_template: "{{ value.split('\n')[0] | int(0) }}"
-      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-  - sensor:
-      name: "Plex Last Scan"
-      unique_id: yaml_command_line_sensor_plex_last_scan
-      icon: mdi:magnify-scan
-      scan_interval: 900
-      command: >-
-        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.0.250 '
-        grep -F "Activity: Ended activity" "/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log" | tail -1 | awk "{print \$1, \$2, \$3}"'
-      value_template: "{{ as_datetime(value.split('\n')[0]) if value else None }}"
-      availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-
-
 
 
   - binary_sensor:
