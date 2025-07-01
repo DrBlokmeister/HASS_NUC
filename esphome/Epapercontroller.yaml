@@ -131,14 +131,8 @@ display:
     pages:
       - id: page1
         lambda: |-
-          /* Moon icon */
-          //if(id(moon_icon).has_state()) {
-          //  //ESP_LOGI("Moon icon", "%s", id(moon_icon).state.c_str());
-          //  it.printf(25, 42, id(icon_45_font), TextAlign::BASELINE_CENTER, "%s", id(moon_icon).state.c_str());
-          //}
-
           int x, y;
-          x = 0, y = 0;
+          x = 0; y = 0;
           if (id(weather).has_state()) {
             if (id(weather).state == "clear-night") {
               it.printf(x, y, id(icon_60_font), TextAlign::TOP_LEFT , "\U000F0594");
@@ -177,113 +171,102 @@ display:
             it.printf(x, y, id(icon_60_font), TextAlign::BASELINE_CENTER , "\U000F14E4");
           }
 
-          //sun set-rise
-          it.printf(85, 22, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖜");
+          // sunrise, sunset
+          it.printf(85, 22, id(icon_20_font), TextAlign::BASELINE_RIGHT, "\U000F059C");
           it.printf(135, 22, id(size_20_font), TextAlign::BASELINE_RIGHT, "%s", id(nextsunrise).state.c_str());
-          it.printf(85, 44, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖛");
+          it.printf(85, 44, id(icon_20_font), TextAlign::BASELINE_RIGHT, "\U000F059B");
           it.printf(135, 44, id(size_20_font), TextAlign::BASELINE_RIGHT, "%s", id(nextsunset).state.c_str());
 
-          //date
+          // date
           it.strftime(210, 43, id(size_50_font), TextAlign::BASELINE_RIGHT, "%d", id(sntp_time).now());
           it.printf(213, 43, id(size_14_font), TextAlign::BASELINE_LEFT, "D");
           it.strftime(280, 43, id(size_50_font), TextAlign::BASELINE_RIGHT, "%m", id(sntp_time).now());
           it.printf(283, 43, id(size_14_font), TextAlign::BASELINE_LEFT, "M");
 
-          //line
+          // line
           it.line(0, 54, 296, 54);
 
-          //Time
+          // Time
           it.strftime(3, 45, id(size_85_font), "%H:%M", id(sntp_time).now());
           it.strftime(225, 68, id(size_60_font), "%S", id(sntp_time).now());
-
           it.strftime(250, 58, id(size_14_font), "%a", id(sntp_time).now());
+
       - id: page2
         lambda: |-
           int x, y;
-          //ESP_LOGI("display", "Updating..");
 
-          //Time
+          // Time
           it.strftime(3, 0, id(size_20_font), "%H:%M", id(sntp_time).now());
 
-          /* WiFi Signal Strength */
-          x = 80, y = 20;
+          // WiFi Signal Strength
+          x = 80; y = 20;
           if(id(wifi_signal_sensor).has_state()) {
             if (id(wifi_signal_sensor).state >= -50) {
-                //Excellent
-                it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤨");
-                //ESP_LOGI("WiFi", "Exellent");
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F0928");
             } else if (id(wifi_signal_sensor).state  >= -62) {
-                //Good
-                it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤥");
-                //ESP_LOGI("WiFi", "Good");
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F0925");
             } else if (id(wifi_signal_sensor).state  >= -67) {
-                //Fair
-                it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤢");
-                //ESP_LOGI("WiFi", "Fair");
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F0922");
             } else if (id(wifi_signal_sensor).state  >= -75) {
-                //Weak
-                it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤟");
-                //ESP_LOGI("WiFi", "Weak");
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F091F");
             } else {
-                //Unlikely working signal
-                it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰤯");
-                //ESP_LOGI("WiFi", "Unlikely");
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F092F");
             }
           } else {
-            // No state, mdi-wifi-strength-off-outline
             it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F092E");
           }
 
-          x = 105, y = 20;
+          // Home Assistant and Server
+          x = 105; y = 20;
           if (id(connection).has_state()) {
             if (id(connection).state == true) {
-              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰟐"); //Home assistant icon
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F07D0");
             } else {
-              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰒎"); //Server disconnected icon
+              it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F14CE");
             }
           } else {
-            it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "󰒎"); //Server disconnected icon
+            it.print(x, y, id(icon_20_font), TextAlign::BOTTOM_RIGHT, "\U000F14CE");
           }
 
-          //Temperature
-          it.printf(5, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰢠");  //bedroom icon
-          it.printf(5, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "󱕭");  //livingroom icon
-          it.printf(5, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰹩");  //outside icon
-          it.printf(30, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰔏");  //thermometer icon
-          it.printf(30, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰔏");  //thermometer icon
-          it.printf(30, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "󰔏");  //thermometer icon
+          // Temperature locations
+          it.printf(5, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F0A60");  //bedroom
+          it.printf(5, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F195D");  //livingroom
+          it.printf(5, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F0531");  //outside
+
+          it.printf(30, 83, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F054F");  //thermometer
+          it.printf(30, 103, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F054F");  //thermometer
+          it.printf(30, 123, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F054F");  //thermometer
+
           it.printf(118, 83, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f°C", id(bedroomtemp).state);
           it.printf(118, 103, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f°C", id(livingroomtemp).state);
           it.printf(118, 123, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f°C", id(outsidetemp).state);
 
-          it.printf(140, 83, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎");
-          it.printf(140, 103, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎");
-          it.printf(140, 123, id(icon_20_font), TextAlign::BASELINE_RIGHT, "󰖎");
+          it.printf(140, 83, id(icon_20_font), TextAlign::BASELINE_RIGHT, "\U000F05CE");
+          it.printf(140, 103, id(icon_20_font), TextAlign::BASELINE_RIGHT, "\U000F05CE");
+          it.printf(140, 123, id(icon_20_font), TextAlign::BASELINE_RIGHT, "\U000F05CE");
+
           it.printf(190, 83, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f%%", id(bedroomhumi).state);
           it.printf(190, 103, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f%%", id(livingroomhumi).state);
           it.printf(190, 123, id(size_20_font), TextAlign::BASELINE_RIGHT, "%.1f%%", id(outsidehumi).state);
 
-          //Bedscale
-          x = 195, y = 83;
+          // Bedscale
+          x = 195; y = 83;
           if (id(bedweight).has_state()) {
-            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F0472"); // mdi-scale
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F0472");
             it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.2f kg", id(bedweight).state);
             it.printf(150 , 50, id(size_50_font), TextAlign::BASELINE_LEFT, "%02.0f", floor(id(bedweight).state));
             it.printf(210 , 50, id(size_20_font), TextAlign::BASELINE_LEFT, "%02.0f", ((id(bedweight).state - floor(id(bedweight).state)) * 100));
           } else {
-            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F105A"); //mdi-scale-off
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F105A");
           }
 
-          //it.printf(150 , 50, id(size_50_font), TextAlign::BASELINE_LEFT, "%02.0f", floor(id(bedweight).state));
-          //it.printf(210 , 50, id(size_20_font), TextAlign::BASELINE_LEFT, "%02.0f", ((id(bedweight).state - floor(id(bedweight).state)) * 100));
-          
-          //CO2value
-          x = 195, y = 103;
+          // CO2 value
+          x = 195; y = 103;
           if (id(co2).has_state()) {
-            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F07E4"); // mdi-co20-molecule
+            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F07E4");
             it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.0f ppm", id(co2).state);
           } else {
-            it.print(x, y, id(size_20_font), TextAlign::BASELINE_LEFT, "NC"); //mdi-scale-off
+            it.print(x, y, id(size_20_font), TextAlign::BASELINE_LEFT, "NC");
           }
 
 font:
