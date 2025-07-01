@@ -26,11 +26,6 @@ esphome:
 
 esp32:
   board: esp32doit-devkit-v1
-  # platformio_options:
-  #   platform: espressif32@3.2.0
-  #   board: az-delivery-devkit-v4
-  #   board_build.mcu: esp32
-  #   board_build.f_cpu: 240000000L
 
 packages:
   wifi: !include /config/esphome/common/wifi.yaml
@@ -56,27 +51,21 @@ sensor:
   - platform: homeassistant
     id: bedroomtemp
     entity_id:  sensor.temperature_bedroom
-    #internal: true
   - platform: homeassistant
     id: livingroomtemp
     entity_id: sensor.temperature_livingroom
-    #internal: true
   - platform: homeassistant
     id: outsidetemp
     entity_id: sensor.temperature_outside
-    #internal: true
   - platform: homeassistant
     id: bedroomhumi
     entity_id:  sensor.humidity_bedroom
-    #internal: true
   - platform: homeassistant
     id: livingroomhumi
     entity_id: sensor.humidity_livingroom
-    #internal: true
   - platform: homeassistant
     id: outsidehumi
     entity_id: sensor.humidity_outside
-    #internal: true
   - platform: homeassistant
     id: co2concentration
     entity_id: sensor.co2_concentration_filtered
@@ -294,162 +283,79 @@ display:
             it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "\U000F07E4"); // mdi-co20-molecule
             it.printf(x + 20, y, id(size_20_font), TextAlign::BASELINE_LEFT, "%.0f ppm", id(co2).state);
           } else {
-            it.print(x, y, id(icon_20_font), TextAlign::BASELINE_LEFT, "NC"); //mdi-scale-off
+            it.print(x, y, id(size_20_font), TextAlign::BASELINE_LEFT, "NC"); //mdi-scale-off
           }
-          
-          //it.graph(0, 20, id(co2_graph));
-          
-# graph:
-#   - id: co2_graph
-#     sensor: co2
-#     duration: 1h
-#     width: 100
-#     height: 50
 
 font:
+  # Main large time
   - file: 'fonts/Roboto-Medium.ttf'
     id: size_85_font
     size: 85
-  # - file: 'fonts/Roboto-Medium.ttf'
-  #   id: size_75_font
-  #   size: 75
+  # Seconds, date, big numbers, bedscale display
   - file: 'fonts/Roboto-Medium.ttf'
     id: size_60_font
     size: 60
+  # Date (day/month), big numbers, bedscale display
   - file: 'fonts/Roboto-Medium.ttf'
     id: size_50_font
     size: 50
-  # - file: 'fonts/Roboto-Light.ttf'
-  #   id: size_12_font
-  #   size: 12
+  # Small text ("NC", "kg", "ppm", "D", "M", weekday, etc.)
   - file: 'fonts/Roboto-Light.ttf'
     id: size_14_font
     size: 14
-  # - file: 'fonts/Roboto-Medium.ttf'
-  #   id: size_15_font
-  #   size: 15
+  # Most text, values, temperatures, units, etc.
   - file: 'fonts/Roboto-Medium.ttf'
     id: size_20_font
     size: 20
-  - file: 'fonts/Roboto-Medium.ttf'
-    id: size_25_font
-    size: 25
-  - file: 'fonts/Roboto-Medium.ttf'
-    id: size_30_font
-    size: 30
-  # - file: 'fonts/materialdesignicons-webfont.ttf'
-  #   id: icon_120_font
-  #   size: 120
-  #   glyphs: [
-  #     # Weather
-  #     "", # mdi-weather-sunny
-  #     "", # mdi-weather-cloudy
-  #     "", # mdi-weather-pouring
-  #     "", # mdi-weather-snowy-rainy
-  #     "ｓ", # mdi-weather-snowy-heavy
-  #     "", # mdi-weather-windy-variant
-  #     "", # mdi-weather-fog
-  #     "ｎ", # mdi-weather-night-partly-cloudy
-  #     "", # mdi-weather-partly-cloudy
-  #     "", # mdi-weather-rainy
-  #     "", # mdi-weather-snowy
-  #     "", # mdi-weather-clear-night
-  #     "", # unknown
-  #     '󰔏', # mdi-thermometer
-  #     ]
-  # - file: 'fonts/materialdesignicons-webfont.ttf'
-  #   id: icon_45_font
-  #   size: 45
-  #   glyphs: [
-  #     # Moon
-  #     # "󰃜", # new_moon
-  #     # "ﾄ", # waxing_crecent
-  #     # "ｾ", # first_quarter
-  #     # "ﾅ", # waxing_gibbous
-  #     # "󰃚", # full_moon
-  #     # "ﾃ", # waning_gibbous
-  #     # "ﾀ", # last_quarter
-  #     # "ﾂ", # waning_crescent
-  #     '󰔏', # mdi-thermometer
-  #     ]
+
+  # WEATHER ICONS and large status icons
   - file: 'fonts/materialdesignicons-webfont.ttf'
     id: icon_60_font
     size: 60
     glyphs: [
       # Weather
-      "\U000F0594", #clear-night
-      "\U000F0590", #cloudy
-      "\U000F0591", #fog
-      "\U000F0592", #hail
-      "\U000F0593", #lightning
-      "\U000F067E", #lightning-rainy
-      "\U000F0595", #partlycloudy
-      "\U000F0596", #pouring
-      "\U000F0597", #rainy
-      "\U000F0598", #snowy
-      "\U000F067F", #snowy-rainy
-      "\U000F0599", #sunny
-      "\U000F059D", #windy
-      "\U000F059E", #windy-variant
-      "\U000F0F30", #exceptional
-      "\U000F14E4", # mdi-weather-sunny-off
+      "\U000F0594", # clear-night
+      "\U000F0590", # cloudy
+      "\U000F0591", # fog
+      "\U000F0592", # hail
+      "\U000F0593", # lightning
+      "\U000F067E", # lightning-rainy
+      "\U000F0595", # partlycloudy
+      "\U000F0596", # pouring
+      "\U000F0597", # rainy
+      "\U000F0598", # snowy
+      "\U000F067F", # snowy-rainy
+      "\U000F0599", # sunny
+      "\U000F059D", # windy
+      "\U000F059E", # windy-variant
+      "\U000F0F30", # exceptional
+      "\U000F14E4", # weather-sunny-off
+      '󰔏',         # thermometer (optional, only if used at this size)
+      '󰖎'          # humidity (optional, only if used at this size)
+    ]
 
-      # # Moon
-      # "󰃜", # new_moon
-      # "ﾄ", # waxing_crecent
-      # "ｾ", # first_quarter
-      # "ﾅ", # waxing_gibbous
-      # "󰃚", # full_moon
-      # "ﾃ", # waning_gibbous
-      # "ﾀ", # last_quarter
-      # "ﾂ", # waning_crescent
-      '󰔏', # mdi-thermometer
-      '󰖎', #humidity
-      ]
+  # SMALL ICONS for wifi, thermometer, bed, couch, co2, etc.
   - file: 'fonts/materialdesignicons-webfont.ttf'
     id: icon_20_font
     size: 20
     glyphs: [
-      "󰖜", # sun rise
-      "󰖛", # sun set
-      # Wifi
-      '󰤯', # mdi-wifi-strength-outline
-      '󰤟', # mdi-wifi-strength-1
-      '󰤢', # mdi-wifi-strength-2
-      '󰤥', # mdi-wifi-strength-3
-      '󰤨', # mdi-wifi-strength-4
-      "\U000F092E", #mdi-wifi-strength-off-outline
-      '󰟐', # mdi-home-assistant
-      '󰒎', # mdi-server-network-off
-
-      '󰢠', #bedroom
-      '󰦠', #bathroom
-      '󰹩', #tree
-      '󰹧', #sprout
-      '󱕭', #couch
-      '󰖎', #humidity
-      '󰔏', # mdi-thermometer
-      
-      "\U000F07E4", #mdi-molecule-co2
-      "\U000F0472", #mdi-scale
-      "\U000F105A", #mdi-scale-off
-      ]
-  # - file: 'fonts/materialdesignicons-webfont.ttf'
-  #   id: weather_temp_icon_font
-  #   size: 25
-  #   glyphs: [
-  #     "﹢", # mdi-down
-  #     "﹣",  # mdi-up
-  #     "", # raindrop
-  #     "", # wind
-  #     ]
-  # - file: 'fonts/materialdesignicons-webfont.ttf'
-  #   id: home_icon_font
-  #   size: 15
-  #   glyphs: [
-  #     "ﵜ", # mdi-house1
-  #     "ﵝ",  # mdi-house2
-  #     "ﵞ", # mdi-house3
-  #     "", # mdi-bowl
-  #     "", #mdi-knifeandfork
-  #     ]
+      "󰖜",   # sun rise
+      "󰖛",   # sun set
+      '󰤯',   # wifi-strength-outline
+      '󰤟',   # wifi-strength-1
+      '󰤢',   # wifi-strength-2
+      '󰤥',   # wifi-strength-3
+      '󰤨',   # wifi-strength-4
+      "\U000F092E", # wifi-strength-off-outline
+      '󰟐',   # home-assistant
+      '󰒎',   # server-network-off
+      '󰢠',   # bedroom
+      '󰦠',   # bathroom (unused, but maybe for future)
+      '󰹩',   # tree (outside)
+      '󱕭',   # couch (livingroom)
+      '󰖎',   # humidity
+      '󰔏',   # thermometer
+      "\U000F07E4", # molecule-co2
+      "\U000F0472", # scale
+      "\U000F105A"  # scale-off
+    ]
