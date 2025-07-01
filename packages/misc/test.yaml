@@ -1,0 +1,82 @@
+homeassistant:
+  customize:
+
+input_select:
+
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
+  test_doorbell_snapshot_latency:
+    alias: "[test|snapshot] Doorbell Snapshot Latency"
+    description: "Takes a snapshot of the doorbell camera and sends it to blokmeisterp9pro with timestamped filename."
+    mode: single
+    variables:
+      timestamp: "{{ now().strftime('%Y%m%dT%H%M%S') }}"
+      filename: "doorbell_snapshot_{{ timestamp }}.jpg"
+      filepath: "/config/www/tmp/{{ filename }}"
+      image_url: "/local/tmp/{{ filename }}"
+    sequence:
+      - service: camera.snapshot
+        data:
+          entity_id: camera.g4_doorbell_pro_high_resolution_channel
+          filename: "{{ filepath }}"
+      - service: openai_conversation.generate_content
+        data:
+          config_entry: 01JXMECP3GC7BHJNM2DH3A4KPD
+          prompt: >-
+            Please describe what is visible in the attached doorbell camera snapshot.
+            Focus only on what is in front of the door.
+            Write approximately 100 words in an observational tone.
+          filenames: "{{ filepath }}"
+        response_variable: openai_response
+      - service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "AI Snapshot Description"
+          message: >
+            {% if openai_response and openai_response.text %}
+              {{ openai_response.text }}
+            {% else %}
+              No AI description received.
+            {% endif %}
+          data:
+            image: "{{ image_url }}"
+            ttl: 0
+            priority: high
+            notification_icon: "mdi:camera"
