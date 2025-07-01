@@ -14,35 +14,6 @@ homeassistant:
           var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
           return 'hsl(' + hue.toString() + ',80%,50%)';
 
-media_player:
-  # - platform: kodi
-  #   host: 192.168.1.50
-  #   name: CoreELEC
-  #   username: !secret coreelec_user
-  #   password: !secret coreelec_pass
-  #   turn_on_action:
-  #     service: kodi.call_method
-  #     data:
-  #       entity_id: media_player.kodi
-  #       method: Addons.ExecuteAddon
-  #       addonid: script.json-cec
-  #       params:
-  #         command: activate
-  #   turn_off_action:
-  #     - service: media_player.media_stop
-  #       data:
-  #         entity_id: media_player.kodi
-  #     - service: kodi.call_method
-  #       data:
-  #         entity_id: media_player.kodi
-  #         method: Addons.ExecuteAddon
-  #         addonid: script.json-cec
-  #         params:
-  #           command: standby
-  # - platform: kodi
-  #   host: 192.168.1.51
-  #   name: Ambilight_RPI
-
 command_line:
   - sensor:
       name: 'CoreELEC CPU temp'
@@ -412,131 +383,11 @@ scene:
 #    GROUPS    #
 ################
 group:
-  # hyperion_ambilightleft:
-  #   entities:
-  #     - device_tracker.ambilightleft_2
-  #     - light.hyperion_ambilightleft
-  #     - switch.ambilightleft_component_led_device
-  #     - switch.ambilightleft_component_platform_capture
-  # hyperion_falconlights:
-  #   entities:
-  #     - device_tracker.falconlights
-  #     - light.hyperion_falconlights
-  #     - switch.falconlights_component_led_device
-  #     - switch.falconlights_component_platform_capture
-  # hyperion_ssd_inner:
-  #   entities:
-  #     - light.hyperion_super_star_destroyer_inner
-  #     - switch.super_star_destroyer_inner_component_led_device
-  #     - switch.super_star_destroyer_inner_component_platform_capture
-  # hyperion_ssd_outer:
-  #   entities:
-  #     - light.hyperion_super_star_destroyer_outer
-  #     - switch.super_star_destroyer_outer_component_led_device
-  #     - switch.super_star_destroyer_outer_component_platform_capture
-  # hyperion_livingroom_ledstrip:
-  #   entities:
-  #     - light.hyperion_livingroom_ledstrip
-  #     - switch.livingroom_ledstrip_component_led_device
-  #     - switch.livingroom_ledstrip_component_platform_capture
-  # hyperion_ssd:
-  #   entities:
-  #     - group.hyperion_ssd_inner
-  #     - group.hyperion_ssd_outer
-  # hyperion_entities:
-  #   entities:
-  #     - group.hyperion_ambilightleft
-  #     - group.hyperion_falconlights
-  #     - group.hyperion_ssd
-  #     - group.hyperion_livingroom_ledstrip
+
 #################
 #    SCRIPTS    #
 #################
 script:
-  # movie_time:
-  #   sequence:
-  #     - choose:
-  #         - conditions:
-  #             - condition: state
-  #               entity_id: switch.blokmeisternas
-  #               state: 'off'
-  #           sequence:
-  #             - service: switch.turn_on
-  #               entity_id: switch.blokmeisternas
-  #             - wait_for_trigger:
-  #                 - platform: state
-  #                   entity_id: device_tracker.blokmeisternas
-  #                   to: 'home'
-  #                   for:
-  #                     seconds: 5
-  #             - wait_for_trigger:
-  #                 - platform: state
-  #                   entity_id: sensor.nas_cpu_use_percent
-  #             - wait_for_trigger:
-  #                 - platform: state
-  #                   entity_id: switch.newstorage_mounted
-  #                   to: 'on'
-  #               timeout:
-  #                 seconds: 30
-  #             - choose:
-  #                 - conditions:
-  #                     - condition: template
-  #                       value_template: "{{ not wait.completed }}"
-  #                   sequence:
-  #                     - service: switch.turn_on
-  #                       entity_id: switch.newstorage_mounted
-  #                     - wait_for_trigger:
-  #                         - platform: state
-  #                           entity_id: switch.newstorage_mounted
-  #                           to: 'on'
-  #                       timeout:
-  #                         seconds: 10
-  #                     - service: switch.turn_on
-  #                       entity_id:
-  #                         - switch.unrarredmovies_mounted
-  #                         - switch.unrarredseries_mounted
-  #                     - wait_for_trigger:
-  #                         - platform: template
-  #                           value_template: "{{ is_state('switch.unrarredmovies_mounted', 'on') and is_state('switch.unrarredseries_mounted', 'on') }}"
-  #                       timeout:
-  #                         seconds: 30
-  #     - service: media_player.turn_on
-  #       entity_id: media_player.coreelec
-  #     - service: kodi.call_method
-  #       data:
-  #         entity_id: media_player.coreelec
-  #         method: Addons.ExecuteAddon
-  #         addonid: script.json-cec
-  #         params:
-  #           command: activate
-  #     - service: switch.turn_on
-  #       entity_id: switch.blitzwolf_ambilight
-  #     - service: light.turn_on
-  #       data:
-  #         entity_id:
-  #           - light.tvarea_lights
-  #           - light.livingroom_a_rgb_ledstrip
-  #         brightness: 20
-  #         transition: 10
-  #     - delay:
-  #         seconds: 4
-  #     - service: light.turn_on
-  #       data:
-  #         entity_id:
-  #           - light.atmoorb_left
-  #           - light.atmoorb_right
-  #           - light.falconlights
-  #           - light.ssdlights
-  #           - light.ssdlights_inner
-  #         brightness: 150
-  #         effect: Rainbow
-  #     - service: light.turn_on
-  #       data:
-  #         entity_id:
-  #           - light.hyperion_apa102
-  #         brightness: 150
-  #         effect: Rainbow swirl fast
-
   turn_on_ambilight:
     alias: "[home|mediacenter] Turn on Ambilight"
     #unique_id: yaml_script_home_mediacenter_turn_on_ambilight #Scripts do not support unique IDs yet
@@ -947,6 +798,3 @@ light:
     entities:
       - light.ssdlights
       - light.ssdlights_inner
-
-  # - platform: hyperion
-  #   host: 192.168.1.50
