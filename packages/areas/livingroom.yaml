@@ -240,6 +240,38 @@ automation:
         target:
           entity_id: input_boolean.livingroom_light_level_calibration_switch
 
+  - alias: "[livingroom|lights] Sync ledstrip_falcon state with livingroom light"
+    id: yaml_automation_livingroom_lights_sync_ledstrip_falcon_state_with_livingroom_light
+    description: >
+      Whenever light.livingroom is turned on or off, mirror its state to light.ledstrip_falcon,
+      but only if its effect is NOT 'E1.31'. Uses adaptive lighting settings when turning on.
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: light.living_room
+        to:
+          - 'on'
+          - 'off'
+    condition:
+      - condition: template
+        value_template: >
+          {{ not is_state_attr('light.ledstrip_falcon', 'effect', 'E1.31') }}
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.ledstrip_falcon
+                data:
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: light.ledstrip_falcon
+
 
   # - alias: '[livingroom|light] Update illumination limit'
   #   mode: single
