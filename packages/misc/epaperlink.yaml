@@ -15,6 +15,8 @@
 #| Litterbox Status           | 0000021dc9ca341b      | 5f61de1a08a9f1dcb162b383d8be9a4e | Replaced 0000021DC9CA341B on 20250603    |
 #| Study Energy Control       | 0000021dc3bf3413      | 8a5608d777be457d781e79b5948c2332 | Control group tag for Study Energy       |
 #| Study Calendar             | 780105561c817600      | 0384f3ad3a85237fcb589d95931ddc60 |                                          |
+#| Weekly Weather Forecast    | 780105561A2CE800      | 4f25ad0c1a32f05c73668f871c5ce199 |                                          |
+
 
 homeassistant:
   customize: {}
@@ -42,7 +44,12 @@ template:
             'sensor.0000021d1c8e3413_last_seen',
             'sensor.0000021ef7993413_last_seen',
             'sensor.0000021dc9ca341b_last_seen',
-            'sensor.0000021dc3bf3413_last_seen'
+            'sensor.0000021dc3bf3413_last_seen',
+            'sensor.780105561c817600_last_seen',
+            'sensor.0000021f86d83b1e_last_seen',
+            'sensor.0000021aea62341f_last_seen',
+            'sensor.00007e1f75f1b29b_last_seen',
+            'sensor.780105561a2ce800_last_seen'
           ] -%}
             {%- if states(sensor) not in ['unknown', 'unavailable', 'none', ''] -%}
               {%- set timestamp = as_timestamp(states(sensor)) -%}
@@ -63,7 +70,7 @@ template:
             'unavailable'
           {%- endif -%}
         availability: >
-          {%- for sensor in [
+          {%- set all_sensors = [
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.00000218736e3b1e_last_seen',
             'sensor.0000039223703418_last_seen',
@@ -75,7 +82,12 @@ template:
             'sensor.0000021d1c8e3413_last_seen',
             'sensor.0000021ef7993413_last_seen',
             'sensor.0000021dc9ca341b_last_seen',
-            'sensor.0000021dc3bf3413_last_seen'
+            'sensor.0000021dc3bf3413_last_seen',
+            'sensor.780105561c817600_last_seen',
+            'sensor.0000021f86d83b1e_last_seen',
+            'sensor.0000021aea62341f_last_seen',
+            'sensor.00007e1f75f1b29b_last_seen',
+            'sensor.780105561a2ce800_last_seen'
           ] %}
           {% set ns = namespace(available = false) %}
           {% for sensor in all_sensors %}
@@ -255,6 +267,113 @@ sensor:
     state_characteristic: sum_differences_nonnegative
     precision: 0
     max_age: "01:00:00"
+
+
+
+  # Washing Machine
+  - platform: derivative
+    source: sensor.0000021c3bc6341b_checkin_count
+    name: 0000021c3bc6341b Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Study Climate
+  - platform: derivative
+    source: sensor.00000218736e3b1e_checkin_count
+    name: 00000218736e3b1e Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Study Energy
+  - platform: derivative
+    source: sensor.0000039223703418_checkin_count
+    name: 0000039223703418 Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Garbage Display
+  - platform: derivative
+    source: sensor.00000219a2923b10_checkin_count
+    name: 00000219a2923b10 Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Moeke Status
+  - platform: derivative
+    source: sensor.0000021d7356341f_checkin_count
+    name: 0000021d7356341f Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Electricity Price Kitchen
+  - platform: derivative
+    source: sensor.00007e225dc2b29f_checkin_count
+    name: 00007e225dc2b29f Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Electricity Price Study
+  - platform: derivative
+    source: sensor.00007e22cc92b292_checkin_count
+    name: 00007e22cc92b292 Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Electricity Price Washroom
+  - platform: derivative
+    source: sensor.00007e1f8b30b297_checkin_count
+    name: 00007e1f8b30b297 Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Litterbox Status
+  - platform: derivative
+    source: sensor.0000021dc9ca341b_checkin_count
+    name: 0000021dc9ca341b Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Powerstrip Study
+  - platform: derivative
+    source: sensor.0000021d1c8e3413_checkin_count
+    name: 0000021d1c8e3413 Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Calendar Study
+  - platform: derivative
+    source: sensor.780105561c817600_checkin_count
+    name: 780105561c817600 Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Washing Machine Progress
+  - platform: derivative
+    source: sensor.0000021f86d83b1e_checkin_count
+    name: 0000021f86d83b1e Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+  # Network Statistics
+  - platform: derivative
+    source: sensor.0000021aea62341f_checkin_count
+    name: 0000021aea62341f Checkins Per Hour
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
 
 ########################
 #    BINARY SENSORS    #
@@ -814,7 +933,6 @@ automation:
                 data:
                   title: "OpenEPaperLink AP Issue"
                   message: "AP did not come back online after multiple power cycles."
-
 
 ################
 #    SCENES    #

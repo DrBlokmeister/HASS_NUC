@@ -211,6 +211,26 @@ cards:
       - script: script.update_router_speedtest_display
 
   - type: vertical-stack
+    title: External Tags
+    cards:
+      - type: custom:decluttering-card
+        template: epaper_device_card
+        variables:
+          - title: Buienradar
+          - tag_mac: 00007e1f75f1b29b
+          - camera: camera.buienradar_content
+          - device_id: 2665027a1fe19dd01d4533fe077d6f82
+          - script: script.update_router_speedtest_display # TODO: TEMPLATE SHOULD BE UPDATED TO ALLOW FOR CARDS WITHOUT SCRIPTS
+      - type: custom:decluttering-card
+        template: epaper_device_card
+        variables:
+          - title: Weekly Forecast
+          - tag_mac: 780105561a2ce800
+          - camera: camera.weather_weekly_forecast_content
+          - device_id: 4f25ad0c1a32f05c73668f871c5ce199
+          - script: script.update_router_speedtest_display # TODO: TEMPLATE SHOULD BE UPDATED TO ALLOW FOR CARDS WITHOUT SCRIPTS
+
+  - type: vertical-stack
     title: Control Tags
     cards:
       - type: custom:decluttering-card
@@ -229,3 +249,79 @@ cards:
           - camera: camera.0000021dc3bf3413_content
           - device_id: 8a5608d777be457d781e79b5948c2332
           - script: script.update_study_energy_display
+
+  - type: custom:apexcharts-card
+    header:
+      title: ePaper – Check-ins per Hour
+      show: true
+      show_states: true
+      colorize_states: true
+      floating: false
+    # Past two days
+    graph_span: 48h         # 48 hours = 2 days
+    # Uniform Y-axis for all series
+    yaxis:
+      - min: 0
+        max: ~100            # soft cap at 100 (will extend if any tag exceeds it)
+        decimals: 0
+        align_to: 20         # nice ticks every 20
+        apex_config:
+          forceNiceScale: true
+    apex_config:
+      legend:
+        show: false
+    update_interval: 15min
+    # General styling for every series
+    all_series_config:
+      type: line           # histogram-like bars work well for “per-hour” metrics
+      stroke_width: 2
+      group_by:
+        func: avg           # keep each sensor’s own value
+        duration: 15min
+      fill_raw: last         # plug gaps with previous value so graphs look continuous
+    series:
+      - entity: sensor.0000021c3bc6341b_checkins_per_hour_2
+        name: Washing Machine
+        color: '#1E88E5'     # blue
+      - entity: sensor.00000218736e3b1e_checkins_per_hour_2
+        name: Study Climate
+        color: '#43A047'     # green
+      - entity: sensor.0000039223703418_checkins_per_hour_2
+        name: Study Energy
+        color: '#F4511E'     # orange-red
+      - entity: sensor.00000219a2923b10_checkins_per_hour_2
+        name: Garbage Display
+        color: '#FFB300'     # amber
+      - entity: sensor.0000021d7356341f_checkins_per_hour_2
+        name: Moeke Status
+        color: '#8E24AA'     # violet
+      - entity: sensor.00007e225dc2b29f_checkins_per_hour_2
+        name: Elec Price Kitchen
+        color: '#039BE5'     # light blue
+      - entity: sensor.00007e22cc92b292_checkins_per_hour_2
+        name: Elec Price Study
+        color: '#00ACC1'     # cyan
+      - entity: sensor.00007e1f8b30b297_checkins_per_hour_2
+        name: Elec Price Washroom
+        color: '#00897B'     # teal
+      - entity: sensor.0000021dc9ca341b_checkins_per_hour_2
+        name: Litterbox Status
+        color: '#D81B60'     # pink-red
+      - entity: sensor.0000021d1c8e3413_checkins_per_hour_2
+        name: Powerstrip Study
+        color: '#6D4C41'     # brown
+      - entity: sensor.780105561c817600_checkins_per_hour_2
+        name: Calendar Study
+        color: '#757575'     # grey
+      - entity: sensor.0000021f86d83b1e_checkins_per_hour_2
+        name: Washing Progress
+        color: '#3949AB'     # indigo
+      - entity: sensor.0000021aea62341f_checkins_per_hour_2
+        name: Network Stats
+        color: '#FDD835'     # yellow
+      # - entity: sensor.00007e1f75f1b29b_checkins_per_hour_2
+      #   name: Buienradar
+      #   color: '#5E35B1'     # deep purple
+      # - entity: sensor.780105561a2ce800_checkins_per_hour_2
+      #   name: Weekly Forecast
+      #   color: '#009688'     # turquoise
