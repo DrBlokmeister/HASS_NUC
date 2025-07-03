@@ -16,6 +16,10 @@
 #| Study Energy Control       | 0000021dc3bf3413      | 8a5608d777be457d781e79b5948c2332 | Control group tag for Study Energy       |
 #| Study Calendar             | 780105561c817600      | 0384f3ad3a85237fcb589d95931ddc60 |                                          |
 #| Weekly Weather Forecast    | 780105561A2CE800      | 4f25ad0c1a32f05c73668f871c5ce199 |                                          |
+#| Test Tag 1                 | 0000021DC3CA3411      | 53d2ca8307e6b3b63de5a4f21f3bd65a | Range testing AP downstairs 20250703     |
+#| Test Tag 2                 | 0000021DBA8E341F      | e76212580c62854dba3177bd312db385 | Range testing AP downstairs 20250703     |
+#| Test Tag 3                 | 0000021DCA1B3414      | b75bcc738e59bd0c656de14fcc3f30f9 | Range testing AP downstairs 20250703     |
+#| Test Tag 4                 | 0000021DC3E4341D      | 8c58bdceb5e736e3e5a8a55e2ee1da40 | Range testing AP downstairs 20250703     |
 
 
 homeassistant:
@@ -374,6 +378,38 @@ sensor:
     unit_time: h
     time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
+
+    # Test Tag 1
+  - platform: derivative
+    source: sensor.0000021dc3ca3411_checkin_count
+    name: "0000021DC3CA3411 Checkins Per Hour"
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+    # Test Tag 2
+  - platform: derivative
+    source: sensor.0000021dba8e341f_checkin_count
+    name: "0000021DBA8E341F Checkins Per Hour"
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+    # Test Tag 3
+  - platform: derivative
+    source: sensor.0000021dca1b3414_checkin_count
+    name: "0000021DCA1B3414 Checkins Per Hour"
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+    # Test Tag 4
+  - platform: derivative
+    source: sensor.0000021dc3e4341d_checkin_count
+    name: "0000021DC3E4341D Checkins Per Hour"
+    round: 0
+    unit_time: h
+    time_window: "01:00:00"
 
 ########################
 #    BINARY SENSORS    #
@@ -933,6 +969,43 @@ automation:
                 data:
                   title: "OpenEPaperLink AP Issue"
                   message: "AP did not come back online after multiple power cycles."
+
+  - alias: '[misc|epaperlink] Update Test Tag Displays Hourly'
+    id: yaml_automation_misc_epaperlink_update_test_tag_displays_hourly
+    description: 'Update all four test tag e-paper displays once per hour with overview info'
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "0"
+    action:
+      - service: script.update_epaper_tag_overview
+        data:
+          display_device_id: 53d2ca8307e6b3b63de5a4f21f3bd65a
+          mac_address: 0000021DC3CA3411
+          tag_label: "Test Tag 1"
+          checkins_entity_id: sensor.0000021dc3ca3411_checkins_per_hour
+          rssi_entity_id: sensor.0000021dc3ca3411_rssi
+      - service: script.update_epaper_tag_overview
+        data:
+          display_device_id: e76212580c62854dba3177bd312db385
+          mac_address: 0000021DBA8E341F
+          tag_label: "Test Tag 2"
+          checkins_entity_id: sensor.0000021dba8e341f_checkins_per_hour
+          rssi_entity_id: sensor.0000021dba8e341f_rssi
+      - service: script.update_epaper_tag_overview
+        data:
+          display_device_id: b75bcc738e59bd0c656de14fcc3f30f9
+          mac_address: 0000021DCA1B3414
+          tag_label: "Test Tag 3"
+          checkins_entity_id: sensor.0000021dca1b3414_checkins_per_hour
+          rssi_entity_id: sensor.0000021dca1b3414_rssi
+      - service: script.update_epaper_tag_overview
+        data:
+          display_device_id: 8c58bdceb5e736e3e5a8a55e2ee1da40
+          mac_address: 0000021DC3E4341D
+          tag_label: "Test Tag 4"
+          checkins_entity_id: sensor.0000021dc3e4341d_checkins_per_hour
+          rssi_entity_id: sensor.0000021dc3e4341d_rssi
 
 ################
 #    SCENES    #
@@ -4226,6 +4299,96 @@ script:
               color: 'black'
               anchor: lb
 
+  update_epaper_tag_overview:
+    alias: "[epaper|tags] Update Test Tag Overview Display"
+    mode: queued
+    fields:
+      display_device_id:
+        description: "The device ID of the display to be updated"
+        example: "53d2ca8307e6b3b63de5a4f21f3bd65a"
+      mac_address:
+        description: "The MAC address of the tag (for display)"
+        example: "0000021DC3CA3411"
+      tag_label:
+        description: "Label for this tag"
+        example: "Test Tag 1"
+      checkins_entity_id:
+        description: "Entity ID of checkins/hour sensor"
+        example: "sensor.0000021dc3ca3411_checkins_per_hour"
+      rssi_entity_id:
+        description: "Entity ID of RSSI sensor"
+        example: "sensor.0000021dc3ca3411_rssi"
+    sequence:
+      - service: open_epaper_link.drawcustom
+        target:
+          device_id: "{{ display_device_id }}"
+        data:
+          background: white
+          rotate: 0
+          payload:
+            # Tag Label (Top, Center, Large)
+            - type: text
+              value: "{{ tag_label }}"
+              font: ppb.ttf
+              x: 77
+              y: 5
+              size: 28
+              color: 'black'
+              anchor: mt
+            # MAC Address (Underneath label, smaller, gray)
+            - type: text
+              value: "{{ mac_address | string() }}"
+              font: ppb.ttf
+              x: 77
+              y: 40
+              size: 14
+              color: 'red'
+              anchor: mm
+            # "Check-ins/hour" Label
+            - type: text
+              value: "Check-ins/h"
+              font: ppb.ttf
+              x: 77
+              y: 62
+              size: 13
+              color: 'black'
+              anchor: mm
+            # Check-ins/hour Value (Big, red, center)
+            - type: text
+              value: "{{ states(checkins_entity_id) | default('0') }}"
+              font: ppb.ttf
+              x: 77
+              y: 87
+              size: 38
+              color: 'red'
+              anchor: mm
+            # "RSSI" Label
+            - type: text
+              value: "RSSI"
+              font: ppb.ttf
+              x: 77
+              y: 113
+              size: 13
+              color: 'black'
+              anchor: mm
+            # RSSI Value (Medium, blue, center)
+            - type: text
+              value: "{{ states(rssi_entity_id) | default('N/A') }} dBm"
+              font: ppb.ttf
+              x: 77
+              y: 128
+              size: 18
+              color: 'red'
+              anchor: mm
+            # Small update timestamp (optional, bottom left)
+            - type: text
+              value: "Updated: {{ states('sensor.time') | string }}"
+              font: ppb.ttf
+              x: 1
+              y: 153
+              size: 8
+              color: 'black'
+              anchor: lb
 
   drawcustom_snapshot_examples:
     alias: "Generate drawcustom snapshots"
