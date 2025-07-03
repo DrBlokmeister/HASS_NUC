@@ -153,9 +153,27 @@ template:
           {{ not is_state('binary_sensor.tower_cache_health', 'unavailable') and
               state_attr('binary_sensor.tower_cache_health', 'Power State') == 'Active' }}
 
-      - name: "Plex Log SQLITE Mentions"
-        unique_id: yaml_template_sensor_plex_log_sqlite_mentions
-        state: "{{ state_attr('sensor.plex_log_overview', 'sqlite') | int(0) }}"
+      - name: "Plex Log SQLITE Debugs"
+        unique_id: yaml_template_sensor_plex_log_sqlite_debugs
+        state: "{{ state_attr('sensor.plex_log_overview', 'sqlite_debug') | int(0) }}"
+        icon: mdi:database-alert
+        unit_of_measurement: entries
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+      - name: "Plex Log SQLITE Infos"
+        unique_id: yaml_template_sensor_plex_log_sqlite_infos
+        state: "{{ state_attr('sensor.plex_log_overview', 'sqlite_info') | int(0) }}"
+        icon: mdi:database-alert
+        unit_of_measurement: errors
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+      - name: "Plex Log SQLITE Warnings"
+        unique_id: yaml_template_sensor_plex_log_sqlite_warnings
+        state: "{{ state_attr('sensor.plex_log_overview', 'sqlite_warn') | int(0) }}"
+        icon: mdi:database-alert
+        unit_of_measurement: errors
+        availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+      - name: "Plex Log SQLITE Errors"
+        unique_id: yaml_template_sensor_plex_log_sqlite_errors
+        state: "{{ state_attr('sensor.plex_log_overview', 'sqlite_error') | int(0) }}"
         icon: mdi:database-alert
         unit_of_measurement: errors
         availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
@@ -348,17 +366,23 @@ command_line:
       unique_id: yaml_command_line_sensor_plex_log_overview
       icon: mdi:database-search
       scan_interval: 900
+      unit_of_measurement: errors
       command: >-
         ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.0.250 '
           LOG="/mnt/user/appdata/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log";
-          SQLITE=$(grep -c "SQLITE" "$LOG" 2>/dev/null); SQLITE=${SQLITE:-0}
+          SQLITE_DEBUG=$(grep "DEBUG" "$LOG" | grep -c "SQLITE" 2>/dev/null); SQLITE_DEBUG=${SQLITE_DEBUG:-0}
+          SQLITE_INFO=$(grep "INFO" "$LOG" | grep -c "SQLITE" 2>/dev/null); SQLITE_INFO=${SQLITE_INFO:-0}
+          SQLITE_WARN=$(grep "WARN" "$LOG" | grep -c "SQLITE" 2>/dev/null); SQLITE_WARN=${SQLITE_WARN:-0}
+          SQLITE_ERROR=$(grep "ERROR" "$LOG" | grep -c "SQLITE" 2>/dev/null); SQLITE_ERROR=${SQLITE_ERROR:-0}
           WARN=$(grep -c "WARN" "$LOG" 2>/dev/null); WARN=${WARN:-0}
           ERROR=$(grep -c "ERROR" "$LOG" 2>/dev/null); ERROR=${ERROR:-0}
           LAST_SCAN=$(grep -F "Activity: Ended activity" "$LOG" | tail -1 | awk "{print \$1, \$2, \$3}");
           [ -z "$LAST_SCAN" ] && LAST_SCAN="";
-          # Escape double quotes in LAST_SCAN for JSON
           LAST_SCAN=${LAST_SCAN//\"/\\\"}
-          echo "{\"sqlite\": $SQLITE, \"warn\": $WARN, \"error\": $ERROR, \"last_scan\": \"$LAST_SCAN\"}"
+          # Get last SQLITE error line, if any
+          SQLITE_ERROR_TEXT=$(grep "ERROR" "$LOG" | grep "SQLITE" | tail -1 | head -c 255)
+          SQLITE_ERROR_TEXT=${SQLITE_ERROR_TEXT//\"/\\\"}
+          echo "{\"sqlite_debug\": $SQLITE_DEBUG, \"sqlite_info\": $SQLITE_INFO, \"sqlite_warn\": $SQLITE_WARN, \"sqlite_error\": $SQLITE_ERROR, \"warn\": $WARN, \"error\": $ERROR, \"last_scan\": \"$LAST_SCAN\", \"sqlite_error_text\": \"$SQLITE_ERROR_TEXT\"}"
         ' || echo '{}'
       value_template: >
         {% if value_json is defined and value_json.error is defined %}
@@ -367,12 +391,15 @@ command_line:
           0
         {% endif %}
       json_attributes:
-        - sqlite
+        - sqlite_debug
+        - sqlite_info
+        - sqlite_warn
+        - sqlite_error
         - warn
         - error
         - last_scan
+        - sqlite_error_text
       availability: "{{ is_state('binary_sensor.nas_ssh_reachability', 'on') }}"
-
 
   - binary_sensor:
       name: "NAS SSH Reachability"
@@ -380,6 +407,45 @@ command_line:
       payload_on: "true"
       payload_off: "false"
       device_class: connectivity
+
+    # PIKVM COMMAND LINE SENSOR. DOESN'T WORK YET DUE TO NON-EXISTING SSH KEYS
+  # - platform: command_line
+  #   name: "piKVM WiFi & System JSON"
+  #   command: >
+  #     ssh -i /config/ssh_keys/id_rsa -o StrictHostKeyChecking=no root@10.0.0.123 '
+  #     bash <<'"'"'EOF'"'"'
+  #     iface=wlan0
+  #     iw=$(iwconfig "$iface")
+  #     sig=$(echo "$iw" | grep -oP "Signal level=-?\\K\\d+")
+  #     lq_pair=$(echo "$iw" | grep -oP "Link Quality=\\K\\d+/\\d+")
+  #     IFS=/ read lq_cur lq_max <<<"$lq_pair"
+  #     lq_pct=$(( lq_max > 0 ? lq_cur * 100 / lq_max : 0 ))
+  #     bit=$(echo "$iw" | grep -oP "Bit Rate=\\K[0-9.]+")
+  #     txp=$(echo "$iw" | grep -oP "Tx-Power=\\K\\d+")
+  #     apm=$(echo "$iw" | grep -oP "Access Point: \\K([0-9A-F]{2}:){5}[0-9A-F]{2}")
+  #     missed=$(echo "$iw" | grep -oP "Missed beacon:\\K\\d+")
+  #     retry=$(echo "$iw"  | grep -oP "Tx excessive retries:\\K\\d+")
+  #     ssid=$(iwgetid -r)
+  #     load=$(cut -d" " -f1 /proc/loadavg)
+  #     temp=$(awk "{printf \\"%.1f\\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp)
+  #     printf "{\"signal_level\":%s,\"link_quality\":%s,\"bit_rate\":%s,"\
+  #     "\"tx_power\":%s,\"ap_mac\":\"%s\",\"ssid\":\"%s\","\
+  #     "\"missed_beacon\":%s,\"tx_retries\":%s,\"load_avg\":%s,"\
+  #     "\"cpu_temp\":%s}\\n" \
+  #     "$sig" "$lq_pct" "$bit" "$txp" "$apm" "$ssid" "$missed" "$retry" "$load" "$temp"
+  #     EOF'
+  #   value_template: "{{ value_json.load_avg }}"
+  #   json_attributes:
+  #     - signal_level
+  #     - link_quality
+  #     - bit_rate
+  #     - tx_power
+  #     - ap_mac
+  #     - ssid
+  #     - missed_beacon
+  #     - tx_retries
+  #     - cpu_temp
+  #   scan_interval: 60
 
 
 #################
@@ -515,7 +581,7 @@ automation:
         entity_id: sensor.plex_log_error_entries
         above: 0
       - platform: numeric_state
-        entity_id: sensor.plex_log_sqlite_mentions
+        entity_id: sensor.plex_log_sqlite_errors
         above: 0
     condition: []
     action:
@@ -524,10 +590,10 @@ automation:
           title: "⚠️ Plex Log Alert"
           message: >
             {% set err = states('sensor.plex_log_error_entries')|int %}
-            {% set sqlite = states('sensor.plex_log_sqlite_mentions')|int %}
+            {% set sqlite = states('sensor.plex_log_sqlite_errors')|int %}
             Detected issues in Plex logs:
             {% if err > 0 %}• {{ err }} error entry(ies){% endif %}
-            {% if sqlite > 0 %}{{ '\n' if err > 0 }}• {{ sqlite }} SQLITE mention(s){% endif %}
+            {% if sqlite > 0 %}{{ '\n' if err > 0 }}• {{ sqlite }} SQLITE mention(s) with text {{ state_attr('sensor.plex_log_overview', 'sqlite_error_text') }}{% endif %}
           data:
             clickAction: "/lovelace/4"
             sticky: "true"
