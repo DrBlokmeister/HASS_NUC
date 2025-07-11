@@ -194,6 +194,65 @@ template:
         state: "{{ state_attr('sensor.plex_log_overview', 'last_scan') or 'unavailable' }}"
         icon: mdi:magnify-scan
         availability: "{{ not is_state('sensor.plex_log_overview', 'unavailable') }}"
+
+        # PiKVM Sensors
+      - name: "piKVM Signal Level"
+        unique_id: yaml_template_sensor_pikvm_signal_level
+        icon: mdi:wifi-strength-2
+        state: "{{ state_attr('sensor.pikvm_system_details', 'signal_level') }}"
+        unit_of_measurement: "dBm"
+        device_class: signal_strength
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM Link Quality"
+        unique_id: yaml_template_sensor_pikvm_link_quality
+        icon: mdi:wifi-strength
+        state: "{{ state_attr('sensor.pikvm_system_details', 'link_quality') }}"
+        unit_of_measurement: "%"
+        device_class: signal_strength
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM Bit Rate"
+        unique_id: yaml_template_sensor_pikvm_bit_rate
+        icon: mdi:speedometer
+        state: "{{ state_attr('sensor.pikvm_system_details', 'bit_rate') }}"
+        unit_of_measurement: "Mb/s"
+        device_class: data_rate
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM TX Power"
+        unique_id: yaml_template_sensor_pikvm_tx_power
+        icon: mdi:access-point
+        state: "{{ state_attr('sensor.pikvm_system_details', 'tx_power') }}"
+        unit_of_measurement: "dBm"
+        device_class: signal_strength
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM AP MAC"
+        unique_id: yaml_template_sensor_pikvm_ap_mac
+        icon: mdi:lan-connect
+        state: "{{ state_attr('sensor.pikvm_system_details', 'ap_mac') }}"
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM SSID"
+        unique_id: yaml_template_sensor_pikvm_ssid
+        icon: mdi:wifi
+        state: "{{ state_attr('sensor.pikvm_system_details', 'ssid') }}"
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM Missed Beacon"
+        unique_id: yaml_template_sensor_pikvm_missed_beacon
+        icon: mdi:wifi-alert
+        state: "{{ state_attr('sensor.pikvm_system_details', 'missed_beacon') }}"
+        unit_of_measurement: "count"
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM TX Retries"
+        unique_id: yaml_template_sensor_pikvm_tx_retries
+        icon: mdi:reload
+        state: "{{ state_attr('sensor.pikvm_system_details', 'tx_retries') }}"
+        unit_of_measurement: "count"
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
+      - name: "piKVM CPU Temp"
+        unique_id: yaml_template_sensor_pikvm_cpu_temp
+        icon: mdi:thermometer
+        state: "{{ state_attr('sensor.pikvm_system_details', 'cpu_temp') }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        availability: "{{ not is_state('sensor.pikvm_system_details', 'unavailable') }}"
 ##############
 #    REST    #
 ##############
@@ -408,44 +467,47 @@ command_line:
       payload_off: "false"
       device_class: connectivity
 
-    # PIKVM COMMAND LINE SENSOR. DOESN'T WORK YET DUE TO NON-EXISTING SSH KEYS
-  # - platform: command_line
-  #   name: "piKVM WiFi & System JSON"
-  #   command: >
-  #     ssh -i /config/ssh_keys/id_rsa -o StrictHostKeyChecking=no root@10.0.0.123 '
-  #     bash <<'"'"'EOF'"'"'
-  #     iface=wlan0
-  #     iw=$(iwconfig "$iface")
-  #     sig=$(echo "$iw" | grep -oP "Signal level=-?\\K\\d+")
-  #     lq_pair=$(echo "$iw" | grep -oP "Link Quality=\\K\\d+/\\d+")
-  #     IFS=/ read lq_cur lq_max <<<"$lq_pair"
-  #     lq_pct=$(( lq_max > 0 ? lq_cur * 100 / lq_max : 0 ))
-  #     bit=$(echo "$iw" | grep -oP "Bit Rate=\\K[0-9.]+")
-  #     txp=$(echo "$iw" | grep -oP "Tx-Power=\\K\\d+")
-  #     apm=$(echo "$iw" | grep -oP "Access Point: \\K([0-9A-F]{2}:){5}[0-9A-F]{2}")
-  #     missed=$(echo "$iw" | grep -oP "Missed beacon:\\K\\d+")
-  #     retry=$(echo "$iw"  | grep -oP "Tx excessive retries:\\K\\d+")
-  #     ssid=$(iwgetid -r)
-  #     load=$(cut -d" " -f1 /proc/loadavg)
-  #     temp=$(awk "{printf \\"%.1f\\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp)
-  #     printf "{\"signal_level\":%s,\"link_quality\":%s,\"bit_rate\":%s,"\
-  #     "\"tx_power\":%s,\"ap_mac\":\"%s\",\"ssid\":\"%s\","\
-  #     "\"missed_beacon\":%s,\"tx_retries\":%s,\"load_avg\":%s,"\
-  #     "\"cpu_temp\":%s}\\n" \
-  #     "$sig" "$lq_pct" "$bit" "$txp" "$apm" "$ssid" "$missed" "$retry" "$load" "$temp"
-  #     EOF'
-  #   value_template: "{{ value_json.load_avg }}"
-  #   json_attributes:
-  #     - signal_level
-  #     - link_quality
-  #     - bit_rate
-  #     - tx_power
-  #     - ap_mac
-  #     - ssid
-  #     - missed_beacon
-  #     - tx_retries
-  #     - cpu_temp
-  #   scan_interval: 60
+  - sensor:
+      name: piKVM System Details
+      unique_id: yaml_command_line_sensor_pikvm_system_details
+      icon: mdi:database-search
+      scan_interval: 300
+      command_timeout: 20
+      state_class: measurement
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q root@10.0.30.20 '
+          PATH=$PATH:/usr/sbin:/sbin;
+          iface=wlan0;
+          iw=$(iwconfig "$iface");
+          sig=$(echo "$iw" | grep -oP "Signal level=-?\K\d+");
+          lq_pair=$(echo "$iw" | grep -oP "Link Quality=\K\d+/\d+");
+          IFS=/ read lq_cur lq_max <<<"$lq_pair";
+          lq_pct=$(( lq_max>0 ? lq_cur*100/lq_max : 0 ));
+          bit=$(echo "$iw" | grep -oP "Bit Rate=\K[0-9.]+");
+          txp=$(echo "$iw" | grep -oP "Tx-Power=\K\d+");
+          apm=$(echo "$iw" | grep -oP "Access Point: \K([0-9A-F]{2}:){5}[0-9A-F]{2}");
+          missed=$(echo "$iw" | grep -oP "Missed beacon:\K\d+");
+          retry=$(echo "$iw" | grep -oP "Tx excessive retries:\K\d+");
+          ssid=$(iwgetid -r);
+          load=$(cut -d" " -f1 /proc/loadavg);
+          temp=$(awk "{printf \"%.1f\", \$1/1000}" /sys/class/thermal/thermal_zone0/temp);
+          printf "{\"signal_level\":%s,\"link_quality\":%s,\"bit_rate\":%s,\"tx_power\":%s,\"ap_mac\":\"%s\",\"ssid\":\"%s\",\"missed_beacon\":%s,\"tx_retries\":%s,\"load_avg\":%s,\"cpu_temp\":%s}\n" \
+                "${sig:-0}" "${lq_pct:-0}" "${bit:-0}" "${txp:-0}" \
+                "${apm:-\"\"}" "${ssid:-\"\"}" "${missed:-0}" "${retry:-0}" \
+                "${load:-0}" "${temp:-0}"
+        ' || echo '{}'
+      value_template: "{{ value_json.load_avg | default(0) }}"
+      json_attributes:
+        - signal_level
+        - link_quality
+        - bit_rate
+        - tx_power
+        - ap_mac
+        - ssid
+        - missed_beacon
+        - tx_retries
+        - cpu_temp
+
 
 
 #################
@@ -577,9 +639,9 @@ automation:
     description: "Sends a mobile notification when Plex log sensors detect errors or SQLITE mentions."
     mode: single
     trigger:
-      - platform: numeric_state
-        entity_id: sensor.plex_log_error_entries
-        above: 0
+      # - platform: numeric_state
+      #   entity_id: sensor.plex_log_error_entries
+      #   above: 0
       - platform: numeric_state
         entity_id: sensor.plex_log_sqlite_errors
         above: 0
