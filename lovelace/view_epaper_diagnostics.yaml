@@ -1,97 +1,310 @@
 title: Epaper Diagnostics
 icon: mdi:tablet-dashboard
 cards:
-  - type: grid
-    columns: 3
+  - type: vertical-stack
     cards:
-      - type: button
-        name: Reload Integration
-        icon: mdi:reload
-        tap_action:
-          action: call-service
-          service: homeassistant.reload_config_entry
-          data:
-            entry_id: dcd0a828896007b5be2b87a699bb028f
-      - type: glance
-        entities:
-          - entity: sensor.median_epaper_tag_last_check_in_time
-            name: Last Check-In
-      - type: glance
-        entities:
-          - entity: sensor.epaperlink_study_ap_round_trip_time_average
-            name: Study AP Ping
-      - type: glance
-        entities:
-          - entity: device_tracker.openepaperlink_7bc8
-            name: Study AP Unifi
-            double_tap_action:
-              action: navigate
-              navigation_path: /config/devices/device/8a57b6c9d98030cedeaa62163359a36d
-      - type: entity
-        entity: automation.misc_epaperlink_trigger_reload_when_last_seen_exceeds_5_minutes
-        attribute: last_triggered
-        name: Last Triggered
-      - type: glance
-        entities:
-          - entity: switch.plug_epaper_ap_switch
-            name: Plug
+      - type: grid
+        columns: 4
+        cards:
+          - type: button
+            name: Reload Integration
+            icon: mdi:reload
             tap_action:
-              action: toggle
-            double_tap_action:
-              action: navigate
-              navigation_path: /config/devices/device/ab2cc25333c1b320c6dcfe0e88048130
-      - type: glance
-        entities:
-          - entity: sensor.epaperlink_livingroom_ap_round_trip_time_average
-            name: Livingroom AP Ping
-            double_tap_action:
-              action: navigate
-              navigation_path: /config/devices/device/f228f202bf5a57dc8614b4952c1d6796
-            long_press_action:
               action: call-service
               service: homeassistant.reload_config_entry
               data:
-                entry_id: f228f202bf5a57dc8614b4952c1d6796
-      - type: glance
-        entities:
-          - entity: device_tracker.openepaperlink_8640
-            name: Livingroom AP Unifi
-            double_tap_action:
-              action: navigate
-              navigation_path: /config/devices/device/b40e7d861918eed2f7c7936787b3ba57
-
-  - type: custom:auto-entities
-    card:
-      type: entities
-      title: Unupdated Epaper Tags
-      show_header_toggle: false
-      state_color: true
-    filter:
-      include:
-        - domain: sensor
-          entity_id: "sensor.*_last_seen"
-          attributes:
-            device_class: timestamp
-          last_updated: "> 5m ago"
-      exclude:
-        - entity_id: "sensor.780105561a342201*"
-        - entity_id: "sensor.000000000000341b*"
-        - entity_id: "sensor.000000000000341b*"
-        - entity_id: "sensor.00007e225dd0b29c*"
-        - entity_id: "sensor.00600b561c92b300*"
-        - entity_id: "sensor.7801055600817600*"
-        - entity_id: "sensor.00007e1f8186b290*"
-        - entity_id: "sensor.00000065f4813418*"
-        - entity_id: "sensor.00007e225dceb293*"
-        - entity_id: "sensor.0000021dbca73412*"
-        - entity_id: "sensor.00007e1f7f9fb299*"
-        - entity_id: "sensor.00007e22b1b2b29a*"
-        - entity_id: "sensor.00007e22b1d7b299*"
-        - entity_id: "sensor.0000021d26a23414*"
-    sort:
-      method: state
-      reverse: true
-      numeric: false
+                entry_id: dcd0a828896007b5be2b87a699bb028f
+          - type: glance
+            entities:
+              - entity: sensor.median_epaper_tag_last_check_in_time
+                name: Last Check-In
+          - type: glance
+            entities:
+              - entity: sensor.epaperlink_study_ap_round_trip_time_average
+                name: Study AP Ping
+          - type: glance
+            entities:
+              - entity: device_tracker.openepaperlink_7bc8
+                name: Study AP Unifi
+                double_tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/8a57b6c9d98030cedeaa62163359a36d
+          - type: entity
+            entity: automation.misc_epaperlink_trigger_reload_when_last_seen_exceeds_5_minutes
+            attribute: last_triggered
+            name: Last Triggered
+          - type: glance
+            entities:
+              - entity: switch.plug_epaper_ap_switch
+                name: Plug
+                tap_action:
+                  action: toggle
+                double_tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/ab2cc25333c1b320c6dcfe0e88048130
+          - type: glance
+            entities:
+              - entity: sensor.epaperlink_livingroom_ap_round_trip_time_average
+                name: Livingroom AP Ping
+                double_tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/f228f202bf5a57dc8614b4952c1d6796
+                long_press_action:
+                  action: call-service
+                  service: homeassistant.reload_config_entry
+                  data:
+                    entry_id: f228f202bf5a57dc8614b4952c1d6796
+          - type: glance
+            entities:
+              - entity: device_tracker.openepaperlink_8640
+                name: Livingroom AP Unifi
+                double_tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/b40e7d861918eed2f7c7936787b3ba57
+      # - type: custom:auto-entities
+      #   card:
+      #     type: entities
+      #     title: Unupdated Epaper Tags
+      #     show_header_toggle: false
+      #     state_color: true
+      #   filter:
+      #     include:
+      #       - domain: sensor
+      #         entity_id: "sensor.*_last_seen"
+      #         attributes:
+      #           device_class: timestamp
+      #         #last_updated: "> 5m ago"
+      #         state: "> 30m ago"
+      #         options:
+      #           secondary_info: last-updated
+      #     exclude:
+      #       - entity_id: "sensor.780105561a342201*"
+      #       - entity_id: "sensor.000000000000341b*"
+      #       - entity_id: "sensor.000000000000341b*"
+      #       - entity_id: "sensor.00007e225dd0b29c*"
+      #       - entity_id: "sensor.00600b561c92b300*"
+      #       - entity_id: "sensor.7801055600817600*"
+      #       - entity_id: "sensor.00007e1f8186b290*"
+      #       - entity_id: "sensor.00000065f4813418*"
+      #       - entity_id: "sensor.00007e225dceb293*"
+      #       - entity_id: "sensor.0000021dbca73412*"
+      #       - entity_id: "sensor.00007e1f7f9fb299*"
+      #       - entity_id: "sensor.00007e22b1b2b29a*"
+      #       - entity_id: "sensor.00007e22b1d7b299*"
+      #       - entity_id: "sensor.0000021d26a23414*"
+      #   sort:
+      #     method: state
+      #     reverse: true
+      #     numeric: false
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Unupdated Epaper Tags
+          show_header_toggle: false
+          state_color: true
+        filter:
+          include:
+            - entity_id: sensor.0000021c3bc6341b_last_seen
+              state: "> 30m ago"
+              options:
+                name: Washing Machine
+                secondary_info: last-updated
+            - entity_id: sensor.00000218736e3b1e_last_seen
+              state: "> 30m ago"
+              options:
+                name: Study Climate
+                secondary_info: last-updated
+            - entity_id: sensor.0000039223703418_last_seen
+              state: "> 30m ago"
+              options:
+                name: Study Energy
+                secondary_info: last-updated
+            - entity_id: sensor.00000219a2923b10_last_seen
+              state: "> 30m ago"
+              options:
+                name: Garbage Display
+                secondary_info: last-updated
+            - entity_id: sensor.0000021d7356341f_last_seen
+              state: "> 30m ago"
+              options:
+                name: Moeke Status
+                secondary_info: last-updated
+            - entity_id: sensor.00007e225dc2b29f_last_seen
+              state: "> 30m ago"
+              options:
+                name: Electricity Price Kitchen
+                secondary_info: last-updated
+            - entity_id: sensor.00007e22cc92b292_last_seen
+              state: "> 30m ago"
+              options:
+                name: Electricity Price Study
+                secondary_info: last-updated
+            - entity_id: sensor.00007e1f8b30b297_last_seen
+              state: "> 30m ago"
+              options:
+                name: Electricity Price Washroom
+                secondary_info: last-updated
+            - entity_id: sensor.0000021dc9ca341b_last_seen
+              state: "> 30m ago"
+              options:
+                name: Litterbox Status
+                secondary_info: last-updated
+            - entity_id: sensor.0000021f3abd3415_last_seen
+              state: "> 30m ago"
+              options:
+                name: Litterbox Status New
+                secondary_info: last-updated
+            - entity_id: sensor.0000021d1c8e3413_last_seen
+              state: "> 30m ago"
+              options:
+                name: Powerstrip Study
+                secondary_info: last-updated
+            - entity_id: sensor.0000021ef7993413_last_seen
+              state: "> 30m ago"
+              options:
+                name: Moeke Status Control
+                secondary_info: last-updated
+            - entity_id: sensor.0000021dc3bf3413_last_seen
+              state: "> 30m ago"
+              options:
+                name: Study Energy Control
+                secondary_info: last-updated
+            - entity_id: sensor.780105561c817600_last_seen
+              state: "> 30m ago"
+              options:
+                name: Study Calendar
+                secondary_info: last-updated
+            - entity_id: sensor.0000021aea62341f_last_seen
+              state: "> 30m ago"
+              options:
+                name: Network Statistics
+                secondary_info: last-updated
+            - entity_id: sensor.780105561a2ce800_last_seen
+              state: "> 30m ago"
+              options:
+                name: Weekly Weather Forecast
+                secondary_info: last-updated
+            - entity_id: sensor.0000021dc3ca3411_last_seen
+              state: "> 30m ago"
+              options:
+                name: Test Tag 1
+                secondary_info: last-updated
+            - entity_id: sensor.0000021dba8e341f_last_seen
+              state: "> 30m ago"
+              options:
+                name: Test Tag 2
+                secondary_info: last-updated
+            - entity_id: sensor.0000021dca1b3414_last_seen
+              state: "> 30m ago"
+              options:
+                name: Test Tag 3
+                secondary_info: last-updated
+            - entity_id: sensor.0000021dc3e4341d_last_seen
+              state: "> 30m ago"
+              options:
+                name: Test Tag 4
+                secondary_info: last-updated
+          exclude: []
+        sort:
+          method: state
+          reverse: true
+          numeric: false
+      - type: custom:collapsable-cards
+        title: Unupdated Epaper Tag history
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: history-graph
+              title: History
+              hours_to_show: 72
+              show_title: false
+            filter:
+              include:
+                - entity_id: sensor.0000021c3bc6341b_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Washing Machine
+                - entity_id: sensor.00000218736e3b1e_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Study Climate
+                - entity_id: sensor.0000039223703418_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Study Energy
+                - entity_id: sensor.00000219a2923b10_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Garbage Display
+                - entity_id: sensor.0000021d7356341f_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Moeke Status
+                - entity_id: sensor.00007e225dc2b29f_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Electricity Price Kitchen
+                - entity_id: sensor.00007e22cc92b292_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Electricity Price Study
+                - entity_id: sensor.00007e1f8b30b297_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Electricity Price Washroom
+                - entity_id: sensor.0000021dc9ca341b_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Litterbox Status
+                - entity_id: sensor.0000021f3abd3415_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Litterbox Status New
+                - entity_id: sensor.0000021d1c8e3413_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Powerstrip Study
+                - entity_id: sensor.0000021ef7993413_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Moeke Status Control
+                - entity_id: sensor.0000021dc3bf3413_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Study Energy Control
+                - entity_id: sensor.780105561c817600_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Study Calendar
+                - entity_id: sensor.0000021aea62341f_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Network Statistics
+                - entity_id: sensor.780105561a2ce800_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Weekly Weather Forecast
+                - entity_id: sensor.0000021dc3ca3411_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Test Tag 1
+                - entity_id: sensor.0000021dba8e341f_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Test Tag 2
+                - entity_id: sensor.0000021dca1b3414_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Test Tag 3
+                - entity_id: sensor.0000021dc3e4341d_last_seen
+                  state: "> 30m ago"
+                  options:
+                    name: Test Tag 4
+              exclude: []
+            sort:
+              method: state
+              reverse: true
+              numeric: false
 
   - type: custom:decluttering-card
     template: epaper_device_card
