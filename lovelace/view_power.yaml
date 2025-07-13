@@ -28,6 +28,255 @@ badges: []
 cards:
   - type: vertical-stack
     cards:
+      - type: gauge
+        name: Net Power usage
+        unit: 'kW'
+        entity: sensor.net_power_usage
+        min: -3
+        max: 3
+        needle: true
+        segments:
+          - from: -3
+            to: -2.5
+            color: '#2636FF'  # Deep Blue
+          - from: -2.5
+            to: -2
+            color: '#3042FF'  # Dark Blue
+          - from: -2
+            to: -1.5
+            color: '#3A5EFF'  # Royal Blue
+          - from: -1.5
+            to: -1
+            color: '#447AFF'  # Bright Blue
+          - from: -1
+            to: -0.5
+            color: '#4E96FF'  # Sky Blue
+          - from: -0.5
+            to: 0
+            color: '#58B3FF'  # Soft Blue
+          - from: 0
+            to: 0.75
+            color: '#8BC34A'  # Green
+          - from: 0.75
+            to: 1.5
+            color: '#FFEB3B'  # Yellow
+          - from: 1.5
+            to: 2.25
+            color: '#FFC107'  # Amber
+          - from: 2.25
+            to: 3
+            color: '#E64A19'  # Deep Orange
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            name: Total Power usage
+            unit: 'W'
+            entity: sensor.total_power_consumption_watt
+            min: 0
+            max: 5000
+            segments:
+              - from: 0
+                to: 2500
+                color: '#8BC34A'  # Soft Green
+              - from: 2500
+                to: 3500
+                color: '#FFEB3B'  # Soft Yellow
+              - from: 3500
+                to: 5000
+                color: '#F44336'  # Soft Red
+          - type: gauge
+            name: Total Power Production
+            unit: 'W'
+            entity: sensor.solar_panel_power_production_available
+            min: 0
+            max: 3000
+            segments:
+              - from: 0
+                to: 500
+                color: "#4CAF50"  # Green
+              - from: 500
+                to: 1000
+                color: "#00BCD4"  # Green
+              - from: 1000
+                to: 1500
+                color: "#2196F3"  # Green
+              - from: 1500
+                to: 2000
+                color: "#3F51B5"  # Green
+              - from: 2000
+                to: 2500
+                color: "#303F9F"  # Green
+              - from: 2500
+                to: 3000
+                color: "#1A237E"  # Green
+      - type: vertical-stack
+        cards:
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.net_energy_use_daily
+                aggregate_func: last
+                name: Net Daily Energy Use
+            name: Net Energy usage daily (last week)
+            hours_to_show: 168
+            group_by: date
+            lower_bound: ~-10
+            upper_bound: ~10
+            icon: mdi:lightning-bolt
+            show:
+              graph: bar
+            color_thresholds_transition: smooth
+            color_thresholds:
+              - value: -20
+                color: "#1A237E"  # Deep Blue
+              - value: -18
+                color: "#303F9F"  # Dark Indigo
+              - value: -16
+                color: "#3F51B5"  # Indigo
+              - value: -14
+                color: "#2196F3"  # Blue
+              - value: -12
+                color: "#03A9F4"  # Light Blue
+              - value: -10
+                color: "#00BCD4"  # Cyan
+              - value: -8
+                color: "#4CAF50"  # Green
+              - value: -6
+                color: "#8BC34A"  # Light Green
+              - value: -4
+                color: "#CDDC39"  # Lime Green
+              - value: -2
+                color: "#FBC02D"  # Yellow
+              - value: 0
+                color: "#8BC34A"  # Green
+              - value: 2
+                color: "#AED581"  # Light Green
+              - value: 4
+                color: "#C5E1A5"  # Lime Green
+              - value: 6
+                color: "#DCE775"  # Yellowish Green
+              - value: 8
+                color: "#FFF176"  # Light Yellow
+              - value: 10
+                color: "#FFD54F"  # Yellow
+              - value: 12
+                color: "#FFB74D"  # Orange Yellow
+              - value: 14
+                color: "#FF9800"  # Orange
+              - value: 16
+                color: "#FB8C00"  # Dark Orange
+              - value: 18
+                color: "#F57C00"  # Reddish Orange
+              - value: 20
+                color: "#E64A19"  # Red
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.daily_energy_use
+                aggregate_func: last
+                name: Daily Energy Use
+            name: Total Electricity usage daily (last week)
+            hours_to_show: 168
+            group_by: date
+            lower_bound: 0
+            upper_bound: ~20
+            icon: mdi:lightning-bolt
+            show:
+              graph: bar
+            color_thresholds_transition: smooth
+            color_thresholds:
+              - value: 0
+                color: "#8BC34A"  # Green
+              - value: 2
+                color: "#AED581"  # Light Green
+              - value: 4
+                color: "#C5E1A5"  # Lime Green
+              - value: 6
+                color: "#DCE775"  # Yellowish Green
+              - value: 8
+                color: "#FFF176"  # Light Yellow
+              - value: 10
+                color: "#FFD54F"  # Yellow
+              - value: 12
+                color: "#FFB74D"  # Orange Yellow
+              - value: 14
+                color: "#FF9800"  # Orange
+              - value: 16
+                color: "#FB8C00"  # Dark Orange
+              - value: 18
+                color: "#F57C00"  # Reddish Orange
+              - value: 20
+                color: "#E64A19"  # Red
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.solar_panel_daily_energy_production
+                aggregate_func: max
+                name: Max
+            name: Solar Production Daily (last week)
+            hours_to_show: 168
+            group_by: date
+            lower_bound: 0
+            upper_bound: ~20
+            icon: mdi:lightning-bolt
+            show:
+              graph: bar
+            color_thresholds_transition: smooth
+            color_thresholds:
+              - value: 0
+                color: "#FF9800"  # Orange
+              - value: 2
+                color: "#FBC02D"  # Yellow
+              - value: 4
+                color: "#CDDC39"  # Lime Green
+              - value: 6
+                color: "#8BC34A"  # Light Green
+              - value: 8
+                color: "#4CAF50"  # Green
+              - value: 10
+                color: "#00BCD4"  # Cyan
+              - value: 12
+                color: "#03A9F4"  # Light Blue
+              - value: 14
+                color: "#2196F3"  # Blue
+              - value: 16
+                color: "#3F51B5"  # Indigo
+              - value: 18
+                color: "#303F9F"  # Dark Indigo
+              - value: 20
+                color: "#1A237E"  # Deep Blue
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.daily_water_use
+                aggregate_func: max
+                name: Max
+            name: Water Usage Daily (last week)
+            hours_to_show: 168
+            group_by: date
+            lower_bound: 0
+            upper_bound: 800
+            icon: mdi:water
+            show:
+              graph: bar
+            color_thresholds_transition: smooth
+            color_thresholds:
+              - value: 0
+                color: "#2196F3"  # Blue
+              - value: 80
+                color: "#4CAF50"  # Green
+              - value: 160
+                color: "#8BC34A"  # Light Green
+              - value: 240
+                color: "#CDDC39"  # Lime
+              - value: 320
+                color: "#FFEB3B"  # Yellow
+              - value: 400
+                color: "#FFC107"  # Amber
+              - value: 480
+                color: "#FF9800"  # Orange
+              - value: 560
+                color: "#F44336"  # Red
+              - value: 640
+                color: "#B71C1C"  # Dark Red
+  - type: vertical-stack
+    cards:
     - type: custom:apexcharts-card
       header:
         title: Energy Usage Today
@@ -469,219 +718,6 @@ cards:
 
   - type: vertical-stack
     cards:
-      - type: gauge
-        name: Net Power usage
-        unit: 'kW'
-        entity: sensor.net_energy_usage
-        min: -3
-        max: 3
-        needle: true
-        segments:
-          - from: -3
-            to: -2.5
-            color: '#2636FF'  # Deep Blue
-          - from: -2.5
-            to: -2
-            color: '#3042FF'  # Dark Blue
-          - from: -2
-            to: -1.5
-            color: '#3A5EFF'  # Royal Blue
-          - from: -1.5
-            to: -1
-            color: '#447AFF'  # Bright Blue
-          - from: -1
-            to: -0.5
-            color: '#4E96FF'  # Sky Blue
-          - from: -0.5
-            to: 0
-            color: '#58B3FF'  # Soft Blue
-          - from: 0
-            to: 0.75
-            color: '#8BC34A'  # Green
-          - from: 0.75
-            to: 1.5
-            color: '#FFEB3B'  # Yellow
-          - from: 1.5
-            to: 2.25
-            color: '#FFC107'  # Amber
-          - from: 2.25
-            to: 3
-            color: '#E64A19'  # Deep Orange
-      - type: horizontal-stack
-        cards:
-          - type: gauge
-            name: Total Power usage
-            unit: 'W'
-            entity: sensor.total_power_consumption_watt
-            min: 0
-            max: 5000
-            segments:
-              - from: 0
-                to: 2500
-                color: '#8BC34A'  # Soft Green
-              - from: 2500
-                to: 3500
-                color: '#FFEB3B'  # Soft Yellow
-              - from: 3500
-                to: 5000
-                color: '#F44336'  # Soft Red
-          - type: gauge
-            name: Total Power Production
-            unit: 'W'
-            entity: sensor.solar_panel_power_production_available
-            min: 0
-            max: 3000
-            segments:
-              - from: 0
-                to: 1000
-                color: '#7BCB60'  # Light Green
-              - from: 1000
-                to: 2000
-                color: '#5A9FFF'  # Medium Green
-              - from: 2000
-                to: 3000
-                color: '#3A7DFF'  # Dark Green
-      - type: horizontal-stack
-        cards:
-          - type: gauge
-            name: Computer Power
-            unit: 'W'
-            entity: sensor.plug_study_desk_power
-            min: 0
-            max: 1000
-            segments:
-              - from: 0
-                to: 300
-                color: '#8BC34A'  # Soft Green
-              - from: 300
-                to: 700
-                color: '#FFEB3B'  # Soft Yellow
-              - from: 700
-                to: 1000
-                color: '#F44336'  # Soft Red
-          - type: gauge
-            name: NAS Power
-            unit: 'W'
-            entity: sensor.plug_nas_power
-            min: 0
-            max: 200
-            segments:
-              - from: 0
-                to: 50
-                color: '#8BC34A'  # Soft Green
-              - from: 50
-                to: 100
-                color: '#FFEB3B'  # Soft Yellow
-              - from: 100
-                to: 200
-                color: '#F44336'  # Soft Red
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.daily_energy_use
-            aggregate_func: max
-            name: Max
-        name: Electricity usage daily (last week)
-        hours_to_show: 168
-        group_by: date
-        lower_bound: 0
-        #upper_bound: 20
-        icon: mdi:lightning-bolt
-        show:
-          graph: bar
-        color_thresholds_transition: smooth
-        color_thresholds:
-          - value: 0
-            color: "#8BC34A"  # Green
-          - value: 2
-            color: "#AED581"  # Light Green
-          - value: 4
-            color: "#C5E1A5"  # Lime Green
-          - value: 6
-            color: "#DCE775"  # Yellowish Green
-          - value: 8
-            color: "#FFF176"  # Light Yellow
-          - value: 10
-            color: "#FFD54F"  # Yellow
-          - value: 12
-            color: "#FFB74D"  # Orange Yellow
-          - value: 14
-            color: "#FF9800"  # Orange
-          - value: 16
-            color: "#FB8C00"  # Dark Orange
-          - value: 18
-            color: "#F57C00"  # Reddish Orange
-          - value: 20
-            color: "#E64A19"  # Red
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.solar_panel_daily_energy_production
-            aggregate_func: max
-            name: Max
-        name: Solar Production Daily (last week)
-        hours_to_show: 168
-        group_by: date
-        lower_bound: 0
-        upper_bound: 20
-        icon: mdi:lightning-bolt
-        show:
-          graph: bar
-        color_thresholds_transition: smooth
-        color_thresholds:
-          - value: 0
-            color: "#FF9800"  # Orange
-          - value: 2
-            color: "#FBC02D"  # Yellow
-          - value: 4
-            color: "#CDDC39"  # Lime Green
-          - value: 6
-            color: "#8BC34A"  # Light Green
-          - value: 8
-            color: "#4CAF50"  # Green
-          - value: 10
-            color: "#00BCD4"  # Cyan
-          - value: 12
-            color: "#03A9F4"  # Light Blue
-          - value: 14
-            color: "#2196F3"  # Blue
-          - value: 16
-            color: "#3F51B5"  # Indigo
-          - value: 18
-            color: "#303F9F"  # Dark Indigo
-          - value: 20
-            color: "#1A237E"  # Deep Blue
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.daily_water_use
-            aggregate_func: max
-            name: Max
-        name: Water Usage Daily (last week)
-        hours_to_show: 168
-        group_by: date
-        lower_bound: 0
-        upper_bound: 800
-        icon: mdi:water
-        show:
-          graph: bar
-        color_thresholds_transition: smooth
-        color_thresholds:
-          - value: 0
-            color: "#2196F3"  # Blue
-          - value: 80
-            color: "#4CAF50"  # Green
-          - value: 160
-            color: "#8BC34A"  # Light Green
-          - value: 240
-            color: "#CDDC39"  # Lime
-          - value: 320
-            color: "#FFEB3B"  # Yellow
-          - value: 400
-            color: "#FFC107"  # Amber
-          - value: 480
-            color: "#FF9800"  # Orange
-          - value: 560
-            color: "#F44336"  # Red
-          - value: 640
-            color: "#B71C1C"  # Dark Red
       - type: custom:collapsable-cards
         title: Individual Device Power
         cards:
