@@ -100,7 +100,86 @@ cards:
             entity_id: update.ap_lite_2nd_floor
           confirmation:
             text: "Update firmware for AP Lite (2nd Floor)?"
-
+  - type: custom:apexcharts-card
+    header:
+      title: Wi-Fi Clients per Access Point
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 7d
+    update_interval: 30min
+    all_series_config:
+      group_by:
+        func: median
+        duration: 30min
+      stroke_width: 2
+      type: line
+      show:
+        in_header: true
+        legend_value: false
+    apex_config:
+      legend:
+        show: false
+    yaxis:
+      - min: 0
+        max: ~40
+        decimals: 0
+        align_to: 10
+        apex_config:
+          forceNiceScale: true
+    series:
+      - entity: sensor.u6_lr_clients
+        name: U6-LR
+        color: '#00E396'
+      - entity: sensor.ap_lite_1st_floor_clients
+        name: AP 1st Floor
+        color: '#FF66C3'
+      - entity: sensor.u6_pro_2nd_floor_clients
+        name: U6-Pro 2nd Floor
+        color: '#4BC0C0'
+      - entity: sensor.ap_lite_outside_clients
+        name: AP Outside
+        color: '#F86624'
+  - type: custom:apexcharts-card
+    header:
+      title: Wi-Fi Clients per WLAN
+      show: true
+      show_states: true
+      colorize_states: true
+    graph_span: 7d
+    update_interval: 30min
+    all_series_config:
+      group_by:
+        func: median
+        duration: 30min
+      stroke_width: 2
+      type: line
+      show:
+        in_header: true
+        legend_value: false
+    apex_config:
+      legend:
+        show: false
+    yaxis:
+      - min: 0
+        max: ~60
+        decimals: 0
+        align_to: 10
+        apex_config:
+          forceNiceScale: true
+    series:
+      - entity: sensor.blokmeisterwifi
+        name: BlokmeisterWIFI
+        color: '#1E90FF'  # Dodger Blue
+      - entity: sensor.blokmeisterwifi_guest
+        name: Guest
+        color: '#AAAAAA'  # Grey
+      - entity: sensor.blokmeisterwifi_iot
+        name: IoT
+        color: '#FFB000'  # Amber
+      - entity: sensor.blokmeisterwifi_not
+        name: NoT
+        color: '#FF4560'  # Red
   - type: custom:apexcharts-card
     header:
       title: PoE Power Budget
@@ -327,6 +406,7 @@ cards:
       show: true
       show_states: true
       colorize_states: true
+    update_interval: 1min
     graph_span: 24h
     apex_config:
       chart:
