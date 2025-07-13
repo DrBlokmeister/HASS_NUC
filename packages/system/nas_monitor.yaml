@@ -663,6 +663,78 @@ automation:
             group: "plex_log_alert"
             notification_icon: "mdi:database-alert"
 
+  - alias: "[system|nas] Notify if any Disk temperature is too high"
+    id: yaml_automation_system_nas_notify_if_any_disk_temperature_is_too_high
+    description: >
+      Notifies mobile if any Unraid disk or parity gets over 45°C for 30+ minutes,
+      or instantly if over 50°C.
+    mode: single
+    trigger:
+      # Trigger instantly if any disk > 50°C
+      - platform: numeric_state
+        entity_id:
+          - sensor.unraid_parity_temperature
+          - sensor.unraid_disk_1_temperature
+          - sensor.unraid_disk_2_temperature
+          - sensor.unraid_disk_3_temperature
+          - sensor.unraid_disk_4_temperature
+          - sensor.unraid_disk_5_temperature
+        above: 50
+      # Trigger if any disk > 45°C for at least 30 minutes
+      - platform: numeric_state
+        entity_id:
+          - sensor.unraid_parity_temperature
+          - sensor.unraid_disk_1_temperature
+          - sensor.unraid_disk_2_temperature
+          - sensor.unraid_disk_3_temperature
+          - sensor.unraid_disk_4_temperature
+          - sensor.unraid_disk_5_temperature
+        above: 45
+        for:
+          minutes: 30
+    condition: []
+    action:
+      - variables:
+          disks:
+            - entity_id: sensor.unraid_parity_temperature
+              name: Parity Disk
+            - entity_id: sensor.unraid_disk_1_temperature
+              name: Disk 1
+            - entity_id: sensor.unraid_disk_2_temperature
+              name: Disk 2
+            - entity_id: sensor.unraid_disk_3_temperature
+              name: Disk 3
+            - entity_id: sensor.unraid_disk_4_temperature
+              name: Disk 4
+            - entity_id: sensor.unraid_disk_5_temperature
+              name: Disk 5
+          overheating_disk_str: >-
+            {%- set ns = namespace(list='') -%}
+            {%- for disk in disks -%}
+              {%- set temp = states(disk.entity_id) | float(0) -%}
+              {%- if temp > 45 -%}
+                {%- if ns.list != '' -%}
+                  {%- set ns.list = ns.list + ', ' -%}
+                {%- endif -%}
+                {%- set ns.list = ns.list + disk.name ~ ' (' ~ '%.1f' | format(temp) ~ '°C)' -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.list }}
+      - choose:
+          - conditions: "{{ overheating_disk_str != '' }}"
+            sequence:
+              - service: notify.mobile_app_blokmeisterp9pro
+                data:
+                  title: "⚠️ HDD Temperature Alert!"
+                  message: "The following disk(s) are overheating: {{ overheating_disk_str }}."
+                  data:
+                    clickAction: '/lovelace-default/6'
+                    group: "hdd_overheat"
+                    tag: "hdd_overheat"
+                    notification_icon: mdi:harddisk
+        default: []
+
+
 ################
 #    SCENES    #
 ################
