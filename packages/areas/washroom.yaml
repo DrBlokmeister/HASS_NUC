@@ -1,6 +1,13 @@
 homeassistant:
   customize: {}
 
+input_datetime:
+  washing_machine_start_datetime:
+    name: Washing Machine Start Datetime
+    icon: mdi:washing-machine
+    has_date: true
+    has_time: true
+
 command_line:
   - switch:
       name: Washing Machine
@@ -103,9 +110,12 @@ automation:
           - 'Stopped'
           - 'stop'
         to: 'run'
-    variables:
-      start_time: "{{ now().isoformat() }}"
     action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.washing_machine_start_datetime
+        data:
+          timestamp: "{{ as_timestamp(now()) }}"
       - alias: "Start progress bar loop"
         repeat:
           while:
@@ -116,10 +126,10 @@ automation:
             - variables:
                 end_time: "{{ as_datetime(states('sensor.washer_washer_completion_time')).astimezone() }}"
                 progress: >
-                  {% set elapsed = (now() - as_datetime(start_time)).total_seconds() / 60 %}
+                  {% set elapsed = (now() - as_datetime(states('input_datetime.washing_machine_start_datetime')).astimezone()).total_seconds() / 60 %}
                   {{ elapsed | round(0) }}
                 progress_max: >
-                  {% set total = (as_datetime(end_time) - as_datetime(start_time)).total_seconds() / 60 %}
+                  {% set total = (as_datetime(end_time) - as_datetime(states('input_datetime.washing_machine_start_datetime')).astimezone()).total_seconds() / 60 %}
                   {% if total > 0 %}{{ total | round(0) }}{% else %}1{% endif %}
                 percent_done: >
                   {% if progress_max|float(0) > 0 %}
