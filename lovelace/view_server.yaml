@@ -8,144 +8,147 @@ cards:
     cards:
       - type: entity
         entity: sensor.airvpn_connected_since
-        name: Connected Since
-      - type: horizontal-stack
+        name: VPN Connected Since
+      - type: custom:collapsable-cards
+        title: AirVPN Status
         cards:
-          - type: entity
-            entity: sensor.airvpn_server_name
-            name: Server Name
-          - type: entity
-            entity: sensor.airvpn_server_country
-            name: Server Country
-      - type: horizontal-stack
-        cards:
-          - type: entity
-            entity: sensor.airvpn_exit_ip
-            name: Exit IP
-          - type: entity
-            entity: sensor.airvpn_vpn_ip
-            name: VPN IP
-      - type: custom:apexcharts-card
-        header:
-          title: AirVPN Total Down/Up
-          show: True
-          show_states: true
-          colorize_states: true
-        apex_config:
-          legend:
-            show: false
-          chart:
-            height: 250px
-        graph_span: 24h
-        span:
-          start: day
-        now:
-          show: true
-        yaxis:
-          - min: 0
-            max: ~50
-            decimals: 0
-            align_to: 10
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.airvpn_server_name
+                name: Server Name
+              - type: entity
+                entity: sensor.airvpn_server_country
+                name: Server Country
+          - type: horizontal-stack
+            cards:
+              - type: entity
+                entity: sensor.airvpn_exit_ip
+                name: Exit IP
+              - type: entity
+                entity: sensor.airvpn_vpn_ip
+                name: VPN IP
+          - type: custom:apexcharts-card
+            header:
+              title: AirVPN Total Down/Up
+              show: True
+              show_states: true
+              colorize_states: true
             apex_config:
-              tickAmount: 4
-              forceNiceScale: True
-        all_series_config:
-          group_by:
-            func: avg
-            duration: 10min
-          show:
-            in_header: false
-            legend_value: false
-        series:
-          - entity: sensor.airvpn_data_uploaded
-            name: Data Uploaded
-            color: "#FFA500"  # Nice orange for upload
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
-          - entity: sensor.airvpn_data_downloaded
-            name: Data Downloaded
-            color: "#008FFB"  # ApexCharts default blue for download
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
-          # Yesterday's data
-          - entity: sensor.airvpn_data_uploaded
-            name: Data Uploaded (Yesterday)
-            color: "#FFCC99"  # Less saturated orange for yesterday
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
-          - entity: sensor.airvpn_data_downloaded
-            name: Data Downloaded (Yesterday)
-            color: "#99CCFF"  # Less saturated blue for yesterday
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
-      - type: custom:apexcharts-card
-        header:
-          title: AirVPN Current Down/Up Speed
-          show: true
-          show_states: true
-          colorize_states: true
-        apex_config:
-          legend:
-            show: false
-          chart:
-            height: 250px
-        graph_span: 24h
-        span:
-          start: day
-        yaxis:
-          - min: 0
-            max: ~10
-            decimals: 0
-            align_to: 10
+              legend:
+                show: false
+              chart:
+                height: 250px
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+            yaxis:
+              - min: 0
+                max: ~50
+                decimals: 0
+                align_to: 10
+                apex_config:
+                  tickAmount: 4
+                  forceNiceScale: True
+            all_series_config:
+              group_by:
+                func: avg
+                duration: 10min
+              show:
+                in_header: false
+                legend_value: false
+            series:
+              - entity: sensor.airvpn_data_uploaded
+                name: Data Uploaded
+                color: "#FFA500"  # Nice orange for upload
+                stroke_width: 3
+                extend_to: now
+                show:
+                  in_header: true
+                  legend_value: true
+              - entity: sensor.airvpn_data_downloaded
+                name: Data Downloaded
+                color: "#008FFB"  # ApexCharts default blue for download
+                stroke_width: 3
+                extend_to: now
+                show:
+                  in_header: true
+                  legend_value: true
+              # Yesterday's data
+              - entity: sensor.airvpn_data_uploaded
+                name: Data Uploaded (Yesterday)
+                color: "#FFCC99"  # Less saturated orange for yesterday
+                stroke_width: 2
+                opacity: 0.5
+                offset: -1d
+              - entity: sensor.airvpn_data_downloaded
+                name: Data Downloaded (Yesterday)
+                color: "#99CCFF"  # Less saturated blue for yesterday
+                stroke_width: 2
+                opacity: 0.5
+                offset: -1d
+          - type: custom:apexcharts-card
+            header:
+              title: AirVPN Current Down/Up Speed
+              show: true
+              show_states: true
+              colorize_states: true
             apex_config:
-              tickAmount: 5
-              forceNiceScale: True
-        all_series_config:
-          group_by:
-            func: avg
-            duration: 10min
-          show:
-            in_header: false
-            legend_value: false
-          stroke_width: 3
-        series:
-          - entity: sensor.airvpn_upload_speed
-            name: Upload Speed
-            color: "#FFA500"  # Orange for upload
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
-          - entity: sensor.airvpn_download_speed
-            name: Download Speed
-            color: "#008FFB"  # Blue for download
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
-          # Yesterday's data
-          - entity: sensor.airvpn_upload_speed
-            name: Upload Speed (Yesterday)
-            color: "#FFCC99"  # Less saturated orange for yesterday
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
-          - entity: sensor.airvpn_download_speed
-            name: Download Speed (Yesterday)
-            color: "#99CCFF"  # Less saturated blue for yesterday
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
+              legend:
+                show: false
+              chart:
+                height: 250px
+            graph_span: 24h
+            span:
+              start: day
+            yaxis:
+              - min: 0
+                max: ~10
+                decimals: 0
+                align_to: 10
+                apex_config:
+                  tickAmount: 5
+                  forceNiceScale: True
+            all_series_config:
+              group_by:
+                func: avg
+                duration: 10min
+              show:
+                in_header: false
+                legend_value: false
+              stroke_width: 3
+            series:
+              - entity: sensor.airvpn_upload_speed
+                name: Upload Speed
+                color: "#FFA500"  # Orange for upload
+                stroke_width: 3
+                extend_to: now
+                show:
+                  in_header: true
+                  legend_value: true
+              - entity: sensor.airvpn_download_speed
+                name: Download Speed
+                color: "#008FFB"  # Blue for download
+                stroke_width: 3
+                extend_to: now
+                show:
+                  in_header: true
+                  legend_value: true
+              # Yesterday's data
+              - entity: sensor.airvpn_upload_speed
+                name: Upload Speed (Yesterday)
+                color: "#FFCC99"  # Less saturated orange for yesterday
+                stroke_width: 2
+                opacity: 0.5
+                offset: -1d
+              - entity: sensor.airvpn_download_speed
+                name: Download Speed (Yesterday)
+                color: "#99CCFF"  # Less saturated blue for yesterday
+                stroke_width: 2
+                opacity: 0.5
+                offset: -1d
 
   - type: custom:apexcharts-card
     header:
@@ -178,15 +181,15 @@ cards:
                 return `${value} %`;
               }
     series:
-      - entity: sensor.nas_exhaust_multi_sensor_temperature
-        name: Exhaust Temperature
-        color: '#FFCE56'
       - entity: sensor.tower_cpu_temperature
         name: CPU Temperature
-        color: '#FF6384'
+        color: '#FFCE56'
       - entity: sensor.tower_cpu_usage
         name: CPU Usage
         color: '#36A2EB'
+      - entity: sensor.nas_exhaust_multi_sensor_temperature
+        name: Exhaust Temperature
+        color: '#FF6384'
 
   - type: custom:apexcharts-card
     header:
