@@ -1,14 +1,39 @@
+substitutions:
+  eco2_baseline: "0x92B7"
+  tvoc_baseline: "0x935A"
+
 sensor:
   - platform: sgp30
     update_interval: 1s
     address: 0x58 #0x58 is default
     # https://esphome.io/components/sensor/sgp30.html#calibrating-baseline
+    store_baseline: true
     baseline:
-      eco2_baseline: 0x92B7
-      tvoc_baseline: 0x935A
+      eco2_baseline: ${eco2_baseline}
+      tvoc_baseline: ${tvoc_baseline}
     compensation:
       temperature_source: temp
       humidity_source: hum
+    eco2_baseline:
+      name: "${location} eCO2 Baseline"
+      icon: mdi:molecule-co2
+      id: eco2_baseline
+      unit_of_measurement: "ppm"
+      accuracy_decimals: 0
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 20
+    tvoc_baseline:
+      name: "${location} TVOC Baseline"
+      icon: mdi:molecule
+      id: tvoc_baseline
+      unit_of_measurement: "ppb"
+      accuracy_decimals: 0
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 2500
     eco2:
       name: "${location} eCO2"
       icon: mdi:molecule-co2
@@ -31,3 +56,30 @@ sensor:
         - or:
           - throttle_average: 60s
           - delta: 2500
+
+text_sensor:
+  - platform: template
+    name: "${location} eCO2 Baseline Hex"
+    lambda: |-
+      if (!id(eco2_baseline).has_state() || isnan(id(eco2_baseline).state) || id(eco2_baseline).state < 0) {
+        return {"N/A"};
+      }
+      char buffer[7];  // Enough for "0xFFFF\0"
+      snprintf(buffer, sizeof(buffer), "0x%04X", (int) id(eco2_baseline).state);
+      return {buffer};
+    update_interval: 60s
+    icon: mdi:format-hexadecimal
+    entity_category: diagnostic
+
+  - platform: template
+    name: "${location} TVOC Baseline Hex"
+    lambda: |-
+      if (!id(tvoc_baseline).has_state() || isnan(id(tvoc_baseline).state) || id(tvoc_baseline).state < 0) {
+        return {"N/A"};
+      }
+      char buffer[7];  // Enough for "0xFFFF\0"
+      snprintf(buffer, sizeof(buffer), "0x%04X", (int) id(tvoc_baseline).state);
+      return {buffer};
+    update_interval: 60s
+    icon: mdi:format-hexadecimal
+    entity_category: diagnostic
