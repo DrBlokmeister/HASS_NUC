@@ -826,7 +826,7 @@ automation:
       - service: notify.sander_and_tamara_phones
         data:
           title: "Moeke: Detergent almost empty"
-          message: "The detergent level is below 60%. Do you want to reset it now?"
+          message: "The detergent level is below 60% (currently at: {{ states('sensor.moeke_detergent_left') }}). Do you want to reset it now?"
           data:
             sticky: "true"
             tag: "{{ notification_tag }}"
@@ -844,7 +844,7 @@ automation:
             event_type: mobile_app_notification_action
             event_data:
               action: CANCEL_MOEKE_DETERGENT
-        timeout: "01:00:00"
+        #timeout: "01:00:00"
         continue_on_timeout: false
       - choose:
           - conditions:
@@ -856,9 +856,18 @@ automation:
                   entity_id: button.moeke_reset_detergent
               - service: notify.sander_and_tamara_phones
                 data:
-                  message: "clear_notification"
+                  title: "Detergent level reset"
+                  message: "The detergent level has been reset to 100%. Currently at: {{ states('sensor.moeke_detergent_left') }}."
                   data:
+                    sticky: "true"
                     tag: "{{ notification_tag }}"
+              - delay:
+                  seconds: 10
+      - service: notify.sander_and_tamara_phones
+        data:
+          message: "clear_notification"
+          data:
+            tag: "{{ notification_tag }}"
 
 ################
 #    SCENES    #
