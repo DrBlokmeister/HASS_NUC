@@ -109,13 +109,25 @@ automation:
         from:
           - 'Stopped'
           - 'stop'
+          - 'none'
         to: 'run'
+        id: washing_machine_started
+      - platform: homeassistant
+        event: start
+        id: home_assistant_start
     action:
-      - service: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.washing_machine_start_datetime
-        data:
-          timestamp: "{{ as_timestamp(now()) }}"
+      - choose:
+          - conditions: >
+              {{ trigger.id == 'washing_machine_started' }}
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: input_datetime.washing_machine_start_datetime
+                data:
+                  timestamp: "{{ as_timestamp(now()) }}"
+        default:
+          - delay:
+              minutes: 5
       - alias: "Start progress bar loop"
         repeat:
           while:
