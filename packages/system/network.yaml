@@ -195,6 +195,46 @@ automation:
           group: reminder
           tag: networkspeed
           timeout: 1800
+  - alias: '[network|access_points]Update AP client lists'
+    id: yaml_automation_network_access_points_update_ap_client_lists
+    description: "Update the client lists of the access points every 15 minutes."
+    mode: restart
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+    action:
+      - service: group.set
+        data:
+          object_id: ap_ground_floor_clients
+          entities: >
+            {{ states.device_tracker
+                | selectattr('attributes.ap_mac','defined')
+                | selectattr('attributes.ap_mac','in',['d2:21:f9:14:06:3a', 'd0:21:f9:64:06:39'])
+                | map(attribute='entity_id') | list() }}
+      - service: group.set
+        data:
+          object_id: ap_first_floor_clients
+          entities: >
+            {{ states.device_tracker
+                | selectattr('attributes.ap_mac','defined')
+                | selectattr('attributes.ap_mac','in',['d2:21:f9:97:9c:89', 'd0:21:f9:b7:9c:88'])
+                | map(attribute='entity_id') | list() }}
+      - service: group.set
+        data:
+          object_id: ap_second_floor_clients
+          entities: >
+            {{ states.device_tracker
+                | selectattr('attributes.ap_mac','defined')
+                | selectattr('attributes.ap_mac','in',['b2:8b:a9:15:ef:0A', 'ac:8b:a9:15:ef:09'])
+                | map(attribute='entity_id') | list() }}
+      - service: group.set
+        data:
+          object_id: ap_outside_clients
+          entities: >
+            {{ states.device_tracker
+                | selectattr('attributes.ap_mac','defined')
+                | selectattr('attributes.ap_mac','in',['d2:21:f9:97:ea:69', 'd0:21:f9:b7:ea:68'])
+                | map(attribute='entity_id') | list() }}
 
 
 ################
@@ -206,6 +246,18 @@ scene:
 #    GROUPS    #
 ################
 group:
+  ap_ground_floor_clients:
+    name: "AP Ground Floor Clients"
+    entities: []
+  ap_first_floor_clients:
+    name: "AP First Floor Clients"
+    entities: []
+  ap_second_floor_clients:
+    name: "AP Second Floor Clients"
+    entities: []
+  ap_outside_clients:
+    name: "AP Outside Clients"
+    entities: []
 
 #################
 #    SCRIPTS    #
