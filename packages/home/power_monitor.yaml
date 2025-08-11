@@ -582,6 +582,13 @@ sensor:
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.plug_electric_car_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.plug_electric_car_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+      plug_oven_power_energy_cost_hourly:
+        friendly_name: "Plug Oven Power Electricity Cost per Hour"
+        icon_template: mdi:currency-eur
+        unique_id: "yaml_template_sensor_plug_oven_power_estimate_energy_cost_hourly"
+        unit_of_measurement: "€/h"
+        availability_template: "{{ states('sensor.plug_oven_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ (states('sensor.plug_oven_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
 
       alfred_power_estimate_energy_cost_hourly:
         friendly_name: "Alfred Power Estimate Electricity Cost per Hour"
@@ -604,6 +611,7 @@ sensor:
         unit_of_measurement: "€/h"
         availability_template: "{{ states('sensor.moeke_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
         value_template: "{{ (states('sensor.moeke_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+
 
       solar_panel_power_production_available:
         friendly_name: "Solar Panel Power Production"
@@ -726,6 +734,13 @@ sensor:
     source: sensor.electric_car_estimate_electricity_cost_per_hour
     name: Electric Car Total Electricity Cost
     unique_id: yaml_integration_electric_car_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.plug_oven_power_energy_cost_hourly
+    name: Plug Oven Total Electricity Cost
+    unique_id: yaml_integration_plug_oven_total_electricity_cost
     unit_time: h
     method: left
     round: 2
@@ -1463,6 +1478,7 @@ group:
       - sensor.plug_tv_power
       - sensor.plug_washing_machine_power
       - sensor.plug_watercooker_power
+      - sensor.plug_oven_power
 
       - sensor.blitzwolf_ambilight_amplifier_power
       - sensor.blitzwolf_heatpump_power

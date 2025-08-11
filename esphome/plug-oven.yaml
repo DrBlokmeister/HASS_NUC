@@ -1,0 +1,30 @@
+external_components:
+  - source:
+      type: local
+      path: custom_components
+    components: [bl0940]                       # ← tell ESPHome what to pick up
+    refresh: 0s
+
+substitutions:
+  device_name: "Plug Oven"
+  plug_type: "Blitzwolf SHP10"
+  espname: "plug-oven"
+
+  max_power: "3600.0" # watt
+  max_temp: "70.0" # °C
+
+# Calibrated on 20250725. Should still be calibrated
+  current_res: "0.002482"
+  voltage_div: "0.9986"
+  current_multiplier: "0.9749"
+  #ntc_reference_resistance: "10kOhm"
+  #ntc_reference_temperature: "298.15K"
+
+logger:
+  level: VERBOSE
+  logs:
+    sensor: DEBUG
+
+packages:
+  plug_base: !include templates/blitzwolf_shp10_plug.yaml
+  energy_yesterday: !include templates/plug_functions/plug_yesterday_energy.yaml
