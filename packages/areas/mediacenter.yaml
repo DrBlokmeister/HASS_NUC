@@ -445,9 +445,6 @@ script:
                 - condition: and
                   conditions:
                     - condition: state
-                      entity_id: light.livingroom_tv_ambilight
-                      state: 'on'
-                    - condition: state
                       entity_id: light.atmoorb_left
                       state: 'on'
                     - condition: state
@@ -465,7 +462,6 @@ script:
                 brightness: 255
                 effect: E1.31
                 entity_id:
-                  - light.livingroom_tv_ambilight
                   - light.atmoorb_left
                   - light.atmoorb_right
                   - light.ledstrip_falcon
@@ -563,9 +559,6 @@ script:
       - service: light.turn_off
         continue_on_error: true
         entity_id:
-          - light.livingroom_tv_ambilight
-          #- light.livingroom_tv_ambilight_first_half
-          #- light.hyperion_apa102
           - light.atmoorb_left
           - light.atmoorb_right
           - light.ledstrip_falcon
@@ -625,9 +618,6 @@ script:
                 - condition: and
                   conditions:
                     - condition: state
-                      entity_id: light.livingroom_tv_ambilight
-                      state: 'on'
-                    - condition: state
                       entity_id: light.atmoorb_left
                       state: 'on'
                     - condition: state
@@ -645,7 +635,6 @@ script:
                 brightness: 255
                 effect: E1.31
                 entity_id:
-                  - light.livingroom_tv_ambilight
                   - light.atmoorb_left
                   - light.atmoorb_right
                   - light.ledstrip_falcon
@@ -720,7 +709,6 @@ script:
       - service: light.turn_off
         continue_on_error: true
         entity_id:
-          - light.livingroom_tv_ambilight
           - light.atmoorb_left
           - light.atmoorb_right
           - light.ledstrip_falcon
@@ -730,64 +718,6 @@ script:
         continue_on_error: true
         entity_id: switch.ambilight_power
 
-
-  toggle_tv_ledstrip:
-    alias: "[home|mediacenter] Toggle TV LED Strip"
-    icon: mdi:television-ambient-light
-    # id: script_yaml_home_mediacenter_toggle_tv_led_strip #Scripts do not support unique_id or id (yet).
-    mode: queued
-    sequence:
-      - choose:
-          - conditions:
-              - condition: state
-                entity_id: switch.ambilight_power
-                state: 'off'
-            sequence:
-              - service: switch.turn_on
-                continue_on_error: true
-                entity_id: switch.ambilight_power
-              - delay:
-                  seconds: 1
-              - service: light.turn_on
-                continue_on_error: true
-                data:
-                  entity_id:
-                    - light.livingroom_tv_ambilight
-                  brightness: 255
-                  effect: Rainbow
-              - delay:
-                  seconds: 5
-              - service: light.turn_off
-                continue_on_error: true
-                data:
-                  entity_id:
-                    - light.livingroom_tv_ambilight
-              - delay:
-                  seconds: 2
-              - service: light.turn_on
-                continue_on_error: true
-                data:
-                  entity_id:
-                    - light.livingroom_tv_ambilight
-                  brightness: 255
-                  effect: E1.31
-          - conditions:
-              - condition: state
-                entity_id: switch.ambilight_power
-                state: 'on'
-            sequence:
-              - service: light.turn_off
-                continue_on_error: true
-                data:
-                  entity_id:
-                    - light.livingroom_tv_ambilight
-                    - light.tv_apa102_universe_1
-                    - light.tv_apa102_universe_2
-              - delay:
-                  seconds: 3
-              - service: switch.turn_off
-                continue_on_error: true
-                entity_id: switch.ambilight_power
 
 ################
 #    LIGHTS    #
