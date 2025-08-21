@@ -21,7 +21,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .common import correct_key_value
+from .common import correct_key_value, get_platform_translation
 from .const import (
     CONF_CALCULATIONS,
     CONF_MAX_DATA_LENGTH,
@@ -73,10 +73,6 @@ def catch_luxtronik_errors(
 class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
     """Representation of a Luxtronik Coordinator."""
 
-    device_infos = dict[str, DeviceInfo]()
-    update_reason_write = False
-    client: Luxtronik = None
-
     def __init__(
         self,
         hass: HomeAssistant,
@@ -88,6 +84,8 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         self.lock = threading.Lock()
         self.client = client
         self._config = config
+        self.device_infos = dict[str, DeviceInfo]()
+        self.update_reason_write = False
         super().__init__(
             hass,
             LOGGER,
@@ -139,10 +137,13 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             with self.lock:
                 self.client.read()
         except (OSError, ConnectionRefusedError, ConnectionResetError) as err:
+            self.client.disconnect()
             raise UpdateFailed("Read: Error communicating with device") from err
-        except UpdateFailed:
-            pass
+        except UpdateFailed as err:
+            self.client.disconnect()
+            raise err
         except Exception as err:
+            self.client.disconnect()
             raise UpdateFailed("Read: Error communicating with device") from err
         self.data = LuxtronikCoordinatorData(
             parameters=self.client.parameters,
@@ -156,13 +157,17 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             self.client.parameters.set(parameter, value)
             with self.lock:
                 self.client.write()
-        except (ConnectionRefusedError, ConnectionResetError) as err:
+        except (OSError, ConnectionRefusedError, ConnectionResetError) as err:
             LOGGER.exception(err)
+            self.client.disconnect()
             raise UpdateFailed("Read: Error communicating with device") from err
         except UpdateFailed as err:
             LOGGER.exception(err)
+            self.client.disconnect()
+            raise err
         except Exception as err:
             LOGGER.exception(err)
+            self.client.disconnect()
             raise UpdateFailed("Write: Error communicating with device") from err
         finally:
             self.data = LuxtronikCoordinatorData(
@@ -229,7 +234,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         platform: EntityPlatform | None = None,
     ):
         host = config[CONF_HOST]
-        dev = self.device_infos[DeviceKey.heatpump.value] = self._build_device_info(
+        self.device_infos[DeviceKey.heatpump.value] = self._build_device_info(
             DeviceKey.heatpump, host, platform
         )
         via = (
@@ -251,9 +256,9 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
     ) -> str:
         if platform is None:
             return str(key.value)
-        return platform.platform_translations.get(
-            f"component.{DOMAIN}.entity.device.{key.value}.name"
-        )
+        return get_platform_translation(
+            platform, f"component.{DOMAIN}.entity.device.{key.value}.name"
+        ) or str(key.value)
 
     def _build_device_info(
         self,

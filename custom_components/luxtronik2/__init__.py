@@ -1,31 +1,43 @@
 """The Luxtronik heatpump integration."""
+
 # region Imports
 from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_TIMEOUT, Platform as P
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.entity_registry import (
-    async_get,
-)
+try:  # pragma: no cover - allow import without Home Assistant
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.const import CONF_TIMEOUT, Platform as P
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers.entity_registry import (
+        async_get,
+    )
 
-from .const import (
-    ATTR_PARAMETER,
-    ATTR_VALUE,
-    CONF_COORDINATOR,
-    CONF_HA_SENSOR_PREFIX,
-    CONF_MAX_DATA_LENGTH,
-    DEFAULT_MAX_DATA_LENGTH,
-    DEFAULT_TIMEOUT,
-    DOMAIN,
-    LOGGER,
-    PLATFORMS,
-    SERVICE_WRITE,
-    SERVICE_WRITE_SCHEMA,
-    SensorKey as SK,
-)
-from .coordinator import LuxtronikCoordinator
+    from .const import (
+        ATTR_PARAMETER,
+        ATTR_VALUE,
+        CONF_COORDINATOR,
+        CONF_HA_SENSOR_PREFIX,
+        CONF_MAX_DATA_LENGTH,
+        DEFAULT_MAX_DATA_LENGTH,
+        DEFAULT_TIMEOUT,
+        DOMAIN,
+        LOGGER,
+        PLATFORMS,
+        SERVICE_WRITE,
+        SERVICE_WRITE_SCHEMA,
+        SensorKey as SK,
+    )
+    from .coordinator import LuxtronikCoordinator
+except ModuleNotFoundError:  # pragma: no cover - executed in tests
+    ConfigEntry = HomeAssistant = object  # type: ignore[misc,assignment]
+    CONF_TIMEOUT = 0
+    P = dr = async_get = None  # type: ignore
+    ATTR_PARAMETER = ATTR_VALUE = CONF_COORDINATOR = CONF_HA_SENSOR_PREFIX = ""
+    CONF_MAX_DATA_LENGTH = DEFAULT_MAX_DATA_LENGTH = DEFAULT_TIMEOUT = 0
+    DOMAIN = "luxtronik"
+    LOGGER = None
+    PLATFORMS = SERVICE_WRITE = SERVICE_WRITE_SCHEMA = SK = None
+    LuxtronikCoordinator = object  # type: ignore[assignment]
 
 # endregion Imports
 

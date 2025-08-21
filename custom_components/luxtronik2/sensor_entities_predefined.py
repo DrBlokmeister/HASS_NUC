@@ -1,4 +1,5 @@
 """Luxtronik sensors definitions."""
+
 # region Imports
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
@@ -104,7 +105,7 @@ SENSORS: list[descr] = [
         icon="mdi:numeric-1-circle",
         entity_registry_visible_default=False,
         device_class=SensorDeviceClass.ENUM,
-        options=[e.value for e in LuxStatus1Option]
+        options=[e.value for e in LuxStatus1Option],
         # translation_key="status1",
     ),
     descr(
@@ -632,6 +633,7 @@ SENSORS: list[descr] = [
         device_key=DeviceKey.heating,
         entity_category=None,
         icon="mdi:waves-arrow-right",
+        state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         visibility=LV.V0024_FLOW_OUT_TEMPERATURE_EXTERNAL,

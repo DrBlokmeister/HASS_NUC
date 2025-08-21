@@ -1,4 +1,5 @@
 """Support for ait Luxtronik thermostat devices."""
+
 # region Imports
 from __future__ import annotations
 
@@ -109,7 +110,7 @@ THERMOSTATS: list[LuxtronikClimateDescription] = [
         | ClimateEntityFeature.TARGET_TEMPERATURE,  # noqa: W503
         luxtronik_key=LuxParameter.P0003_MODE_HEATING,
         # luxtronik_key_current_temperature=LuxCalculation.C0227_ROOM_THERMOSTAT_TEMPERATURE,
-        # luxtronik_key_target_temperature=LuxCalculation.C0228_ROOM_THERMOSTAT_TEMPERATURE_TARGET,
+        luxtronik_key_target_temperature=LuxCalculation.C0228_ROOM_THERMOSTAT_TEMPERATURE_TARGET,
         # luxtronik_key_has_target_temperature=LuxParameter
         luxtronik_key_current_action=LuxCalculation.C0080_STATUS,
         luxtronik_action_active=LuxOperationMode.heating.value,
@@ -311,15 +312,24 @@ class LuxtronikThermostat(LuxtronikEntity, ClimateEntity, RestoreEntity):
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
-        # TODO: Check RBE
-        self._attr_target_temperature = kwargs[ATTR_TEMPERATURE]
-        super()._handle_coordinator_update()
+        value = kwargs.get(ATTR_TEMPERATURE)
+        lux_key = LuxParameter.P1148_HEATING_TARGET_TEMP_ROOM_THERMOSTAT
+        data: LuxtronikCoordinatorData | None = await self.coordinator.async_write(
+            lux_key.split(".")[1], int(value * 10)
+        )
+        self._handle_coordinator_update(data)
 
     async def async_turn_off(self) -> None:
         await self.async_set_hvac_mode(HVACMode.OFF)
 
     async def async_turn_on(self) -> None:
-        await self.async_set_hvac_mode(HVACMode[self.entity_description.hvac_mode_mapping[LuxMode.automatic.value].upper()])
+        await self.async_set_hvac_mode(
+            HVACMode[
+                self.entity_description.hvac_mode_mapping[
+                    LuxMode.automatic.value
+                ].upper()
+            ]
+        )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""

@@ -1,9 +1,9 @@
 """Luxtronik switch definitions."""
+
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import (
     UPDATE_INTERVAL_NORMAL,
-    UPDATE_INTERVAL_VERY_SLOW,
     DeviceKey,
     LuxMode,
     LuxParameter as LP,
@@ -31,7 +31,7 @@ SWITCHES: list[LuxtronikSwitchDescription] = [
         entity_registry_enabled_default=False,
         # device_class=SensorDeviceClass.HEAT
     ),
-        LuxtronikSwitchDescription(
+    LuxtronikSwitchDescription(
         key=SensorKey.SMART_GRID_SWITCH,
         luxtronik_key=LP.P1030_SMART_GRID_SWITCH,
         icon="mdi:grid",
@@ -94,7 +94,7 @@ SWITCHES: list[LuxtronikSwitchDescription] = [
         entity_category=EntityCategory.CONFIG,
         visibility=LV.V0163_PUMP_VENT_HUP,
     ),
-        LuxtronikSwitchDescription(
+    LuxtronikSwitchDescription(
         device_key=DeviceKey.heating,
         luxtronik_key=LP.P0158_VENTING_ACTIVE,
         key=SensorKey.PUMP_VENT_ACTIVE,

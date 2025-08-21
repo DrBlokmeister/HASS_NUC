@@ -1,4 +1,5 @@
 """Support for Luxtronik classes."""
+
 # region Imports
 from typing import Any
 
@@ -9,6 +10,7 @@ from getmac import get_mac_address
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import device_registry
+from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.state import state_as_number
 
 from .const import (
@@ -25,6 +27,29 @@ from .const import (
 from .model import LuxtronikCoordinatorData
 
 # endregion Imports
+
+
+def get_platform_translation(
+    platform: EntityPlatform | None, translation_key: str
+) -> str | None:
+    """Return translated string for a platform key.
+
+    The Home Assistant EntityPlatform API changed across releases. Older
+    versions exposed translations via ``platform.platform_data`` while newer
+    ones may expose them directly as ``platform.translations``. This helper
+    gracefully handles both cases and returns ``None`` if no translation is
+    available.
+    """
+    if platform is None:
+        return None
+    translations = None
+    if hasattr(platform, "platform_data"):
+        translations = getattr(platform.platform_data, "platform_translations", None)
+    elif hasattr(platform, "translations"):
+        translations = getattr(platform, "translations", None)
+    if isinstance(translations, dict):
+        return translations.get(translation_key)
+    return None
 
 
 def get_sensor_data(
