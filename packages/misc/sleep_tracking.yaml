@@ -136,6 +136,18 @@ binary_sensor:
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
+  sleep_tracking_on:
+    name: Sleep as android sleep tracking on
+    icon: mdi:sleep
+  wakeup_alarm_on:
+    name: Sleep as android alarm on
+    icon: mdi:alarm
+  tamara_sleeping:
+    name: Tamara is sleeping
+    icon: mdi:sleep
+  override_alarm:
+    name: Override alarm
+    icon: mdi:alarm
 
 ##################
 #    SWITCHES    #
@@ -146,6 +158,100 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: "[misc|sleeptracking] Sleep mode: toggle lights & motion automations"
+    id: yaml_automation_misc_sleeptracking_sleep_mode_toggle_lights_motion_automations
+    description: >
+      When Sander is home alone and goes to sleep, turn off lights (placeholder)
+      and disable motion-based lighting automations. When he wakes up, re-enable
+      the motion-based lighting automations.
+    mode: single
+    trigger:
+      # --- Falling asleep triggers ---
+      - id: sleeping
+        platform: state
+        entity_id: sensor.sleep_tracking_on
+        to: "on"
+      - id: sleeping
+        platform: state
+        entity_id: sensor.sleepasandroid_sander
+        from:
+          - awake
+          - alarm_rescheduled
+          - sleep_tracking_stopped
+          - alarm_alert_dismiss
+        not_to:
+          - awake
+          - alarm_rescheduled
+          - sleep_tracking_stopped
+          - alarm_alert_dismiss
+      # --- Waking up triggers ---
+      - id: wakeup
+        platform: state
+        entity_id: sensor.sleep_tracking_on
+        to: "off"
+      - id: wakeup
+        platform: state
+        entity_id: sensor.sleepasandroid_sander
+        not_from:
+          - awake
+          - alarm_rescheduled
+          - sleep_tracking_stopped
+          - alarm_alert_dismiss
+        to:
+          - awake
+          - alarm_rescheduled
+          - sleep_tracking_stopped
+          - alarm_alert_dismiss
+    condition:
+      - condition: state
+        entity_id: binary_sensor.sander_home_alone
+        state: "on"
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'sleeping' }}"
+            sequence:
+              # --- PLACEHOLDER: turn off your lights here ---
+              # Example (replace with your own):
+              - service: light.turn_off
+                target:
+                  entity_id:
+                    - light.living_room
+                    - light.kitchen
+                    - light.shelly_dinner_table
+                    - light.entry
+                    - light.shelly_bedroom
+                    - light.bathroom
+                    - light.hallway_1st_floor
+                    - light.study_lights
+                    - light.hallway_2nd_floor
+              - service: automation.turn_off
+                target:
+                  entity_id:
+                    - automation.livingroom_lights_turn_on_lights_when_motion_is_detected
+                    - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+                    - automation.study_lights_turn_on_lights_when_motion_is_detected
+                    - automation.entry_lights_turn_on_lights_when_motion_is_detected
+                    - automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
+                    - automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
+          # ======================================
+          # When waking up
+          # ======================================
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'wakeup' }}"
+            sequence:
+              - service: automation.turn_on
+                target:
+                  entity_id:
+                    - automation.livingroom_lights_turn_on_lights_when_motion_is_detected
+                    - automation.kitchen_lights_turn_on_lights_when_motion_is_detected
+                    - automation.study_lights_turn_on_lights_when_motion_is_detected
+                    - automation.entry_lights_turn_on_lights_when_motion_is_detected
+                    - automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
+                    - automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
+
 
 ################
 #    SCENES    #
