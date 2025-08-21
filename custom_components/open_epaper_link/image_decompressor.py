@@ -62,9 +62,9 @@ def decode_esl_raw(data: bytes, tag_type: TagType) -> bytes:
 
     # Check for compressed data
     try:
-        if len(data) >= header_size:
-            compressed_size = int.from_bytes(data[:4], byteorder="little")
-            if 0 < compressed_size <= len(data):  # Compressed data
+        if len(data) >= 4:
+            compressed_size = int.from_bytes(data[:4], byteorder='little')
+            if compressed_size > 0:  # Compressed data
                 _LOGGER.debug(f"Found compressed data, size from header: {compressed_size}")
 
                 compressed_data = data[4:]
@@ -92,17 +92,26 @@ def decode_esl_raw(data: bytes, tag_type: TagType) -> bytes:
                     data = decompressed_data[header_size:]
             else:
                 _LOGGER.debug("Data appears to be uncompressed")
-                data = data[header_size:]
+                # Strip header from uncompressed data
+                header_total = 4 + header_size
+                if len(data) >= header_total:
+                    data = data[header_total:]
+
+                # For uncompressed data, pad if necessary
                 if len(data) < total_size:
                     _LOGGER.debug(f"Padding uncompressed data to {total_size} bytes")
-                    data = data.ljust(total_size, b"\x00")
+                    data = data.ljust(total_size, b'\x00')
                 return data
 
     except Exception as e:
         _LOGGER.debug(f"Processing failed: {e}")
         _LOGGER.debug("Treating as raw data")
-        if len(data) > header_size:
-            data = data[header_size:]
+
+        # Strip header if present
+        header_total = 4 + header_size
+        if len(data) >= header_total:
+            data = data[header_total:]
+
         if len(data) < total_size:
             _LOGGER.debug(f"Padding raw data to {total_size} bytes")
             data = data.ljust(total_size, b'\x00')

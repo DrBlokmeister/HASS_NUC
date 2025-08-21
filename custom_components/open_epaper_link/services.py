@@ -410,10 +410,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         Raises:
             HomeAssistantError: If upload fails or times out
         """
+        url = f"http://{hub.host}/imgupload"
         mac = entity_id.split(".")[1].upper()
-        tag_data = hub.get_tag_data(mac)
-        host = tag_data.get("connected_ip", hub.host)
-        url = f"http://{host}/imgupload"
 
         _LOGGER.debug("Preparing upload for %s (MAC: %s)", entity_id, mac)
         _LOGGER.debug("Upload parameters: dither=%d, ttl=%d, preload_type=%d, preload_lut=%d",
@@ -527,9 +525,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     "00"
             )
 
-            tag_data = hub.get_tag_data(mac)
-            host = tag_data.get("connected_ip", hub.host)
-            url = f"http://{host}/led_flash?mac={mac}&pattern={pattern}"
+            url = f"http://{hub.host}/led_flash?mac={mac}&pattern={pattern}"
             result = await hass.async_add_executor_job(requests.get, url)
             if result.status_code != 200:
                 _LOGGER.warning("LED pattern update failed with status code: %s", result.status_code)

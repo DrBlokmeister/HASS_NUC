@@ -69,9 +69,7 @@ async def send_tag_cmd(hass: HomeAssistant, entity_id: str, cmd: str) -> bool:
         return False
 
     mac = entity_id.split(".")[1].upper()
-    tag_data = hub.get_tag_data(mac)
-    host = tag_data.get("connected_ip", hub.host)
-    url = f"http://{host}/tag_cmd"
+    url = f"http://{hub.host}/tag_cmd"
 
     data = {
         'mac': mac,

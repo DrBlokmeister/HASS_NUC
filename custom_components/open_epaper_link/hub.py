@@ -6,7 +6,6 @@ import json
 import requests
 import aiohttp
 import async_timeout
-import websockets
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, CALLBACK_TYPE, callback
@@ -78,12 +77,10 @@ class Hub:
         self.entry = entry
         self.host = entry.data["host"]
         self._ws_task: asyncio.Task | None = None
-        self._ws_client: websockets.WebSocketClientProtocol | None = None
         self._cleanup_task: asyncio.Task | None = None
         self._shutdown = asyncio.Event()
         self._session = async_get_clientsession(hass)
         self._shutdown_handler: CALLBACK_TYPE | None = None
-        self._shutdown = asyncio.Event()
         self._store = Store[dict[str, any]](
             hass, STORAGE_VERSION, STORAGE_KEY, private=True, atomic_writes=True
         )
@@ -91,10 +88,6 @@ class Hub:
         self._ap_data: dict[str, any] = {}
         self.ap_config: dict[str, any] = {}
         self._known_tags: set[str] = set()
-        self.discovered_hubs: set[str] = set()
-        self._external_ws_tasks: dict[str, asyncio.Task] = {}
-        self._external_ap_data: dict[str, dict] = {}
-        self._external_online: dict[str, bool] = {}
         self._last_record_count = None
         self.ap_env = None
         self.ap_model = "ESP32"
@@ -215,7 +208,7 @@ class Hub:
         self._shutdown.clear()
 
         self._ws_task = self.hass.async_create_task(
-            self._websocket_handler(self.host),
+            self._websocket_handler(),
             "open_epaper_link_websocket"
         )
 
@@ -291,7 +284,7 @@ class Hub:
 
         _LOGGER.debug("OpenEPaperLink hub shutdown complete")
 
-    async def _websocket_handler(self, host: str) -> None:
+    async def _websocket_handler(self) -> None:
         """Handle WebSocket connection lifecycle and process messages.
 
          This is a long-running task that manages all aspects of the WebSocket
@@ -316,27 +309,23 @@ class Hub:
          """
         while not self._shutdown.is_set():
             try:
-                ws_url = f"ws://{host}/ws"
+                ws_url = f"ws://{self.host}/ws"
                 async with self._session.ws_connect(ws_url, heartbeat=30) as ws:
-                    if host == self.host:
-                        self.online = True
-                        _LOGGER.debug("Connected to websocket at %s", ws_url)
-                        async_dispatcher_send(self.hass, f"{DOMAIN}_connection_status", True)
-                    else:
-                        self._external_online[host] = True
-                        _LOGGER.info("Connected to external hub %s", host)
-                        async_dispatcher_send(self.hass, f"{DOMAIN}_connection_status_{host}", True)
+                    self.online = True
+                    _LOGGER.debug("Connected to websocket at %s", ws_url)
+                    async_dispatcher_send(self.hass, f"{DOMAIN}_connection_status", True)
 
                     # Run verification on each connection to catch deletions that happened while offline
-                    if host == self.host:
-                        await self._verify_and_cleanup_tags()
+                    await self._verify_and_cleanup_tags()
 
                     while not self._shutdown.is_set():
                         try:
-                            msg = await ws.receive()
+                            msg = await asyncio.wait_for(
+                                ws.receive(), timeout=WEBSOCKET_TIMEOUT
+                            )
 
                             if msg.type == aiohttp.WSMsgType.TEXT:
-                                await self._handle_message(host, msg.data)
+                                await self._handle_message(msg.data)
                             elif msg.type == aiohttp.WSMsgType.ERROR:
                                 _LOGGER.info("WebSocket error: %s", ws)
                                 break
@@ -349,34 +338,32 @@ class Hub:
                         except asyncio.CancelledError:
                             _LOGGER.debug("WebSocket task cancelled")
                             raise
+                        except asyncio.TimeoutError:
+                            _LOGGER.warning(
+                                "WebSocket receive timeout, reconnecting"
+                            )
+                            break
                         except Exception as err:
                             _LOGGER.error("Error handling message: %s", err)
+                            break
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket connection cancelled")
                 raise
             except aiohttp.ClientError as err:
-                if host == self.host:
-                    self.online = False
-                else:
-                    self._external_online[host] = False
                 _LOGGER.error("WebSocket connection error: %s", err)
-                signal = f"{DOMAIN}_connection_status" if host == self.host else f"{DOMAIN}_connection_status_{host}"
-                async_dispatcher_send(self.hass, signal, False)
             except Exception as err:
-                if host == self.host:
-                    self.online = False
-                else:
-                    self._external_online[host] = False
                 _LOGGER.error("Unexpected WebSocket error: %s", err)
-                signal = f"{DOMAIN}_connection_status" if host == self.host else f"{DOMAIN}_connection_status_{host}"
-                async_dispatcher_send(self.hass, signal, False)
+            finally:
+                if self.online:
+                    self.online = False
+                async_dispatcher_send(self.hass, f"{DOMAIN}_connection_status", False)
 
             if not self._shutdown.is_set():
                 await asyncio.sleep(RECONNECT_INTERVAL)
 
 
-    def _schedule_reconnect(self, host: str) -> None:
+    def _schedule_reconnect(self) -> None:
         """Schedule a WebSocket reconnection attempt.
 
         Creates a task to reconnect after RECONNECT_INTERVAL seconds.
@@ -386,17 +373,10 @@ class Hub:
         async def reconnect():
             await asyncio.sleep(RECONNECT_INTERVAL)
             if not self._shutdown.is_set():
-                if host == self.host:
-                    self._ws_task = self.hass.async_create_task(
-                        self._websocket_handler(host),
-                        f"{DOMAIN}_websocket",
-                    )
-                else:
-                    task = self.hass.async_create_task(
-                        self._websocket_handler(host),
-                        f"{DOMAIN}_websocket_{host}",
-                    )
-                    self._external_ws_tasks[host] = task
+                self._ws_task = self.hass.async_create_task(
+                    self._websocket_handler(),
+                    f"{DOMAIN}_websocket",
+                )
 
         if self._reconnect_task and not self._reconnect_task.done():
             self._reconnect_task.cancel()
@@ -406,7 +386,7 @@ class Hub:
             f"{DOMAIN}_reconnect",
         )
 
-    async def _handle_message(self, host: str, message: str) -> None:
+    async def _handle_message(self, message: str) -> None:
         """Process an incoming WebSocket message from the AP.
 
         Parses the message JSON and routes it to the appropriate handler
@@ -428,11 +408,11 @@ class Hub:
             data = json.loads("{" + message.split("{", 1)[-1])
 
             if "sys" in data:
-                _LOGGER.debug("System message from %s: %s", host, data["sys"])
-                await self._handle_system_message(host, data["sys"])
+                _LOGGER.debug("System message: %s", data["sys"])
+                await self._handle_system_message(data["sys"])
             elif "tags" in data:
-                _LOGGER.debug("Tag message from %s: %s", host, data["tags"][0])
-                await self._handle_tag_message(host, data["tags"][0])
+                _LOGGER.debug("Tag message: %s", data["tags"][0])
+                await self._handle_tag_message(data["tags"][0])
             elif "logMsg" in data:
                 _LOGGER.debug("OEPL Log message: %s", data["logMsg"])
                 await self._handle_log_message(data["logMsg"])
@@ -451,17 +431,10 @@ class Hub:
                 async def delayed_reconnect():
                     await asyncio.sleep(5)
                     if not self._shutdown.is_set():
-                        if host == self.host:
-                            self._ws_task = self.hass.async_create_task(
-                                self._websocket_handler(host),
-                                f"{DOMAIN}_websocket"
-                            )
-                        else:
-                            task = self.hass.async_create_task(
-                                self._websocket_handler(host),
-                                f"{DOMAIN}_websocket_{host}"
-                            )
-                            self._external_ws_tasks[host] = task
+                        self._ws_task = self.hass.async_create_task(
+                            self._websocket_handler(),
+                            f"{DOMAIN}_websocket"
+                        )
 
                 self.hass.async_create_task(delayed_reconnect(), f"{DOMAIN}_reconnect")
                 return
@@ -480,7 +453,7 @@ class Hub:
             _LOGGER.exception("Error handling message: %s", err)
 
     @callback
-    async def _handle_system_message(self, host: str, sys_data: dict) -> None:
+    async def _handle_system_message(self, sys_data: dict) -> None:
         """Process a system message from the AP.
 
         Updates the AP status information based on system data, including:
@@ -498,12 +471,11 @@ class Hub:
         """
 
         # Preserve existing values for fields that are not in every message
-        target = self._ap_data if host == self.host else self._external_ap_data.setdefault(host, {})
-        current_low_batt = target.get("low_battery_count", 0)
-        current_timeout = target.get("timeout_count", 0)
+        current_low_batt = self._ap_data.get("low_battery_count", 0)
+        current_timeout = self._ap_data.get("timeout_count", 0)
 
-        data_dict = {
-            "ip": host,
+        self._ap_data = {
+            "ip": self.host,
             "sys_time": sys_data.get("currtime"),
             "heap": sys_data.get("heap"),
             "record_count": sys_data.get("recordcount"),
@@ -521,17 +493,13 @@ class Hub:
             "timeout_count": sys_data.get("timeoutcount", current_timeout),
         }
 
-        if host == self.host:
-            self._ap_data = data_dict
-            if "recordcount" in sys_data:
-                self._track_record_count_changes(sys_data.get("recordcount", 0))
-            async_dispatcher_send(self.hass, SIGNAL_AP_UPDATE)
-        else:
-            self._external_ap_data[host] = data_dict
-            async_dispatcher_send(self.hass, f"{DOMAIN}_ap_update_{host}")
+        if "recordcount" in sys_data:
+            self._track_record_count_changes(sys_data.get("recordcount", 0))
+
+        async_dispatcher_send(self.hass, SIGNAL_AP_UPDATE)
 
     @callback
-    async def _handle_tag_message(self, host: str, tag_data: dict) -> None:
+    async def _handle_tag_message(self, tag_data: dict) -> None:
         """Process a tag update message from the AP.
 
         Updates the stored information for a specific tag based on the
@@ -549,7 +517,7 @@ class Hub:
             return
 
         # Process tag data
-        is_new_tag = await self._process_tag_data(tag_mac, tag_data, source_host=host)
+        is_new_tag = await self._process_tag_data(tag_mac, tag_data)
         # Save to storage if this was a new tag
         if is_new_tag:
             await self._store.async_save({"tags": self._data})
@@ -589,7 +557,7 @@ class Hub:
                     # Notify of update
                     async_dispatcher_send(self.hass, f"{SIGNAL_TAG_IMAGE_UPDATE}_{tag_mac}", True)
 
-    async def _process_tag_data(self, tag_mac: str, tag_data: dict, is_initial_load: bool = False, source_host: str | None = None) -> bool:
+    async def _process_tag_data(self, tag_mac: str, tag_data: dict, is_initial_load: bool = False) -> bool:
         """Process tag data and update internal state.
 
         Handles updates for a single tag, including:
@@ -642,7 +610,6 @@ class Hub:
         hashv = tag_data.get("hash")
         modecfgjson = tag_data.get("modecfgjson")
         is_external = tag_data.get("isexternal")
-        ap_ip = tag_data.get("apip")
         rotate = tag_data.get("rotate")
         lut = tag_data.get("lut")
         channel = tag_data.get("ch")
@@ -685,39 +652,6 @@ class Hub:
         # Get existing block request count
         block_requests = existing_data.get("block_requests", 0)
 
-        # Determine which hub the tag is connected to
-        host_used = source_host or self.host
-        connected_ip = ap_ip if is_external else host_used
-        if not connected_ip or connected_ip == "0.0.0.0":
-            connected_ip = existing_data.get("connected_ip", self.host)
-
-        if connected_ip != existing_data.get("connected_ip"):
-            _LOGGER.debug("Tag %s connected hub changed to %s", tag_mac, connected_ip)
-
-        if connected_ip != self.host and connected_ip not in self.discovered_hubs:
-            self.discovered_hubs.add(connected_ip)
-            _LOGGER.info("Discovered external hub %s from tag %s", connected_ip, tag_mac)
-            self._schedule_reconnect(connected_ip)
-            async_dispatcher_send(self.hass, f"{DOMAIN}_external_hub_discovered", connected_ip)
-
-        # Ignore updates from hubs that are not the connected hub when we already know it
-        existing_connected = existing_data.get("connected_ip")
-        if (
-            existing_connected
-            and source_host
-            and source_host != existing_connected
-            and is_external
-        ):
-            # Drop updates routed through another hub when we already
-            # have data from the directly connected hub
-            _LOGGER.debug(
-                "Ignoring tag %s update from %s; primary hub is %s",
-                tag_mac,
-                source_host,
-                existing_connected,
-            )
-            return False
-
         # Update tag data
         self._data[tag_mac] = {
             "tag_mac": tag_mac,
@@ -740,7 +674,6 @@ class Hub:
             "hash": hashv,
             "modecfgjson": modecfgjson,
             "is_external": is_external,
-            "connected_ip": connected_ip,
             "rotate": rotate,
             "lut": lut,
             "channel": channel,
@@ -890,7 +823,7 @@ class Hub:
             # Process each tag using our common helper function
             for tag_mac, tag_data in all_tags.items():
                 # Process tag with the initial load flag set
-                is_new = await self._process_tag_data(tag_mac, tag_data, is_initial_load=True, source_host=self.host)
+                is_new = await self._process_tag_data(tag_mac, tag_data, is_initial_load=True)
 
                 # Update counters
                 if is_new:
@@ -1432,15 +1365,3 @@ class Hub:
             return model_mapping[ap_env]
 
         return ap_env
-
-    def get_ap_status(self, host: str | None = None) -> dict:
-        """Return AP status for the given host."""
-        if host is None or host == self.host:
-            return self._ap_data
-        return self._external_ap_data.get(host, {})
-
-    def is_online(self, host: str | None = None) -> bool:
-        """Return connection state for the given host."""
-        if host is None or host == self.host:
-            return self.online
-        return self._external_online.get(host, False)
