@@ -69,24 +69,21 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[afval|notify]Wait for notification dismiss'
-    id: yaml_automation_afval_notify_wait_for_notification_dismiss
-    mode: restart
+  - alias: "[misc|garbage] Dismiss sticky garbage notification when acknowledged"
+    id: yaml_automation_misc_garbage_dismiss_sticky_garbage_notification_when_acknowledged
+    description: Clears the sticky garbage notification on all phones when either phone confirms it's out.
+    mode: single
     trigger:
-      platform: state
-      entity_id: input_boolean.garbagereminder
-      to: 'on'
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: GARBAGE_PUT_OUT
     action:
-      - wait_for_trigger:
-          - platform: event
-            event_type: mobile_app_notification_action
-            event_data:
-              action: "dismiss"
-          - platform: state
-            entity_id: input_boolean.garbagereminder
-            to: "off"
-      - service: input_boolean.turn_off
-        entity_id: input_boolean.garbagereminder
+      - service: notify.sander_and_tamara_phones
+        data:
+          message: "clear_notification"
+          data:
+            tag: garbage_pickup
 
   - alias: '[afval|notify]Herinnering afval morgen'
     id: yaml_automation_afval_notify_herinnering_afval_morgen
@@ -97,88 +94,56 @@ automation:
       - condition: template
         value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
     action:
-      - service: input_boolean.turn_on
-        entity_id: input_boolean.garbagereminder
-      - alias: Notify phone until notification is dismissed
-        repeat:
-          sequence:
-            # - service: automation.trigger
-            #   entity_id: automation.afval_notify_wait_for_notification_dismiss
-            - service: notify.sander_and_tamara_phones
-              data:
-                title: Afval morgen
-                message: "Afval: {{ states( 'sensor.mijnafvalwijzer_afval_voor_tomorrow' ) }}"
-                data:
-                  sticky: "true"
-                  group: reminder
-                  tag: garbagenotify
-                  icon_url: local/icons/trash-can-outline.png
-                  actions:
-                    - action: "snooze"
-                      title: "Snooze"
-                    - action: "dismiss"
-                      title: "Dismiss"
-            - delay:
-                minutes: 30
-          until:
-            - condition: or
-              conditions:
-                - condition: template
-                  value_template: "{{ repeat.index >= 5 }}"
-                - condition: state
-                  entity_id: input_boolean.garbagereminder
-                  state: 'off'
-                - condition: template
-                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_voor_tomorrow', 'None') }}"
-                - condition: template
-                  value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) }}"
+      - service: notify.sander_and_tamara_phones
+        data:
+          title: "Afval morgen"
+          message: "Afval: {{ states('sensor.mijnafvalwijzer_afval_voor_tomorrow') }}"
+          data:
+            sticky: true
+            ttl: 0
+            priority: high
+            tag: garbage_pickup
+            group: garbage
+            channel: Garbage
+            notification_icon: mdi:trash-can-outline
+            icon_url: local/icons/trash-can-outline.png
+            actions:
+              - action: GARBAGE_PUT_OUT
+                title: "I put it outside"
 
   - alias: '[afval|notify]Herinnering afval vandaag'
     id: yaml_automation_afval_notify_herinnering_afval_vandaag
+    description: Send a single sticky notification on the morning of garbage pickup.
+    mode: single
     trigger:
       - platform: time
-        at: 07:00:00
+        at: '07:00:00'
       - platform: state
         entity_id: input_boolean.sleep_tracking_on
         to: 'off'
-        for: 00:10:00
+        for: '00:10:00'
     condition:
       - condition: template
-        value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}"
+        value_template: >-
+          {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0)
+             and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}
     action:
-      - service: input_boolean.turn_on
-        entity_id: input_boolean.garbagereminder
-      - alias: Notify phone until notification is dismissed
-        repeat:
-          sequence:
-            - service: notify.sander_and_tamara_phones
-              data:
-                title: Afval vandaag
-                message: "Afval voor: {{ states( 'sensor.mijnafvalwijzer_afval_voor_today' ) }}"
-                data:
-                  sticky: "true"
-                  group: reminder
-                  tag: garbagenotify
-                  icon_url: local/icons/trash-can-outline.png
-                  actions:
-                    - action: "snooze"
-                      title: "Snooze"
-                    - action: "dismiss"
-                      title: "Dismiss"
-            - delay:
-                minutes: 10
-          until:
-            - condition: or
-              conditions:
-                - condition: template
-                  value_template: "{{ repeat.index >= 5 }}"
-                - condition: state
-                  entity_id: input_boolean.garbagereminder
-                  state: 'off'
-                - condition: template
-                  value_template: "{{ not is_state('sensor.mijnafvalwijzer_afval_achter_today', '-') }}"
-                - condition: template
-                  value_template: "{{ (as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < -16}}"
+      - service: notify.sander_and_tamara_phones
+        data:
+          title: "Afval vandaag"
+          message: "Afval voor: {{ states('sensor.mijnafvalwijzer_afval_voor_today') }}"
+          data:
+            sticky: true
+            ttl: 0
+            priority: high
+            tag: garbage_pickup
+            group: garbage
+            channel: Garbage
+            notification_icon: mdi:trash-can-outline
+            icon_url: local/icons/trash-can-outline.png
+            actions:
+              - action: GARBAGE_PUT_OUT
+                title: "I put it outside"
 
 ################
 #    SCENES    #
