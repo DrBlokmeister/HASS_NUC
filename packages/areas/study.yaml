@@ -235,10 +235,6 @@ automation:
     mode: restart
     trigger:
       - platform: event
-        event_type: deconz_event
-        event_data:
-          id: study_desk_switch
-      - platform: event
         event_type: esphome.button_pressed
         event_data:
           device_name: "Shelly Study"
@@ -561,6 +557,27 @@ automation:
                   entity_id: light.led_strip_soldering_section
         default: []
 
+  - alias: '[study|lights]Toggle workbench light when switch is pressed'
+    id: study_lights_toggle_workbench_light_when_switch_is_pressed
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: study_desk_switch
+    condition:
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" # Single click of switch
+            sequence:
+              - service: light.toggle
+                data:
+                  brightness_pct: 100
+                  transition: 0.5
+                target:
+                  entity_id: light.ledstrip_study_workbench
 
   # - alias: '[study|power]Turn off pc plug'
   #   mode: single
