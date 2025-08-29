@@ -359,8 +359,8 @@ automation:
       - condition: time
         after: "6:00:00"
         before: "23:30:00"
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+      # - condition: template
+      #   value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_washing_machine_energy_display
 
@@ -386,8 +386,8 @@ automation:
       - condition: time
         after: "6:00:00"
         before: "23:30:00"
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+      # - condition: template
+      #   value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       # - service: open_epaper_link.lines4
       #   target:
@@ -433,8 +433,8 @@ automation:
       - condition: time
         after: "5:00:00"
         before: "23:30:00"
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+      # - condition: template
+      #   value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - delay: #ensure that the current nordpool price has already been updated
           minutes: 1
@@ -522,8 +522,8 @@ automation:
       - condition: time
         after: "06:00:00"
         before: "23:30:00"
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+      # - condition: template
+      #   value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_moeke_water_tank_display
         data:
@@ -545,8 +545,8 @@ automation:
       - condition: time
         after: "06:00:00"
         before: "23:30:00"
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
+      # - condition: template
+      #   value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 240 }}" #Checks if tags have checked in in the past 4 minutes. Only updates if it actually works
     action:
       - service: script.update_litterbox_display
         data:
@@ -568,8 +568,8 @@ automation:
       - condition: time
         after: "06:00:00"
         before: "23:30:00"
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 600 }}" #Checks if tags have checked in in the past 10 minutes. Only updates if it actually works
+      # - condition: template
+      #   value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'),default=3000000000)) <= 600 }}" #Checks if tags have checked in in the past 10 minutes. Only updates if it actually works
     action:
       - delay:
           seconds: 10
@@ -926,6 +926,7 @@ script:
         data:
           background: white
           rotate: 0
+          ttl: 600
           payload:
             - type: text
               value: "Energy today:"
@@ -2109,6 +2110,7 @@ script:
           background: white
           rotate: 0
           dry-run: false
+          ttl: 600
           payload:
             - type: rectangle
               outline: black
@@ -2482,6 +2484,7 @@ script:
           background: white
           rotate: 0
           dry-run: false
+          ttl: 600
           payload:
             - type: rectangle
               outline: black
@@ -2853,6 +2856,7 @@ script:
         data:
           background: white
           rotate: 0
+          ttl: 1800
           payload:
             - type: line
               fill: red
@@ -3046,6 +3050,7 @@ script:
           background: white
           dry-run: false
           rotate: 270
+          ttl: 960
           payload:
             # Desk
             - type: text
@@ -3363,6 +3368,7 @@ script:
         data:
           background: white
           rotate: 0
+          ttl: 960
           payload:
             # Desk
             - type: text
@@ -3520,6 +3526,7 @@ script:
           background: white
           rotate: 0
           dry-run: false
+          ttl: 300
           payload:
             - type: rectangle
               fill: >
@@ -3591,6 +3598,7 @@ script:
           background: white
           rotate: 0
           dry-run: false
+          ttl: 600
           payload:
             - type: rectangle
               fill: >
@@ -3924,7 +3932,7 @@ script:
           entity_id:
             - calendar.sander_blok_gmail_com
             - calendar.feestdagen_in_nederland
-            - calendar.theater
+            - calendar.theater_2
             - calendar.optredens_in_bandsintown
         data:
           duration:
@@ -3935,10 +3943,10 @@ script:
           all_events: >
             {{
               (
-                calendar_events['calendar.sander_blok_gmail_com'].events +
-                calendar_events['calendar.feestdagen_in_nederland'].events +
-                calendar_events['calendar.theater'].events +
-                calendar_events['calendar.optredens_in_bandsintown'].events
+                (calendar_events|default({})).get('calendar.sander_blok_gmail_com', {}).get('events', []) +
+                (calendar_events|default({})).get('calendar.feestdagen_in_nederland', {}).get('events', []) +
+                (calendar_events|default({})).get('calendar.theater_2', {}).get('events', []) +
+                (calendar_events|default({})).get('calendar.optredens_in_bandsintown', {}).get('events', [])
               )
               | sort(attribute='start')
             }}
@@ -3949,7 +3957,7 @@ script:
           device_id: "{{ display_device_id }}"
         data:
           dither: 0
-          ttl: 60
+          ttl: 1800
           background: white
           dry-run: false
           rotate: 270
@@ -4143,6 +4151,7 @@ script:
         data:
           background: white
           rotate: 0
+          ttl: 600
           payload:
             # Job State (top, big, centered)
             - type: text
@@ -4221,6 +4230,7 @@ script:
         data:
           background: white
           rotate: 0
+          ttl: 600
           payload:
             # Tag Label (Top, Center, Large)
             - type: text
