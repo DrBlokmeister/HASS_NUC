@@ -172,7 +172,7 @@ async def async_setup_entry(hass, entry):
                     await entity.set_random(call.data.get("random", 0))
                 if "unavailable_as_off" in call.data:
                     await entity.set_unavailable_as_off(call.data.get("unavailable_as_off", 0))
-                if "brigthness" in call.data:
+                if "brightness" in call.data:
                     await entity.set_brightness(call.data.get("brightness", 0))
                 if "after_ha_restart" in call.data:
                     after_ha_restart = call.data.get("after_ha_restart", False)
