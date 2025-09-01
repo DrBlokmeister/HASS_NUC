@@ -24,7 +24,7 @@ WASTE_COLLECTORS = [
     "Cyclus", "DAR", "DeAfvalApp", "DeFryskeMarren", "DenHaag", "Drimmelen", "GAD",
     "Groningen", "Hellendoorn", "HVC", "Limburg.NET", "Lingewaard", "Meerlanden",
     "Middelburg-Vlissingen", "MijnAfvalwijzer", "Mijnafvalzaken", "Montferland",
-    "Montfoort", "Omrin", "PeelEnMaas", "PreZero", "Purmerend",
+    "Montfoort", "Offalkalinder", "Omrin", "PeelEnMaas", "PreZero", "Purmerend",
     "RAD", "RecycleApp", "RD4", "RWM", "Reinis", "ROVA", "RMN", "Saver",
     "Schouwen-Duiveland", "Sliedrecht", "Spaarnelanden", "SudwestFryslan",
     "TwenteMilieu", "Venray", "Voorschoten", "Waalre", "Waardlanden", "Westland",
@@ -406,15 +406,18 @@ class AfvalbeheerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return AfvalbeheerOptionsFlowHandler(config_entry)
+        return AfvalbeheerOptionsFlowHandler()
 
 
 class AfvalbeheerOptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
+    def __init__(self):
         self._collector = None
         self._address_input = {}
 
+    @property
+    def config_entry(self):
+        return self.hass.config_entries.async_get_entry(self.handler)
+    
     async def async_step_init(self, user_input=None):
         if user_input is not None:
             self._collector = user_input[CONF_WASTE_COLLECTOR]
@@ -529,8 +532,8 @@ class AfvalbeheerOptionsFlowHandler(config_entries.OptionsFlow):
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Optional(CONF_NAME, default=current.get(CONF_NAME, DEFAULT_CONFIG[CONF_NAME])): selector.TextSelector(),
-            vol.Optional(CONF_NAME_PREFIX, default=current.get(CONF_NAME_PREFIX, DEFAULT_CONFIG[CONF_NAME_PREFIX])): selector.BooleanSelector(),
+            # vol.Optional(CONF_NAME, default=current.get(CONF_NAME, DEFAULT_CONFIG[CONF_NAME])): selector.TextSelector(),
+            # vol.Optional(CONF_NAME_PREFIX, default=current.get(CONF_NAME_PREFIX, DEFAULT_CONFIG[CONF_NAME_PREFIX])): selector.BooleanSelector(),
         }
         
         # Date and time settings
