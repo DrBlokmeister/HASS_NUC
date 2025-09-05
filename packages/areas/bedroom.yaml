@@ -510,32 +510,45 @@ automation:
   #                 color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
 
 
-  #Toggle bedroom lights when switch is pressed
-  # - alias: '[bedroom|light] Switch toggle' #was: bedroom_switch_toggle
-  #   id: 'bedroom_light_switch_toggle'
-  #   mode: restart
-  #   trigger:
-  #     platform: event
-  #     event_type: deconz_event
-  #     event_data:
-  #       id: bedroom_smart_switch
-  #       event: 1002
-  #   action:
-  #     - choose:
-  #       - conditions:
-  #           - condition: state
-  #             entity_id: light.bedroom_lights
-  #             state: 'off'
-  #         sequence:
-  #           - service: script.turn_on
-  #             entity_id: script.set_correct_bedroom_scene
-  #       - conditions:
-  #           - condition: state
-  #             entity_id: light.bedroom_lights
-  #             state: 'on'
-  #         sequence:
-  #           - service: light.turn_off
-  #             entity_id: light.bedroom_lights
+  - alias: '[bedroom|light] Button toggle lights'
+    id: yaml_automation_bedroom_light_button_toggle_lights
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: bedroom_smart_switch
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1002 }}" # Single click of switch
+            sequence:
+              - service: light.toggle
+                target:
+                  entity_id: light.bedside_right
+                data:
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1004 }}" # Double click of switch
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.bedside_right
+                data:
+                  brightness_pct: 5
+                  color_temp_kelvin: 1538
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.event == 1001 }}" # Long press
+            sequence:
+              - service: light.toggle
+                target:
+                  entity_id: light.shelly_bedroom
+                data:
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
 
 
   #Cycle bedroom lights when switch is pressed twice
