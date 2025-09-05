@@ -297,220 +297,243 @@ class SmartDataManager:
                     if match := re.search(r'nvme(\d+)', device_path):
                         nvme_index = match.group(1)
 
-                    # Try NVMe smart-log command first
-                    smart_cmd = f"nvme smart-log -o json /dev/nvme{nvme_index}n1"
+                    # Prefer nvme-cli; if it fails, we'll run smartctl instead.
+                    cmd_nvme = f"nvme smart-log -o json /dev/nvme{nvme_index}n1"
+                    cmd_sctl = f"smartctl -d nvme -a -j /dev/nvme{nvme_index}n1"
+                    smart_cmd = cmd_nvme
+                    _LOGGER.debug("Probing NVMe via nvme-cli for %s", device_path)
                     result = await self._instance.execute_command(smart_cmd)
-
                     if result.exit_status != 0:
-                        # Fallback to smartctl if nvme command fails
-                        smart_cmd = f"smartctl -d nvme -a -j /dev/nvme{nvme_index}n1"
+                        _LOGGER.debug(
+                            "nvme-cli failed for %s (rc=%s); using smartctl fallback",
+                            device_path,
+                            result.exit_status,
+                        )
+                        smart_cmd = cmd_sctl
                         result = await self._instance.execute_command(smart_cmd)
                 else:
                     # Use -a instead of -A for SATA devices to get full attributes including temperature
                     smart_cmd = f"smartctl -a -j {device_path}"
+                    _LOGGER.debug("Executing SMART command for %s: %s", device_path, smart_cmd)
+                    result = await self._instance.execute_command(smart_cmd)
 
-                _LOGGER.debug("Executing SMART command for %s: %s", device_path, smart_cmd)
-                result = await self._instance.execute_command(smart_cmd)
+                exit_code: int = int(result.exit_status or 0)
+                FATAL_MASK = (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4)
+                WARNING_MASK = (1 << 5) | (1 << 6) | (1 << 7)
 
-                if result.exit_status == 0:
-                    try:
-                        smart_data = safe_parse(
-                            json.loads,
-                            result.stdout,
-                            default={},
-                            error_msg=f"Failed to parse SMART JSON for {device_path}"
+                if exit_code & FATAL_MASK:
+                    if exit_code == SmartctlExitCode.DEVICE_OPEN_ERROR:
+                        _LOGGER.debug(
+                            "SMART data unavailable for %s (device not accessible, may be in standby or partition)",
+                            device_path,
                         )
-                        _LOGGER.debug("Successfully parsed SMART data for %s", device)
+                    elif exit_code == SmartctlExitCode.SMART_TEST_ERROR:
+                        if 'nvme' in device.lower() and 'p' in device:
+                            _LOGGER.debug(
+                                "SMART data unavailable for NVME partition %s (base device may not exist)",
+                                device,
+                            )
+                        else:
+                            _LOGGER.info(
+                                "SMART self-test in progress for %s, data temporarily unavailable",
+                                device_path,
+                            )
+                    elif exit_code == SmartctlExitCode.SMART_OR_ATA_ERROR:
+                        _LOGGER.warning(
+                            "SMART reports potential issues for %s (exit_code=%d) - check disk health",
+                            device_path,
+                            exit_code,
+                        )
+                    else:
+                        _LOGGER.warning(
+                            "SMART command failed for %s: exit_code=%d",
+                            device_path,
+                            exit_code,
+                        )
+                    error_data = {
+                        "state": "error",
+                        "error": f"Command failed: {exit_code}",
+                        "temperature": None,
+                    }
+                    self._cache[device] = error_data
+                    self._last_update[device] = now
+                    return error_data
 
-                        # Get SMART status and convert boolean to string
-                        smart_passed = smart_data.get("smart_status", {}).get("passed", True)
-                        smart_status = "passed" if smart_passed else "failed"
+                if exit_code & WARNING_MASK:
+                    _LOGGER.warning(
+                        "SMART warnings for %s: exit_code=%d [bit5:%s bit6:%s bit7:%s]",
+                        device_path,
+                        exit_code,
+                        bool(exit_code & (1 << 5)),
+                        bool(exit_code & (1 << 6)),
+                        bool(exit_code & (1 << 7)),
+                    )
 
-                        processed_data = {
-                            "smart_status": smart_status,
-                            "temperature": None,
-                            "power_on_hours": None,
-                            "attributes": {},
-                            "device_type": "nvme" if is_nvme else "sata",
-                            "state": "active"
-                        }
+                try:
+                    smart_data = safe_parse(
+                        json.loads,
+                        result.stdout,
+                        default={},
+                        error_msg=f"Failed to parse SMART JSON for {device_path}"
+                    )
+                    _LOGGER.debug("Successfully parsed SMART data for %s", device_path)
 
-                        # Get temperature based on device type
-                        if is_nvme:
-                            # Enhanced NVMe temperature handling with multiple detection methods
-                            temp = None
-                            if isinstance(smart_data, dict):
-                                # Method 1: NVMe smart health information log
-                                nvme_data = smart_data.get("nvme_smart_health_information_log", {})
-                                if isinstance(nvme_data, dict):
-                                    temp = self._convert_nvme_temperature(nvme_data.get("temperature"))
-                                    if temp is not None:
-                                        _LOGGER.debug("NVMe temp from health log: %d°C", temp)
+                    # Get SMART status and convert boolean to string
+                    smart_passed = smart_data.get("smart_status", {}).get("passed", True)
+                    smart_status = "passed" if smart_passed else "failed"
 
-                                # Method 2: Direct temperature field
-                                if temp is None and "temperature" in smart_data:
-                                    temp_data = smart_data["temperature"]
-                                    if isinstance(temp_data, dict):
-                                        # Try multiple sub-fields
-                                        for field in ["current", "value", "celsius"]:
-                                            if field in temp_data:
-                                                temp = self._convert_nvme_temperature(temp_data[field])
-                                                if temp is not None:
-                                                    _LOGGER.debug("NVMe temp from temperature.%s: %d°C", field, temp)
-                                                    break
-                                    elif isinstance(temp_data, (int, float)):
-                                        temp = self._convert_nvme_temperature(temp_data)
-                                        if temp is not None:
-                                            _LOGGER.debug("NVMe temp from direct temperature: %d°C", temp)
+                    processed_data = {
+                        "smart_status": smart_status,
+                        "temperature": None,
+                        "power_on_hours": None,
+                        "attributes": {},
+                        "device_type": "nvme" if is_nvme else "sata",
+                        "state": "active",
+                        "smart_exit_code": exit_code,
+                        "smart_warning_bits": {
+                            "past_threshold": bool(exit_code & (1 << 5)),
+                            "error_log": bool(exit_code & (1 << 6)),
+                            "selftest_log": bool(exit_code & (1 << 7)),
+                        },
+                    }
 
-                                # Method 3: Check for other common NVMe temperature fields
-                                if temp is None:
-                                    temp_fields = [
-                                        "composite_temperature",
-                                        "controller_temperature",
-                                        "current_temperature",
-                                        "temp",
-                                        "thermal_state"
-                                    ]
-                                    for field in temp_fields:
-                                        if field in smart_data:
-                                            temp = self._convert_nvme_temperature(smart_data[field])
+                    # Get temperature based on device type
+                    if is_nvme:
+                        # Enhanced NVMe temperature handling with multiple detection methods
+                        temp = None
+                        if isinstance(smart_data, dict):
+                            # Method 1: NVMe smart health information log
+                            nvme_data = smart_data.get("nvme_smart_health_information_log", {})
+                            if isinstance(nvme_data, dict):
+                                temp = self._convert_nvme_temperature(nvme_data.get("temperature"))
+                                if temp is not None:
+                                    _LOGGER.debug("NVMe temp from health log: %d°C", temp)
+
+                            # Method 2: Direct temperature field
+                            if temp is None and "temperature" in smart_data:
+                                temp_data = smart_data["temperature"]
+                                if isinstance(temp_data, dict):
+                                    # Try multiple sub-fields
+                                    for field in ["current", "value", "celsius"]:
+                                        if field in temp_data:
+                                            temp = self._convert_nvme_temperature(temp_data[field])
                                             if temp is not None:
-                                                _LOGGER.debug("NVMe temp from %s: %d°C", field, temp)
+                                                _LOGGER.debug("NVMe temp from temperature.%s: %d°C", field, temp)
                                                 break
+                                elif isinstance(temp_data, (int, float)):
+                                    temp = self._convert_nvme_temperature(temp_data)
+                                    if temp is not None:
+                                        _LOGGER.debug("NVMe temp from direct temperature: %d°C", temp)
+
+                            # Method 3: Check for other common NVMe temperature fields
+                            if temp is None:
+                                temp_fields = [
+                                    "composite_temperature",
+                                    "controller_temperature",
+                                    "current_temperature",
+                                    "temp",
+                                    "thermal_state"
+                                ]
+                                for field in temp_fields:
+                                    if field in smart_data:
+                                        temp = self._convert_nvme_temperature(smart_data[field])
+                                        if temp is not None:
+                                            _LOGGER.debug("NVMe temp from %s: %d°C", field, temp)
+                                            break
+
+                        if temp is not None:
+                            processed_data["temperature"] = int(temp)
+                            _LOGGER.debug(
+                                "NVMe temperature for %s: %d°C",
+                                device,
+                                processed_data["temperature"]
+                            )
+                        else:
+                            _LOGGER.debug("No temperature data found for NVMe device %s", device)
+                    else:
+                        # Enhanced SATA SSD temperature detection
+                        temp = None
+
+                        # Try direct temperature field first
+                        if temp_data := smart_data.get("temperature"):
+                            if isinstance(temp_data, dict):
+                                temp = temp_data.get("current")
+                            elif isinstance(temp_data, (int, float)):
+                                temp = temp_data
 
                             if temp is not None:
                                 processed_data["temperature"] = int(temp)
                                 _LOGGER.debug(
-                                    "NVMe temperature for %s: %d°C",
+                                    "SATA temperature for %s: %d°C (direct)",
                                     device,
-                                    processed_data["temperature"]
+                                    temp
                                 )
-                            else:
-                                _LOGGER.debug("No temperature data found for NVMe device %s", device)
-                        else:
-                            # Enhanced SATA SSD temperature detection
-                            temp = None
 
-                            # Try direct temperature field first
-                            if temp_data := smart_data.get("temperature"):
-                                if isinstance(temp_data, dict):
-                                    temp = temp_data.get("current")
-                                elif isinstance(temp_data, (int, float)):
-                                    temp = temp_data
+                        # If no direct temperature, search SMART attributes with enhanced patterns
+                        if temp is None:
+                            # Common temperature attribute names for SSDs and HDDs
+                            temp_attr_names = [
+                                "Temperature_Celsius",
+                                "Airflow_Temperature_Cel",
+                                "Temperature_Case",
+                                "Temperature_Internal",
+                                "Drive_Temperature",
+                                "Current_Temperature",
+                                "Temperature"
+                            ]
 
-                                if temp is not None:
-                                    processed_data["temperature"] = int(temp)
-                                    _LOGGER.debug(
-                                        "SATA temperature for %s: %d°C (direct)",
-                                        device,
-                                        temp
-                                    )
+                            for attr in smart_data.get("ata_smart_attributes", {}).get("table", []):
+                                attr_name = attr.get("name", "")
 
-                            # If no direct temperature, search SMART attributes with enhanced patterns
-                            if temp is None:
-                                # Common temperature attribute names for SSDs and HDDs
-                                temp_attr_names = [
-                                    "Temperature_Celsius",
-                                    "Airflow_Temperature_Cel",
-                                    "Temperature_Case",
-                                    "Temperature_Internal",
-                                    "Drive_Temperature",
-                                    "Current_Temperature",
-                                    "Temperature"
-                                ]
+                                # Check if this is a temperature attribute
+                                if attr_name in temp_attr_names:
+                                    # Try different value extraction methods
+                                    raw_data = attr.get("raw", {})
 
-                                for attr in smart_data.get("ata_smart_attributes", {}).get("table", []):
-                                    attr_name = attr.get("name", "")
+                                    # Method 1: Direct value
+                                    if temp_val := raw_data.get("value"):
+                                        temp = temp_val
+                                    # Method 2: String parsing for complex raw values
+                                    elif raw_str := raw_data.get("string"):
+                                        # Parse strings like "45 (Min/Max 20/55)" or "45 C"
+                                        match = re.search(r'(\d+)', str(raw_str))
+                                        if match:
+                                            temp = int(match.group(1))
+                                    # Method 3: Normalized value as fallback
+                                    elif norm_val := attr.get("value"):
+                                        # Some SSDs report temperature in normalized value
+                                        if 0 <= norm_val <= 150:  # Reasonable temperature range
+                                            temp = norm_val
 
-                                    # Check if this is a temperature attribute
-                                    if attr_name in temp_attr_names:
-                                        # Try different value extraction methods
-                                        raw_data = attr.get("raw", {})
+                                    if temp is not None:
+                                        processed_data["temperature"] = int(temp)
+                                        _LOGGER.debug(
+                                            "SATA temperature for %s: %d°C (attribute: %s)",
+                                            device,
+                                            temp,
+                                            attr_name
+                                        )
+                                        break
 
-                                        # Method 1: Direct value
-                                        if temp_val := raw_data.get("value"):
-                                            temp = temp_val
-                                        # Method 2: String parsing for complex raw values
-                                        elif raw_str := raw_data.get("string"):
-                                            # Parse strings like "45 (Min/Max 20/55)" or "45 C"
-                                            match = re.search(r'(\d+)', str(raw_str))
-                                            if match:
-                                                temp = int(match.group(1))
-                                        # Method 3: Normalized value as fallback
-                                        elif norm_val := attr.get("value"):
-                                            # Some SSDs report temperature in normalized value
-                                            if 0 <= norm_val <= 150:  # Reasonable temperature range
-                                                temp = norm_val
+                    # Update cache
+                    self._cache[device] = processed_data
+                    self._last_update[device] = now
+                    return processed_data
 
-                                        if temp is not None:
-                                            processed_data["temperature"] = int(temp)
-                                            _LOGGER.debug(
-                                                "SATA temperature for %s: %d°C (attribute: %s)",
-                                                device,
-                                                temp,
-                                                attr_name
-                                            )
-                                            break
-
-                        # Update cache
-                        self._cache[device] = processed_data
-                        self._last_update[device] = now
-                        return processed_data
-
-                    except json.JSONDecodeError as err:
-                        _LOGGER.error(
-                            "Failed to parse SMART data for %s: %s",
-                            device,
-                            err
-                        )
-                        error_data = {
-                            "state": "error",
-                            "error": "JSON parse failed",
-                            "temperature": None
-                        }
-                        self._cache[device] = error_data
-                        self._last_update[device] = now
-                        return error_data
-
-                # Provide more user-friendly error messages based on exit code
-                if result.exit_status == SmartctlExitCode.DEVICE_OPEN_ERROR:
-                    _LOGGER.debug(
-                        "SMART data unavailable for %s (device not accessible, may be in standby or partition)",
-                        device
+                except json.JSONDecodeError as err:
+                    _LOGGER.error(
+                        "Failed to parse SMART data for %s: %s",
+                        device_path,
+                        err
                     )
-                elif result.exit_status == SmartctlExitCode.SMART_TEST_ERROR:
-                    # Exit code 4 is common for NVME partitions that don't exist as base devices
-                    if 'nvme' in device.lower() and 'p' in device:
-                        _LOGGER.debug(
-                            "SMART data unavailable for NVME partition %s (base device may not exist)",
-                            device
-                        )
-                    else:
-                        _LOGGER.info(
-                            "SMART self-test in progress for %s, data temporarily unavailable",
-                            device
-                        )
-                elif result.exit_status == SmartctlExitCode.SMART_OR_ATA_ERROR:
-                    _LOGGER.warning(
-                        "SMART reports potential issues for %s (exit_code=%d) - check disk health",
-                        device,
-                        result.exit_status
-                    )
-                else:
-                    _LOGGER.warning(
-                        "SMART command failed for %s: exit_code=%d",
-                        device,
-                        result.exit_status
-                    )
-                error_data = {
-                    "state": "error",
-                    "error": f"Command failed: {result.exit_status}",
-                    "temperature": None
-                }
-                self._cache[device] = error_data
-                self._last_update[device] = now
-                return error_data
+                    error_data = {
+                        "state": "error",
+                        "error": "JSON parse failed",
+                        "temperature": None,
+                    }
+                    self._cache[device] = error_data
+                    self._last_update[device] = now
+                    return error_data
 
             except Exception as err:
                 _LOGGER.error(
