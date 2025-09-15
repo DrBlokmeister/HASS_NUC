@@ -5,15 +5,30 @@ Used by 10+ municipalities with common API structure.
 import logging
 from datetime import datetime
 import requests
+import re
 
 from ..base import WasteCollector
 from ...models import WasteCollection
 from ...const import (
     WASTE_TYPE_GREEN, WASTE_TYPE_PAPER, WASTE_TYPE_PMD_GREY, WASTE_TYPE_GREY,
-    BURGERPORTAAL_COLLECTOR_IDS
+    WASTE_TYPE_PACKAGES, BURGERPORTAAL_COLLECTOR_IDS
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_POSTCODE_RE = re.compile(r'^\s*(\d{4})\s*([A-Za-z]{2})\s*$')
+
+def _normalize_postcode(s: str) -> str:
+    """
+    Normalize NL postcode to '1234AA' (no space, letters uppercased).
+    """
+    m = _POSTCODE_RE.fullmatch(s)
+    if not m:
+        cleaned = re.sub(r'[^0-9A-Za-z]+', '', s or '')
+        m = re.fullmatch(r'(\d{4})([A-Za-z]{2})', cleaned)
+    if not m:
+        raise ValueError(f"Not a valid NL postcode: {s!r}")
+    return m.group(1) + m.group(2).upper()
 
 
 class BurgerportaalCollector(WasteCollector):
@@ -25,10 +40,13 @@ class BurgerportaalCollector(WasteCollector):
         'opk': WASTE_TYPE_PAPER,
         'pmdrest': WASTE_TYPE_PMD_GREY,
         'rest': WASTE_TYPE_GREY,
+        'pmd': WASTE_TYPE_PACKAGES,
+        'papier': WASTE_TYPE_PAPER
     }
 
     def __init__(self, hass, waste_collector, postcode, street_number, suffix, custom_mapping):
         super().__init__(hass, waste_collector, postcode, street_number, suffix, custom_mapping)
+        self.postcode = _normalize_postcode(self.postcode)
         self.company_code = BURGERPORTAAL_COLLECTOR_IDS[self.waste_collector]
         self.apikey = 'AIzaSyA6NkRqJypTfP-cjWzrZNFJzPUbBaGjOdk'
         self.refresh_token = ''
@@ -67,8 +85,12 @@ class BurgerportaalCollector(WasteCollector):
             'authorization': self.id_token
         }
 
-        response = requests.get("https://europe-west3-burgerportaal-production.cloudfunctions.net/exposed/organisations/{}/address?zipcode={}&housenumber={}".format(
-            self.company_code, self.postcode, self.street_number), headers=headers).json()
+        response = requests.get(
+            "https://europe-west3-burgerportaal-production.cloudfunctions.net/exposed/organisations/{}/address?zipcode={}&housenumber={}".format(
+                self.company_code, self.postcode, self.street_number
+            ),
+            headers=headers
+        ).json()
         if not response:
             _LOGGER.error('Unable to fetch address!')
             return
