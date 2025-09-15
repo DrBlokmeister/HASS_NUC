@@ -5,6 +5,9 @@ input_boolean:
   garbagereminder:
     name: Garbage Reminder
     icon: mdi:trash-can-outline
+  garbage_taken_out:
+    name: Garbage taken out
+    icon: mdi:trash-can-check
 
 # afvalbeheer:
 #   - name: 'Afval Voor'
@@ -84,9 +87,14 @@ automation:
           message: "clear_notification"
           data:
             tag: garbage_pickup
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.garbage_taken_out
 
   - alias: '[afval|notify]Herinnering afval morgen'
     id: yaml_automation_afval_notify_herinnering_afval_morgen
+    description: Send a sticky reminder the evening before pickup and reset the helper flag.
+    mode: single
     trigger:
       platform: time
       at: '19:00:00'
@@ -94,6 +102,9 @@ automation:
       - condition: template
         value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
     action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.garbage_taken_out
       - service: notify.sander_and_tamara_phones
         data:
           title: "Afval morgen"
@@ -127,6 +138,9 @@ automation:
         value_template: >-
           {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0)
              and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}
+      - condition: state
+        entity_id: input_boolean.garbage_taken_out
+        state: "off"
     action:
       - service: notify.sander_and_tamara_phones
         data:
