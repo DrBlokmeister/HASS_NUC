@@ -113,8 +113,44 @@ cards:
             name: Errors
           - entity: sensor.home_assistant_log_warning_count
             name: Warnings
+          - entity: sensor.home_assistant_log_errors_per_hour
+            name: Errors/s
         columns: 4
         type: glance
+      - type: custom:apexcharts-card
+        header:
+          title: Error Rate (Last 7 Days)
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 1min
+        graph_span: 7d
+        apex_config:
+          chart:
+            toolbar:
+              show: false
+            height: 100px
+          grid:
+            show: false
+            padding:
+              left: 0
+              right: 0
+              bottom: 0
+              top: -100
+        yaxis:
+          - min: 0
+            max: 30
+            show: false
+        layout: minimal
+        series:
+          - entity: sensor.home_assistant_log_errors_per_hour
+            name: Error Rate
+            type: area
+            color: '#FF6384'
+            group_by:
+              func: median
+              duration: 10min
+            stroke_width: 3
       - type: horizontal-stack
         cards:
           - type: custom:apexcharts-card
