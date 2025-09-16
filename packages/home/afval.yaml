@@ -72,7 +72,7 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: "[misc|garbage] Dismiss sticky garbage notification when acknowledged"
+  - alias: "[afval|notify] Dismiss sticky garbage notification when acknowledged"
     id: yaml_automation_misc_garbage_dismiss_sticky_garbage_notification_when_acknowledged
     description: Clears the sticky garbage notification on all phones when either phone confirms it's out.
     mode: single
@@ -99,8 +99,20 @@ automation:
       platform: time
       at: '19:00:00'
     condition:
-      - condition: template
-        value_template: "{{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24) and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}"
+      - or:
+          - condition: template
+            value_template: >-
+              {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24)
+                  and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}
+          - condition: template
+            value_template: >-
+              {% set up = state_attr('sensor.afval_voor_first_upcoming','Upcoming_day') %}
+              {% if up not in [none, 'unknown', 'unavailable', ''] %}
+                {% set d = strptime(up, '%d-%m-%Y') %}
+                {{ (d.date() - now().date()).days == 1 }}
+              {% else %}
+                false
+              {% endif %}
     action:
       - service: input_boolean.turn_off
         target:
@@ -134,10 +146,20 @@ automation:
         to: 'off'
         for: '00:10:00'
     condition:
-      - condition: template
-        value_template: >-
-          {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0)
-             and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}
+      - or:
+          - condition: template
+            value_template: >-
+              {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0)
+                  and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}
+          - condition: template
+            value_template: >-
+              {% set up = state_attr('sensor.afval_voor_first_upcoming','Upcoming_day') %}
+              {% if up not in [none, 'unknown', 'unavailable', ''] %}
+                {% set d = strptime(up, '%d-%m-%Y') %}
+                {{ (d.date() - now().date()).days == 0 }}
+              {% else %}
+                false
+              {% endif %}
       - condition: state
         entity_id: input_boolean.garbage_taken_out
         state: "off"
