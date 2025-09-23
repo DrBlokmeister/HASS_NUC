@@ -6,10 +6,10 @@ import json
 import requests
 import aiohttp
 import async_timeout
+import websockets
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, CALLBACK_TYPE, callback
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
@@ -77,10 +77,12 @@ class Hub:
         self.entry = entry
         self.host = entry.data["host"]
         self._ws_task: asyncio.Task | None = None
+        self._ws_client: websockets.WebSocketClientProtocol | None = None
         self._cleanup_task: asyncio.Task | None = None
         self._shutdown = asyncio.Event()
         self._session = async_get_clientsession(hass)
         self._shutdown_handler: CALLBACK_TYPE | None = None
+        self._shutdown = asyncio.Event()
         self._store = Store[dict[str, any]](
             hass, STORAGE_VERSION, STORAGE_KEY, private=True, atomic_writes=True
         )
@@ -320,9 +322,7 @@ class Hub:
 
                     while not self._shutdown.is_set():
                         try:
-                            msg = await asyncio.wait_for(
-                                ws.receive(), timeout=WEBSOCKET_TIMEOUT
-                            )
+                            msg = await ws.receive()
 
                             if msg.type == aiohttp.WSMsgType.TEXT:
                                 await self._handle_message(msg.data)
@@ -338,25 +338,19 @@ class Hub:
                         except asyncio.CancelledError:
                             _LOGGER.debug("WebSocket task cancelled")
                             raise
-                        except asyncio.TimeoutError:
-                            _LOGGER.warning(
-                                "WebSocket receive timeout, reconnecting"
-                            )
-                            break
                         except Exception as err:
                             _LOGGER.error("Error handling message: %s", err)
-                            break
 
             except asyncio.CancelledError:
                 _LOGGER.debug("WebSocket connection cancelled")
                 raise
             except aiohttp.ClientError as err:
+                self.online = False
                 _LOGGER.error("WebSocket connection error: %s", err)
+                async_dispatcher_send(self.hass, f"{DOMAIN}_connection_status", False)
             except Exception as err:
+                self.online = False
                 _LOGGER.error("Unexpected WebSocket error: %s", err)
-            finally:
-                if self.online:
-                    self.online = False
                 async_dispatcher_send(self.hass, f"{DOMAIN}_connection_status", False)
 
             if not self._shutdown.is_set():
@@ -813,14 +807,14 @@ class Hub:
         try:
             _LOGGER.info("Loading existing tags from AP...")
 
-            # Track how many tags we've processed
+            # Track the number of processed tags
             new_tags_count = 0
             updated_tags_count = 0
 
             # Get all tag data from AP
             all_tags = await self._fetch_all_tags_from_ap()
 
-            # Process each tag using our common helper function
+            # Process each tag using the common helper function
             for tag_mac, tag_data in all_tags.items():
                 # Process tag with the initial load flag set
                 is_new = await self._process_tag_data(tag_mac, tag_data, is_initial_load=True)
