@@ -118,7 +118,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         if write:
             data = self._write(parameter, value)
             self.async_set_updated_data(data)
-            self.async_request_refresh()
+            await self.async_request_refresh()
             self.update_interval = UPDATE_INTERVAL_FAST
             self.update_reason_write = True
         else:
