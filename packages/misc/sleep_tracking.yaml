@@ -14,6 +14,67 @@ utility_meter:
     source: sensor.actual_sleep_time
     cycle: daily
     offset: '18:00'
+
+input_select:
+  sleep_as_android_state:
+    name: Sleep state (Sleep as Android)
+    icon: mdi:sleep
+    options:
+      - alert_dismiss
+      - alert_start
+      - rescheduled
+      - skip_next
+      - snooze_clicked
+      - snooze_canceled
+
+      - before_smart_period
+      - smart_period
+
+      - awake
+      - deep_sleep
+      - light_sleep
+      - not_awake
+      - rem
+
+      - started
+      - stopped
+      - paused
+      - resumed
+
+      - unknown
+    initial: unknown
+
+template:
+  - sensor:
+      - name: "Sleep as Android State"
+        unique_id: yaml_template_sensor_sleep_as_android_state
+        icon: mdi:sleep
+        state: >-
+          {% set s = states('input_select.sleep_as_android_state') %}
+          {% if s == 'alert_dismiss' %}
+            alarm_alert_dismiss
+          {% elif s == 'alert_start' %}
+            alarm_alert_start
+          {% elif s == 'rescheduled' %}
+            alarm_rescheduled
+          {% elif s == 'skip_next' %}
+            alarm_skip_next
+          {% elif s == 'snooze_clicked' %}
+            alarm_snooze_clicked
+          {% elif s == 'snooze_canceled' %}
+            alarm_snooze_canceled
+          {% elif s == 'started' %}
+            sleep_tracking_started
+          {% elif s == 'stopped' %}
+            sleep_tracking_stopped
+          {% elif s == 'paused' %}
+            sleep_tracking_paused
+          {% elif s == 'resumed' %}
+            sleep_tracking_resumed
+          {% else %}
+            {{ s }}
+          {% endif %}
+
 #################
 #    SENSORS    #
 #################
@@ -26,8 +87,13 @@ sensor:
   # Total Time Spent in Bed (Sleep Tracking Duration)
   - platform: history_stats
     name: "Total Sleep Time"
-    entity_id: sensor.sleepasandroid_sander
+    entity_id: sensor.sleep_as_android_state
     state:
+      - before_alarm
+      - awake
+      - alarm_rescheduled
+      - sleep_tracking_stopped
+      - alarm_alert_dismiss
       - sleep_tracking_started
       - sleep_tracking_paused
       - sleep_tracking_resumed
@@ -54,7 +120,7 @@ sensor:
   # Actual Sleep Time (Deep, Light, REM Sleep)
   - platform: history_stats
     name: "Actual Sleep Time"
-    entity_id: sensor.sleepasandroid_sander
+    entity_id: sensor.sleep_as_android_state
     state:
       - deep_sleep
       - light_sleep
@@ -72,7 +138,7 @@ sensor:
   # Time spent awake
   - platform: history_stats
     name: "Actual Awake Time"
-    entity_id: sensor.sleepasandroid_sander
+    entity_id: sensor.sleep_as_android_state
     state:
       - awake
       - alarm_rescheduled
@@ -158,6 +224,39 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: "[bedroom|sleep] Update sleep state from Sleep as Android events"
+    id: yaml_automation_bedroom_sleep_update_sleep_state_from_sleep_as_android_events
+    description: Updates input_select.sleep_as_android_state from Sleep as Android event entities.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id:
+          - event.sleep_as_android_sleep_tracking
+          - event.sleep_as_android_alarm_clock
+          - event.sleep_as_android_smart_wake_up
+          - event.sleep_as_android_user_notification
+          - event.sleep_as_android_sleep_phase
+          - event.sleep_as_android_sound_recognition
+          - event.sleep_as_android_lullaby
+          - event.sleep_as_android_sleep_health
+        attribute: event_type
+    action:
+      - variables:
+          event_type: "{{ trigger.to_state.attributes.event_type }}"
+          allowed: >
+            {{ [
+              'alert_dismiss','alert_start','rescheduled','skip_next','snooze_clicked','snooze_canceled',
+              'before_smart_period','smart_period',
+              'awake','deep_sleep','light_sleep','not_awake','rem',
+              'started','stopped','paused','resumed',
+              'unknown'
+            ] }}
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sleep_as_android_state
+        data:
+          option: "{{ event_type if event_type in allowed else 'unknown' }}"
+
   - alias: "[misc|sleeptracking] Sleep mode: toggle lights & motion automations"
     id: yaml_automation_misc_sleeptracking_sleep_mode_toggle_lights_motion_automations
     description: >
@@ -173,7 +272,7 @@ automation:
         to: "on"
       - id: sleeping
         platform: state
-        entity_id: sensor.sleepasandroid_sander
+        entity_id: sensor.sleep_as_android_state
         from:
           - awake
           - alarm_rescheduled
@@ -191,7 +290,7 @@ automation:
         to: "off"
       - id: wakeup
         platform: state
-        entity_id: sensor.sleepasandroid_sander
+        entity_id: sensor.sleep_as_android_state
         not_from:
           - awake
           - alarm_rescheduled
