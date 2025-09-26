@@ -274,6 +274,179 @@ automation:
                 target:
                   entity_id: light.ledstrip_falcon
 
+  - alias: "[livingroom|lights] Teije Tap Dial: toddler light fun (no repeat-index, no CT effects)"
+    id: yaml_automation_livingroom_lights_teije_tap_dial_toddler_light_fun_no_index
+    description: >
+      Hue Tap Dial (deCONZ teije_tap_dial) mapped to 8 actions for toddler fun.
+      Uses explicit sequences (no repeat-index templating). No effects on living room CT spots.
+    mode: restart
+    trigger:
+      - platform: event
+        event_type: deconz_event
+        event_data:
+          id: teije_tap_dial
+    variables:
+      ev: "{{ trigger.event.data.event | int(0) }}"
+    action:
+      - choose:
+          # ── Button 1 ──────────────────────────────────────────────────────────
+          - conditions: "{{ ev == 1000 }}"  # Btn 1 short
+            sequence:
+              # AtmoOrb LEFT magenta pulse (toggle)
+              - service: light.toggle
+                target:
+                  entity_id: light.atmoorb_left
+                data:
+                  rgb_color: [255, 0, 255]
+                  effect: "Fast Pulse"
+
+          - conditions: "{{ ev == 1001 }}"  # Btn 1 long
+            sequence:
+              # Mini rainbow show on BOTH AtmoOrbs (explicit steps, interruptible)
+              - service: light.turn_on
+                target: { entity_id: [light.atmoorb_left, light.atmoorb_right] }
+                data: { rgb_color: [255, 0, 0], brightness_pct: 100, transition: 0.2 }
+              - delay: "00:00:00.35"
+              - service: light.turn_on
+                target: { entity_id: [light.atmoorb_left, light.atmoorb_right] }
+                data: { rgb_color: [255, 165, 0], brightness_pct: 100, transition: 0.2 }
+              - delay: "00:00:00.35"
+              - service: light.turn_on
+                target: { entity_id: [light.atmoorb_left, light.atmoorb_right] }
+                data: { rgb_color: [255, 255, 0], brightness_pct: 100, transition: 0.2 }
+              - delay: "00:00:00.35"
+              - service: light.turn_on
+                target: { entity_id: [light.atmoorb_left, light.atmoorb_right] }
+                data: { rgb_color: [0, 255, 0], brightness_pct: 100, transition: 0.2 }
+              - delay: "00:00:00.35"
+              - service: light.turn_on
+                target: { entity_id: [light.atmoorb_left, light.atmoorb_right] }
+                data: { rgb_color: [0, 0, 255], brightness_pct: 100, transition: 0.2 }
+              - delay: "00:00:00.35"
+              - service: light.turn_on
+                target: { entity_id: [light.atmoorb_left, light.atmoorb_right] }
+                data: { rgb_color: [128, 0, 128], brightness_pct: 100, transition: 0.2 }
+              - delay: "00:00:00.35"
+
+          # ── Button 2 ──────────────────────────────────────────────────────────
+          - conditions: "{{ ev == 2000 }}"  # Btn 2 short
+            sequence:
+              # AtmoOrb RIGHT cyan pulse (toggle)
+              - service: light.toggle
+                target:
+                  entity_id: light.atmoorb_right
+                data:
+                  rgb_color: [0, 255, 255]
+                  effect: "Fast Pulse"
+
+          - conditions: "{{ ev == 2001 }}"  # Btn 2 long
+            sequence:
+              # Left/Right ping-pong chase (explicit steps)
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_left }
+                data: { rgb_color: [255, 0, 0], brightness_pct: 100, transition: 0.05 }
+              - service: light.turn_off
+                target: { entity_id: light.atmoorb_right }
+              - delay: "00:00:00.20"
+
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_right }
+                data: { rgb_color: [0, 0, 255], brightness_pct: 100, transition: 0.05 }
+              - service: light.turn_off
+                target: { entity_id: light.atmoorb_left }
+              - delay: "00:00:00.20"
+
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_left }
+                data: { rgb_color: [255, 255, 0], brightness_pct: 100, transition: 0.05 }
+              - service: light.turn_off
+                target: { entity_id: light.atmoorb_right }
+              - delay: "00:00:00.20"
+
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_right }
+                data: { rgb_color: [0, 255, 0], brightness_pct: 100, transition: 0.05 }
+              - service: light.turn_off
+                target: { entity_id: light.atmoorb_left }
+              - delay: "00:00:00.20"
+
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_left }
+                data: { rgb_color: [255, 105, 180], brightness_pct: 100, transition: 0.05 }
+              - service: light.turn_off
+                target: { entity_id: light.atmoorb_right }
+              - delay: "00:00:00.20"
+
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_right }
+                data: { rgb_color: [0, 255, 255], brightness_pct: 100, transition: 0.05 }
+              - service: light.turn_off
+                target: { entity_id: light.atmoorb_left }
+              - delay: "00:00:00.20"
+
+          # ── Button 3 (CCT only; NO effects, NO flash) ────────────────────────
+          - conditions: "{{ ev == 3000 }}"  # Btn 3 short
+            sequence:
+              # Cozy warm toggle on all 4 CCT spots
+              - service: light.toggle
+                target:
+                  entity_id:
+                    - light.livingroom_1
+                    - light.livingroom_2
+                    - light.livingroom_3
+                    - light.livingroom_4
+                data:
+                  color_temp: 450
+                  brightness_pct: 80
+
+          - conditions: "{{ ev == 3001 }}"  # Btn 3 long
+            sequence:
+              # Cool bright on all 4 CCT spots
+              - service: light.toggle
+                target:
+                  entity_id:
+                    - light.livingroom_1
+                    - light.livingroom_2
+                    - light.livingroom_3
+                    - light.livingroom_4
+                data:
+                  color_temp: 154
+                  brightness_pct: 100
+
+          # ── Button 4 ──────────────────────────────────────────────────────────
+          - conditions: "{{ ev == 4000 }}"  # Btn 4 short
+            sequence:
+              # Party burst: AtmoOrbs punchy colors; CT spots go bright neutral (no effects)
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_left }
+                data: { rgb_color: [255, 20, 147], brightness_pct: 100, effect: "Fast Pulse" }
+              - service: light.turn_on
+                target: { entity_id: light.atmoorb_right }
+                data: { rgb_color: [0, 255, 0], brightness_pct: 100, effect: "Fast Pulse" }
+              - service: light.turn_on
+                target:
+                  entity_id:
+                    - light.livingroom_1
+                    - light.livingroom_2
+                    - light.livingroom_3
+                    - light.livingroom_4
+                data:
+                  color_temp: 250
+                  brightness_pct: 100
+
+          - conditions: "{{ ev == 4001 }}"  # Btn 4 long
+            sequence:
+              # All OFF (calm-down)
+              - service: light.turn_off
+                target:
+                  entity_id:
+                    - light.atmoorb_left
+                    - light.atmoorb_right
+                    - light.livingroom_1
+                    - light.livingroom_2
+                    - light.livingroom_3
+                    - light.livingroom_4
+
 
   # - alias: '[livingroom|light] Update illumination limit'
   #   mode: single
