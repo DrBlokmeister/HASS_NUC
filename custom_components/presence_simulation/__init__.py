@@ -16,6 +16,7 @@ from homeassistant.components.recorder import get_instance
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.helpers.entity_registry import async_migrate_entries
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import Context
 from .const import (
         DOMAIN,
         SWITCH_PLATFORM,
@@ -38,6 +39,27 @@ async def async_setup_entry(hass, entry):
     """Set up this component using config flow."""
     _LOGGER.debug("async setup entry %s", entry.data["entities"])
     unsub = entry.add_update_listener(update_listener)
+
+    # Create system user for attribution of state changes
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
+    
+    # Create or get system user for this component
+    system_user = None
+    users = await hass.auth.async_get_users()
+    for user in users:
+        if user.system_generated and user.name == "Presence Simulation":
+            system_user = user
+            break
+    
+    if system_user is None:
+        system_user = await hass.auth.async_create_system_user(
+            "Presence Simulation",
+            group_ids=["system-admin"]
+        )
+        _LOGGER.debug("Created system user for presence simulation: %s", system_user.id)
+    
+    hass.data[DOMAIN]["system_user"] = system_user
 
     # Add sensor
     # Use `hass.async_create_task` to avoid a circular dependency between the platform and the component
@@ -69,14 +91,17 @@ async def async_setup_entry(hass, entry):
                 service_data["entity_id"] = SCENE_PLATFORM+"."+(await get_scene_name(switch_id))
                 _LOGGER.debug("Restoring scene after the simulation")
                 try:
-                    await hass.services.async_call("scene", "turn_on", service_data, blocking=False)
+                    # Create context with system user for proper attribution
+                    system_user = hass.data[DOMAIN].get("system_user")
+                    context = Context(user_id=system_user.id if system_user else None)
+                    await hass.services.async_call("scene", "turn_on", service_data, blocking=False, context=context)
                 except Exception as e:
                     _LOGGER.error("Error when restoring the scene after the simulation")
                     pass
             await entity.reset_restore_states()
         if err is not None:
             _LOGGER.debug("Error in presence simulation, exiting")
-            raise e
+            raise err
     async def get_scene_name(switch_id):
         tmp = switch_id.replace(".", "_")+"_"+RESTORE_SCENE
         return re.sub(r'_+', '_', tmp)
@@ -233,7 +258,10 @@ async def async_setup_entry(hass, entry):
                 service_data["snapshot_entities"] = expanded_entities
                 _LOGGER.debug("Saving scene before launching the simulation")
                 try:
-                    await hass.services.async_call("scene", "create", service_data, blocking=True)
+                    # Create context with system user for proper attribution
+                    system_user = hass.data[DOMAIN].get("system_user")
+                    context = Context(user_id=system_user.id if system_user else None)
+                    await hass.services.async_call("scene", "create", service_data, blocking=True, context=context)
                 except Exception as e:
                     _LOGGER.error("Scene could not be created, continue without the restore functionality: %s", e)
 
@@ -355,11 +383,11 @@ async def async_setup_entry(hass, entry):
             if not is_running(switch_id):
                 return # exit if state is false
             #call service to turn on/off the light
-            await update_entity(entity_id, state, entity.unavailable_as_off, entity.brightness)
+            await update_entity(entity_id, state, entity.unavailable_as_off, entity.brightness, idx > 0)
             #and remove this event from the attribute list of the switch entity
             await entity.async_remove_event(entity_id)
 
-    async def update_entity(entity_id, state, unavailable_as_off, brightness):
+    async def update_entity(entity_id, state, unavailable_as_off, brightness, should_send_event=True):
         """ Switch the entity """
         # use service scene.apply ?? https://www.home-assistant.io/integrations/scene/
         """
@@ -376,6 +404,10 @@ async def async_setup_entry(hass, entry):
         service_data = {"entities": service_data}
         await hass.services.async_call("scene", "apply", service_data, blocking=False)
         """
+        # Create context with system user for proper attribution
+        system_user = hass.data[DOMAIN].get("system_user")
+        context = Context(user_id=system_user.id if system_user else None)
+        
         # get the domain of the entity
         domain = entity_id.split('.')[0]
         #prepare the data of the services
@@ -407,7 +439,7 @@ async def async_setup_entry(hass, entry):
                 s = "on" if state.state == "on" else "off"
 
                 _LOGGER.debug("calling service %s with target %s and data %s", "turn_"+s, {"entity_id": entity_id }, service_data)
-                await hass.services.async_call("light", service="turn_"+s, service_data=service_data, blocking=False, target={"entity_id": entity_id})
+                await hass.services.async_call("light", service="turn_"+s, service_data=service_data, blocking=False, target={"entity_id": entity_id}, context=context)
                 event_data = {"entity_id": entity_id, "service": "light.turn_"+s, "service_data": service_data}
             else:
                 _LOGGER.debug("State in neither on nor off (is %s), do nothing", state.state)
@@ -422,33 +454,33 @@ async def async_setup_entry(hass, entry):
                 blocking = False
             if state.state == "closed" or (state.state == "unavailable" and unavailable_as_off):
                 _LOGGER.debug("Closing cover %s", entity_id)
-                await hass.services.async_call("cover", "close_cover", service_data, blocking=blocking, target={"entity_id": entity_id})
+                await hass.services.async_call("cover", "close_cover", service_data, blocking=blocking, target={"entity_id": entity_id}, context=context)
                 event_data = {"entity_id": entity_id, "service": "cover.close_cover", "service_data": service_data}
             elif state.state == "open":
                 if "current_position" in state.attributes:
                     service_data["position"] = state.attributes["current_position"]
                     _LOGGER.debug("Changing cover %s position to %s", entity_id, state.attributes["current_position"])
-                    await hass.services.async_call("cover", "set_cover_position", service_data, blocking=blocking, target={"entity_id": entity_id})
+                    await hass.services.async_call("cover", "set_cover_position", service_data, blocking=blocking, target={"entity_id": entity_id}, context=context)
                     event_data = {"entity_id": entity_id, "service": "cover.set_cover_position", "service_data": service_data}
                     del service_data["position"]
                 else: #no position info, just open it
                     _LOGGER.debug("Opening cover %s", entity_id)
-                    await hass.services.async_call("cover", "open_cover", service_data, blocking=blocking, target={"entity_id": entity_id})
+                    await hass.services.async_call("cover", "open_cover", service_data, blocking=blocking, target={"entity_id": entity_id}, context=context)
                     event_data = {"entity_id": entity_id, "service": "cover.open_cover", "service_data": service_data}
             if state.state in ["closed", "open"]: #nothing to do if closing or opening. Wait for the status to be 'stabilized'
                 if "current_tilt_position" in state.attributes:
                     service_data["tilt_position"] = state.attributes["current_tilt_position"]
                     _LOGGER.debug("Changing cover %s tilt position to %s", entity_id, state.attributes["current_tilt_position"])
-                    await hass.services.async_call("cover", "set_cover_tilt_position", service_data, blocking=False, target={"entity_id": entity_id})
+                    await hass.services.async_call("cover", "set_cover_tilt_position", service_data, blocking=False, target={"entity_id": entity_id}, context=context)
                     event_data = {"entity_id": entity_id, "service": "cover.set_cover_tilt_position", "service_data": service_data}
                     del service_data["tilt_position"]
         elif domain == "media_player":
             _LOGGER.debug("Switching media_player %s to %s", entity_id, state.state)
             if state.state == "playing":
-                await hass.services.async_call("media_player", "media_play", service_data, blocking=False, target={"entity_id": entity_id})
+                await hass.services.async_call("media_player", "media_play", service_data, blocking=False, target={"entity_id": entity_id}, context=context)
                 event_data = {"entity_id": entity_id, "service": "media_player.media_play", "service_data": service_data}
             elif state.state != "unavailable" or unavailable_as_off: #idle, paused, off
-                await hass.services.async_call("media_player", "media_stop", service_data, blocking=False, target={"entity_id": entity_id})
+                await hass.services.async_call("media_player", "media_stop", service_data, blocking=False, target={"entity_id": entity_id}, context=context)
                 event_data = {"entity_id": entity_id, "service": "media_player.media_stop", "service_data": service_data}
             else:
                 _LOGGER.debug("State in unavailable, do nothing")
@@ -463,6 +495,7 @@ async def async_setup_entry(hass, entry):
                 "select_option",
                 service_data,
                 blocking=False,
+                context=context,
             )
             event_data = {
                 "entity_id": entity_id,
@@ -474,12 +507,12 @@ async def async_setup_entry(hass, entry):
             _LOGGER.debug("Switching entity %s to %s", entity_id, state.state)
             if state.state == "on" or state.state == "off" or (state.state == "unavailable" and unavailable_as_off):
                 s = "on" if state.state == "on" else "off"
-                await hass.services.async_call("homeassistant", "turn_"+s, service_data, blocking=False, target={"entity_id": entity_id})
+                await hass.services.async_call("homeassistant", "turn_"+s, service_data, blocking=False, target={"entity_id": entity_id}, context=context)
                 event_data = {"entity_id": entity_id, "service": "homeassistant.turn_"+s, "service_data": service_data}
             else:
                 _LOGGER.debug("State in neither on nor off (is %s), do nothing", state.state)
         try:
-            if event_data is not None:
+            if event_data is not None and should_send_event:
                 hass.bus.fire(MY_EVENT, event_data)
         except NameError:
             pass
@@ -520,6 +553,25 @@ async def async_remove_entry(hass, entry):
         _LOGGER.info(
             "Successfully removed switch from the presence simulation integration"
         )
+        
+        # Clean up system user if no other presence simulation entries exist
+        remaining_entries = [
+            e for e in hass.config_entries.async_entries(DOMAIN) 
+            if e.entry_id != entry.entry_id
+        ]
+        
+        if not remaining_entries and DOMAIN in hass.data:
+            system_user = hass.data[DOMAIN].get("system_user")
+            if system_user:
+                try:
+                    await hass.auth.async_remove_user(system_user)
+                    _LOGGER.debug("Removed system user for presence simulation: %s", system_user.id)
+                except Exception as e:
+                    _LOGGER.warning("Failed to remove system user: %s", e)
+            
+            # Clean up the domain data
+            del hass.data[DOMAIN]
+            
     except ValueError:
         pass
 
