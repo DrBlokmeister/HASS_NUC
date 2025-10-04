@@ -3,9 +3,6 @@
 from __future__ import annotations
 from typing import Any, Final
 import re
-import zlib
-import base64
-import json
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from collections.abc import Mapping
@@ -25,7 +22,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 
-from .dreame import DreameVacuumProtocol, MAP_COLOR_SCHEME_LIST, MAP_ICON_SET_LIST, DEVICE_INFO, VERSION
+from .dreame import DreameVacuumProtocol, MAP_COLOR_SCHEME_LIST, MAP_ICON_SET_LIST, VERSION
 
 from .const import (
     DOMAIN,
@@ -40,8 +37,6 @@ from .const import (
     CONF_AUTH_KEY,
     CONF_HIDDEN_MAP_OBJECTS,
     CONF_PREFER_CLOUD,
-    CONF_LOW_RESOLUTION,
-    CONF_SQUARE,
     CONF_DONATED,
     CONF_VERSION,
     NOTIFICATION,
@@ -49,17 +44,79 @@ from .const import (
     SPONSOR,
 )
 
-
-ACCOUNT_TYPE_DREAME = "dreame"
-ACCOUNT_TYPE_MOVA = "mova"
 ACCOUNT_TYPE_MI = "mi"
 ACCOUNT_TYPE_LOCAL = "local"
 
+DREAME_MODELS = [
+    "dreame.vacuum.r2205",
+    "dreame.vacuum.r2243",
+    "dreame.vacuum.r2240",
+    "dreame.vacuum.r2250",
+    "dreame.vacuum.p2009",
+    "dreame.vacuum.r2312",
+    "dreame.vacuum.p2259",
+    "dreame.vacuum.r2312a",
+    "dreame.vacuum.r2322",
+    "dreame.vacuum.p2187",
+    "dreame.vacuum.r2328",
+    "dreame.vacuum.p2028a",
+    # "dreame.vacuum.r2251a", Map private key missing
+    "dreame.vacuum.p2029",
+    "dreame.vacuum.r2257o",
+    "dreame.vacuum.r2215o",
+    "dreame.vacuum.r2216o",
+    "dreame.vacuum.r2228o",
+    "dreame.vacuum.r2228",
+    "dreame.vacuum.r2246",
+    "dreame.vacuum.r2233",
+    "dreame.vacuum.r2247",
+    "dreame.vacuum.r2211o",
+    "dreame.vacuum.r2316",
+    "dreame.vacuum.r2316p",
+    "dreame.vacuum.r2313",
+    "dreame.vacuum.r2355",
+    "dreame.vacuum.r2332",
+    "dreame.vacuum.p2027",
+    "dreame.vacuum.r2104",
+    "dreame.vacuum.r2251o",
+    "dreame.vacuum.r2232a",
+    "dreame.vacuum.r2317",
+    "dreame.vacuum.r2345a",
+    "dreame.vacuum.r2345h",
+    "dreame.vacuum.r2215",
+    "dreame.vacuum.r2235",
+    "dreame.vacuum.r2263",
+    "dreame.vacuum.r2253",
+    "dreame.vacuum.p2028",
+    "dreame.vacuum.p2157",
+    "dreame.vacuum.p2156o",
+]
+
+MIJIA_MODELS = [
+    "dreame.vacuum.p2041",
+    "dreame.vacuum.p2036",
+    "dreame.vacuum.p2140",
+    "dreame.vacuum.p2140a",
+    "dreame.vacuum.p2114a",
+    "dreame.vacuum.p2114o",
+    # "dreame.vacuum.r2210", Map private key missing
+    "dreame.vacuum.p2149o",
+    "dreame.vacuum.p2150a",
+    "dreame.vacuum.p2150b",
+    "dreame.vacuum.p2150o",
+    "dreame.vacuum.r2209",
+    "dreame.vacuum.p2008",
+    "dreame.vacuum.p2148o",
+    "dreame.vacuum.p2140o",
+    "dreame.vacuum.r2254",
+    "dreame.vacuum.p2140p",
+    "dreame.vacuum.p2140q",
+    "dreame.vacuum.p2041o",
+]
+
 ACCOUNT_TYPE: Final = {
-    "Dreamehome Account": ACCOUNT_TYPE_DREAME,
-    "Xiaomi Home Account": ACCOUNT_TYPE_MI,
-    "Movahome Account": ACCOUNT_TYPE_MOVA,
-    "Manual Connection (Without map)": ACCOUNT_TYPE_LOCAL,
+    "With map (Automatic)": ACCOUNT_TYPE_MI,
+    "Without map (Manual)": ACCOUNT_TYPE_LOCAL,
 }
 
 
@@ -98,11 +155,6 @@ class DreameVacuumOptionsFlowHandler(OptionsFlow):
                         CONF_HIDDEN_MAP_OBJECTS,
                         default=self._config_entry.options.get(CONF_HIDDEN_MAP_OBJECTS, []),
                     ): cv.multi_select(MAP_OBJECTS),
-                    vol.Required(CONF_SQUARE, default=self._config_entry.options.get(CONF_SQUARE, False)): bool,
-                    vol.Required(
-                        CONF_LOW_RESOLUTION,
-                        default=self._config_entry.options.get(CONF_LOW_RESOLUTION, False),
-                    ): bool,
                 }
             )
             if self._config_entry.data.get(CONF_ACCOUNT_TYPE, ACCOUNT_TYPE_MI) == ACCOUNT_TYPE_MI:
@@ -150,8 +202,6 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
         self.account_type: str = ACCOUNT_TYPE_MI
         self.device_id: int | None = None
         self.prefer_cloud: bool = True
-        self.low_resolution: bool = False
-        self.square: bool = False
         self.options: dict[str, dict[str, Any]] = {}
         self.protocol: DreameVacuumProtocol | None = None
         self.models: dict[str, int] = None
@@ -210,28 +260,26 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
         error = None
         if self.prefer_cloud or (self.token and len(self.token) == 32):
             try:
-                if self.account_type != ACCOUNT_TYPE_DREAME and self.account_type != ACCOUNT_TYPE_MOVA:
-                    if self.protocol is not None:
-                        self.protocol.disconnect()
-
-                    self.protocol = DreameVacuumProtocol(
-                        self.host,
-                        self.token,
-                        self.username,
-                        self.password,
-                        self.country,
-                        self.prefer_cloud,
-                        self.account_type,
-                        self.device_id,
-                        self.protocol.cloud.auth_key if self.protocol and self.protocol.cloud else None,
-                    )
-
-                    info = await self.hass.async_add_executor_job(self.protocol.connect, None, None, 3)
-                    if info:
-                        self.mac = info["mac"]
-                        self.model = info["model"]
-
+                if self.protocol is not None:
                     self.protocol.disconnect()
+
+                self.protocol = DreameVacuumProtocol(
+                    self.host,
+                    self.token,
+                    self.username,
+                    self.password,
+                    self.country,
+                    self.prefer_cloud,
+                    self.device_id,
+                    self.protocol.cloud.auth_key if self.protocol and self.protocol.cloud else None,
+                )
+
+                info = await self.hass.async_add_executor_job(self.protocol.connect, None, None, 3)
+                if info:
+                    self.mac = info["mac"]
+                    self.model = info["model"]
+
+                self.protocol.disconnect()
             except:
                 error = "cannot_connect"
             else:
@@ -307,10 +355,6 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_login(self, error=None):
         if self.account_type == ACCOUNT_TYPE_MI:
             return await self.async_step_mi(error=error)
-        if self.account_type == ACCOUNT_TYPE_DREAME:
-            return await self.async_step_dreame(error=error)
-        if self.account_type == ACCOUNT_TYPE_MOVA:
-            return await self.async_step_mova(error=error)
         return await self.async_step_local(error=error)
 
     async def async_step_mi(
@@ -337,7 +381,6 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                     password=self.password,
                     country=self.country,
                     prefer_cloud=self.prefer_cloud,
-                    account_type=self.account_type,
                 )
 
                 await self.hass.async_add_executor_job(self.protocol.cloud.login)
@@ -420,72 +463,6 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_dreame(
-        self,
-        user_input: dict[str, Any] | None = None,
-        errors: dict[str, Any] | None = {},
-        error: str | None = None,
-    ) -> FlowResult:
-        """Configure a dreame vacuum device through the Dreame Cloud."""
-
-        description_placeholders = {}
-        if user_input is not None:
-            username = user_input.get(CONF_USERNAME)
-            password = user_input.get(CONF_PASSWORD)
-            country = user_input.get(CONF_COUNTRY, self.country)
-
-            if username and password and country:
-                self.username = username
-                self.password = password
-                self.country = country
-                self.prefer_cloud = True
-
-                if self.protocol is not None:
-                    self.protocol.disconnect()
-
-                self.protocol = DreameVacuumProtocol(
-                    username=self.username,
-                    password=self.password,
-                    country=self.country,
-                    prefer_cloud=self.prefer_cloud,
-                    account_type=self.account_type,
-                )
-                await self.hass.async_add_executor_job(self.protocol.cloud.login)
-
-                if self.protocol.cloud.logged_in is False:
-                    errors["base"] = "login_error"
-                elif self.protocol.cloud.logged_in:
-                    return await self.async_step_devices()
-            else:
-                errors["base"] = "credentials_incomplete"
-        elif error:
-            errors["base"] = error
-            devices = ""
-            if error == "no_devices" and self.unsupported_devices:
-                for device in self.unsupported_devices.values():
-                    devices = f"{devices} ({device.get("model", "unknown")})"
-
-            description_placeholders = {"devices": devices}
-        else:
-            errors = {}
-
-        return self.async_show_form(
-            step_id=self.account_type,
-            data_schema=self.login_schema,
-            description_placeholders=description_placeholders,
-            errors=errors,
-        )
-
-    async def async_step_mova(
-        self,
-        user_input: dict[str, Any] | None = None,
-        errors: dict[str, Any] | None = {},
-        error: str | None = None,
-    ) -> FlowResult:
-        """Configure a dreame vacuum device through the Mova Cloud."""
-
-        return await self.async_step_dreame(user_input, errors, error)
-
     async def async_step_devices(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle Dreame Vacuum devices found."""
 
@@ -533,8 +510,6 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                 CONF_COLOR_SCHEME: user_input.get(CONF_COLOR_SCHEME),
                 CONF_ICON_SET: user_input.get(CONF_ICON_SET),
                 CONF_HIDDEN_MAP_OBJECTS: user_input.get(CONF_HIDDEN_MAP_OBJECTS),
-                CONF_SQUARE: user_input.get(CONF_SQUARE),
-                CONF_LOW_RESOLUTION: user_input.get(CONF_LOW_RESOLUTION),
                 CONF_PREFER_CLOUD: self.prefer_cloud,
             }
 
@@ -552,14 +527,12 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
         if self.models[self.model] == 1:
             default_color_scheme = "Mijia Light"
             default_icon_set = "Mijia"
-            hidden_map_objects.append("name_background")
             hidden_map_objects.append("icon")
         else:
             default_color_scheme = "Dreame Light"
             default_icon_set = "Dreame"
             model = re.sub(r"[^0-9]", "", self.model)
             if not (model.isnumeric() and int(model) >= 2215):
-                hidden_map_objects.append("name_background")
                 hidden_map_objects.append("name")
 
         if self.account_type != ACCOUNT_TYPE_LOCAL:
@@ -570,8 +543,6 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                     ),
                     vol.Required(CONF_ICON_SET, default=default_icon_set): vol.In(list(MAP_ICON_SET_LIST.keys())),
                     vol.Required(CONF_HIDDEN_MAP_OBJECTS, default=hidden_map_objects): cv.multi_select(MAP_OBJECTS),
-                    vol.Required(CONF_SQUARE, default=False): bool,
-                    vol.Required(CONF_LOW_RESOLUTION, default=False): bool,
                 }
             )
 
@@ -614,45 +585,24 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
 
     def extract_info(self, device_info: dict[str, Any]) -> None:
         """Extract the device info."""
-
-        if self.account_type == ACCOUNT_TYPE_MI:
-            if self.host is None:
-                self.host = device_info["localip"]
-            if self.mac is None:
-                self.mac = device_info["mac"]
-            if self.model is None:
-                self.model = device_info["model"]
-            if self.name is None:
-                self.name = device_info["name"]
-            self.token = device_info["token"]
-            self.device_id = device_info["did"]
-        elif self.account_type == ACCOUNT_TYPE_DREAME or self.account_type == ACCOUNT_TYPE_MOVA:
-            if self.token is None:
-                self.token = " "
-            if self.host is None:
-                self.host = device_info["bindDomain"]
-            if self.mac is None:
-                self.mac = device_info["mac"]
-            if self.model is None:
-                self.model = device_info["model"]
-            if self.name is None:
-                self.name = (
-                    device_info["customName"]
-                    if device_info["customName"] and len(device_info["customName"]) > 0
-                    else device_info["deviceInfo"]["displayName"]
-                )
-            self.device_id = device_info["did"]
+        if self.host is None:
+            self.host = device_info["localip"]
+        if self.mac is None:
+            self.mac = device_info["mac"]
+        if self.model is None:
+            self.model = device_info["model"]
+        if self.name is None:
+            self.name = device_info["name"]
+        self.token = device_info["token"]
+        self.device_id = device_info["did"]
 
     def load_devices(self):
         if self.models is None:
             self.models = {}
-            device_info = json.loads(zlib.decompress(base64.b64decode(DEVICE_INFO), zlib.MAX_WBITS | 32))
-            for k in device_info[3]:
-                info = device_info[0][device_info[3][k]]
-                if info:
-                    self.models[
-                        f"{"xiaomi" if info[0] == 1 else ACCOUNT_TYPE_MOVA if info[0] == 2 else ACCOUNT_TYPE_DREAME}.vacuum.{k}"
-                    ] = info[1]
+            for k in DREAME_MODELS:
+                self.models[k] = 0
+            for k in MIJIA_MODELS:
+                self.models[k] = 1
 
     @property
     def login_schema(self):
@@ -664,22 +614,13 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                 }
             )
 
-        if self.account_type == ACCOUNT_TYPE_MI:
-            return vol.Schema(
-                {
-                    vol.Required(CONF_USERNAME, default=self.username): str,
-                    vol.Required(CONF_PASSWORD, default=self.password): str,
-                    vol.Required(CONF_COUNTRY, default=("de" if self.country == "eu" else self.country)): vol.In(
-                        ["de", "cn", "us", "ru", "tw", "sg", "in", "i2"]
-                    ),
-                    vol.Optional(CONF_PREFER_CLOUD, default=self.prefer_cloud): bool,
-                }
-            )
-
         return vol.Schema(
             {
                 vol.Required(CONF_USERNAME, default=self.username): str,
                 vol.Required(CONF_PASSWORD, default=self.password): str,
-                vol.Required(CONF_COUNTRY, default=self.country): vol.In(["eu", "cn", "us", "ru", "sg"]),
+                vol.Required(CONF_COUNTRY, default=("de" if self.country == "eu" else self.country)): vol.In(
+                    ["de", "cn", "us", "ru", "tw", "sg", "in", "i2"]
+                ),
+                vol.Optional(CONF_PREFER_CLOUD, default=self.prefer_cloud): bool,
             }
         )
