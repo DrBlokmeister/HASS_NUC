@@ -465,7 +465,7 @@ automation:
     mode: single
     trigger:
       - platform: state
-        entity_id: sensor.nordpool_energy_price
+        entity_id: sensor.nordpool_energy_price_hourly
       - platform: state
         entity_id: input_select.heatpump_cooling_price_control
       - platform: state
@@ -499,7 +499,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float(0.3) <= states('input_number.heatpump_cooling_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('input_number.heatpump_cooling_fixed_price_threshold') | float }}"
             sequence:
               - service: switch.turn_on
                 target:
@@ -509,7 +509,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float(0.3) > states('input_number.heatpump_cooling_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) > states('input_number.heatpump_cooling_fixed_price_threshold') | float }}"
             sequence:
               - service: switch.turn_off
                 target:
@@ -521,7 +521,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float(0.3) <= states('sensor.highest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('sensor.highest_quartile_electricity_price_today') | float }}"
             sequence:
               - service: switch.turn_on
                 target:
@@ -531,7 +531,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float > states('sensor.highest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float > states('sensor.highest_quartile_electricity_price_today') | float }}"
             sequence:
               - service: switch.turn_off
                 target:
@@ -552,7 +552,7 @@ automation:
     mode: single
     trigger:
       - platform: state
-        entity_id: sensor.nordpool_energy_price
+        entity_id: sensor.nordpool_energy_price_hourly
       - platform: state
         entity_id: input_select.heatpump_price_control
       - platform: state
@@ -580,7 +580,7 @@ automation:
                 entity_id: input_select.heatpump_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float <= states('input_number.heatpump_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float <= states('input_number.heatpump_fixed_price_threshold') | float }}"
             sequence:
               - service: number.set_value
                 target:
@@ -594,7 +594,7 @@ automation:
                 entity_id: input_select.heatpump_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price') | float <= states('sensor.lowest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float <= states('sensor.lowest_quartile_electricity_price_today') | float }}"
             sequence:
               - service: number.set_value
                 target:

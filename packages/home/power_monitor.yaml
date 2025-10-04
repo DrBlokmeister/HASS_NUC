@@ -117,9 +117,9 @@ template:
           {%- set current_time = now() -%}
           {%- set ns = namespace(cheapest=None) -%}
           {%- if current_time.hour >= 15 -%}
-            {%- set prices = state_attr('sensor.nordpool_energy_price', 'raw_today') + state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') -%}
+            {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') + state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') -%}
           {%- else -%}
-            {%- set prices = state_attr('sensor.nordpool_energy_price', 'raw_today') -%}
+            {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') -%}
           {%- endif -%}
           {%- for price in prices -%}
             {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
@@ -134,9 +134,9 @@ template:
             {%- set current_time = now() -%}
             {%- set ns = namespace(cheapest=None) -%}
             {%- if current_time.hour >= 15 -%}
-              {%- set prices = state_attr('sensor.nordpool_energy_price', 'raw_today') + state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') -%}
+              {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') + state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') -%}
             {%- else -%}
-              {%- set prices = state_attr('sensor.nordpool_energy_price', 'raw_today') -%}
+              {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') -%}
             {%- endif -%}
             {%- for price in prices -%}
               {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
@@ -150,9 +150,9 @@ template:
             {%- set current_time = now() -%}
             {%- set ns = namespace(cheapest=None) -%}
             {%- if current_time.hour >= 15 -%}
-              {%- set prices = state_attr('sensor.nordpool_energy_price', 'raw_today') + state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') -%}
+              {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') + state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') -%}
             {%- else -%}
-              {%- set prices = state_attr('sensor.nordpool_energy_price', 'raw_today') -%}
+              {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') -%}
             {%- endif -%}
             {%- for price in prices -%}
               {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
@@ -163,7 +163,7 @@ template:
             {%- endfor -%}
             {{- ns.cheapest.start.hour if ns.cheapest else 'Unavailable' -}}
           whole_night_included: >
-            {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') %}
+            {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') %}
             {{- 'Yes' if not (raw_tomorrow is not defined or raw_tomorrow == none or (raw_tomorrow | length == 0)) else 'No' -}}
             {# {{- 'Yes' if now().hour >= 15 else 'No' -}} #}
 
@@ -171,32 +171,156 @@ template:
       - name: "Lowest Quartile Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
         unit_of_measurement: '€/kWh'
-        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[5] }}"
+        state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] }}"
         attributes:
-          difference_to_minimum: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[5] - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
-          ratio_to_minimum: "{{ ((state_attr('sensor.nordpool_energy_price','today') | sort())[5] / (state_attr('sensor.nordpool_energy_price','today') | min())) | round(3) }}"
-        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+          difference_to_minimum: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] - (state_attr('sensor.nordpool_energy_price_hourly','today') | min()) }}"
+          ratio_to_minimum: "{{ ((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] / (state_attr('sensor.nordpool_energy_price_hourly','today') | min())) | round(3) }}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
       - name: "Highest Quartile Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
         unit_of_measurement: '€/kWh'
-        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[17] }}"
+        state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] }}"
         attributes:
-          difference_to_maximum: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | sort())[17] }}"
-          ratio_to_maximum: "{{ ((state_attr('sensor.nordpool_energy_price','today') | sort())[17] / (state_attr('sensor.nordpool_energy_price','today') | max())) | round(3) }}"
-        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+          difference_to_maximum: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | max()) - (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] }}"
+          ratio_to_maximum: "{{ ((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] / (state_attr('sensor.nordpool_energy_price_hourly','today') | max())) | round(3) }}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
       - name: "Interquartile Range Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
         unit_of_measurement: '€/kWh'
-        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5] }}"
+        state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] }}"
         attributes:
-          difference_to_range: "{{ (((state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min())) - ((state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5])) | round(3) }}"
-          ratio_to_range: "{{ (((state_attr('sensor.nordpool_energy_price','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price','today') | sort())[5]) / ((state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()))) | round(3)}}"
-        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+          difference_to_range: "{{ (((state_attr('sensor.nordpool_energy_price_hourly','today') | max()) - (state_attr('sensor.nordpool_energy_price_hourly','today') | min())) - ((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5])) | round(3) }}"
+          ratio_to_range: "{{ (((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5]) / ((state_attr('sensor.nordpool_energy_price_hourly','today') | max()) - (state_attr('sensor.nordpool_energy_price_hourly','today') | min()))) | round(3)}}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
       - name: "Total Range Electricity Price Today"
         #unique_id: "cheapest_night_price_sensor"
         unit_of_measurement: '€/kWh'
-        state: "{{ (state_attr('sensor.nordpool_energy_price','today') | max()) - (state_attr('sensor.nordpool_energy_price','today') | min()) }}"
-        availability: "{{ state_attr('sensor.nordpool_energy_price','today') is not none }}"
+        state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | max()) - (state_attr('sensor.nordpool_energy_price_hourly','today') | min()) }}"
+        availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
+
+  - sensor:
+      - name: "Nordpool Energy Price (Hourly)"
+        unique_id: yaml_template_sensor_nordpool_energy_price_hourly
+        icon: mdi:flash
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        availability: >-
+          {% set q = state_attr('sensor.nordpool_energy_price', 'today') %}
+          {% set idx = now().hour %}
+          {{ q is not none and (q | length) >= (idx + 1) * 4 }}
+        state: >-
+          {% set q = state_attr('sensor.nordpool_energy_price', 'today') %}
+          {% if q is not none %}
+            {% set idx = now().hour %}
+            {% if (idx + 1) * 4 <= (q | length) %}
+              {{ ((
+                    (q[idx*4]   | float) +
+                    (q[idx*4+1] | float) +
+                    (q[idx*4+2] | float) +
+                    (q[idx*4+3] | float)
+                  ) / 4)
+                  | round(3) }}
+            {% else %} unknown {% endif %}
+          {% else %} unknown {% endif %}
+        attributes:
+          unit: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'unit') }}
+          currency: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'currency') }}
+          country: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'country') }}
+          region: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'region') }}
+          price_in_cents: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'price_in_cents') }}
+          tomorrow_valid: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') }}
+          average: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = q | length %}
+            {{ ((q | map('float') | sum) / n) | round(6) if n > 0 else none }}
+          mean: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = q | length %}
+            {{ ((q | map('float') | sum) / n) | round(6) if n > 0 else none }}
+          peak: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = (q | length // 4) * 4 %}
+            {% if n > 0 %}
+              {% set ns = namespace(mx = none) %}
+              {% for i in range(0, n, 4) %}
+                {% set v = ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) %}
+                {% set ns.mx = v if ns.mx is none or v > ns.mx else ns.mx %}
+              {% endfor %}
+              {{ ns.mx | round(3) }}
+            {% else %} {{ none }} {% endif %}
+          max: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = (q | length // 4) * 4 %}
+            {% if n > 0 %}
+              {% set ns = namespace(mx = none) %}
+              {% for i in range(0, n, 4) %}
+                {% set v = ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) %}
+                {% set ns.mx = v if ns.mx is none or v > ns.mx else ns.mx %}
+              {% endfor %}
+              {{ ns.mx | round(3) }}
+            {% else %} {{ none }} {% endif %}
+          min: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = (q | length // 4) * 4 %}
+            {% if n > 0 %}
+              {% set ns = namespace(mn = none) %}
+              {% for i in range(0, n, 4) %}
+                {% set v = ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) %}
+                {% set ns.mn = v if ns.mn is none or v < ns.mn else ns.mn %}
+              {% endfor %}
+              {{ ns.mn | round(3) }}
+            {% else %} {{ none }} {% endif %}
+          additional_costs_current_hour: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'additional_costs_current_hour') }}
+          today: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = (q | length // 4) * 4 %}
+            [
+            {%- for i in range(0, n, 4) -%}
+              {{ ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3) }}
+              {{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          raw_today: >-
+            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
+            {% set n = (r | length // 4) * 4 %}
+            [
+            {%- for i in range(0, n, 4) -%}
+              {
+                'start': "{{ as_datetime(r[i]['start']).isoformat() }}",
+                'end':   "{{ (as_datetime(r[i]['start']) + timedelta(hours=1)).isoformat() }}",
+                'value': {{ ((r[i]['value']|float + r[i+1]['value']|float + r[i+2]['value']|float + r[i+3]['value']|float) / 4) | round(3) }}
+              }{{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          tomorrow: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] %}
+            {% set n = (q | length // 4) * 4 %}
+            [
+            {%- for i in range(0, n, 4) -%}
+              {{ ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3) }}
+              {{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          raw_tomorrow: >-
+            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] %}
+            {% set n = (r | length // 4) * 4 %}
+            [
+            {%- for i in range(0, n, 4) -%}
+              {
+                'start': "{{ as_datetime(r[i]['start']).isoformat() }}",
+                'end':   "{{ (as_datetime(r[i]['start']) + timedelta(hours=1)).isoformat() }}",
+                'value': {{ ((r[i]['value']|float + r[i+1]['value']|float + r[i+2]['value']|float + r[i+3]['value']|float) / 4) | round(3) }}
+              }{{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
 
   - binary_sensor:
       - name: "Tomorrow's Electricity Prices Available"
@@ -262,7 +386,7 @@ sensor:
         unit_of_measurement: "€kWh"
         value_template: >-
           {% if now().hour == 0 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price_hourly')|float(0)|round(3) }}
           {% else %}
             {{ (states('sensor.total_electricity_cost_daily_energy_use')|float(0) / states('sensor.daily_energy_use')|float(1))|round(3) }}
           {% endif %}
@@ -270,7 +394,7 @@ sensor:
           {{
             (states('sensor.total_electricity_cost_daily_energy_use')|is_number and states('sensor.daily_energy_use')|is_number)
             or
-            (now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+            (now().hour == 0 and states('sensor.nordpool_energy_price_hourly')|is_number)
           }}
       average_electricity_price_this_week:
         friendly_name: "Average Electricity Price This Week"
@@ -279,7 +403,7 @@ sensor:
         unit_of_measurement: "€/kWh"
         value_template: >-
           {% if now().weekday() == 0 and now().hour == 0 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price_hourly')|float(0)|round(3) }}
           {% else %}
             {{ (states('sensor.total_electricity_cost_weekly_energy_use')|float(0) / states('sensor.weekly_energy_use')|float(1))|round(3) }}
           {% endif %}
@@ -287,7 +411,7 @@ sensor:
           {{
             (states('sensor.total_electricity_cost_weekly_energy_use')|is_number and states('sensor.weekly_energy_use')|is_number)
             or
-            (now().weekday() == 0 and now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+            (now().weekday() == 0 and now().hour == 0 and states('sensor.nordpool_energy_price_hourly')|is_number)
           }}
       average_electricity_price_this_month:
         friendly_name: "Average Electricity Price This Month"
@@ -296,7 +420,7 @@ sensor:
         unit_of_measurement: "€/kWh"
         value_template: >-
           {% if now().day == 1 and now().hour == 0 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price_hourly')|float(0)|round(3) }}
           {% else %}
             {{ (states('sensor.total_electricity_cost_monthly_energy_use')|float(0) / states('sensor.monthly_energy_use')|float(1))|round(3) }}
           {% endif %}
@@ -304,7 +428,7 @@ sensor:
           {{
             (states('sensor.total_electricity_cost_monthly_energy_use')|is_number and states('sensor.monthly_energy_use')|is_number)
             or
-            (now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+            (now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price_hourly')|is_number)
           }}
       average_electricity_price_this_year:
         friendly_name: "Average Electricity Price This Year"
@@ -313,7 +437,7 @@ sensor:
         unit_of_measurement: "€/kWh"
         value_template: >-
           {% if now().month == 1 and now().day == 1 and now().hour == 0 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price_hourly')|float(0)|round(3) }}
           {% else %}
             {{ (states('sensor.total_electricity_cost_yearly_energy_use')|float(0) / states('sensor.yearly_energy_use')|float(1))|round(3) }}
           {% endif %}
@@ -321,7 +445,7 @@ sensor:
           {{
             (states('sensor.total_electricity_cost_yearly_energy_use')|is_number and states('sensor.yearly_energy_use')|is_number)
             or
-            (now().month == 1 and now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price')|is_number)
+            (now().month == 1 and now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price_hourly')|is_number)
           }}
 
 
@@ -386,8 +510,8 @@ sensor:
         friendly_name: "Current Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unit_of_measurement: "€/h"  # Adjust this based on your currency
-        value_template: "{{ ((states('sensor.total_power_consumption_watt') | float)/1000 * states('sensor.nordpool_energy_price') | float) | round(3) }}"
-        availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+        value_template: "{{ ((states('sensor.total_power_consumption_watt') | float)/1000 * states('sensor.nordpool_energy_price_hourly') | float) | round(3) }}"
+        availability_template: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
       # Template sensor for lowest possible costs based on lowest price
       potential_electricity_usage_cost_lowest_price:
         friendly_name: "Potential Electricity Usage Costs (Lowest Price)"
@@ -430,8 +554,8 @@ sensor:
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_solar_panel_benefit_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.solar_panel_power_production_available')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.solar_panel_power_production_available') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.solar_panel_power_production_available')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.solar_panel_power_production_available') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
 
       net_electricity_cost_per_hour:
         friendly_name: "Net Electricity Cost per Hour"
@@ -447,170 +571,170 @@ sensor:
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_unknown_power_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.unknown_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.unknown_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.unknown_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.unknown_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_10gb_switch_energy_cost_hourly:
         friendly_name: "Blitzwolf 10GB Switch Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_10gb_switch_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_10gb_switch_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_10gb_switch_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_10gb_switch_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_10gb_switch_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_3dprinter_energy_cost_hourly:
         friendly_name: "Blitzwolf 3D Printer Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_3dprinter_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_3d_printer_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_3d_printer_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_3d_printer_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_3d_printer_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_ambilight_amplifier_energy_cost_hourly:
         friendly_name: "Blitzwolf Ambilight Amplifier Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_ambilight_amplifier_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.blitzwolf_ambilight_amplifier_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.blitzwolf_ambilight_amplifier_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.blitzwolf_ambilight_amplifier_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.blitzwolf_ambilight_amplifier_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_computer_energy_cost_hourly:
         friendly_name: "Blitzwolf Computer Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_computer_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_study_desk_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_study_desk_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_study_desk_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_study_desk_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_dishwasher_energy_cost_hourly:
         friendly_name: "Blitzwolf Dishwasher Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_dishwasher_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_dishwasher_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_dishwasher_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_dishwasher_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_dishwasher_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_nas_energy_cost_hourly:
         friendly_name: "Blitzwolf NAS Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_nas_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_nas_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_nas_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_nas_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_nas_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_nuc_energy_cost_hourly:
         friendly_name: "Blitzwolf NUC Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_nuc_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_nuc_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_nuc_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_nuc_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_nuc_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_poe_switch_energy_cost_hourly:
         friendly_name: "Blitzwolf POE Switch Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_poe_switch_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_poe_switch_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_poe_switch_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_poe_switch_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_poe_switch_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_router_energy_cost_hourly:
         friendly_name: "Blitzwolf Router Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_router_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_router_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_router_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_router_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_router_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_washingmachine_energy_cost_hourly:
         friendly_name: "Blitzwolf Washing Machine Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_washingmachine_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_washing_machine_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_washing_machine_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_washing_machine_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_washing_machine_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_watercooker_energy_cost_hourly:
         friendly_name: "Blitzwolf Water Cooker Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_watercooker_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_watercooker_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_watercooker_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_watercooker_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_watercooker_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       blitzwolf_heatpump_energy_cost_hourly:
         friendly_name: "Blitzwolf Heat Pump Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_blitzwolf_heatpump_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.blitzwolf_heatpump_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.blitzwolf_heatpump_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.blitzwolf_heatpump_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.blitzwolf_heatpump_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       plug_study_workbench_energy_cost_hourly:
         friendly_name: "Plug Study Workbench Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_plug_study_workbench_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_study_workbench_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_study_workbench_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_study_workbench_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_study_workbench_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       plug_tv_energy_cost_hourly:
         friendly_name: "Plug TV Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_plug_tv_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_tv_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_tv_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_tv_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_tv_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       all_lights_power_estimate_energy_cost_hourly:
         friendly_name: "All Lights Power Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_all_lights_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.all_lights_power_estimate_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.all_lights_power_estimate_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.all_lights_power_estimate_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.all_lights_power_estimate_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       heatpump_heating_energy_cost_hourly:
         friendly_name: "Heat Pump Heating Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_heatpump_heating_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.heatpump_heating_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.heatpump_heating_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.heatpump_heating_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.heatpump_heating_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       heatpump_tapwater_energy_cost_hourly:
         friendly_name: "Heat Pump Tap Water Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_heatpump_tapwater_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.heatpump_tapwater_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.heatpump_tapwater_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.heatpump_tapwater_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.heatpump_tapwater_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       ventilation_power_estimate_energy_cost_hourly:
         friendly_name: "Ventilation Power Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_ventilation_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.ventilation_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.ventilation_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.ventilation_power_estimate')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.ventilation_power_estimate') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       electric_car_estimate_energy_cost_hourly:
         friendly_name: "Electric Car Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_electric_car_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_electric_car_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_electric_car_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_electric_car_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_electric_car_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       plug_oven_power_energy_cost_hourly:
         friendly_name: "Plug Oven Power Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_plug_oven_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.plug_oven_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.plug_oven_power') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.plug_oven_power')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.plug_oven_power') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
 
       alfred_power_estimate_energy_cost_hourly:
         friendly_name: "Alfred Power Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_alfred_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.alfred_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.alfred_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.alfred_power_estimate')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.alfred_power_estimate') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       argus_power_estimate_energy_cost_hourly:
         friendly_name: "Argus Power Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_argus_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.argus_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.argus_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.argus_power_estimate')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.argus_power_estimate') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
       moeke_power_estimate_energy_cost_hourly:
         friendly_name: "Moeke Power Estimate Electricity Cost per Hour"
         icon_template: mdi:currency-eur
         unique_id: "yaml_template_sensor_moeke_power_estimate_energy_cost_hourly"
         unit_of_measurement: "€/h"
-        availability_template: "{{ states('sensor.moeke_power_estimate')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
-        value_template: "{{ (states('sensor.moeke_power_estimate') | float * states('sensor.nordpool_energy_price') | float) / 1000 }}"
+        availability_template: "{{ states('sensor.moeke_power_estimate')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
+        value_template: "{{ (states('sensor.moeke_power_estimate') | float * states('sensor.nordpool_energy_price_hourly') | float) / 1000 }}"
 
 
       solar_panel_power_production_available:
