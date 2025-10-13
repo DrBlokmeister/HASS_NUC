@@ -20,6 +20,12 @@ packages:
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
 
+# external_components:
+#   - source:
+#       type: local
+#       path: custom_components
+#     components: [weighted_pulse_meter]                       # ← tell ESPHome what to pick up
+#     refresh: 0s                                # ← always re-read local files
 # Enable Home Assistant API
 api:
   services:
@@ -45,6 +51,10 @@ api:
 # each pulse to a liter of water used. The system reports real-time and total water usage to
 # Home Assistant, ensuring accurate tracking with minimal physical modifications.
 
+i2c:
+  scl: D6
+  sda: D5
+  frequency: 100kHz
 
 output:
   - platform: gpio
@@ -93,3 +103,34 @@ sensor:
       icon: mdi:water
       filters:
         - multiply: 0.5
+
+  - platform: bme280_i2c
+    address: 0x76
+    update_interval: 10s
+    iir_filter: 4x
+    temperature:
+      name: "Mains Water Temperature"
+      icon: mdi:thermometer
+      id: temp
+      unit_of_measurement: "°C"
+      device_class: "temperature"
+      accuracy_decimals: 2
+      oversampling: 16x
+      filters:
+        - or:
+          - throttle_average: 60s
+          - delta: 1.0
+    # pressure:
+    #   name: "Water Meter Pressure"
+    #   id: press
+    #   unit_of_measurement: "hPa"
+    #   device_class: pressure
+    #   accuracy_decimals: 1
+    #   oversampling: 16x
+    # humidity:
+    #   name: "Water Meter Humidity"
+    #   id: hum
+    #   unit_of_measurement: "%"
+    #   device_class: humidity
+    #   accuracy_decimals: 1
+    #   oversampling: 16x
