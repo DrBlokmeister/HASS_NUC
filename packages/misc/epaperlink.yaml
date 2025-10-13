@@ -118,14 +118,14 @@ template:
       - name: "OpenEpaperLink Livingroom AP MAC"
         unique_id: yaml_template_sensor_openepaperlink_livingroom_ap_mac
         icon: mdi:access-point
-        state: "{{ state_attr('device_tracker.openepaperlink_8640', 'ap_mac') }}"
-        availability: "{{ state_attr('device_tracker.openepaperlink_8640', 'ap_mac') is not none }}"
+        state: "{{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'ap_mac') }}"
+        availability: "{{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'ap_mac') is not none }}"
 
       - name: "OpenEpaperLink Livingroom AP Radio"
         unique_id: yaml_template_sensor_openepaperlink_livingroom_ap_radio
         icon: mdi:wifi
-        state: "{{ state_attr('device_tracker.openepaperlink_8640', 'radio') }}"
-        availability: "{{ state_attr('device_tracker.openepaperlink_8640', 'radio') is not none }}"
+        state: "{{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'radio') }}"
+        availability: "{{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'radio') is not none }}"
 
 #################
 #    SENSORS    #
@@ -857,7 +857,7 @@ automation:
           {{
             states('sensor.median_epaper_tag_last_check_in_time') == 'unavailable' or
             (as_timestamp(now()) - as_timestamp(states('sensor.median_epaper_tag_last_check_in_time'))) > 900 or
-            is_state('device_tracker.openepaperlink_7bc8', 'off')
+            is_state('device_tracker.openepaperlink_ap_study', 'off')
           }}
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(states('sensor.uptime'))) > 600 }}"
@@ -886,7 +886,7 @@ automation:
                   value_template: >
                     {{
                       not is_state('sensor.epaperlink_study_ap_round_trip_time_average', 'unavailable') or
-                      is_state('device_tracker.openepaperlink_7bc8', 'on')
+                      is_state('device_tracker.openepaperlink_ap_study', 'on')
                     }}
                 - condition: template
                   value_template: >
