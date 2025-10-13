@@ -114,15 +114,14 @@ template:
         unique_id: "cheapest_night_price_sensor"
         unit_of_measurement: '€/kWh'
         state: >
-          {%- set current_time = now() -%}
           {%- set ns = namespace(cheapest=None) -%}
-          {%- if current_time.hour >= 15 -%}
+          {%- if now().hour >= 15 -%}
             {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') + state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') -%}
           {%- else -%}
             {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') -%}
           {%- endif -%}
           {%- for price in prices -%}
-            {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
+            {%- if now().hour < 15 and as_datetime(price.start).hour >= 21 or now().hour >= 15 and as_datetime(price.start).hour < 8 -%}
               {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
                 {%- set ns.cheapest = price -%}
               {%- endif -%}
@@ -131,15 +130,14 @@ template:
           {{- ns.cheapest.value if ns.cheapest else 'Unavailable' -}}
         attributes:
           timestamp_of_cheapest_time: >
-            {%- set current_time = now() -%}
             {%- set ns = namespace(cheapest=None) -%}
-            {%- if current_time.hour >= 15 -%}
+            {%- if now().hour >= 15 -%}
               {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') + state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') -%}
             {%- else -%}
               {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') -%}
             {%- endif -%}
             {%- for price in prices -%}
-              {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
+              {%- if now().hour < 15 and as_datetime(price.start).hour >= 21 or now().hour >= 15 and as_datetime(price.start).hour < 8 -%}
                 {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
                   {%- set ns.cheapest = price -%}
                 {%- endif -%}
@@ -147,15 +145,14 @@ template:
             {%- endfor -%}
             {{- ns.cheapest.start.strftime('%Y-%m-%d %H:%M') if ns.cheapest else 'Unavailable' -}}
           cheapest_hour: >
-            {%- set current_time = now() -%}
             {%- set ns = namespace(cheapest=None) -%}
-            {%- if current_time.hour >= 15 -%}
+            {%- if now().hour >= 15 -%}
               {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') + state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') -%}
             {%- else -%}
               {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') -%}
             {%- endif -%}
             {%- for price in prices -%}
-              {%- if current_time.hour < 15 and price.start.hour >= 21 or current_time.hour >= 15 and price.start.hour < 8 -%}
+              {%- if now().hour < 15 and as_datetime(price.start).hour >= 21 or now().hour >= 15 and as_datetime(price.start).hour < 8 -%}
                 {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
                   {%- set ns.cheapest = price -%}
                 {%- endif -%}
