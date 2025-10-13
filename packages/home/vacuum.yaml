@@ -469,7 +469,7 @@ automation:
         to: "error"
         id: "Alfred"
       - platform: template
-        value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'unavailable']) and (states('vacuum.moeke') in ['docked', 'paused', 'unavailable']) }}"
+        value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'remove_mop', 'clean_mop_pad', 'unavailable']) and (states('vacuum.moeke') in ['docked', 'paused', 'unavailable']) }}"
         id: "Moeke"
     action:
       - variables:
@@ -589,11 +589,10 @@ automation:
     mode: single
     trigger:
       - platform: state
-        entity_id: sensor.moeke_low_water_warning
-        not_to:
-          - "No warning"
-          - no_warning
-          - unavailable
+        entity_id: sensor.moeke_error
+        to:
+          - clean_tank_level
+          - dirty_tank_level
         for:
           minutes: 5
       - platform: state
@@ -602,6 +601,43 @@ automation:
         for:
           minutes: 5
     action:
+      - choose:
+          - conditions:   # Case 1: Dirty tank full
+              - condition: template
+                value_template: >-
+                  {{ trigger.entity_id == 'sensor.moeke_error'
+                    and trigger.to_state.state == 'dirty_tank_level' }}
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                continue_on_error: true
+                data:
+                  title: "Moeke: dirty water tank full"
+                  message: "Please empty the dirty water tank on the auto-empty dock."
+                  data:
+                    group: vacuum
+                    tag: vacuumerror
+                    icon_url: "/local/icons/robot-vacuum.png"
+          - conditions:  # Case 2: Clean tank empty
+              - condition: or
+                conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ trigger.entity_id == 'binary_sensor.moeke_reservoir_leak_sensor'
+                        and trigger.to_state.state == 'off' }}
+                  - condition: template
+                    value_template: >-
+                      {{ trigger.entity_id == 'sensor.moeke_error'
+                        and trigger.to_state.state == 'clean_tank_level' }}
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                continue_on_error: true
+                data:
+                  title: "Moeke: clean water tank empty"
+                  message: "Please refill the clean water tank on the auto-empty dock."
+                  data:
+                    group: vacuum
+                    tag: vacuumerror
+                    icon_url: "/local/icons/robot-vacuum.png"
       - service: notify.sander_and_tamara_phones
         continue_on_error: true
         data:
