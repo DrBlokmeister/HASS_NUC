@@ -127,6 +127,39 @@ template:
         state: "{{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'radio') }}"
         availability: "{{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'radio') is not none }}"
 
+      # Connected WIFI access point sensors for open epaperlink APs
+      - name: "OpenEpaperlink Study Connected AP"
+        unique_id: yaml_template_sensor_openepaperlink_study_connected_ap
+        icon: mdi:access-point
+        state: >-
+          {% set mac = (state_attr('device_tracker.openepaperlink_ap_study', 'ap_mac') | default('', true) | lower) %}
+          {% if mac == 'd0:21:f9:64:06:39' %}U6-LR
+          {% elif mac == 'ac:8b:a9:15:ef:09' %}U6-Pro 2nd Floor
+          {% elif mac == 'd0:21:f9:b7:9c:88' %}AP-Lite 1st Floor
+          {% elif mac == 'd0:21:f9:b7:ea:68' %}AP-Lite Outside
+          {% elif mac != '' %}{{ mac }}
+          {% else %}unknown{% endif %}
+        attributes:
+          mac: >-
+            {{ state_attr('device_tracker.openepaperlink_ap_study', 'ap_mac') | default('unknown', true) }}
+        availability: >-
+          {{ state_attr('device_tracker.openepaperlink_ap_study', 'ap_mac') not in [none, 'unavailable', 'unknown', ''] }}
+      - name: "OpenEpaperlink Livingroom Connected AP"
+        unique_id: yaml_template_sensor_openepaperlink_livingroom_connected_ap
+        icon: mdi:access-point
+        state: >-
+          {% set mac = (state_attr('device_tracker.openepaperlink_ap_livingroom', 'ap_mac') | default('', true) | lower) %}
+          {% if mac == 'd0:21:f9:64:06:39' %}U6-LR
+          {% elif mac == 'ac:8b:a9:15:ef:09' %}U6-Pro 2nd Floor
+          {% elif mac == 'd0:21:f9:b7:9c:88' %}AP-Lite 1st Floor
+          {% elif mac == 'd0:21:f9:b7:ea:68' %}AP-Lite Outside
+          {% elif mac != '' %}{{ mac }}
+          {% else %}unknown{% endif %}
+        attributes:
+          mac: >-
+            {{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'ap_mac') | default('unknown', true) }}
+        availability: >-
+          {{ state_attr('device_tracker.openepaperlink_ap_livingroom', 'ap_mac') not in [none, 'unavailable', 'unknown', ''] }}
 #################
 #    SENSORS    #
 #################
