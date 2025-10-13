@@ -1,0 +1,149 @@
+substitutions:
+  device_name: "Fan Controller NAS"
+  espname: "fan-controller-nas"
+
+esphome:
+  name: '${espname}'
+  friendly_name: ${device_name}
+  comment: 'ESP32S2'
+  platformio_options:
+    board_build.f_flash: 40000000L
+    board_build.flash_mode: dio
+    board_build.flash_size: 4MB
+    board_build.extra_flags:
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
+  on_boot:
+    priority: -100
+    then:
+      - fan.turn_on:
+          id: speedfan
+          speed: 60
+esp32:
+  board: lolin_s2_mini
+  variant: ESP32S2
+  framework:
+    type: esp-idf
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+# wifi:
+#   use_address: 10.0.30.111
+
+status_led:
+  pin: GPIO15
+
+sensor:
+  - platform: pulse_counter
+    name: "NAS Fan 1 Speed"
+    pin:
+      number: GPIO39
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor_1
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+  - platform: pulse_counter
+    name: "NAS Fan 2 Speed"
+    pin:
+      number: GPIO37
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor_2
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+  - platform: pulse_counter
+    name: "NAS Fan 3 Speed"
+    pin:
+      number: GPIO35
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor_3
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+  - platform: pulse_counter
+    name: "NAS Fan 4 Speed"
+    pin:
+      number: GPIO33
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor_4
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+  - platform: pulse_counter
+    name: "NAS Fan 5 Speed"
+    pin:
+      number: GPIO18
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor_5
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+  - platform: pulse_counter
+    name: "NAS Fan 6 Speed"
+    pin:
+      number: GPIO16
+      mode: INPUT_PULLUP
+    unit_of_measurement: 'RPM'
+    update_interval: 1s
+    accuracy_decimals: 0
+    id: fanspeed_sensor_6
+    filters:
+      - multiply: 0.5
+      - or:
+        - throttle_average: 60s
+        - delta: 100
+
+output:
+  - platform: ledc
+    id: fan_output_1
+    pin: GPIO03
+    frequency: "25000 Hz"
+    min_power: 1%
+    max_power: 100%
+  - platform: ledc
+    id: fan_output_2
+    pin: GPIO05
+    frequency: "25000 Hz"
+    min_power: 1%
+    max_power: 100%
+  - platform: ledc
+    id: fan_output_3
+    pin: GPIO07
+    frequency: "25000 Hz"
+    min_power: 1%
+    max_power: 100%
+
+fan:
+  - platform: speed
+    output: fan_output_1
+    id: speedfan
+    name: "NUC External Fan"
+    restore_mode: RESTORE_DEFAULT_ON
