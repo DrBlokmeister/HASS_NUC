@@ -289,8 +289,8 @@ automation:
                 data:
                   option: >
                       {% if
-                        is_state('sensor.moeke_error', 'the_dirty_water_tank_is_full_or_not_installed') or
-                        not is_state('sensor.moeke_low_water_warning', 'no_warning') or
+                        is_state('sensor.moeke_error', 'clean_tank_level') or
+                        is_state('sensor.moeke_error', 'dirty_tank_level') or
                         is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
                       %}
                         sweeping
@@ -365,15 +365,15 @@ automation:
           entity_id: select.moeke_cleaning_mode
         data:
           option: >
-              {% if
-                is_state('sensor.moeke_error', 'the_dirty_water_tank_is_full_or_not_installed') or
-                not is_state('sensor.moeke_low_water_warning', 'no_warning') or
-                is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-              %}
-                sweeping
-              {% else %}
-                sweeping_and_mopping
-              {% endif %}
+            {% if
+              is_state('sensor.moeke_error', 'clean_tank_level') or
+              is_state('sensor.moeke_error', 'dirty_tank_level') or
+              is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+            %}
+              sweeping
+            {% else %}
+              sweeping_and_mopping
+            {% endif %}
           #option: "sweeping_and_mopping"
           #option: "sweeping"
       - delay:
@@ -423,8 +423,8 @@ automation:
                 data:
                   option: >
                       {% if
-                        is_state('sensor.moeke_error', 'the_dirty_water_tank_is_full_or_not_installed') or
-                        not is_state('sensor.moeke_low_water_warning', 'no_warning') or
+                        is_state('sensor.moeke_error', 'clean_tank_level') or
+                        is_state('sensor.moeke_error', 'dirty_tank_level') or
                         is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
                       %}
                         sweeping
@@ -666,10 +666,10 @@ automation:
             for:
               seconds: 30
           - platform: state
-            entity_id: sensor.moeke_low_water_warning
-            to:
-              - "No warning"
-              - no_warning
+            entity_id: sensor.moeke_error
+            not_to:
+              - clean_tank_level
+              - dirty_tank_level
             for:
               seconds: 30
       - service: button.press
@@ -908,15 +908,15 @@ script:
           entity_id: select.moeke_cleaning_mode
         data:
           option: >
-              {% if
-                is_state('sensor.moeke_error', 'the_dirty_water_tank_is_full_or_not_installed') or
-                not is_state('sensor.moeke_low_water_warning', 'no_warning') or
-                is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-              %}
-                sweeping
-              {% else %}
-                sweeping_and_mopping
-              {% endif %}
+            {% if
+              is_state('sensor.moeke_error', 'clean_tank_level') or
+              is_state('sensor.moeke_error', 'dirty_tank_level') or
+              is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+            %}
+              sweeping
+            {% else %}
+              sweeping_and_mopping
+            {% endif %}
           #option: "sweeping_and_mopping"
   vacuum_entry_twice:
     alias: "Clean Entry"
