@@ -40,10 +40,8 @@ class EsphomeLock(EsphomeEntity[LockInfo, LockEntityState], LockEntity):
 
     @property
     @esphome_state_property
-    def is_locked(self) -> bool | None:
+    def is_locked(self) -> bool:
         """Return true if the lock is locked."""
-        if self._state.state is LockState.NONE:
-            return None
         return self._state.state is LockState.LOCKED
 
     @property

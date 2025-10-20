@@ -9,7 +9,6 @@ from typing import Any, cast
 from aioesphomeapi import (
     ClimateAction,
     ClimateFanMode,
-    ClimateFeature,
     ClimateInfo,
     ClimateMode,
     ClimatePreset,
@@ -56,9 +55,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import callback
-from homeassistant.exceptions import ServiceValidationError
 
-from .const import DOMAIN
 from .entity import (
     EsphomeEntity,
     convert_api_error_ha_error,
@@ -135,16 +132,12 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_translation_key = "climate"
-    _feature_flags = ClimateFeature(0)
 
     @callback
     def _on_static_info_update(self, static_info: EntityInfo) -> None:
         """Set attrs from static info."""
         super()._on_static_info_update(static_info)
         static_info = self._static_info
-        self._feature_flags = ClimateFeature(
-            static_info.supported_feature_flags_compat(self._api_version)
-        )
         self._attr_precision = self._get_precision()
         self._attr_hvac_modes = [
             _CLIMATE_MODES.from_esphome(mode) for mode in static_info.supported_modes
@@ -169,17 +162,12 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
         self._attr_min_humidity = round(static_info.visual_min_humidity)
         self._attr_max_humidity = round(static_info.visual_max_humidity)
         features = ClimateEntityFeature(0)
-        if self._feature_flags & ClimateFeature.SUPPORTS_TARGET_HUMIDITY:
-            features |= ClimateEntityFeature.TARGET_HUMIDITY
-        if self._feature_flags & ClimateFeature.REQUIRES_TWO_POINT_TARGET_TEMPERATURE:
+        if static_info.supports_two_point_target_temperature:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         else:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE
-            if (
-                self._feature_flags
-                & ClimateFeature.SUPPORTS_TWO_POINT_TARGET_TEMPERATURE
-            ):
-                features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        if static_info.supports_target_humidity:
+            features |= ClimateEntityFeature.TARGET_HUMIDITY
         if self.preset_modes:
             features |= ClimateEntityFeature.PRESET_MODE
         if self.fan_modes:
@@ -215,7 +203,7 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
     def hvac_action(self) -> HVACAction | None:
         """Return current action."""
         # HA has no support feature field for hvac_action
-        if not self._feature_flags & ClimateFeature.SUPPORTS_ACTION:
+        if not self._static_info.supports_action:
             return None
         return _CLIMATE_ACTIONS.from_esphome(self._state.action)
 
@@ -245,7 +233,7 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
     @esphome_float_state_property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        if not self._feature_flags & ClimateFeature.SUPPORTS_CURRENT_TEMPERATURE:
+        if not self._static_info.supports_current_temperature:
             return None
         return self._state.current_temperature
 
@@ -254,7 +242,7 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
     def current_humidity(self) -> int | None:
         """Return the current humidity."""
         if (
-            (not self._feature_flags & ClimateFeature.SUPPORTS_CURRENT_HUMIDITY)
+            not self._static_info.supports_current_humidity
             or (val := self._state.current_humidity) is None
             or not isfinite(val)
         ):
@@ -265,35 +253,18 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
     @esphome_float_state_property
     def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
-        if (
-            not self._feature_flags
-            & (
-                ClimateFeature.REQUIRES_TWO_POINT_TARGET_TEMPERATURE
-                | ClimateFeature.SUPPORTS_TWO_POINT_TARGET_TEMPERATURE
-            )
-            and self.hvac_mode != HVACMode.AUTO
-        ):
-            return self._state.target_temperature
-        if self.hvac_mode == HVACMode.HEAT:
-            return self._state.target_temperature_low
-        if self.hvac_mode == HVACMode.COOL:
-            return self._state.target_temperature_high
-        return None
+        return self._state.target_temperature
 
     @property
     @esphome_float_state_property
     def target_temperature_low(self) -> float | None:
         """Return the lowbound target temperature we try to reach."""
-        if self.hvac_mode == HVACMode.AUTO:
-            return None
         return self._state.target_temperature_low
 
     @property
     @esphome_float_state_property
     def target_temperature_high(self) -> float | None:
         """Return the highbound target temperature we try to reach."""
-        if self.hvac_mode == HVACMode.AUTO:
-            return None
         return self._state.target_temperature_high
 
     @property
@@ -311,30 +282,7 @@ class EsphomeClimateEntity(EsphomeEntity[ClimateInfo, ClimateState], ClimateEnti
                 cast(HVACMode, kwargs[ATTR_HVAC_MODE])
             )
         if ATTR_TEMPERATURE in kwargs:
-            if not self._feature_flags & (
-                ClimateFeature.REQUIRES_TWO_POINT_TARGET_TEMPERATURE
-                | ClimateFeature.SUPPORTS_TWO_POINT_TARGET_TEMPERATURE
-            ):
-                data["target_temperature"] = kwargs[ATTR_TEMPERATURE]
-            else:
-                hvac_mode = kwargs.get(ATTR_HVAC_MODE) or self.hvac_mode
-                if hvac_mode == HVACMode.HEAT:
-                    data["target_temperature_low"] = kwargs[ATTR_TEMPERATURE]
-                elif hvac_mode == HVACMode.COOL:
-                    data["target_temperature_high"] = kwargs[ATTR_TEMPERATURE]
-                else:
-                    raise ServiceValidationError(
-                        translation_domain=DOMAIN,
-                        translation_key="action_call_failed",
-                        translation_placeholders={
-                            "call_name": "climate.set_temperature",
-                            "device_name": self._static_info.name,
-                            "error": (
-                                f"Setting target_temperature is only supported in "
-                                f"{HVACMode.HEAT} or {HVACMode.COOL} modes"
-                            ),
-                        },
-                    )
+            data["target_temperature"] = kwargs[ATTR_TEMPERATURE]
         if ATTR_TARGET_TEMP_LOW in kwargs:
             data["target_temperature_low"] = kwargs[ATTR_TARGET_TEMP_LOW]
         if ATTR_TARGET_TEMP_HIGH in kwargs:
