@@ -202,8 +202,11 @@ automation:
         above: sensor.lowest_quartile_electricity_price_today
         id: "cool_down"
       - platform: template
-        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour'))|int(25) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')|int(25)) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
         id: "heat_up_nightly_cheapest"
+      - platform: template
+        value_template: "{{ (now().hour == state_attr('sensor.cheapest_day_price_10_18', 'cheapest_hour')|int(25)) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+        id: "heat_up_day_cheapest"
       - platform: template
         value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')|int(25) + 2) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour + 4) }}"
         id: "cool_down"
@@ -311,8 +314,12 @@ automation:
                     - number.heatpump_tapwater_hysteresis
             # Nighly heat-up
           - conditions:
-              - condition: template
-                value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+              - condition: or
+                conditions:
+                  - condition: template
+                    value_template: "{{ (now().hour == state_attr('sensor.cheapest_night_price', 'cheapest_hour')) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
+                  - condition: template
+                    value_template: "{{ (now().hour == state_attr('sensor.cheapest_day_price_10_18', 'cheapest_hour')|int(25)) and not (now().hour == (states('sensor.energyzero_today_energy_lowest_price_time')|as_datetime()).astimezone().hour) }}"
               - condition: state
                 entity_id: binary_sensor.house_occupied
                 state: 'on'

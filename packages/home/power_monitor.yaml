@@ -107,8 +107,6 @@ template:
           - "17:05"
           - "18:05"
           - "8:05"
-      # - platform: time_pattern
-      #   minutes: "/30"
     sensor:
       - name: "Cheapest Night Price"
         unique_id: "cheapest_night_price_sensor"
@@ -143,7 +141,7 @@ template:
                 {%- endif -%}
               {%- endif -%}
             {%- endfor -%}
-            {{- ns.cheapest.start.strftime('%Y-%m-%d %H:%M') if ns.cheapest else 'Unavailable' -}}
+            {{- as_datetime(ns.cheapest.start).strftime('%Y-%m-%d %H:%M') if ns.cheapest else 'Unavailable' -}}
           cheapest_hour: >
             {%- set ns = namespace(cheapest=None) -%}
             {%- if now().hour >= 15 -%}
@@ -158,11 +156,77 @@ template:
                 {%- endif -%}
               {%- endif -%}
             {%- endfor -%}
-            {{- ns.cheapest.start.hour if ns.cheapest else 'Unavailable' -}}
+            {{- as_datetime(ns.cheapest.start).hour if ns.cheapest else 'Unavailable' -}}
           whole_night_included: >
             {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') %}
             {{- 'Yes' if not (raw_tomorrow is not defined or raw_tomorrow == none or (raw_tomorrow | length == 0)) else 'No' -}}
             {# {{- 'Yes' if now().hour >= 15 else 'No' -}} #}
+
+  - trigger:
+      - platform: time
+        at:
+          - "05:05"
+          - "06:05"
+          - "07:05"
+          - "08:05"
+    sensor:
+      - name: "Cheapest Day Price (10-18)"
+        unique_id: yaml_template_sensor_cheapest_day_price_10_18
+        unit_of_measurement: "€/kWh"
+        icon: mdi:cash-clock
+        availability: >
+          {% set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') %}
+          {% if prices is not defined or prices == none or (prices | length == 0) %}
+            {{ false }}
+          {% else %}
+            {# Do we have any entries between 10:00 and 18:00 (start hours 10..17)? #}
+            {% set ns = namespace(has_any=false) %}
+            {% for p in prices %}
+              {% set h = as_datetime(p.start).hour %}
+              {% if 10 <= h < 18 %}
+                {% set ns.has_any = true %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.has_any }}
+          {% endif %}
+        state: >
+          {%- set ns = namespace(cheapest=None) -%}
+          {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') or [] -%}
+          {%- for price in prices -%}
+            {%- set h = as_datetime(price.start).hour -%}
+            {%- if 10 <= h < 18 -%}
+              {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
+                {%- set ns.cheapest = price -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{- ns.cheapest.value if ns.cheapest else 'Unavailable' -}}
+        attributes:
+          timestamp_of_cheapest_time: >
+            {%- set ns = namespace(cheapest=None) -%}
+            {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') or [] -%}
+            {%- for price in prices -%}
+              {%- set h = as_datetime(price.start).hour -%}
+              {%- if 10 <= h < 18 -%}
+                {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
+                  {%- set ns.cheapest = price -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{- as_datetime(ns.cheapest.start).strftime('%Y-%m-%d %H:%M') if ns.cheapest else 'Unavailable' -}}
+          cheapest_hour: >
+            {%- set ns = namespace(cheapest=None) -%}
+            {%- set prices = state_attr('sensor.nordpool_energy_price_hourly', 'raw_today') or [] -%}
+            {%- for price in prices -%}
+              {%- set h = as_datetime(price.start).hour -%}
+              {%- if 10 <= h < 18 -%}
+                {%- if ns.cheapest is none or price.value < ns.cheapest.value -%}
+                  {%- set ns.cheapest = price -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{- as_datetime(ns.cheapest.start).hour if ns.cheapest else 'Unavailable' -}}
 
   - sensor:
       - name: "Lowest Quartile Electricity Price Today"
