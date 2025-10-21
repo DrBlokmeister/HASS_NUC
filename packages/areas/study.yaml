@@ -967,6 +967,80 @@ automation:
           #effect: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'effect') }}"
           transition: 10
 
+  - alias: "[study|light] Toggle LEDstrips based on desk power and ambient light"
+    id: yaml_automation_study_light_toggle_ledstrips_based_on_desk_power_and_ambient_light
+    description: >
+      Turn ON when desk power >50W for 1m AND lux <20 AND light.study is off.
+      Turn OFF when desk power <50W for 5m AND light.study is off AND chair vibration sensor is off for 5m.
+      Also turn OFF when study light sensor >400 lux for 5m.
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.plug_study_desk_power
+        above: 50
+        for: "00:01:00"
+        id: power_high
+      - platform: numeric_state
+        entity_id: sensor.plug_study_desk_power
+        below: 50
+        for: "00:05:00"
+        id: power_low
+      - platform: numeric_state
+        entity_id: sensor.study_light_1
+        above: 400
+        for: "00:05:00"
+        id: lux_high
+    condition: []
+    action:
+      - choose:
+          # --- TURN ON branch ---
+          - conditions:
+              - condition: trigger
+                id: power_high
+              - condition: numeric_state
+                entity_id: sensor.study_light_1
+                below: 20
+              - condition: state
+                entity_id: light.study
+                state: "off"
+            sequence:
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_cabinet_a_rgb_ledstrip
+                  brightness_pct: 100
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+              - service: light.turn_on
+                data:
+                  entity_id: light.study_desk_a_rgb_ledstrip
+                  brightness_pct: 100
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          # --- TURN OFF branch ---
+          - conditions:
+              - condition: or
+                conditions:
+                  # Power low path
+                  - condition: and
+                    conditions:
+                      - condition: trigger
+                        id: power_low
+                      - condition: state
+                        entity_id: light.study
+                        state: "off"
+                      - condition: state
+                        entity_id: binary_sensor.vibration_sensor_new_desk_chair
+                        state: "off"
+                        for: "00:05:00"
+                  # Lux high path
+                  - condition: trigger
+                    id: lux_high
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id:
+                    - light.study_cabinet_a_rgb_ledstrip
+                    - light.study_desk_a_rgb_ledstrip
+        default: []
+
 
 #################
 #    SCRIPTS    #
