@@ -536,7 +536,9 @@ switch:
 #####################
 automation:
   - alias: "[system|network]Enter Work Zone - Start Containers"
-    description: "Turns on Guacamole and Firefox containers when entering work zone."
+    id: yaml_automation_system_network_enter_work_zone_start_containers
+    description: "Turns on NPM and Firefox + authentication containers when entering work zone."
+    mode: single
     trigger:
       - platform: zone
         entity_id: person.sander_blok
@@ -561,7 +563,12 @@ automation:
       - service: switch.turn_on
         target:
           entity_id:
-            - switch.tower_docker_firefox
+            - switch.docker_tower_authelia
+            - switch.docker_tower_apacheguacamole
+            - switch.docker_tower_firefox
+            - switch.docker_tower_nginx_proxy_manager_official
+            # - switch.network_port_forwarding_nginx_proxy_manager
+            # - switch.network_port_forwarding_nginx_proxy_manager_https
       - wait_for_trigger:
           - platform: zone
             entity_id: person.sander_blok
@@ -576,8 +583,12 @@ automation:
         continue_on_timeout: false
       - service: switch.turn_off
         entity_id:
-          - switch.tower_docker_firefox
-    mode: single
+          - switch.docker_tower_authelia
+          - switch.docker_tower_apacheguacamole
+          - switch.docker_tower_firefox
+          - switch.docker_tower_nginx_proxy_manager_official
+          # - switch.network_port_forwarding_nginx_proxy_manager
+          # - switch.network_port_forwarding_nginx_proxy_manager_https
 
   - alias: "[system|network]Query NAS sensors"
     mode: single
