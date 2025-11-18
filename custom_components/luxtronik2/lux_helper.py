@@ -6,6 +6,7 @@ from __future__ import annotations
 import socket
 import struct
 import threading
+import time
 
 from luxtronik.calculations import Calculations
 from luxtronik.parameters import Parameters
@@ -34,6 +35,14 @@ LUXTRONIK_DISCOVERY_MAGIC_PACKET = "2000;111;1;\x00"
 # Content of response that is contained in responses to discovery broadcast
 LUXTRONIK_DISCOVERY_RESPONSE_PREFIX = "2500;111;"
 
+LUXTRONIK_SOCKET_READ_SIZE_INTEGER = 4
+LUXTRONIK_SOCKET_READ_SIZE_CHAR = 1
+
+LUXTRONIK_PARAMETERS_WRITE = 3002
+LUXTRONIK_PARAMETERS_READ = 3003
+LUXTRONIK_CALCULATIONS_READ = 3004
+LUXTRONIK_VISIBILITIES_READ = 3005
+
 
 def discover() -> list[tuple[str, int | None]]:
     """Broadcast discovery for Luxtronik heat pumps."""
@@ -42,17 +51,16 @@ def discover() -> list[tuple[str, int | None]]:
 
     # pylint: disable=too-many-nested-blocks
     for port in LUXTRONIK_DISCOVERY_PORTS:
-        LOGGER.debug("Send discovery packets to port %s", port)
+        LOGGER.info("Send discovery packets to port %s", port)
         server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         server.bind(("", port))
         server.settimeout(LUXTRONIK_DISCOVERY_TIMEOUT)
 
         # send AIT magic broadcast packet
-        server.sendto(LUXTRONIK_DISCOVERY_MAGIC_PACKET.encode(), ("<broadcast>", port))
-        LOGGER.debug(
-            "Sending broadcast request %s", LUXTRONIK_DISCOVERY_MAGIC_PACKET.encode()
-        )
+        magic_bytes = LUXTRONIK_DISCOVERY_MAGIC_PACKET.encode()
+        server.sendto(magic_bytes, ("255.255.255.255", port))
+        LOGGER.debug("Sending broadcast request %s", magic_bytes)
 
         while True:
             try:
@@ -62,35 +70,38 @@ def discover() -> list[tuple[str, int | None]]:
                 if res == LUXTRONIK_DISCOVERY_MAGIC_PACKET:
                     continue
                 ip_address = con[0]
+                res_list = res.split(";")
                 # if the response starts with the magic nonsense
                 if res.startswith(LUXTRONIK_DISCOVERY_RESPONSE_PREFIX):
-                    res_list = res.split(";")
                     LOGGER.debug(
-                        "Received response from %s %s", ip_address, str(res_list)
+                        f"Received valid Luxtronik response from {ip_address}: {str(res_list)}"
                     )
                     try:
                         res_port: int | None = int(res_list[2])
-                        if res_port is None or res_port < 1 or res_port > 65535:
-                            LOGGER.debug("Response contained an invalid port, ignoring")
-                            res_port = None
-                    except ValueError:
+                    except (ValueError, IndexError):
                         res_port = None
-                    if res_port is None:
-                        LOGGER.debug(
-                            "Response did not contain a valid port number,"
-                            "an old Luxtronic software version might be the reason"
+
+                    if res_port is None or res_port < 1 or res_port > 65535:
+                        LOGGER.info(
+                            f"Response contains [port={res_port}] which is not a valid port number,"
+                            "an old Luxtronic software version might be the reason. "
+                            "Skipping this port."
                         )
-                    results.append((ip_address, res_port))
-                    continue
-                LOGGER.debug(
-                    "Received response from %s, but with wrong content, skipping",
-                    ip_address,
-                )
-                continue
-            # if the timeout triggers, go on an use the other broadcast port
+                    elif (ip_address, res_port) not in results:
+                        LOGGER.info(
+                            f"Discovered Luxtronik heatpump at {ip_address}:{res_port}"
+                        )
+                        results.append((ip_address, res_port))
+
+                else:
+                    LOGGER.debug(
+                        f"Skipping invalid response from {ip_address}: {str(res_list)}"
+                    )
+
+            # if the timeout triggers, go on and use the other broadcast port
             except socket.timeout:
                 break
-
+        server.close()
     return results
 
 
@@ -186,9 +197,8 @@ class Luxtronik:
         port: int,
         socket_timeout: float,
         max_data_length: int,
-        safe=True,
+        safe: bool = True,
     ) -> None:
-        """Init Luxtronik helper."""
         self._lock = threading.Lock()
         self._socket = None
         self._host = host
@@ -198,7 +208,6 @@ class Luxtronik:
         self.calculations = Calculations()
         self.parameters = Parameters(safe=safe)
         self.visibilities = Visibilities()
-        self.read()
 
     def __del__(self):
         """Luxtronik helper descructor."""
@@ -213,9 +222,25 @@ class Luxtronik:
                 "Disconnected from Luxtronik heatpump %s:%s", self._host, self._port
             )
 
-    def disconnect(self):
-        """Public wrapper to close the socket connection."""
-        self._disconnect()
+    def connect(self) -> None:
+        """Establish connection to the heatpump."""
+        with self._lock:
+            if self._socket is None or _is_socket_closed(self._socket):
+                self._disconnect()  # Ensure clean state
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.settimeout(self._socket_timeout)
+                try:
+                    self._socket.connect((self._host, self._port))
+                    LOGGER.info(
+                        "Connected to Luxtronik heatpump %s:%s with timeout %.1fs",
+                        self._host,
+                        self._port,
+                        self._socket_timeout,
+                    )
+                except (socket.timeout, OSError) as err:
+                    LOGGER.error("Failed to connect: %s", err)
+                    self._disconnect()
+                    raise
 
     def read(self):
         """Read data from heatpump."""
@@ -226,42 +251,36 @@ class Luxtronik:
         self._read_write(write=True)
 
     def _read_write(self, write=False):
-        # Ensure only one socket operation at the same time
-        with self._lock:
-            is_none = self._socket is None
-            if is_none:
-                self._socket = socket.socket(
-                    socket.AF_INET,
-                    socket.SOCK_STREAM,
-                )
-            if is_none or _is_socket_closed(self._socket):
-                try:
-                    self._socket.connect((self._host, self._port))
-                except OSError as err:
-                    if err.errno == 9:  # Bad file descr.
-                        self._disconnect()
-                        return
-                    elif err.errno == 106:
-                        self._socket.close()
-                        self._socket.connect((self._host, self._port))
-                    else:
-                        raise err
-                self._socket.settimeout(self._socket_timeout)
-                LOGGER.info(
-                    "Connected to Luxtronik heatpump %s:%s with timeout %ss",
-                    self._host,
-                    self._port,
-                    self._socket_timeout,
-                )
-            if write:
-                self._write()
-                # Read the new values based on our param changes:
-            self._read()
+        try:
+            self.connect()
+        except Exception as err:
+            LOGGER.error("Connection failed during read/write: %s", err)
+            return
+
+        if write:
+            self._write()
+
+        self._read()
 
     def _read(self):
-        self._read_parameters()
-        self._read_calculations()
-        self._read_visibilities()
+        self._read_data(
+            LUXTRONIK_PARAMETERS_READ,
+            LUXTRONIK_SOCKET_READ_SIZE_INTEGER,
+            self.parameters,
+            "parameters",
+        )
+        self._read_data(
+            LUXTRONIK_CALCULATIONS_READ,
+            LUXTRONIK_SOCKET_READ_SIZE_INTEGER,
+            self.calculations,
+            "calculations",
+        )
+        self._read_data(
+            LUXTRONIK_VISIBILITIES_READ,
+            LUXTRONIK_SOCKET_READ_SIZE_CHAR,
+            self.visibilities,
+            "visibilities",
+        )
 
     def _write(self):
         for index, value in self.parameters.queue.items():
@@ -269,7 +288,7 @@ class Luxtronik:
                 LOGGER.warning("Parameter id '%s' or value '%s' invalid!", index, value)
                 continue
             LOGGER.info("Parameter '%d' set to '%s'", index, value)
-            data = struct.pack(">iii", 3002, index, value)
+            data = struct.pack(">iii", LUXTRONIK_PARAMETERS_WRITE, index, value)
             LOGGER.debug("Data %s", data)
             self._socket.sendall(data)
             cmd = struct.unpack(">i", self._socket.recv(4))[0]
@@ -282,76 +301,82 @@ class Luxtronik:
         # Todo: Change methods to async
         # await asyncio.sleep(WAIT_TIME_WRITE_PARAMETER)
 
-    def _read_parameters(self):
+    def _read_data(
+        self, command: int, item_size: int, parser, label: str, retries: int = 4
+    ) -> None:
+        """Generic method to read data from the socket with timeout and retry handling."""
         data = []
-        self._socket.sendall(struct.pack(">ii", 3003, 0))
-        cmd = struct.unpack(">i", self._socket.recv(4))[0]
-        LOGGER.debug("Command %s", cmd)
-        length = struct.unpack(">i", self._socket.recv(4))[0]
-        if length > self._max_data_length:
-            LOGGER.warning(
-                "Skip reading parameters! Length oversized! %s>%s",
-                length,
-                self._max_data_length,
-            )
-            return
-        LOGGER.debug("Length %s", length)
-        for _ in range(0, length):
-            try:
-                data.append(struct.unpack(">i", self._socket.recv(4))[0])
-            except struct.error as err:
-                # not logging this as error as it would be logged on every read cycle
-                LOGGER.debug(err)
-        LOGGER.debug("Read %d parameters", length)
-        self.parameters.parse(data)
 
-    def _read_calculations(self):
-        data = []
-        self._socket.sendall(struct.pack(">ii", 3004, 0))
-        cmd = struct.unpack(">i", self._socket.recv(4))[0]
-        LOGGER.debug("Command %s", cmd)
-        stat = struct.unpack(">i", self._socket.recv(4))[0]
-        LOGGER.debug("Stat %s", stat)
-        length = struct.unpack(">i", self._socket.recv(4))[0]
-        if length > self._max_data_length:
-            LOGGER.warning(
-                "Skip reading calculations! Length oversized! %s>%s",
-                length,
-                self._max_data_length,
-            )
-            return
-        LOGGER.debug("Length %s", length)
-        for _ in range(0, length):
+        for attempt in range(retries + 1):
             try:
-                data.append(struct.unpack(">i", self._socket.recv(4))[0])
-            except struct.error as err:
-                # not logging this as error as it would be logged on every read cycle
-                LOGGER.debug(err)
-        LOGGER.debug("Read %d calculations", length)
-        self.calculations.parse(data)
+                # check if connection still exists before reading
+                if self._socket is None or _is_socket_closed(self._socket):
+                    LOGGER.warning(
+                        "Socket is not connected. Attempting to reconnect..."
+                    )
+                    self.connect()
 
-    def _read_visibilities(self):
-        data = []
-        self._socket.sendall(struct.pack(">ii", 3005, 0))
-        cmd = struct.unpack(">i", self._socket.recv(4))[0]
-        LOGGER.debug("Command %s", cmd)
-        length = struct.unpack(">i", self._socket.recv(4))[0]
-        if length > self._max_data_length:
-            LOGGER.warning(
-                "Skip reading visibilities! Length oversized! %s>%s",
-                length,
-                self._max_data_length,
-            )
-            return
-        elif length <= 0:
-            # Force reconnect for the next readout
-            self._disconnect()
-        LOGGER.debug("Length %s", length)
-        for _ in range(0, length):
-            try:
-                data.append(struct.unpack(">b", self._socket.recv(1))[0])
-            except struct.error as err:
-                # not logging this as error as it would be logged on every read cycle
-                LOGGER.debug(err)
-        LOGGER.debug("Read %d visibilities", length)
-        self.visibilities.parse(data)
+                self._socket.sendall(struct.pack(">ii", command, 0))
+                cmd = struct.unpack(">i", self._socket.recv(4))[0]
+                LOGGER.debug("Command %s (%s)", cmd, label)
+
+                # Optional status field for calculations
+                if command == LUXTRONIK_CALCULATIONS_READ:
+                    stat = struct.unpack(">i", self._socket.recv(4))[0]
+                    LOGGER.debug("Stat %s", stat)
+
+                length = struct.unpack(">i", self._socket.recv(4))[0]
+                if length > self._max_data_length:
+                    LOGGER.warning(
+                        "Skip reading %s! Length oversized! %s > %s",
+                        label,
+                        length,
+                        self._max_data_length,
+                    )
+                    return
+                elif length <= 0 and command == LUXTRONIK_VISIBILITIES_READ:
+                    LOGGER.warning(
+                        "Invalid length for %s (%s), forcing disconnect", label, length
+                    )
+                    self._disconnect()
+                    return
+
+                LOGGER.debug("Length %s (%s)", length, label)
+
+                fmt = ">i" if item_size == LUXTRONIK_SOCKET_READ_SIZE_INTEGER else ">b"
+
+                for _ in range(length):
+                    try:
+                        raw = self._socket.recv(item_size)
+                        data.append(struct.unpack(fmt, raw)[0])
+                    except (struct.error, socket.timeout) as err:
+                        LOGGER.debug("Error reading %s item: %s", label, err)
+
+                LOGGER.debug("Read %d %s items", length, label)
+                parser.parse(data)
+                return  # Success, exit after first successful attempt
+
+            except (socket.timeout, ConnectionResetError, OSError) as err:
+                LOGGER.warning(
+                    "Error while reading %s (attempt %d/%d): %s",
+                    label,
+                    attempt + 1,
+                    retries + 1,
+                    err,
+                )
+                self._disconnect()
+
+                if attempt < retries:
+                    delay = 1  # min(30, 10 * attempt)  # cap delay to avoid long waits
+                    LOGGER.warning("Waiting %s seconds before retrying...", delay)
+                    time.sleep(delay)
+                else:
+                    LOGGER.error("All attempts to read %s failed.", label)
+                    return
+
+            except Exception as err:
+                LOGGER.error(
+                    "Unexpected error during read of %s: %s", label, err, exc_info=True
+                )
+                self._disconnect()
+                return

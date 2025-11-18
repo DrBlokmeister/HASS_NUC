@@ -20,20 +20,23 @@ from homeassistant.components.water_heater import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, STATE_OFF, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .base import LuxtronikEntity
-from .common import get_sensor_data
+from .common import get_sensor_data, key_exists
 from .const import (
     CONF_COORDINATOR,
     CONF_HA_SENSOR_PREFIX,
     DOMAIN,
+    LOGGER,
     DeviceKey,
-    LuxCalculation,
+    LuxCalculation as LC,
     LuxMode,
     LuxOperationMode,
-    LuxParameter,
-    LuxVisibility,
+    LuxParameter as LP,
+    LuxVisibility as LV,
     SensorKey,
 )
 from .coordinator import LuxtronikCoordinator, LuxtronikCoordinatorData
@@ -57,16 +60,16 @@ WATER_HEATERS: list[LuxtronikWaterHeaterDescription] = [
         supported_features=WaterHeaterEntityFeature.OPERATION_MODE
         | WaterHeaterEntityFeature.TARGET_TEMPERATURE
         | WaterHeaterEntityFeature.AWAY_MODE,
-        luxtronik_key=LuxParameter.P0004_MODE_DHW,
-        luxtronik_key_current_temperature=LuxCalculation.C0017_DHW_TEMPERATURE,
-        luxtronik_key_target_temperature=LuxParameter.P0105_DHW_TARGET_TEMPERATURE,
-        luxtronik_key_current_action=LuxCalculation.C0080_STATUS,
+        luxtronik_key=LP.P0004_MODE_DHW,
+        luxtronik_key_current_temperature=LC.C0017_DHW_TEMPERATURE,
+        luxtronik_key_target_temperature=LP.P0002_DHW_TARGET_TEMPERATURE,
+        luxtronik_key_current_action=LC.C0080_STATUS,
         luxtronik_action_heating=LuxOperationMode.domestic_water,
         # luxtronik_key_target_temperature_high=LuxParameter,
         # luxtronik_key_target_temperature_low=LuxParameter,
         icon="mdi:water-boiler",
         temperature_unit=UnitOfTemperature.CELSIUS,
-        visibility=LuxVisibility.V0029_DHW_TEMPERATURE,
+        visibility=LV.V0029_DHW_TEMPERATURE,
         max_firmware_version=Version("3.90.0"),
     ),
     LuxtronikWaterHeaterDescription(
@@ -75,16 +78,16 @@ WATER_HEATERS: list[LuxtronikWaterHeaterDescription] = [
         supported_features=WaterHeaterEntityFeature.OPERATION_MODE
         | WaterHeaterEntityFeature.TARGET_TEMPERATURE
         | WaterHeaterEntityFeature.AWAY_MODE,
-        luxtronik_key=LuxParameter.P0004_MODE_DHW,
-        luxtronik_key_current_temperature=LuxCalculation.C0017_DHW_TEMPERATURE,
-        luxtronik_key_target_temperature=LuxParameter.P0105_DHW_TARGET_TEMPERATURE,
-        luxtronik_key_current_action=LuxCalculation.C0080_STATUS,
+        luxtronik_key=LP.P0004_MODE_DHW,
+        luxtronik_key_current_temperature=LC.C0017_DHW_TEMPERATURE,
+        luxtronik_key_target_temperature=LP.P0105_DHW_TARGET_TEMPERATURE,
+        luxtronik_key_current_action=LC.C0080_STATUS,
         luxtronik_action_heating=LuxOperationMode.domestic_water,
         # luxtronik_key_target_temperature_high=LuxParameter,
         # luxtronik_key_target_temperature_low=LuxParameter,
         icon="mdi:water-boiler",
         temperature_unit=UnitOfTemperature.CELSIUS,
-        visibility=LuxVisibility.V0029_DHW_TEMPERATURE,
+        visibility=LV.V0029_DHW_TEMPERATURE,
         min_firmware_version=Version("3.90.1"),
     ),
 ]
@@ -92,21 +95,37 @@ WATER_HEATERS: list[LuxtronikWaterHeaterDescription] = [
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Initialize DHW device from config entry."""
-    data: dict = hass.data[DOMAIN][config_entry.entry_id]
+
+    data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not data or CONF_COORDINATOR not in data:
+        raise ConfigEntryNotReady
+
     coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
-    await coordinator.async_config_entry_first_refresh()
+
+    # Ensure coordinator has valid data before adding entities
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
+
+    unavailable_keys = [
+        i.luxtronik_key
+        for i in WATER_HEATERS
+        if not key_exists(coordinator.data, i.luxtronik_key)
+    ]
+    if unavailable_keys:
+        LOGGER.warning("Not present in Luxtronik data, skipping: %s", unavailable_keys)
 
     async_add_entities(
-        (
-            LuxtronikWaterHeater(hass, config_entry, coordinator, description)
+        [
+            LuxtronikWaterHeater(hass, entry, coordinator, description)
             for description in WATER_HEATERS
-            if coordinator.entity_active(description)
-        ),
+            if (
+                coordinator.entity_active(description)
+                and key_exists(coordinator.data, description.luxtronik_key)
+            )
+        ],
         True,
     )
 
@@ -117,9 +136,7 @@ class LuxtronikWaterHeater(LuxtronikEntity, WaterHeaterEntity):
     entity_description: LuxtronikWaterHeaterDescription
 
     _attr_min_temp = 40.0
-    _attr_max_temp = 65.0
-    _attr_target_temperature_low = 45.0
-    _attr_target_temperature_high = 65.0
+    _attr_target_temperature_step = 0.5
 
     _last_operation_mode_before_away: str | None = None
     _current_action: str | None = None
@@ -137,16 +154,35 @@ class LuxtronikWaterHeater(LuxtronikEntity, WaterHeaterEntity):
             description=description,
             device_info_ident=DeviceKey.domestic_water,
         )
+
         prefix = entry.data[CONF_HA_SENSOR_PREFIX]
         self.entity_id = ENTITY_ID_FORMAT.format(f"{prefix}_{description.key}")
         self._attr_unique_id = self.entity_id
+
         self._attr_temperature_unit = description.temperature_unit
         self._attr_operation_list = description.operation_list
         self._attr_supported_features = description.supported_features
 
-        self._sensor_data = get_sensor_data(
-            coordinator.data, description.luxtronik_key.value
+        self._debouncer_set_temp = Debouncer(
+            hass,
+            LOGGER,
+            cooldown=0.5,
+            immediate=False,
+            function=self._async_write_temperature,
         )
+        self._pending_temperature: float | None = None
+
+    @property
+    def max_temp(self) -> float:
+        """Return the maximum temperature allowed."""
+        try:
+            if key_exists(self.coordinator.data, LP.P0973_MAX_DHW_TEMPERATURE):
+                value = get_sensor_data(
+                    self.coordinator.data, LP.P0973_MAX_DHW_TEMPERATURE
+                )
+                return float(value)
+        except (TypeError, ValueError):
+            return 60.0  # fallback default
 
     @property
     def hvac_action(self) -> HVACAction | str | None:
@@ -158,9 +194,6 @@ class LuxtronikWaterHeater(LuxtronikEntity, WaterHeaterEntity):
         ):
             return HVACAction.HEATING
         return HVACAction.OFF
-
-    async def _data_update(self, event):
-        self._handle_coordinator_update()
 
     @override
     @callback
@@ -182,12 +215,15 @@ class LuxtronikWaterHeater(LuxtronikEntity, WaterHeaterEntity):
         )
         if not self._attr_is_away_mode_on:
             self._last_operation_mode_before_away = None
+
         self._attr_current_temperature = get_sensor_data(
             data, descr.luxtronik_key_current_temperature.value
         )
         self._attr_target_temperature = get_sensor_data(
             data, descr.luxtronik_key_target_temperature.value
         )
+
+        self.async_write_ha_state()
         super()._handle_coordinator_update()
 
     async def _async_set_lux_mode(self, lux_mode: str) -> None:
@@ -196,11 +232,16 @@ class LuxtronikWaterHeater(LuxtronikEntity, WaterHeaterEntity):
         self._handle_coordinator_update(data)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
+        self._pending_temperature = kwargs.get(ATTR_TEMPERATURE)
+        await self._debouncer_set_temp.async_call()
+
+    async def _async_write_temperature(self) -> None:
         """Set new target temperature."""
-        value = kwargs.get(ATTR_TEMPERATURE)
+        if self._pending_temperature is None:
+            return
         lux_key = self.entity_description.luxtronik_key_target_temperature.value
-        data: LuxtronikCoordinatorData | None = await self.coordinator.async_write(
-            lux_key.split(".")[1], value
+        data = await self.coordinator.async_write(
+            lux_key.split(".")[1], self._pending_temperature
         )
         self._handle_coordinator_update(data)
 

@@ -4,13 +4,13 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-import logging
 from typing import Final
-
 from enum import StrEnum
-import voluptuous as vol
 
+import logging
+import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+
 from homeassistant.const import Platform
 from homeassistant.helpers.typing import StateType
 
@@ -18,17 +18,22 @@ from homeassistant.helpers.typing import StateType
 
 # region Constants Main
 DOMAIN: Final = "luxtronik2"
+CONFIG_ENTRY_VERSION: Final = 8
 NICKNAME_PREFIX: Final = "Home Assistant"
 
 LOGGER: Final[logging.Logger] = logging.getLogger(__package__)
+# LOGGER: Final[logging.Logger] = logging.getLogger(__name__)
+
 PLATFORMS: list[str] = [
-    Platform.WATER_HEATER,
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
-    Platform.CLIMATE,
     Platform.NUMBER,
     Platform.SWITCH,
     Platform.UPDATE,
+    Platform.WATER_HEATER,
+    Platform.CLIMATE,
+    Platform.SELECT,
+    Platform.DATE,
 ]
 UPDATE_INTERVAL_FAST: Final = timedelta(seconds=10)
 UPDATE_INTERVAL_NORMAL: Final = timedelta(minutes=1)
@@ -36,7 +41,7 @@ UPDATE_INTERVAL_SLOW: Final = timedelta(minutes=3)
 UPDATE_INTERVAL_VERY_SLOW: Final = timedelta(minutes=5)
 
 
-SECOUND_TO_HOUR_FACTOR: Final = 0.000277777777778
+SECOND_TO_HOUR_FACTOR: Final = 1 / 3600
 # endregion Constants Main
 
 # region Conf
@@ -53,7 +58,7 @@ CONF_LOCK_TIMEOUT: Final = "lock_timeout"
 CONF_SAFE: Final = "safe"
 CONF_MAX_DATA_LENGTH: Final = "max_data_length"
 
-DEFAULT_HOST: Final = "wp-novelan"
+DEFAULT_HOST: Final = ""
 DEFAULT_PORT: Final = 8889
 DEFAULT_TIMEOUT: Final = 60.0
 DEFAULT_MAX_DATA_LENGTH: Final = 10000
@@ -94,6 +99,7 @@ class FirmwareVersionMinor(Enum):
 
     minor_80: Final = 80
     minor_88: Final = 88
+    minor_89: Final = 89
     minor_90: Final = 90
 
 
@@ -124,12 +130,12 @@ class LuxOperationMode(StrEnum):
     """Lux Operation modes heating, hot water etc."""
 
     heating: Final = "heating"  # 0
-    domestic_water: Final = "hot water"  # 1
-    swimming_pool_solar: Final = "swimming pool/solar"  # 2
+    domestic_water: Final = "hot_water"  # 1
+    swimming_pool_solar: Final = "swimming_pool_solar"  # 2
     evu: Final = "evu"  # 3
     defrost: Final = "defrost"  # 4
-    no_request: Final = "no request"  # 5
-    heating_external_source: Final = "heating external source"  # 6
+    no_request: Final = "no_request"  # 5
+    heating_external_source: Final = "heating_external_source"  # 6
     cooling: Final = "cooling"  # 7
 
 
@@ -146,41 +152,43 @@ class LuxMode(StrEnum):
 class LuxStatus1Option(StrEnum):
     """LuxStatus1 option defrost etc."""
 
-    heatpump_running: Final = "heatpump running"
-    heatpump_idle: Final = "heatpump idle"
-    heatpump_coming: Final = "heatpump coming"
-    heatpump_shutdown: Final = "heatpump shutdown"
-    errorcode_slot_zero: Final = "errorcode slot 0"
+    # HA-state : Heatpump_state
+
+    heatpump_running: Final = "heatpump_running"
+    heatpump_idle: Final = "heatpump_idle"
+    heatpump_coming: Final = "heatpump_coming"
+    heatpump_shutdown: Final = "heatpump_shutdown"
+    errorcode_slot_zero: Final = "errorcode_slot_0"
     defrost: Final = "defrost"
-    witing_on_LIN_connection: Final = "witing on LIN connection"
-    compressor_heating_up: Final = "compressor heating up"
-    pump_forerun: Final = "pump forerun"
-    compressor_heater: Final = "compressor heater"
+    waiting_on_lin_connection: Final = "witing_on_lin_connection"
+    compressor_heating_up: Final = "compressor_heating_up"
+    pump_forerun: Final = "pump_forerun"
+    compressor_heater: Final = "compressor_heater"
 
 
 class LuxStatus3Option(StrEnum):
     """LuxStatus3 option heating etc."""
 
-    unknown: Final = ("unknown",)
-    none: Final = ("none",)
-    heating: Final = ("heating",)
-    no_request: Final = ("no request",)
-    grid_switch_on_delay: Final = ("grid switch on delay",)
-    cycle_lock: Final = ("cycle lock",)
-    lock_time: Final = ("lock time",)
-    domestic_water: Final = ("domestic water",)
-    info_bake_out_program: Final = ("info bake out program",)
-    defrost: Final = ("defrost",)
-    pump_forerun: Final = ("pump forerun",)
-    thermal_desinfection: Final = ("thermal desinfection",)
-    cooling: Final = ("cooling",)
-    swimming_pool_solar: Final = ("swimming pool/solar",)
-    heating_external_energy_source: Final = ("heating external energy source",)
+    unknown: Final = "unknown"
+    none: Final = "none"
+    heating: Final = "heating"
+    no_request: Final = "no_request"
+    grid_switch_on_delay: Final = "grid_switch_on_delay"
+    cycle_lock: Final = "cycle_lock"
+    lock_time: Final = "lock_time"
+    domestic_water: Final = "domestic_water"
+    info_bake_out_program: Final = "info_bake_out_program"
+    defrost: Final = "defrost"
+    pump_forerun: Final = "pump_forerun"
+    thermal_desinfection: Final = "thermal_desinfection"
+    cooling: Final = "cooling"
+    swimming_pool_solar: Final = "swimming_pool_solar"
+    heating_external_energy_source: Final = "heating_external_energy_source"
     domestic_water_external_energy_source: Final = (
-        "domestic water external energy source",
+        "domestic_water_external_energy_source"
     )
-    flow_monitoring: Final = ("flow monitoring",)
-    second_heat_generator_1_active: Final = ("second heat generator 1 active",)
+    flow_monitoring: Final = "flow_monitoring"
+    second_heat_generator_1_active: Final = "second_heat_generator_1_active"
 
 
 class LuxMkTypes(Enum):
@@ -266,6 +274,40 @@ LUX_MODELS_NOVELAN = ["BW", "LA", "LD", "LI", "SI", "ZLW"]
 LUX_MODELS_OTHER = ["CB", "CI", "CN", "CS"]
 # endregion Lux Definitions
 
+
+class LuxDaySelectorParameter(StrEnum):
+    """Luxtronik parameters for day selector (TDI activation per weekday)."""
+
+    MONDAY: Final = "parameters.ID_Einst_BwTDI_akt_MO"
+    TUESDAY: Final = "parameters.ID_Einst_BwTDI_akt_DI"
+    WEDNESDAY: Final = "parameters.ID_Einst_BwTDI_akt_MI"
+    THURSDAY: Final = "parameters.ID_Einst_BwTDI_akt_DO"
+    FRIDAY: Final = "parameters.ID_Einst_BwTDI_akt_FR"
+    SATURDAY: Final = "parameters.ID_Einst_BwTDI_akt_SA"
+    SUNDAY: Final = "parameters.ID_Einst_BwTDI_akt_SO"
+
+
+DAY_NAME_TO_PARAM: Final[dict[str, LuxDaySelectorParameter]] = {
+    "Monday": LuxDaySelectorParameter.MONDAY,
+    "Tuesday": LuxDaySelectorParameter.TUESDAY,
+    "Wednesday": LuxDaySelectorParameter.WEDNESDAY,
+    "Thursday": LuxDaySelectorParameter.THURSDAY,
+    "Friday": LuxDaySelectorParameter.FRIDAY,
+    "Saturday": LuxDaySelectorParameter.SATURDAY,
+    "Sunday": LuxDaySelectorParameter.SUNDAY,
+}
+
+DAY_SELECTOR_OPTIONS: Final[list[str]] = [
+    "None",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
 # region Lux parameters
 
 
@@ -274,7 +316,7 @@ class LuxParameter(StrEnum):
 
     UNSET: Final = "UNSET"
     P0001_HEATING_TARGET_CORRECTION: Final = "parameters.ID_Einst_WK_akt"
-    P0105_DHW_TARGET_TEMPERATURE: Final = "parameters.ID_Soll_BWS_akt"
+    P0002_DHW_TARGET_TEMPERATURE: Final = "parameters.ID_Einst_BWS_akt"
     P0003_MODE_HEATING: Final = "parameters.ID_Ba_Hz_akt"
     P0004_MODE_DHW: Final = "parameters.ID_Ba_Bw_akt"
     # luxtronik*_heating_curve*
@@ -326,6 +368,7 @@ class LuxParameter(StrEnum):
     )
     P0090_RELEASE_SECOND_HEAT_GENERATOR: Final = "parameters.ID_Einst_ZWEFreig_akt"
     P0093_HEAT_SOURCE_INPUT_TEMPERATURE_MIN: Final = "parameters.ID_Einst_TWQmin_akt"
+    P0105_DHW_TARGET_TEMPERATURE: Final = "parameters.ID_Soll_BWS_akt"
     # MODE_COOLING: Automatic or Off
     P0108_MODE_COOLING: Final = "parameters.ID_Einst_BA_Kuehl_akt"
     P0110_COOLING_OUTDOOR_TEMP_THRESHOLD: Final = "parameters.ID_Einst_KuehlFreig_akt"
@@ -341,10 +384,9 @@ class LuxParameter(StrEnum):
     P0130_MIXING_CIRCUIT2_TYPE: Final = "parameters.ID_Einst_MK2Typ_akt"
     P0132_COOLING_TARGET_TEMPERATURE_MK1: Final = "parameters.ID_Sollwert_KuCft1_akt"
     P0133_COOLING_TARGET_TEMPERATURE_MK2: Final = "parameters.ID_Sollwert_KuCft2_akt"
+    P0149_FLOW_IN_TEMPERATURE_MAX_ALLOWED: Final = "parameters.ID_Einst_TVLmax_akt"
     P0155_VENTING_TIME_HOURS: Final = "parameters.ID_Einst_Entl_time_akt"
     P0158_VENTING_ACTIVE: Final = "parameters.ID_Einst_Entl_akt"
-    P0780_MIXING_CIRCUIT3_TYPE: Final = "parameters.ID_Einst_MK3Typ_akt"
-    P0149_FLOW_IN_TEMPERATURE_MAX_ALLOWED: Final = "parameters.ID_Einst_TVLmax_akt"
     P0289_SOLAR_PUMP_OFF_MAX_DIFFERENCE_TEMPERATURE_BOILER: Final = (
         "parameters.ID_Einst_TDC_Max_akt"
     )
@@ -353,6 +395,7 @@ class LuxParameter(StrEnum):
     P0700_HEATING_THRESHOLD_TEMPERATURE: Final = "parameters.ID_Einst_Heizgrenze_Temp"
     P0716_0720_SWITCHOFF_REASON: Final = "parameters.ID_Switchoff_file_{ID}_0"  # e.g. ID_Switchoff_file_0_0 - ID_Switchoff_file_4_0
     P0721_0725_SWITCHOFF_TIMESTAMP: Final = "parameters.ID_Switchoff_file_{ID}_1"  # e.g. ID_Switchoff_file_0_1 - ID_Switchoff_file_4_1
+    P0780_MIXING_CIRCUIT3_TYPE: Final = "parameters.ID_Einst_MK3Typ_akt"
     P0850_COOLING_START_DELAY_HOURS: Final = "parameters.ID_Einst_Kuhl_Zeit_Ein_akt"
     P0851_COOLING_STOP_DELAY_HOURS: Final = "parameters.ID_Einst_Kuhl_Zeit_Aus_akt"
     P0860_REMOTE_MAINTENANCE: Final = "parameters.ID_Einst_Fernwartung_akt"
@@ -382,6 +425,7 @@ class LuxParameter(StrEnum):
     )
     # P0894_VENTILATION_MODE: Final = "parameters.ID_Einst_BA_Lueftung_akt" # "Automatic", "Party", "Holidays", "Off"
     P0966_COOLING_TARGET_TEMPERATURE_MK3: Final = "parameters.ID_Sollwert_KuCft3_akt"
+    P0973_MAX_DHW_TEMPERATURE: Final = "parameters.ID_Einst_BW_max"
     P0979_HEATING_MIN_FLOW_OUT_TEMPERATURE: Final = (
         "parameters.ID_Einst_Minimale_Ruecklaufsolltemperatur"
     )
@@ -413,10 +457,15 @@ class LuxParameter(StrEnum):
         "parameters.Unknown_Parameter_1140"
     )
     P1148_HEATING_TARGET_TEMP_ROOM_THERMOSTAT: Final = (
-        "parameters.Unknown_Parameter_1148"
+        "parameters.HEATING_TARGET_TEMP_ROOM_THERMOSTAT"
     )
     P1158_POWER_LIMIT_SWITCH: Final = "parameters.Unknown_Parameter_1158"
     P1159_POWER_LIMIT_VALUE: Final = "parameters.Unknown_Parameter_1159"
+
+    P0731_AWAY_HEATING_STARTDATE: Final = "parameters.ID_SU_FstdHz"
+    P0006_AWAY_HEATING_ENDDATE: Final = "parameters.ID_SU_FrkdHz"
+    P0732_AWAY_DHW_STARTDATE: Final = "parameters.ID_SU_FstdBw"
+    P0007_AWAY_DHW_ENDDATE: Final = "parameters.ID_SU_FrkdBw"
 
 
 # endregion Lux parameters
@@ -490,7 +539,7 @@ class LuxCalculation(StrEnum):
     )
     C0063_OPERATION_HOURS: Final = "calculations.ID_WEB_Zaehler_BetrZeitWP"
     C0064_OPERATION_HOURS_HEATING: Final = "calculations.ID_WEB_Zaehler_BetrZeitHz"
-    C0065_DHW_OPERATION_HOURS: Final = "calculations.ID_WEB_Zaehler_BetrZeitBW"
+    C0065_OPERATION_HOURS_DHW: Final = "calculations.ID_WEB_Zaehler_BetrZeitBW"
     C0066_OPERATION_HOURS_COOLING: Final = "calculations.ID_WEB_Zaehler_BetrZeitKue"
     C0067_TIMER_HEATPUMP_ON: Final = "calculations.ID_WEB_Time_WPein_akt"
     C0068_TIMER_ADD_HEAT_GENERATOR_ON: Final = "calculations.ID_WEB_Time_ZWE1_akt"
@@ -797,6 +846,12 @@ class SensorKey(StrEnum):
     PUMP_VENT_HUP = "pump_vent_hup"
     PUMP_VENT_TIMER_H = "pump_vent_timer_h"
     PUMP_VENT_ACTIVE = "pump_vent_active"
+    THERMAL_DESINFECTION_DAY = "thermal_desinfection_day"
+
+    AWAY_HEATING_STARTDATE = "away_heating_startdate"
+    AWAY_HEATING_ENDDATE = "away_heating_enddate"
+    AWAY_DHW_STARTDATE = "away_dhw_startdate"
+    AWAY_DHW_ENDDATE = "away_dhw_enddate"
 
 
 # endregion Keys

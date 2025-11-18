@@ -69,8 +69,6 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
                     )
                 else:
                     self._attr_extra_state_attributes[field] = value
-        if description.translation_key is None:
-            description.translation_key = description.key.value
         if description.entity_registry_enabled_default:
             description.entity_registry_enabled_default = coordinator.entity_visible(
                 description
@@ -115,9 +113,16 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
                     setattr(self, attr, data.get(attr))
 
             data_updated = f"{self.entity_id}_data_updated"
-            async_dispatcher_connect(
-                self.hass, data_updated, self._schedule_immediate_update
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    self.hass, data_updated, self._schedule_immediate_update
+                )
             )
+
+            """Run when entity is added to Home Assistant."""
+            if self.coordinator.data:
+                self._handle_coordinator_update(self.coordinator.data)
+
         except Exception as err:
             LOGGER.error(
                 "Could not restore latest data (async_added_to_hass)",
@@ -127,30 +132,45 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
     def _restore_attr_value(self, value: Any | None) -> Any:
         return value
 
+    def should_update(self) -> bool:
+        """Determine if the entity should update based on next_update."""
+        # if self.entity_description.luxtronik_key in [LP.P0049_PUMP_OPTIMIZATION,LC.C0017_DHW_TEMPERATURE]:
+        #    LOGGER.info("should_update,%s,%s,@ %s", self.entity_description.luxtronik_key, self.entity_description.update_interval,self.next_update)
+        if self.entity_description.update_interval is None:
+            return True
+        return self.next_update is None or self.next_update <= utcnow()
+
+    async def _data_update(self, event):
+        self._handle_coordinator_update()
+
     @callback
-    def _handle_coordinator_update(self) -> None:
+    def _handle_coordinator_update(self, force: bool = False) -> None:
         """Handle updated data from the coordinator."""
+        # if not force and not self.should_update():
+        #    return
+
         descr = self.entity_description
         value = self._get_value(descr.luxtronik_key)
-        if value is None:
-            pass
-        elif isinstance(value, datetime) and value.tzinfo is None:
-            # Ensure timezone:
+
+        if isinstance(value, datetime) and value.tzinfo is None:
             time_zone = dt_util.get_time_zone(self.hass.config.time_zone)
             value = value.replace(tzinfo=time_zone)
 
         self._attr_state = value
+        # if self.entity_description.luxtronik_key == LC.C0146_APPROVAL_COOLING:
+        # LOGGER.info('[Base]Cooling Approval=%s',self._attr_state)
+        # LOGGER.info('[Base]on_state=%s',self.entity_description.on_state)
 
-        # Calc icon:
-        icon_state = self._attr_state
-        if hasattr(self, "_attr_is_on"):
-            icon_state = self._attr_is_on
-        elif hasattr(self, "_attr_current_lux_operation"):
-            icon_state = self._attr_current_lux_operation
-        if descr.icon_by_state is not None and icon_state in descr.icon_by_state:
+        icon_state = getattr(
+            self,
+            "_attr_is_on",
+            getattr(self, "_attr_current_lux_operation", self._attr_state),
+        )
+        if descr.icon_by_state and icon_state in descr.icon_by_state:
             self._attr_icon = descr.icon_by_state.get(icon_state)
         else:
             self._attr_icon = descr.icon
+
         if hasattr(self, "_attr_current_operation"):
             if self._attr_current_operation == STATE_OFF:
                 self._attr_icon += "-off"
@@ -159,11 +179,22 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
 
         self._enrich_extra_attributes()
 
-        if descr.update_interval is not None and (
-            self.next_update is None or self.next_update < utcnow()
-        ):
-            self.next_update = utcnow() + descr.update_interval
-        super()._handle_coordinator_update()
+        # if descr.update_interval is not None:
+        #    self.next_update = dt_util.utcnow() + descr.update_interval
+
+        self.async_write_ha_state()
+
+    def compute_is_on(self, state: Any) -> bool:
+        descr = self.entity_description
+
+        if isinstance(descr.on_state, bool) and state is not None:
+            state = bool(state)
+
+        is_on = bool(
+            state == descr.on_state or (descr.on_states and state in descr.on_states)
+        )
+
+        return not is_on if descr.inverted else is_on
 
     def _enrich_extra_attributes(self) -> None:
         for attr in self.entity_description.extra_attributes:

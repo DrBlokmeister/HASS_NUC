@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from typing import Any
+from packaging.version import Version
 
 from homeassistant.components.climate import (
     ENTITY_ID_FORMAT,
@@ -20,21 +21,25 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_TEMPERATURE,
-    PRECISION_HALVES,
+    # PRECISION_HALVES,
+    PRECISION_TENTHS,
     STATE_UNKNOWN,
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 
 from .base import LuxtronikEntity
-from .common import get_sensor_data, state_as_number_or_none
+from .common import get_sensor_data, state_as_number_or_none, key_exists
 from .const import (
     CONF_COORDINATOR,
     CONF_HA_SENSOR_INDOOR_TEMPERATURE,
     CONF_HA_SENSOR_PREFIX,
     DOMAIN,
+    LOGGER,
     LUX_STATE_ICON_MAP,
     LUX_STATE_ICON_MAP_COOL,
     DeviceKey,
@@ -42,7 +47,6 @@ from .const import (
     LuxMode,
     LuxOperationMode,
     LuxParameter,
-    LuxVisibility,
     SensorKey,
 )
 from .coordinator import LuxtronikCoordinator, LuxtronikCoordinatorData
@@ -109,9 +113,29 @@ THERMOSTATS: list[LuxtronikClimateDescription] = [
         | ClimateEntityFeature.TURN_ON  # noqa: W503
         | ClimateEntityFeature.TARGET_TEMPERATURE,  # noqa: W503
         luxtronik_key=LuxParameter.P0003_MODE_HEATING,
-        # luxtronik_key_current_temperature=LuxCalculation.C0227_ROOM_THERMOSTAT_TEMPERATURE,
+        luxtronik_key_target_temperature=LuxParameter.P1148_HEATING_TARGET_TEMP_ROOM_THERMOSTAT,
+        luxtronik_key_current_action=LuxCalculation.C0080_STATUS,
+        luxtronik_action_active=LuxOperationMode.heating.value,
+        # luxtronik_key_target_temperature_high=LuxParameter,
+        # luxtronik_key_target_temperature_low=LuxParameter,
+        icon_by_state=LUX_STATE_ICON_MAP,
+        temperature_unit=UnitOfTemperature.CELSIUS,
+        # visibility=LuxVisibility.V0023_FLOW_IN_TEMPERATURE,
+        device_key=DeviceKey.heating,
+        min_firmware_version=Version("3.90.1"),
+    ),
+    LuxtronikClimateDescription(
+        key=SensorKey.HEATING,
+        hvac_modes=[HVACMode.HEAT, HVACMode.OFF],
+        hvac_mode_mapping=HVAC_MODE_MAPPING_HEAT,
+        hvac_action_mapping=HVAC_ACTION_MAPPING_HEAT,
+        preset_modes=[PRESET_NONE, PRESET_AWAY, PRESET_BOOST],
+        supported_features=ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.TURN_OFF  # noqa: W503
+        | ClimateEntityFeature.TURN_ON  # noqa: W503
+        | ClimateEntityFeature.TARGET_TEMPERATURE,  # noqa: W503
+        luxtronik_key=LuxParameter.P0003_MODE_HEATING,
         luxtronik_key_target_temperature=LuxCalculation.C0228_ROOM_THERMOSTAT_TEMPERATURE_TARGET,
-        # luxtronik_key_has_target_temperature=LuxParameter
         luxtronik_key_current_action=LuxCalculation.C0080_STATUS,
         luxtronik_action_active=LuxOperationMode.heating.value,
         # luxtronik_key_target_temperature_high=LuxParameter,
@@ -120,8 +144,9 @@ THERMOSTATS: list[LuxtronikClimateDescription] = [
         luxtronik_key_correction_target=LuxParameter.P0001_HEATING_TARGET_CORRECTION,
         icon_by_state=LUX_STATE_ICON_MAP,
         temperature_unit=UnitOfTemperature.CELSIUS,
-        visibility=LuxVisibility.V0023_FLOW_IN_TEMPERATURE,
+        # visibility=LuxVisibility.V0023_FLOW_IN_TEMPERATURE,
         device_key=DeviceKey.heating,
+        max_firmware_version=Version("3.90.0"),
     ),
     LuxtronikClimateDescription(
         key=SensorKey.COOLING,
@@ -133,18 +158,14 @@ THERMOSTATS: list[LuxtronikClimateDescription] = [
         | ClimateEntityFeature.TURN_ON  # noqa: W503
         | ClimateEntityFeature.TARGET_TEMPERATURE,  # noqa: W503
         luxtronik_key=LuxParameter.P0108_MODE_COOLING,
-        # luxtronik_key_current_temperature=LuxCalculation.C0227_ROOM_THERMOSTAT_TEMPERATURE,
         luxtronik_key_target_temperature=LuxParameter.P0110_COOLING_OUTDOOR_TEMP_THRESHOLD,
-        # luxtronik_key_has_target_temperature=LuxParameter
         luxtronik_key_current_action=LuxCalculation.C0080_STATUS,
         luxtronik_action_active=LuxOperationMode.cooling.value,
         # luxtronik_key_target_temperature_high=LuxParameter,
         # luxtronik_key_target_temperature_low=LuxParameter,
-        # luxtronik_key_correction_factor=LuxParameter.P0980_HEATING_ROOM_TEMPERATURE_IMPACT_FACTOR,
-        # luxtronik_key_correction_target=LuxParameter.P0001_HEATING_TARGET_CORRECTION,
         icon_by_state=LUX_STATE_ICON_MAP_COOL,
         temperature_unit=UnitOfTemperature.CELSIUS,
-        visibility=LuxVisibility.V0005_COOLING,
+        # visibility=LuxVisibility.V0005_COOLING,
         device_key=DeviceKey.cooling,
     ),
 ]
@@ -154,17 +175,35 @@ THERMOSTATS: list[LuxtronikClimateDescription] = [
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the Luxtronik thermostat from ConfigEntry."""
-    data: dict = hass.data[DOMAIN][entry.entry_id]
+    """Set up Luxtronik climate entities dynamically through Luxtronik discovery."""
+
+    data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not data or CONF_COORDINATOR not in data:
+        raise ConfigEntryNotReady
+
     coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
-    await coordinator.async_config_entry_first_refresh()
+
+    # Ensure coordinator has valid data before adding entities
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
+
+    unavailable_keys = [
+        i.luxtronik_key
+        for i in THERMOSTATS
+        if not key_exists(coordinator.data, i.luxtronik_key)
+    ]
+    if unavailable_keys:
+        LOGGER.warning("Not present in Luxtronik data, skipping: %s", unavailable_keys)
 
     async_add_entities(
-        (
+        [
             LuxtronikThermostat(hass, entry, coordinator, description)
             for description in THERMOSTATS
-            if coordinator.entity_active(description)
-        ),
+            if (
+                coordinator.entity_active(description)
+                and key_exists(coordinator.data, description.luxtronik_key)
+            )
+        ],
         True,
     )
 
@@ -192,7 +231,7 @@ class LuxtronikThermostat(LuxtronikEntity, ClimateEntity, RestoreEntity):
 
     _last_hvac_mode_before_preset: str | None = None
 
-    _attr_precision = PRECISION_HALVES
+    _attr_precision = PRECISION_TENTHS
     _attr_target_temperature = 21.0
     _attr_target_temperature_high = 28.0
     _attr_target_temperature_low = 18.0
@@ -218,10 +257,28 @@ class LuxtronikThermostat(LuxtronikEntity, ClimateEntity, RestoreEntity):
             description=description,
             device_info_ident=description.device_key,
         )
-        if description.luxtronik_key_current_temperature == LuxCalculation.UNSET:
-            description.luxtronik_key_current_temperature = entry.data.get(
-                CONF_HA_SENSOR_INDOOR_TEMPERATURE
+
+        domain = description.key.value
+        configured_indoor_temp_sensor = entry.options.get(
+            CONF_HA_SENSOR_INDOOR_TEMPERATURE,
+            entry.data.get(CONF_HA_SENSOR_INDOOR_TEMPERATURE),
+        )
+
+        if configured_indoor_temp_sensor is not None:
+            description.luxtronik_key_current_temperature = (
+                configured_indoor_temp_sensor
             )
+            LOGGER.debug(
+                f"[INIT,{domain}] Using configured indoor temp sensor: {description.luxtronik_key_current_temperature}"
+            )
+        elif description.luxtronik_key_current_temperature == LuxCalculation.UNSET:
+            description.luxtronik_key_current_temperature = (
+                LuxCalculation.C0227_ROOM_THERMOSTAT_TEMPERATURE
+            )
+            LOGGER.debug(
+                f"[INIT,{domain}] Using default indoor temp sensor: {description.luxtronik_key_current_temperature}"
+            )
+
         prefix = entry.data[CONF_HA_SENSOR_PREFIX]
         self.entity_id = ENTITY_ID_FORMAT.format(f"{prefix}_{description.key}")
         self._attr_unique_id = self.entity_id
@@ -231,21 +288,29 @@ class LuxtronikThermostat(LuxtronikEntity, ClimateEntity, RestoreEntity):
         self._enable_turn_on_off_backwards_compatibility = False
         self._attr_supported_features = description.supported_features
 
-        self._sensor_data = get_sensor_data(
-            coordinator.data, description.luxtronik_key.value
+        self._debouncer_set_temp = Debouncer(
+            hass,
+            LOGGER,
+            cooldown=0.5,
+            immediate=False,
+            function=self._async_write_temperature,
         )
 
-    async def _data_update(self, event):
-        self._handle_coordinator_update()
+        self._pending_temperature: float | None = None
 
     @callback
     def _handle_coordinator_update(
         self, data: LuxtronikCoordinatorData | None = None
     ) -> None:
         """Handle updated data from the coordinator."""
+        # if not self.should_update():
+        #    return
+
         data = self.coordinator.data if data is None else data
         if data is None:
             return
+
+        # domain = self.entity_description.key.value
         mode = get_sensor_data(data, self.entity_description.luxtronik_key.value)
         self._attr_hvac_mode = (
             None if mode is None else self.entity_description.hvac_mode_mapping[mode]
@@ -265,59 +330,41 @@ class LuxtronikThermostat(LuxtronikEntity, ClimateEntity, RestoreEntity):
         if self._attr_preset_mode == PRESET_NONE:  # or self._attr_is_aux_heat:
             self._last_hvac_mode_before_preset = None
         key = self.entity_description.luxtronik_key_current_temperature
-        if isinstance(key, str):
+        if key.startswith("sensor."):
             temp = self.hass.states.get(key)
             self._attr_current_temperature = state_as_number_or_none(temp, 0.0)
         elif key != LuxCalculation.UNSET:
             self._attr_current_temperature = get_sensor_data(data, key)
+        # LOGGER.info(f'[{domain}] self._attr_current_temperature={self._attr_current_temperature}')
+
         key_tar = self.entity_description.luxtronik_key_target_temperature
+
         if key_tar != LuxParameter.UNSET:
             self._attr_target_temperature = get_sensor_data(data, key_tar)
-        correction_factor = get_sensor_data(
-            data, self.entity_description.luxtronik_key_correction_factor.value, False
-        )
-        # LOGGER.info(f"self._attr_target_temperature={self._attr_target_temperature}")
-        # LOGGER.info(f"self._attr_current_temperature={self._attr_current_temperature}")
-        # LOGGER.info(f"correction_factor={correction_factor}")
-        # LOGGER.info(f"lux_action={lux_action}")
-        # LOGGER.info(f"_attr_hvac_action={self._attr_hvac_action}")
-        if (
-            self._attr_target_temperature is not None
-            and self._attr_current_temperature is not None  # noqa: W503
-            and self._attr_current_temperature > 0.0
-            and correction_factor is not None  # noqa: W503
-        ):
-            delta_temp = self._attr_target_temperature - self._attr_current_temperature
-            correction = round(
-                delta_temp * (correction_factor / 100.0), 1
-            )  # correction_factor is in %, so need to divide by 100
-            key_correction_target = (
-                self.entity_description.luxtronik_key_correction_target.value
-            )
-            correction_current = get_sensor_data(data, key_correction_target)
-            # LOGGER.info(f"correction_current={correction_current}")
-            # LOGGER.info(f"correction={correction}")
-            if correction_current is None or correction_current != correction:
-                # LOGGER.info(f'key_correction_target={key_correction_target.split(".")[1]}')
-                _ = self.coordinator.write(
-                    key_correction_target.split(".")[1], correction
-                )  # mypy: allow-unused-coroutine
 
+        self.async_write_ha_state()
         super()._handle_coordinator_update()
 
-    async def _async_set_lux_mode(self, lux_mode: str) -> None:
-        lux_key = self.entity_description.luxtronik_key.value
-        data = await self.coordinator.async_write(lux_key.split(".")[1], lux_mode)
-        self._handle_coordinator_update(data)
-
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperature."""
-        value = kwargs.get(ATTR_TEMPERATURE)
-        lux_key = LuxParameter.P1148_HEATING_TARGET_TEMP_ROOM_THERMOSTAT
-        data: LuxtronikCoordinatorData | None = await self.coordinator.async_write(
-            lux_key.split(".")[1], int(value * 10)
+        """Set new target temperature with debounce."""
+        self._pending_temperature = kwargs[ATTR_TEMPERATURE]
+        await self._debouncer_set_temp.async_call()
+
+    async def _async_write_temperature(self):
+        """Write the pending temperature to the device."""
+        if self._pending_temperature is None:
+            return
+
+        key_tar = self.entity_description.luxtronik_key_target_temperature
+        LOGGER.debug(
+            f"Debounced temperature write: {key_tar} = {self._pending_temperature}"
         )
-        self._handle_coordinator_update(data)
+
+        if key_tar != LuxCalculation.C0228_ROOM_THERMOSTAT_TEMPERATURE_TARGET:
+            data: LuxtronikCoordinatorData | None = await self.coordinator.async_write(
+                key_tar.split(".")[1], self._pending_temperature
+            )
+            self._handle_coordinator_update(data)
 
     async def async_turn_off(self) -> None:
         await self.async_set_hvac_mode(HVACMode.OFF)
@@ -358,6 +405,11 @@ class LuxtronikThermostat(LuxtronikEntity, ClimateEntity, RestoreEntity):
         else:
             lux_mode = LuxMode.off.value
         await self._async_set_lux_mode(lux_mode)
+
+    async def _async_set_lux_mode(self, lux_mode: str) -> None:
+        lux_key = self.entity_description.luxtronik_key.value
+        data = await self.coordinator.async_write(lux_key.split(".")[1], lux_mode)
+        self._handle_coordinator_update(data)
 
     # async def async_turn_aux_heat_on(self) -> None:
     #     """Turn auxiliary heater on."""

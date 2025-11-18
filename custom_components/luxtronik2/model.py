@@ -17,6 +17,7 @@ from homeassistant.components.climate import (
     ClimateEntityFeature,
     HVACMode,
 )
+from homeassistant.components.date import DateEntityDescription
 from homeassistant.components.number import NumberEntityDescription, NumberMode
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
@@ -92,7 +93,7 @@ class LuxtronikEntityDescription(EntityDescription):
     min_firmware_version: Version | None = None
     max_firmware_version: Version | None = None
 
-    extra_attributes: tuple(LuxtronikEntityAttributeDescription) = ()
+    extra_attributes: tuple[LuxtronikEntityAttributeDescription, ...] = ()
     state_class: str | None = None
 
 
@@ -220,3 +221,13 @@ class LuxtronikUpdateEntityDescription(
 
     device_class = UpdateDeviceClass.FIRMWARE
     platform = Platform.UPDATE
+
+
+@dataclass
+class LuxtronikDateEntityDescription(
+    LuxtronikEntityDescription,
+    DateEntityDescription,
+):
+    """Class describing Luxtronik date entities."""
+
+    platform = Platform.DATE
