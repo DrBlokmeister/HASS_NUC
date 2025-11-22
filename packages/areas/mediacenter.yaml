@@ -247,6 +247,51 @@ automation:
       #   continue_on_error: true
       #   entity_id: switch.amplifier_power
 
+  - alias: "[livingroom|media] Dim lights + pause motion lighting when movie starts"
+    id: yaml_automation_livingroom_media_dim_lights_and_pause_motion_lighting_when_movie_starts
+    description: >
+      When media_player.coreelec changes to 'playing' (not from 'paused'),
+      snapshot the living room lights and the motion-lights automation state,
+      disable the motion-lights automation, fade the lights off, then wait until
+      the player becomes 'idle' to restore the snapshot.
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: media_player.coreelec
+        to: "playing"
+        not_from: "paused"
+    action:
+      - alias: "Create an in-memory scene snapshot of current states"
+        service: scene.create
+        data:
+          # This creates scene.temp_movie_living_room_before (ephemeral)
+          scene_id: temp_movie_living_room_before
+          snapshot_entities:
+            - light.living_room
+            - automation.livingroom_lights_turn_on_lights_when_motion_is_detected
+      - alias: "Disable the motion-based lights automation during movie"
+        service: automation.turn_off
+        target:
+          entity_id: automation.livingroom_lights_turn_on_lights_when_motion_is_detected
+      - alias: "Fade living room lights to off over 5s"
+        service: light.turn_off
+        target:
+          entity_id: light.living_room
+        data:
+          transition: 5
+      - alias: "Wait until playback ends (TV turns off)"
+        wait_for_trigger:
+          - platform: state
+            entity_id: media_player.samsung_tv
+            to: "off"
+            for:
+              minutes: 1
+      - alias: "Restore the pre-movie scene snapshot"
+        # Applies the stored states to all snapshotted entities
+        service: scene.turn_on
+        target:
+          entity_id: scene.temp_movie_living_room_before
+
   - alias: "Kodi: turn on"
     trigger:
       - platform: device
