@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import CONF_ATTRIBUTE, CONF_ENTITIES, CONF_ENTITY_ID, CONF_NAME, Platform
+from homeassistant.const import CONF_ATTRIBUTE, CONF_ENTITIES, CONF_ENTITY_ID, CONF_ID, CONF_NAME, CONF_PATH, Platform
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.schema_config_entry_flow import SchemaFlowError
 import voluptuous as vol
 
-from custom_components.powercalc import CONF_CREATE_ENERGY_SENSOR, CONF_CREATE_UTILITY_METERS, DeviceType
 from custom_components.powercalc.common import create_source_entity
 from custom_components.powercalc.const import (
     CONF_AUTOSTART,
     CONF_CALCULATION_ENABLED_CONDITION,
     CONF_CALIBRATE,
+    CONF_CREATE_ENERGY_SENSOR,
+    CONF_CREATE_UTILITY_METERS,
     CONF_GAMMA_CURVE,
     CONF_IGNORE_UNAVAILABLE_STATE,
     CONF_MAX_POWER,
@@ -38,7 +40,12 @@ from custom_components.powercalc.const import (
 from custom_components.powercalc.flow_helper.common import FlowType, PowercalcFormStep, Step, fill_schema_defaults
 from custom_components.powercalc.flow_helper.flows.global_configuration import get_global_powercalc_config
 from custom_components.powercalc.flow_helper.flows.library import SCHEMA_POWER_OPTIONS_LIBRARY, SCHEMA_POWER_SMART_SWITCH
-from custom_components.powercalc.flow_helper.schema import SCHEMA_ENERGY_OPTIONS, SCHEMA_ENERGY_SENSOR_TOGGLE, SCHEMA_UTILITY_METER_TOGGLE
+from custom_components.powercalc.flow_helper.schema import (
+    SCHEMA_ENERGY_SENSOR_TOGGLE,
+    SCHEMA_SENSOR_ENERGY_OPTIONS,
+    SCHEMA_UTILITY_METER_TOGGLE,
+)
+from custom_components.powercalc.power_profile.power_profile import DeviceType
 from custom_components.powercalc.strategy.wled import CONFIG_SCHEMA as SCHEMA_POWER_WLED
 
 if TYPE_CHECKING:
@@ -85,15 +92,6 @@ SCHEMA_POWER_LINEAR = vol.Schema(
     },
 )
 
-SCHEMA_POWER_PLAYBOOK = vol.Schema(
-    {
-        vol.Optional(CONF_PLAYBOOKS): selector.ObjectSelector(),
-        vol.Optional(CONF_REPEAT): selector.BooleanSelector(),
-        vol.Optional(CONF_AUTOSTART): selector.TextSelector(),
-        vol.Optional(CONF_STATE_TRIGGER): selector.ObjectSelector(),
-    },
-)
-
 SCHEMA_POWER_MULTI_SWITCH_MANUAL = vol.Schema(
     {
         vol.Required(CONF_POWER): vol.Coerce(float),
@@ -103,7 +101,6 @@ SCHEMA_POWER_MULTI_SWITCH_MANUAL = vol.Schema(
 
 STRATEGY_SCHEMAS: dict[CalculationStrategy, vol.Schema] = {
     CalculationStrategy.FIXED: SCHEMA_POWER_FIXED,
-    CalculationStrategy.PLAYBOOK: SCHEMA_POWER_PLAYBOOK,
     CalculationStrategy.WLED: SCHEMA_POWER_WLED,
 }
 
@@ -134,18 +131,18 @@ class VirtualPowerFlow:
     def __init__(self, flow: PowercalcCommonFlow) -> None:
         self.flow = flow
 
-    def create_strategy_schema(self) -> vol.Schema:
+    async def create_strategy_schema(self) -> vol.Schema:
         """Get the config schema for a given power calculation strategy."""
         if not self.flow.strategy:
             raise ValueError("No strategy selected")  # pragma: no cover
 
         create_schema_func = f"create_schema_{self.flow.strategy.lower()}"
         if hasattr(self, create_schema_func):
-            return getattr(self, create_schema_func)()  # type: ignore
+            return await getattr(self, create_schema_func)()  # type: ignore
 
         return STRATEGY_SCHEMAS[self.flow.strategy]
 
-    def create_schema_linear(self) -> vol.Schema:
+    async def create_schema_linear(self) -> vol.Schema:
         """Create the config schema for linear strategy."""
         return SCHEMA_POWER_LINEAR.extend(  # type: ignore
             {
@@ -158,7 +155,7 @@ class VirtualPowerFlow:
             },
         )
 
-    def create_schema_multi_switch(self) -> vol.Schema:
+    async def create_schema_multi_switch(self) -> vol.Schema:
         """Create the config schema for multi switch strategy."""
 
         switch_domains = [str(Platform.SWITCH), str(Platform.LIGHT), str(Platform.COVER)]
@@ -180,6 +177,36 @@ class VirtualPowerFlow:
 
         return schema
 
+    async def create_schema_playbook(self) -> vol.Schema:
+        """Create the config schema for playbook strategy."""
+        base_path = Path(self.flow.hass.config.path("powercalc/playbooks"))
+        playbook_files = [str(p.relative_to(base_path)) for p in base_path.rglob("*") if p.is_file()]
+
+        return vol.Schema(
+            {
+                vol.Optional(CONF_PLAYBOOKS): selector.ObjectSelector(
+                    {
+                        "multiple": True,
+                        "description_field": CONF_PATH,
+                        "label_field": CONF_ID,
+                        "fields": {
+                            CONF_ID: {
+                                "required": True,
+                                "selector": {"text": None},
+                            },
+                            CONF_PATH: {
+                                "required": True,
+                                "selector": {"select": {"options": playbook_files, "mode": "dropdown", "custom_value": True}},
+                            },
+                        },
+                    },
+                ),
+                vol.Optional(CONF_REPEAT): selector.BooleanSelector(),
+                vol.Optional(CONF_AUTOSTART): selector.TextSelector(),
+                vol.Optional(CONF_STATE_TRIGGER): selector.ObjectSelector(),
+            },
+        )
+
     async def handle_strategy_step(
         self,
         strategy: CalculationStrategy,
@@ -194,7 +221,7 @@ class VirtualPowerFlow:
             await self.flow.validate_strategy_config({strategy: user_input})
             return {strategy: user_input}
 
-        schema = self.create_strategy_schema()
+        schema = await self.create_strategy_schema()
 
         return await self.flow.handle_form_step(
             PowercalcFormStep(
@@ -220,7 +247,7 @@ class VirtualPowerFlow:
 
         schema = SCHEMA_POWER_ADVANCED
         if self.flow.sensor_config.get(CONF_CREATE_ENERGY_SENSOR):
-            schema = schema.extend(SCHEMA_ENERGY_OPTIONS.schema)
+            schema = schema.extend(SCHEMA_SENSOR_ENERGY_OPTIONS.schema)
 
         return await self.flow.handle_form_step(
             PowercalcFormStep(
@@ -337,12 +364,12 @@ class VirtualPowerOptionsFlow(VirtualPowerFlow):
         super().__init__(flow)
         self.flow: PowercalcOptionsFlow = flow
 
-    def build_strategy_config(
+    async def build_strategy_config(
         self,
         user_input: dict[str, Any],
     ) -> dict[str, Any]:
         """Build the config dict needed for the configured strategy."""
-        strategy_schema = self.create_strategy_schema()
+        strategy_schema = await self.create_strategy_schema()
         strategy_options: dict[str, Any] = {}
         for key in strategy_schema.schema:
             if user_input.get(key) is None:
@@ -374,7 +401,7 @@ class VirtualPowerOptionsFlow(VirtualPowerFlow):
         """Handle the option processing for the selected strategy."""
         step = STRATEGY_STEP_MAPPING.get(self.flow.strategy or CalculationStrategy.FIXED, Step.FIXED)
 
-        schema = self.create_strategy_schema()
+        schema = await self.create_strategy_schema()
         if self.flow.selected_profile and self.flow.selected_profile.device_type == DeviceType.SMART_SWITCH:
             schema = SCHEMA_POWER_SMART_SWITCH
 
