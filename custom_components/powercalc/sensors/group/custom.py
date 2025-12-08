@@ -297,12 +297,12 @@ async def resolve_entity_ids_recursively(
         if all(k not in entry.data for k in (CONF_AREA, CONF_FLOOR, CONF_GROUP_MEMBER_DEVICES)):
             return
 
-        resolved_entities, _ = await find_entities(
+        result = await find_entities(
             hass,
             await build_entity_include_filter(hass, entry),
             bool(entry.data.get(CONF_INCLUDE_NON_POWERCALC_SENSORS)),
         )
-        resolved_ids.update(filter_entity_list_by_class(resolved_entities, device_class))
+        resolved_ids.update(filter_entity_list_by_class(result.resolved, device_class))
 
     async def add_subgroup_entities() -> None:
         """Recursively add entities from subgroups."""
@@ -346,7 +346,7 @@ def create_grouped_power_sensor(
         unique_id=unique_id,
     )
 
-    _LOGGER.debug("Creating grouped power sensor: %s (entity_id=%s)", name, entity_id)
+    _LOGGER.debug("Creating grouped power sensor: %s (entity_id=%s, unique_id=%s)", name, entity_id, unique_id)
 
     return GroupedPowerSensor(
         hass=hass,
@@ -827,6 +827,9 @@ class GroupedEnergySensor(GroupedSensor, EnergySensor):
     async def restore_last_state(self) -> None:
         """Restore the last known state of the group sensor."""
         last_state = await self.async_get_last_state()
+        if last_state and last_state.state in [None, STATE_UNKNOWN, STATE_UNAVAILABLE]:
+            return
+
         last_sensor_state = await self.async_get_last_sensor_data()
         try:
             if last_sensor_state and last_sensor_state.native_value:
