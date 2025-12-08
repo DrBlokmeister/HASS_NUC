@@ -69,12 +69,13 @@ class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(entry):
         #_LOGGER.debug("entry %s", entry)
-        return OptionsFlowHandler(entry)
+        return OptionsFlowHandler()
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
+    #def __init__(self, config_entry):
+        #self.config_entry = config_entry
+        #pass
 
     async def async_step_init(self, info=None):
         errors: Dict[str, str] = {}
