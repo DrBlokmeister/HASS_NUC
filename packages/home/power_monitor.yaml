@@ -545,7 +545,7 @@ sensor:
     #If power is being used but no tapwater or heating, then equally divide between the two
       heatpump_tapwater_power:
         value_template: >-
-          {% if is_state('sensor.heatpump_status', 'hot water')%}
+          {% if is_state('sensor.heatpump_status', 'hot_water') or is_state('sensor.heatpump_status', 'domestic water') %}
             {{ states('sensor.shelly_heat_pump_power') }}
           {% elif is_state('sensor.heatpump_status', 'heating') %}
             0
@@ -558,7 +558,7 @@ sensor:
         value_template: >-
           {% if is_state('sensor.heatpump_status', 'heating')%}
             {{ states('sensor.shelly_heat_pump_power') }}
-          {% elif is_state('sensor.heatpump_status', 'hot water')%}
+          {% elif is_state('sensor.heatpump_status', 'hot_water') or is_state('sensor.heatpump_status', 'domestic water') %}
             0
           {% else %}
             {{ (states('sensor.shelly_heat_pump_power')|float())/2 }}
