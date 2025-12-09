@@ -1,0 +1,410 @@
+title: Epaper Display
+icon: mdi:monitor-dashboard
+type: masonry
+
+cards:
+  # LEFT COLUMN
+  - type: vertical-stack
+    cards:
+      # Weather card
+      - show_current: true
+        show_forecast: true
+        type: weather-forecast
+        entity: weather.home_2
+        forecast_type: daily
+        secondary_info_attribute: humidity
+        card_mod:
+          style: |
+            :host {
+              /* Optional: make sure these icon files exist or adjust paths */
+              --weather-icon-clear-night: url("/local/community/weather-card-pics/icons8-moon-and-stars-100.png");
+              --weather-icon-cloudy: url("/local/community/weather-card-pics/icons8-cloud-100.png");
+              --weather-icon-fog: url("/local/community/weather-card-pics/icons8-fog-100.png");
+              --weather-icon-lightning: url("/local/community/weather-card-pics/icons8-cloud-lightning-100.png");
+              --weather-icon-lightning-rainy: url("/local/community/weather-card-pics/icons8-stormy-weather-100.png");
+              --weather-icon-partlycloudy: url("/local/community/weather-card-pics/icons8-partly-cloudy-day-100.png");
+              --weather-icon-pouring: url("/local/community/weather-card-pics/icons8-torrential-rain-100.png");
+              --weather-icon-rainy: url("/local/community/weather-card-pics/icons8-rain-100.png");
+              --weather-icon-hail: url("/local/community/weather-card-pics/icons8-snow-storm-100.png");
+              --weather-icon-snowy: url("/local/community/weather-card-pics/icons8-snow-100.png");
+              --weather-icon-snowy-rainy: url("/local/community/weather-card-pics/icons8-snow-100.png");
+              --weather-icon-sunny: url("/local/community/weather-card-pics/icons8-sun-100.png");
+              --weather-icon-windy: url("/local/community/weather-card-pics/icons8-wind-100.png");
+              --weather-icon-windy-variant: url("/local/community/weather-card-pics/icons8-wind-100.png");
+              --weather-icon-exceptional: url("/local/community/weather-card-pics/icons8-rainbow-100.png");
+            }
+            ha-card {
+              border: 2px solid black;
+              padding: 10px !important;
+            }
+            .name-state .name {
+              color: black;
+            }
+            .name-state .state {
+              color: black;
+            }
+            .temp-attribute .temp {
+              color: black;
+              font-size: 26px !important;
+            }
+            .temp-attribute .temp span {
+              color: black;
+            }
+            .temp-attribute .attribute {
+              color: black;
+              font-size: 16px;
+            }
+            .forecast .temp {
+              color: black;
+              font-size: 20px;
+            }
+            .forecast .templow {
+              color: black;
+              font-size: 14px;
+            }
+            .forecast div {
+              color: black;
+            }
+            ha-card div.forecast div.temp {
+              font-size: 14pt;
+            }
+
+      # Row: temperatures (living room, study, outside)
+      - type: horizontal-stack
+        cards:
+          - graph: none
+            type: sensor
+            detail: 2
+            entity: sensor.living_room_aqm_temperature
+            name: Living Room
+            icon: mdi:home-thermometer
+            hours_to_show: 12
+            card_mod:
+              style: |
+                .header .icon {
+                  color: black;
+                }
+                ha-card {
+                  border: 2px solid black;
+                  --secondary-text-color: black;
+                }
+
+          - graph: none
+            type: sensor
+            detail: 2
+            entity: sensor.study_aqm_temperature
+            name: Study
+            icon: mdi:desk
+            hours_to_show: 12
+            card_mod:
+              style: |
+                .header .icon {
+                  color: black;
+                }
+                ha-card {
+                  border: 2px solid black;
+                  --secondary-text-color: black;
+                }
+
+          - graph: none
+            type: sensor
+            detail: 2
+            entity: sensor.shed_aqm_temperature
+            name: Outside
+            icon: mdi:sun-thermometer-outline
+            hours_to_show: 12
+            card_mod:
+              style: |
+                .header .icon {
+                  color: black;
+                }
+                ha-card {
+                  border: 2px solid black;
+                  --secondary-text-color: black;
+                }
+
+      # Row: humidities (living room, study, outside)
+      - type: horizontal-stack
+        cards:
+          - graph: none
+            type: sensor
+            detail: 2
+            entity: sensor.living_room_aqm_humidity
+            name: Humidity LR
+            icon: mdi:water-percent
+            hours_to_show: 12
+            card_mod:
+              style: |
+                .header .icon {
+                  color: black;
+                }
+                ha-card {
+                  border: 2px solid black;
+                  --secondary-text-color: black;
+                }
+
+          - graph: none
+            type: sensor
+            detail: 2
+            entity: sensor.study_aqm_humidity
+            name: Humidity Study
+            icon: mdi:water-percent
+            hours_to_show: 12
+            card_mod:
+              style: |
+                .header .icon {
+                  color: black;
+                }
+                ha-card {
+                  border: 2px solid black;
+                  --secondary-text-color: black;
+                }
+
+          - graph: none
+            type: sensor
+            detail: 2
+            entity: sensor.shed_aqm_humidity
+            name: Humidity Outside
+            icon: mdi:water-percent
+            hours_to_show: 12
+            card_mod:
+              style: |
+                .header .icon {
+                  color: black;
+                }
+                ha-card {
+                  border: 2px solid black;
+                  --secondary-text-color: black;
+                }
+
+  # RIGHT COLUMN
+  - type: vertical-stack
+    cards:
+      # Calendar overview
+      - type: custom:calendar-card-pro
+        entities:
+          - entity: calendar.sander_blok_gmail_com
+            show_time: true
+          - entity: calendar.optredens_in_bandsintown
+            show_time: true
+          - entity: calendar.theater_2
+            show_time: true
+          - entity: calendar.asml_werkschema
+            show_time: true
+        days_to_show: 5
+        show_empty_days: true
+        filter_duplicates: true
+        title_color: ""
+        accent_color: Black
+        day_spacing: 4px
+        event_spacing: 2px
+        day_separator_width: 1px
+        day_separator_color: var(--primary-text-color)
+        today_indicator: dot
+        today_indicator_color: var(--primary-text-color)
+        event_font_size: 18px
+        time_font_size: 14px
+        time_color: var(--primary-text-color)
+        show_location: false
+        weather:
+          position: none
+          date:
+            show_conditions: true
+            show_high_temp: true
+            show_low_temp: false
+            icon_size: 14px
+            font_size: 12px
+            color: var(--primary-text-color)
+          event:
+            show_conditions: true
+            show_temp: true
+            icon_size: 14px
+            font_size: 12px
+            color: var(--primary-text-color)
+          entity: weather.home_2
+        height: 350px
+        card_mod:
+          style: |
+            ha-card {
+              border: 2px solid black;
+            }
+
+      # Last update card
+      - type: heading
+        icon: mdi:update
+        heading: Last Update
+        heading_style: subtitle
+        badges:
+          - type: entity
+            show_state: true
+            show_icon: false
+            entity: sensor.date_time
+            color: black
+        card_mod:
+          style: |
+            ha-card .title p {
+              font-size: 14px;
+              padding: 0px !important;
+            }
+
+badges:
+  # Back door
+  - type: custom:mod-card
+    card:
+      type: custom:mushroom-template-badge
+      entity: binary_sensor.back_door_sensor
+      label: Back Door
+      content: "{{ iif(is_state('binary_sensor.back_door_sensor', 'on'), 'Open', 'Closed') }}"
+      icon: >
+        {% if is_state('binary_sensor.back_door_sensor', 'on') %}
+          mdi:door-open
+        {% else %}
+          mdi:door-closed
+        {% endif %}
+      color: grey
+      tap_action:
+        action: more-info
+    card_mod:
+      style:
+        mushroom-template-badge:
+          $: |
+            .badge {
+              --divider-color: black;
+              --ha-card-border-width: 2px;
+              --mdc-icon-size: 32px !important;
+              .info {
+                .label {
+                  font-size: 12px;
+                  --secondary-text-color: black;
+                }
+                .content {
+                  font-size: 14px;
+                }
+              }
+            }
+        .: |
+          ha-card {
+            background: none;
+            border: none;
+          }
+
+  # Front door
+  - type: custom:mod-card
+    card:
+      type: custom:mushroom-template-badge
+      entity: binary_sensor.front_door_sensor
+      label: Front Door
+      content: "{{ iif(is_state('binary_sensor.front_door_sensor', 'on'), 'Open', 'Closed') }}"
+      icon: >
+        {% if is_state('binary_sensor.front_door_sensor', 'on') %}
+          mdi:door-open
+        {% else %}
+          mdi:door-closed
+        {% endif %}
+      color: grey
+      tap_action:
+        action: more-info
+    card_mod:
+      style:
+        mushroom-template-badge:
+          $: |
+            .badge {
+              --divider-color: black;
+              --ha-card-border-width: 2px;
+              --mdc-icon-size: 32px !important;
+              .info {
+                .label {
+                  font-size: 12px;
+                  --secondary-text-color: black;
+                }
+                .content {
+                  font-size: 14px;
+                }
+              }
+            }
+        .: |
+          ha-card {
+            background: none;
+            border: none;
+          }
+
+  # Shed door
+  - type: custom:mod-card
+    card:
+      type: custom:mushroom-template-badge
+      entity: binary_sensor.shed_door
+      label: Shed Door
+      content: "{{ iif(is_state('binary_sensor.shed_door', 'on'), 'Open', 'Closed') }}"
+      icon: >
+        {% if is_state('binary_sensor.shed_door', 'on') %}
+          mdi:door-open
+        {% else %}
+          mdi:door-closed
+        {% endif %}
+      color: grey
+      tap_action:
+        action: more-info
+    card_mod:
+      style:
+        mushroom-template-badge:
+          $: |
+            .badge {
+              --divider-color: black;
+              --ha-card-border-width: 2px;
+              --mdc-icon-size: 32px !important;
+              .info {
+                .label {
+                  font-size: 12px;
+                  --secondary-text-color: black;
+                }
+                .content {
+                  font-size: 14px;
+                }
+              }
+            }
+        .: |
+          ha-card {
+            background: none;
+            border: none;
+          }
+
+  # Washing machine
+  - type: custom:mod-card
+    card:
+      type: custom:mushroom-template-badge
+      entity: sensor.washer_washer_job_state
+      label: Washer
+      content: "{{ states('sensor.washer_washer_job_state') | replace('_', ' ') | title }}"
+      icon: >
+        {% set s = states('sensor.washer_washer_job_state') | lower %}
+        {% if s in ['off', 'idle', 'none', 'finished'] %}
+          mdi:washing-machine-off
+        {% else %}
+          mdi:washing-machine
+        {% endif %}
+      color: grey
+      tap_action:
+        action: more-info
+    card_mod:
+      style:
+        mushroom-template-badge:
+          $: |
+            .badge {
+              --divider-color: black;
+              --ha-card-border-width: 2px;
+              --mdc-icon-size: 24px !important;
+              .info {
+                .label {
+                  font-size: 12px;
+                  --secondary-text-color: black;
+                }
+                .content {
+                  font-size: 14px;
+                }
+              }
+            }
+        .: |
+          ha-card {
+            background: none;
+            border: none;
+          }
