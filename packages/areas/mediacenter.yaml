@@ -352,20 +352,26 @@ automation:
               - service: switch.turn_on
                 data:
                   entity_id: switch.amplifier_power
-              - delay:
-                  seconds: 3
-              - service: button.press
-                target:
-                  entity_id: button.set_livingroom_channel_to_phono
+              - repeat:
+                  count: 10
+                  sequence:
+                    - delay:
+                        seconds: 0.5
+                    - service: button.press
+                      target:
+                        entity_id: button.set_livingroom_channel_to_phono
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1004 }}"
             sequence:
-              - service: button.press
-                target:
-                  entity_id: button.set_livingroom_channel_to_tv
-              - delay:
-                  seconds: 2
+              - repeat:
+                  count: 5
+                  sequence:
+                    - delay:
+                        seconds: 0.5
+                    - service: button.press
+                      target:
+                        entity_id: button.set_livingroom_channel_to_tv
               - service: scene.turn_on
                 data:
                   entity_id: scene.amplifier_power_turntable_before
