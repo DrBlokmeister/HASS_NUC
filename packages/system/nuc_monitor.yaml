@@ -8,6 +8,23 @@ notify:
     password: !secret mariadb_pass
     db: homeassistant
 
+counter:
+  home_assistant_log_error_count:  #counter.home_assistant_log_error_count
+    name: Home Assistant Log Error Count
+    #unique_id: yaml_input_number_home_assistant_log_error_count
+    initial: 0
+    restore: true
+    minimum: 0
+    step: 1
+    icon: mdi:alert-circle
+  home_assistant_log_warning_count:  #counter.home_assistant_log_warning_count
+    name: Home Assistant Log Warning Count
+    #unique_id: yaml_input_number_home_assistant_log_warning_count
+    initial: 0
+    restore: true
+    minimum: 0
+    step: 1
+    icon: mdi:alert
 
 #############
 #    SQL    #
@@ -298,20 +315,20 @@ command_line:
       json_attributes:
         - updatable_packages
 
-  - sensor:
-      name: 'Home Assistant Log Error Count'
-      unique_id: yaml_command_line_sensor_home_assistant_log_error_count
-      scan_interval: 300
-      unit_of_measurement: "errors"
-      icon: mdi:alert-circle
-      command: "grep -c 'ERROR' /config/home-assistant.log"
-  - sensor:
-      name: 'Home Assistant Log Warning Count'
-      unique_id: yaml_command_line_sensor_home_assistant_log_warning_count
-      scan_interval: 300
-      unit_of_measurement: "warnings"
-      icon: mdi:alert
-      command: "grep -c 'WARNING' /config/home-assistant.log"
+  # - sensor:
+  #     name: 'Home Assistant Log Error Count'
+  #     unique_id: yaml_command_line_sensor_home_assistant_log_error_count
+  #     scan_interval: 300
+  #     unit_of_measurement: "errors"
+  #     icon: mdi:alert-circle
+  #     command: "grep -c 'ERROR' /config/home-assistant.log.1"
+  # - sensor:
+  #     name: 'Home Assistant Log Warning Count'
+  #     unique_id: yaml_command_line_sensor_home_assistant_log_warning_count
+  #     scan_interval: 300
+  #     unit_of_measurement: "warnings"
+  #     icon: mdi:alert
+  #     command: "grep -c 'WARNING' /config/home-assistant.log.1"
 
 
 #################
@@ -402,9 +419,6 @@ sensor:
         availability_template: >
           {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
 
-
-
-
   - platform: filter
     name: "Filtered NUC CPU Temperature"
     entity_id: sensor.processor_temperature
@@ -459,7 +473,7 @@ sensor:
   - platform: statistics
     name: "Home Assistant Log Errors per Hour"
     unique_id: yaml_statistics_sensor_home_assistant_log_errors_per_hour
-    entity_id: sensor.home_assistant_log_error_count
+    entity_id: counter.home_assistant_log_error_count
     state_characteristic: change_sample
     max_age: "01:00:00"
     keep_last_sample: true
@@ -803,6 +817,33 @@ automation:
               "sensor.ping_shelly_washroom_round_trip_time_average": "ddab2d0aca5ca9adf7d5dde9abee5f3a"
             } %}
             {{ mapping[trigger.entity_id] }}
+
+  - alias: "[system|nuc] Increment log counters on system_log_event"
+    id: yaml_automation_system_nuc_increment_log_counters_on_system_log_event
+    description: >
+      Increment Home Assistant log warning/error counters whenever a system_log_event is fired.
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: system_log_event
+    condition: []
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.level == 'WARNING' }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.home_assistant_log_warning_count
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.event.data.level == 'ERROR' }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.home_assistant_log_error_count
+        default: []
 
 ################
 #    SCENES    #
