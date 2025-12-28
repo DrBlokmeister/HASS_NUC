@@ -35,6 +35,7 @@ from .configuration.global_config import FLAG_HAS_GLOBAL_GUI_CONFIG, get_global_
 from .const import (
     CONF_CREATE_DOMAIN_GROUPS,
     CONF_CREATE_ENERGY_SENSORS,
+    CONF_CREATE_STANDBY_GROUP,
     CONF_CREATE_UTILITY_METERS,
     CONF_DISABLE_EXTENDED_ATTRIBUTES,
     CONF_DISABLE_LIBRARY_DOWNLOAD,
@@ -101,7 +102,7 @@ from .sensors.group.config_entry_utils import (
 )
 from .service.gui_configuration import SERVICE_SCHEMA, change_gui_configuration
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.SELECT]
 
 DISCOVERY_SCHEMA = vol.Schema(
     {
@@ -161,6 +162,7 @@ CONFIG_SCHEMA = vol.Schema(
                     vol.Optional(CONF_UNAVAILABLE_POWER): vol.Coerce(float),
                     vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [SENSOR_CONFIG]),
                     vol.Optional(CONF_INCLUDE_NON_POWERCALC_SENSORS): cv.boolean,
+                    vol.Optional(CONF_CREATE_STANDBY_GROUP): cv.boolean,
                 },
             ),
         ),
@@ -197,6 +199,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     }
 
     await register_services(hass)
+
+    await async_load_platform(hass, Platform.SELECT, DOMAIN, {}, config)
     await setup_yaml_sensors(hass, config, global_config)
 
     setup_domain_groups(hass, global_config)
@@ -301,6 +305,8 @@ async def create_standby_group(
     domain_config: ConfigType,
     event: Event[Any] | None = None,
 ) -> None:
+    if not bool(domain_config.get(CONF_CREATE_STANDBY_GROUP, True)):
+        return
     hass.async_create_task(
         async_load_platform(
             hass,
@@ -395,7 +401,8 @@ async def setup_yaml_sensors(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Powercalc integration from a config entry."""
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SELECT])
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
 
     entry.async_on_unload(entry.add_update_listener(async_update_entry))
 

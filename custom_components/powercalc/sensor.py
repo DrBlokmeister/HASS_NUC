@@ -81,6 +81,7 @@ from .const import (
     CONF_MULTI_SWITCH,
     CONF_MULTIPLY_FACTOR,
     CONF_MULTIPLY_FACTOR_STANDBY,
+    CONF_NOT,
     CONF_ON_TIME,
     CONF_OR,
     CONF_PLAYBOOK,
@@ -213,6 +214,7 @@ SENSOR_CONFIG = {
                     **FILTER_CONFIG.schema,
                     vol.Optional(CONF_OR): vol.All(cv.ensure_list, [FILTER_CONFIG]),
                     vol.Optional(CONF_AND): vol.All(cv.ensure_list, [FILTER_CONFIG]),
+                    vol.Optional(CONF_NOT): vol.All(cv.ensure_list, [FILTER_CONFIG]),
                 },
             ),
             vol.Optional(CONF_INCLUDE_NON_POWERCALC_SENSORS, default=True): cv.boolean,
@@ -844,7 +846,7 @@ async def create_individual_sensors(
             attach_energy_sensor_to_power_sensor(power_sensor, energy_sensor)
 
     if energy_sensor:
-        entities_to_add.extend(await create_utility_meters(hass, energy_sensor, sensor_config))
+        entities_to_add.extend(await create_utility_meters(hass, energy_sensor, sensor_config, config_entry))
 
     await attach_entities_to_source_device(config_entry, entities_to_add, hass, source_entity)
 
