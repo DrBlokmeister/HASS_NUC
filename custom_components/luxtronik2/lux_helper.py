@@ -284,6 +284,9 @@ class Luxtronik:
 
     def _write(self):
         for index, value in self.parameters.queue.items():
+            if isinstance(value, float):
+                value = int(value)
+
             if not isinstance(index, int) or not isinstance(value, int):
                 LOGGER.warning("Parameter id '%s' or value '%s' invalid!", index, value)
                 continue
