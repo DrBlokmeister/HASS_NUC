@@ -1,0 +1,131 @@
+substitutions:
+  device_name: "Epaper Screen Study"
+  espname: "epaperscreen-study"
+  room: "Study"
+
+esphome:
+  name: '${espname}'
+  friendly_name: '${device_name}'
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+packages:
+  wifi: !include common/wifi.yaml
+  network_diagnostics: !include common/network_diagnostics.yaml
+  base_config: !include common/base_config.yaml
+
+deep_sleep:
+  id: deep_sleep_1
+  run_duration: 1min  # Device wake up and run 60s (enough to pull data and update)
+  sleep_duration: 10min  # deep sleep for 10m
+
+globals:
+  - id: deep_sleep_enabled
+    type: bool
+    restore_value: yes
+    initial_value: 'true'  # or 'false' if you want deep sleep disabled by default
+
+http_request:
+  verify_ssl: false
+  timeout: 10s
+  watchdog_timeout: 15s
+
+sensor:
+  - platform: template
+    name: "Wakeup Cause"
+    accuracy_decimals: 0
+    lambda: return esp_sleep_get_wakeup_cause();
+
+text_sensor:
+  - platform: template
+    id: wakeup_reason
+    name: "Wakeup Reason"
+    icon: mdi:sleep-off
+    entity_category: diagnostic
+    lambda: |-
+      switch (esp_sleep_get_wakeup_cause()) {
+        case 0:
+          return {"Undefined"};
+        case 1:
+          return {"ALL (invalid)"};
+        case 2:
+          return {"EXT RTC_IO"};
+        case 3:
+          return {"EXT RTC_CNTL"};
+        case 4:
+          return {"Timer"};
+        case 5:
+          return {"Touch"};
+        case 6:
+          return {"ULP"};
+        case 7:
+          return {"GPIO"};
+        case 8:
+          return {"UART"};
+        case 9:
+          return {"WiFi"};
+        case 10:
+          return {"CoCPU"};
+        case 11:
+          return {"CoCPU crash"};
+        case 12:
+          return {"Bluetooth"};
+        default:
+          return {"Unknown"};
+      }
+
+switch:
+  - platform: homeassistant
+    id: stay_awake
+    name: Stay awake toggle
+    icon: mdi:sleep
+    entity_category: config
+    entity_id: input_boolean.study_epaper_display_stay_awake
+    on_turn_on:
+      - logger.log:
+          format: "**********  stay_awake  switch turned ON  ! *****  stay_awake=%s, prevent deep_sleep "
+          args: [ 'id(stay_awake).state ? "true" : "false"' ]
+      - deep_sleep.prevent: deep_sleep_1
+    on_turn_off:
+      - logger.log:
+          format: "**********  stay_awake  switch turned OFF ! *****  stay_awake=%s, allow deep_sleep "
+          args: [ 'id(stay_awake).state ? "true" : "false"' ]
+      - deep_sleep.allow: deep_sleep_1
+online_image:
+  - id: dashboard_image
+    format: PNG
+    type: BINARY
+    buffer_size: 30000
+    url: "http://blokmeisternuc.local:10000/lovelace-epaper/0?viewport=800x480&colors=000000,FFFFFF&wait=2000&theme=graphite-eink-light&NEXT=600"
+    update_interval: 20s
+    on_download_finished:
+      - lambda: |-
+          if (cached) {
+            ESP_LOGD("online_image", "Cache hit: using cached image");
+          } else {
+            ESP_LOGD("online_image", "Cache miss: fresh download");
+          }
+      - delay: 100ms
+      - component.update: main_display
+
+spi:
+  clk_pin: GPIO8
+  mosi_pin: GPIO10
+
+display:
+  - platform: waveshare_epaper
+    id: main_display
+    cs_pin: GPIO3
+    dc_pin: GPIO5
+    busy_pin:
+      number: GPIO4
+      inverted: true
+    reset_pin: GPIO2
+    model: 7.50inv2p
+    update_interval: never
+    full_update_every: 60
+    lambda: |-
+      it.image(0, 0, id(dashboard_image), COLOR_OFF, COLOR_ON);
