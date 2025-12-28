@@ -20,12 +20,13 @@ packages:
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
 
-# external_components:
-#   - source:
-#       type: local
-#       path: custom_components
-#     components: [weighted_pulse_meter]                       # ← tell ESPHome what to pick up
-#     refresh: 0s                                # ← always re-read local files
+external_components:
+  - source:
+      type: local
+      path: custom_components
+    components: [weighted_pulse_meter]
+    refresh: 0s
+
 # Enable Home Assistant API
 api:
   services:
@@ -103,6 +104,28 @@ sensor:
       icon: mdi:water
       filters:
         - multiply: 0.5
+
+  # - platform: weighted_pulse_meter
+  #   id: wpm
+  #   pin: D7
+  #   on_press_liters: 0.6
+  #   on_release_liters: 0.4
+  #   debounce: 10ms
+  #   timeout: 150s
+  #   ema_alpha: 0.25
+  #   sample_interval: 5ms
+  #   flow:
+  #     name: "Water Usage Weighted"
+  #     unit_of_measurement: "L/min"
+  #     accuracy_decimals: 2
+  #     icon: mdi:waves-arrow-right
+  #   total:
+  #     name: "Total Water Weighted"
+  #     device_class: water
+  #     state_class: total_increasing
+  #     unit_of_measurement: "L"
+  #     accuracy_decimals: 0
+  #     icon: mdi:water
 
   - platform: bme280_i2c
     address: 0x76
