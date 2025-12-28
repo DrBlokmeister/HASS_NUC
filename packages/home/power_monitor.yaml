@@ -1604,6 +1604,72 @@ automation:
             tag: electricity_trend_update
             clickAction: "/lovelace-default/9"
 
+
+  - alias: "[home|electricityprice] Send electricity price graph daily"
+    id: yaml_automation_home_electricityprice_send_electricity_price_graph_daily
+    description: "Every day at 15:00: download puppet-rendered Lovelace graph image and push it to the phone."
+    mode: single
+    trigger:
+      - platform: time
+        at: "15:00:00"
+    variables:
+      filename: "electricity_price_tomorrow.png"
+      screenshot_url: >-
+        http://blokmeisternuc.local:10000/lovelace-separate-graphs/0?viewport=625x530&rotate=0&zoom=1.22&wait=7000&dark
+      attachment_url: "/local/downloads/electricity_price_tomorrow.png"
+    action:
+      - action: downloader.download_file
+        data:
+          overwrite: true
+          url: "{{ screenshot_url }}"
+          filename: "{{ filename }}"
+      - wait_for_trigger:
+          - platform: event
+            event_type: downloader_download_completed
+            event_data:
+              filename: electricity_price_tomorrow.png
+          - platform: event
+            event_type: downloader_download_failed
+            event_data:
+              filename: electricity_price_tomorrow.png
+        timeout: "00:00:30"
+        continue_on_timeout: true
+      - delay:
+          seconds: 2
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_completed' }}
+            sequence:
+              - action: notify.mobile_app_blokmeisterp9pro
+                data:
+                  title: "Electricity Price Tomorrow"
+                  data:
+                    image: "{{ attachment_url }}"
+                    tag: "electricity_price_graph"
+                    channel: "Energy"
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_failed' }}
+            sequence:
+              - action: notify.mobile_app_blokmeisterp9pro
+                data:
+                  title: "Error: Electricity price Tomorrow"
+                  message: "Electricity price graph download failed (puppet endpoint didn’t deliver)."
+                  data:
+                    tag: "electricity_price_graph"
+                    channel: "Energy"
+        default:
+          - action: notify.mobile_app_blokmeisterp9pro
+            data:
+              title: "Error: Electricity price Tomorrow"
+              message: "Timed out waiting for the electricity price graph to finish."
+              data:
+                tag: "electricity_price_graph"
+                channel: "Energy"
+
 ################
 #    SCENES    #
 ################
