@@ -3,8 +3,14 @@ import logging
 from typing import TYPE_CHECKING
 
 from .protocol_base import BLEProtocol, AdvertisingData, DeviceCapabilities
-from .tlv_parser import parse_tlv_config, extract_display_capabilities, GlobalConfig
+from .tlv_parser import (
+    GlobalConfig,
+    describe_color_scheme,
+    extract_display_capabilities,
+    parse_tlv_config,
+)
 from .exceptions import ConfigValidationError
+from ..const import DOMAIN
 
 if TYPE_CHECKING:
     from .connection import BLEConnection
@@ -13,6 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # OEPL protocol constants
 CMD_READ_CONFIG = bytes([0x00, 0x40])
+CMD_READ_FW_VERSION = bytes([0x00, 0x43])
 
 
 def _format_config_summary(config: GlobalConfig, mac_address: str) -> str:
@@ -55,7 +62,7 @@ def _format_config_summary(config: GlobalConfig, mac_address: str) -> str:
             size_info += f" ({display.active_width_mm}x{display.active_height_mm}mm, {diagonal_inches:.1f}\")"
         lines.append(f"    - Dimensions: {size_info}")
 
-        color_scheme = "BWR" if display.color_scheme == 1 else "Monochrome"
+        color_scheme = describe_color_scheme(display.color_scheme)
         lines.append(f"    - Color Scheme: {color_scheme}")
         lines.append(f"    - Rotation: {display.rotation}°")
         lines.append(f"    - Panel IC: {display.panel_ic_type}")
@@ -119,6 +126,7 @@ class OEPLProtocol(BLEProtocol):
     def __init__(self):
         """Initialize OEPL protocol."""
         self._last_config: GlobalConfig | None = None
+        self._last_fw_version: dict | None = None
 
     @property
     def manufacturer_id(self) -> int:
@@ -237,13 +245,21 @@ class OEPLProtocol(BLEProtocol):
 
         # Parse chunk header
         if len(chunk_data) < 4:
-            raise ConfigValidationError(f"Chunk data too short: {len(chunk_data)} bytes")
+            raise ConfigValidationError(
+                translation_domain=DOMAIN,
+                translation_key="oepl_config_chunk_short",
+                translation_placeholders={"length": str(len(chunk_data))}
+            )
 
         chunk_num = int.from_bytes(chunk_data[0:2], "little")
         _LOGGER.debug("Received chunk number: %d", chunk_num)
 
         if chunk_num != 0:
-            raise ConfigValidationError(f"Expected chunk 0, got chunk {chunk_num}")
+            raise ConfigValidationError(
+                translation_domain=DOMAIN,
+                translation_key="oepl_expected_chunk_zero",
+                translation_placeholders={"chunk_num": str(chunk_num)}
+            )
 
         # Parse total length from chunk 0
         total_length = int.from_bytes(chunk_data[2:4], "little")
@@ -318,7 +334,11 @@ class OEPLProtocol(BLEProtocol):
         # Strip OEPL config header: [length:2][version:1]
         # The firmware sends: [length:2][version:1][packets...][crc:2]
         if len(tlv_data) < 3:
-            raise ConfigValidationError(f"Config data too short: {len(tlv_data)} bytes (need at least 3)")
+            raise ConfigValidationError(
+                translation_domain=DOMAIN,
+                translation_key="oepl_config_too_short",
+                translation_placeholders={"length": str(len(tlv_data))}
+            )
 
         config_length = int.from_bytes(tlv_data[0:2], "little")
         config_version = tlv_data[2]
@@ -396,3 +416,58 @@ class OEPLProtocol(BLEProtocol):
                          or None if no config has been read yet
         """
         return self._last_config
+
+    async def read_firmware_version(self, connection: "BLEConnection") -> dict:
+        """Read firmware version using command 0x0043.
+
+        Returns:
+            dict: Firmware version info with keys: major, minor, sha, version, raw
+        """
+        response = await connection.write_command_with_response(CMD_READ_FW_VERSION)
+
+        # Strip command echo if present
+        if response.startswith(CMD_READ_FW_VERSION):
+            payload = response[2:]
+        else:
+            payload = response
+
+        if len(payload) < 2:
+            raise ConfigValidationError(
+                translation_domain=DOMAIN,
+                translation_key="oepl_fw_response_short",
+                translation_placeholders={"length": str(len(payload))}
+            )
+
+        major = payload[0]
+        minor = payload[1]
+        sha = ""
+
+        if len(payload) >= 3:
+            sha_length = payload[2]
+            if sha_length > 0:
+                if len(payload) < 3 + sha_length:
+                    raise ConfigValidationError(
+                        translation_domain=DOMAIN,
+                        translation_key="oepl_fw_version_format",
+                        translation_placeholders={ "sha_length": str(sha_length)}
+                    )
+                sha_bytes = payload[3:3 + sha_length]
+                sha = bytes(sha_bytes).decode("ascii", errors="ignore")
+
+        version_str = f"{major}.{minor}"
+        self._last_fw_version = {
+            "major": major,
+            "minor": minor,
+            "sha": sha,
+            "version": version_str,
+            "raw": (major << 8) | minor,
+        }
+
+        _LOGGER.debug(
+            "OEPL firmware version for %s: %s (sha=%s)",
+            connection.mac_address,
+            version_str,
+            sha[:8] if sha else "n/a",
+        )
+
+        return self._last_fw_version

@@ -6,11 +6,12 @@ from typing import Optional, Dict, Any
 
 from PIL import Image
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from ..const import DOMAIN
 from ..tag_types import TagType, get_tag_types_manager
 from ..util import get_hub_from_hass
+from ..runtime_data import OpenEPaperLinkBLERuntimeData
 
 from .types import ElementType, DrawingContext
 from .colors import ColorResolver
@@ -72,13 +73,13 @@ class ImageGen:
 
         # Load font manager - find a Hub entry with .entry attribute, or None for BLE-only setups
         self._entry = None
-        if DOMAIN in hass.data and hass.data[DOMAIN]:
-            for entry_id, entry_data in hass.data[DOMAIN].items():
-                # Look for Hub entries (which have .entry attribute) vs BLE entries (which are dicts)
-                if hasattr(entry_data, 'entry'):
-                    self._entry = entry_data.entry
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            if hasattr(entry, 'runtime_data') and entry.runtime_data is not None:
+                # Look for Hub entries (not BLE entries)
+                if not isinstance(entry.runtime_data, OpenEPaperLinkBLERuntimeData):
+                    self._entry = entry
                     break
-            # If no Hub found, self._entry stays None (BLE-only setup)
+        # If no Hub found, self._entry stays None (BLE-only setup)
 
         self._font_manager = FontManager(self.hass, self._entry)
 
@@ -109,41 +110,52 @@ class ImageGen:
             # Get hub instance
             hub = get_hub_from_hass(self.hass)
             if not hub.online:
-                raise HomeAssistantError("OpenEPaperLink AP is offline")
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="ap_offline_core",
+                )
 
             # Get tag MAC from entity ID
             try:
                 tag_mac = entity_id.split(".")[1].upper()
             except IndexError:
-                raise HomeAssistantError(f"Invalid entity ID format: {entity_id}")
-
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="invalid_entity_id_format",
+                    translation_placeholders={"entity_id": entity_id}
+                )
             # First check if tag is known to the hub
             if tag_mac not in hub.tags:
                 raise HomeAssistantError(
-                    f"Tag {tag_mac} is not registered with the AP. "
-                    "If the tag has checked in, try restarting Home Assistant."
+                    translation_domain=DOMAIN,
+                    translation_key="tag_not_registered",
+                    translation_placeholders={"tag_mac": tag_mac},
                 )
 
             # Check if tag is blacklisted
             if tag_mac in hub.get_blacklisted_tags():
                 raise HomeAssistantError(
-                    f"Tag {tag_mac} is currently blacklisted. Remove it from the blacklist in integration options to use it."
+                    translation_domain=DOMAIN,
+                    translation_key="tag_blacklisted",
+                    translation_placeholders={"tag_mac": tag_mac},
                 )
 
             # Get tag data - should exist since hub.tags was checked
             tag_data = hub.get_tag_data(tag_mac)
             if not tag_data:
                 raise HomeAssistantError(
-                    f"Inconsistent state: Tag {tag_mac} is known but has no data. "
-                    "Please report this as a bug."
+                    translation_domain=DOMAIN,
+                    translation_key="tag_inconsistent",
+                    translation_placeholders={"tag_mac": tag_mac},
                 )
 
             # Get hardware type
             hw_type = tag_data.get("hw_type")
             if hw_type is None:
                 raise HomeAssistantError(
-                    f"No hardware type found for tag {tag_mac}. "
-                    "Please wait for the tag to complete its next check-in."
+                    translation_domain=DOMAIN,
+                    translation_key="tag_no_hw_type",
+                    translation_placeholders={"tag_mac": tag_mac},
                 )
 
             # Get tag type information
@@ -152,8 +164,9 @@ class ImageGen:
 
             if not tag_type:
                 raise HomeAssistantError(
-                    f"Unknown hardware type {hw_type} for tag {tag_mac}. "
-                    "Try refreshing tag types from the integration options."
+                    translation_domain=DOMAIN,
+                    translation_key="tag_unknown_hw_type",
+                    translation_placeholders={"hw_type": hw_type},
                 )
             # Get accent color from tag type's color table if it exists
             # Default to red if no color table or no accent specified
@@ -169,7 +182,9 @@ class ImageGen:
             # Convert any unknown exceptions to HomeAssistantError with context
             if not isinstance(e, HomeAssistantError):
                 raise HomeAssistantError(
-                    f"Unexpected error getting tag type for {entity_id}: {str(e)}"
+                    translation_domain=DOMAIN,
+                    translation_key="ble_tag_info_unexpected",
+                    translation_placeholders={"entity_id": entity_id, "error": str(e)},
                 ) from e
             raise
 
@@ -194,23 +209,29 @@ class ImageGen:
             try:
                 tag_mac = entity_id.split(".")[1].upper()
             except IndexError:
-                raise HomeAssistantError(f"Invalid entity ID format: {entity_id}")
-
-            # Get device metadata from config entry data
-            domain_data = hass.data.get(DOMAIN, {})
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="invalid_entity_id_format",
+                    translation_placeholders={"entity_id": entity_id}
+                )
+            # Get device metadata from config entry runtime_data
             device_metadata = None
 
             # Find the config entry for this BLE device
-            for entry_id, entry_data in domain_data.items():
-                if (isinstance(entry_data, dict) and
-                        entry_data.get("type") == "ble" and
-                        entry_data.get("mac_address", "").upper() == tag_mac):
-                    device_metadata = entry_data.get("device_metadata", {})
-                    break
+            for entry in hass.config_entries.async_entries(DOMAIN):
+                runtime_data = getattr(entry, 'runtime_data', None)
+                if runtime_data is not None and isinstance(runtime_data, OpenEPaperLinkBLERuntimeData):
+                    if runtime_data.mac_address.upper() == tag_mac:
+                        device_metadata = runtime_data.device_metadata
+                        protocol_type = runtime_data.protocol_type
+                        break
 
             if not device_metadata:
-                raise HomeAssistantError(f"No metadata found for BLE device {entity_id}")
-
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="ble_no_metadata",
+                    translation_placeholders={"entity_id": entity_id}
+                )
             # Wrap metadata for clean access
             from ..ble import BLEDeviceMetadata
             metadata = BLEDeviceMetadata(device_metadata)
@@ -234,7 +255,9 @@ class ImageGen:
             # Convert any unknown exceptions to HomeAssistantError with context
             if not isinstance(e, HomeAssistantError):
                 raise HomeAssistantError(
-                    f"Unexpected error getting BLE tag type for {entity_id}: {str(e)}"
+                    translation_domain=DOMAIN,
+                    translation_key="ble_tag_info_unexpected_ble",
+                    translation_placeholders={"entity_id": entity_id, "error": str(e)},
                 ) from e
             raise
 
@@ -285,7 +308,7 @@ class ImageGen:
             entity_id: str,
             service_data: Dict[str, Any],
             error_collector: list = None,
-            *,  #TODO why the star here?
+            *,
             width: int,
             height: int,
             accent_color: str,
@@ -318,9 +341,9 @@ class ImageGen:
         # Validate dimensions to prevent PIL errors
         if canvas_width <= 0 or canvas_height <= 0:
             raise HomeAssistantError(
-                f"Invalid canvas dimensions {canvas_width}x{canvas_height} for {entity_id}. "
-                f"Device metadata may be corrupt or missing. Try reloading the integration or "
-                f"re-adding the device."
+                translation_domain=DOMAIN,
+                translation_key="invalid_canvas_dimensions",
+                translation_placeholders={"width": canvas_width, "height": canvas_height, "entity_id": entity_id}
             )
 
         _LOGGER.debug("Canvas dimensions for %s: %dx%d", entity_id, canvas_width, canvas_height)
@@ -376,8 +399,6 @@ class ImageGen:
                 _LOGGER.error(error_msg)
                 error_collector.append(error_msg)
                 continue
-        # TODO error is shown in HA Web UI but the image is still generated and sent to the tag - shouldn't it abort, what does that entail?
-
         # Apply rotation if needed
         if rotate:
             img = img.rotate(rotate, expand=True)

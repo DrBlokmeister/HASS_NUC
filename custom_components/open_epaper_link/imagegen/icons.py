@@ -9,8 +9,11 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .registry import element_handler
 from .types import ElementType, DrawingContext
+from ..const import DOMAIN
+
 
 _LOGGER = logging.getLogger(__name__)
+_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
 
 @element_handler(ElementType.ICON, requires=["x", "y", "value", "size"])
@@ -35,9 +38,9 @@ async def draw_icon(ctx: DrawingContext, element: dict) -> None:
     x = ctx.coords.parse_x(element['x'])
     y = ctx.coords.parse_y(element['y'])
 
-    # Load MDI font and metadata # TODO add handler here as well maybe? also move fonts to fonts direcotory? (applies to text as well)
-    font_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'materialdesignicons-webfont.ttf')
-    meta_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "materialdesignicons-webfont_meta.json")
+    # Load MDI font and metadata
+    font_file = os.path.join(_ASSETS_DIR, "materialdesignicons-webfont.ttf")
+    meta_file = os.path.join(_ASSETS_DIR, "materialdesignicons-webfont_meta.json")
 
     try:
         def load_meta():
@@ -46,7 +49,11 @@ async def draw_icon(ctx: DrawingContext, element: dict) -> None:
 
         mdi_data = await ctx.hass.async_add_executor_job(load_meta)
     except Exception as e:
-        raise HomeAssistantError(f"Failed to load MDI metadata: {str(e)}")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="mdi_metadata_failed",
+            translation_placeholders={"error": str(e)}
+        )
 
     # Find icon codepoint
     icon_name = element['value']
@@ -68,7 +75,11 @@ async def draw_icon(ctx: DrawingContext, element: dict) -> None:
                 break
 
     if not chr_hex:
-        raise HomeAssistantError(f"Invalid icon name: {icon_name}")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="icon_name_invalid",
+            translation_placeholders={"icon_name": icon_name}
+        )
 
     # Get icon properties
     def load_font():
@@ -94,7 +105,11 @@ async def draw_icon(ctx: DrawingContext, element: dict) -> None:
             stroke_fill=stroke_fill
         )
     except ValueError as e:
-        raise HomeAssistantError(f"Failed to draw icon: {str(e)}")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="icon_draw_failed",
+            translation_placeholders={"error": str(e)}
+        )
 
     # Calculate vertical position using text bounds
     bbox = draw.textbbox(
@@ -137,8 +152,8 @@ async def draw_icon_sequence(ctx: DrawingContext, element: dict) -> None:
     direction = element.get('direction', 'right')  # right, down, up, left
 
     # Load MDI font and metadata
-    font_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'materialdesignicons-webfont.ttf')
-    meta_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "materialdesignicons-webfont_meta.json")
+    font_file = os.path.join(_ASSETS_DIR, "materialdesignicons-webfont.ttf")
+    meta_file = os.path.join(_ASSETS_DIR, "materialdesignicons-webfont_meta.json")
 
     try:
         def load_meta():
@@ -147,7 +162,11 @@ async def draw_icon_sequence(ctx: DrawingContext, element: dict) -> None:
 
         mdi_data = await ctx.hass.async_add_executor_job(load_meta)
     except Exception as e:
-        raise HomeAssistantError(f"Failed to load MDI metadata: {str(e)}")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="mdi_metadata_failed",
+            translation_placeholders={"error": str(e)}
+        )
 
     # Load font
     def load_font():
@@ -216,6 +235,10 @@ async def draw_icon_sequence(ctx: DrawingContext, element: dict) -> None:
                 current_y -= size + spacing
 
         except ValueError as e:
-            raise HomeAssistantError(f"Failed to draw icon {icon_name}: {str(e)}")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="icon_draw_failed_named",
+                translation_placeholders={"icon_name": icon_name, "error": str(e)}
+            )
 
     ctx.pos_y = max(max_y, current_y)
