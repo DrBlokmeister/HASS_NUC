@@ -1,8 +1,16 @@
 #ifdef USE_ESP32
 #include "logger.h"
 
+#if defined(USE_ESP32_FRAMEWORK_ARDUINO) || defined(USE_ESP_IDF)
 #include <esp_log.h>
+#endif  // USE_ESP32_FRAMEWORK_ARDUINO || USE_ESP_IDF
 
+// DOC'S FIX: We need HardwareSerial.h to access Serial.end() on Arduino Framework
+#ifdef USE_ESP32_FRAMEWORK_ARDUINO
+#include <HardwareSerial.h>
+#endif
+
+#ifdef USE_ESP_IDF
 #include <driver/uart.h>
 
 #ifdef USE_LOGGER_USB_SERIAL_JTAG
@@ -21,6 +29,8 @@
 #include <fcntl.h>
 #include <cstdint>
 #include <cstdio>
+
+#endif  // USE_ESP_IDF
 
 #include "esphome/core/log.h"
 
@@ -110,6 +120,17 @@ void Logger::pre_setup() {
         break;
 #endif
     }
+  } else {
+    // FIX START: Issue #9613
+    // Explicitly disable the hardware UART to release the TX/RX pins.
+#ifdef USE_ESP32_FRAMEWORK_ARDUINO
+    #if ARDUINO_USB_CDC_ON_BOOT
+      if (Serial0) Serial0.end();
+    #else
+      if (Serial) Serial.end();
+    #endif
+#endif
+    // FIX END
   }
 
   global_logger = this;

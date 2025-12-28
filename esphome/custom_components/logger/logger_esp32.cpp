@@ -158,6 +158,22 @@ void Logger::pre_setup() {
 #endif
     }
 #endif  // USE_ESP_IDF
+  } else {
+    // FIX START: Issue #9613
+    // Explicitly disable the hardware UART to release the TX/RX pins.
+    // The Arduino framework (v3.x+) or bootloader may have initialized the 
+    // default Serial early, locking the GPIOs high/low and causing conflicts 
+    // with other components trying to use these pins (e.g. GPIO1/GPIO3).
+#ifdef USE_ARDUINO
+    #if ARDUINO_USB_CDC_ON_BOOT
+      // On devices with native USB (S3, C3), Serial0 is the hardware UART
+      if (Serial0) Serial0.end();
+    #else
+      // Standard ESP32, Serial is the hardware UART
+      if (Serial) Serial.end();
+    #endif
+#endif
+    // FIX END
   }
 
   global_logger = this;
