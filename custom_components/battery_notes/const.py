@@ -31,6 +31,8 @@ DEFAULT_BATTERY_LOW_THRESHOLD = 10
 DEFAULT_BATTERY_INCREASE_THRESHOLD = 25
 DEFAULT_LIBRARY_URL = "https://battery-notes-data.codechimp.org/library.json"
 DEFAULT_SCHEMA_URL = "https://battery-notes-data.codechimp.org/schema.json"
+FALLBACK_LIBRARY_URL = "https://raw.githubusercontent.com/andrew-codechimp/HA-Battery-Notes/main/library/library.json"  # pylint: disable=line-too-long
+FALLBACK_SCHEMA_URL = "https://raw.githubusercontent.com/andrew-codechimp/HA-Battery-Notes/main/library/schema.json"  # pylint: disable=line-too-long
 
 CONF_SOURCE_ENTITY_ID = "source_entity_id"
 CONF_BATTERY_TYPE = "battery_type"
@@ -44,6 +46,7 @@ CONF_MODEL_ID = "model_id"
 CONF_HW_VERSION = "hw_version"
 CONF_MANUFACTURER = "manufacturer"
 CONF_DEVICE_NAME = "device_name"
+CONF_INTEGRATION_NAME = "integration_name"
 CONF_SHOW_ALL_DEVICES = "show_all_devices"
 CONF_ENABLE_REPLACED = "enable_replaced"
 CONF_DEFAULT_BATTERY_LOW_THRESHOLD = "default_battery_low_threshold"
