@@ -18,6 +18,21 @@ counter:
     step: 1
     icon: mdi:alert
 
+template:
+  - sensor:
+      - name: "Home Assistant Log Error Count"
+        unique_id: yaml_template_sensor_home_assistant_log_error_count
+        icon: mdi:alert-circle
+        unit_of_measurement: "errors"
+        state: "{{ states('counter.home_assistant_log_error_count') | int(0) }}"
+        state_class: total_increasing
+      - name: "Home Assistant Log Warning Count"
+        unique_id: yaml_template_sensor_home_assistant_log_warning_count
+        icon: mdi:alert
+        unit_of_measurement: "warnings"
+        state: "{{ states('counter.home_assistant_log_warning_count') | int(0) }}"
+        state_class: total_increasing
+
 #############
 #    SQL    #
 #############
@@ -474,12 +489,22 @@ sensor:
     time_window: "00:02:00"
 
   - platform: statistics
-    name: "Home Assistant Log Errors per Hour"
+    name: "Home Assistant Log Errors Per Hour"
     unique_id: yaml_statistics_sensor_home_assistant_log_errors_per_hour
-    entity_id: counter.home_assistant_log_error_count
-    state_characteristic: change_sample
-    max_age: "01:00:00"
+    entity_id: sensor.home_assistant_log_error_count
+    state_characteristic: change
+    max_age:
+      hours: 1
     keep_last_sample: true
+  - platform: statistics
+    name: "Home Assistant Log Warnings Per Hour"
+    unique_id: yaml_statistics_sensor_home_assistant_log_warnings_per_hour
+    entity_id: sensor.home_assistant_log_warning_count
+    state_characteristic: change
+    max_age:
+      hours: 1
+    keep_last_sample: true
+
 
 
 ########################
