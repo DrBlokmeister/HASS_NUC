@@ -1,13 +1,5 @@
 homeassistant:
 
-notify:
-  - name: ha_mariadb_command
-    platform: mysql_command
-    host: !secret NUC_IP
-    username: !secret mariadb_user
-    password: !secret mariadb_pass
-    db: homeassistant
-
 counter:
   home_assistant_log_error_count:  #counter.home_assistant_log_error_count
     name: Home Assistant Log Error Count
@@ -594,26 +586,6 @@ automation:
         data:
           message: "Home Assistant back online"
           language: en-IE
-      - delay:
-          minutes: 5
-      - action: notify.ha_mariadb_command
-        data:
-          message: SET GLOBAL innodb_buffer_pool_size = 12 * 1024 * 1024 * 1024;
-      - action: notify.ha_mariadb_command
-        data:
-          message: SET GLOBAL max_connections = 256;
-      - action: notify.ha_mariadb_command
-        data:
-          message: SET GLOBAL thread_cache_size = 32;
-      - action: notify.ha_mariadb_command
-        data:
-          message: SET GLOBAL tmp_table_size = 256 * 1024 * 1024;
-      - action: notify.ha_mariadb_command
-        data:
-          message: SET GLOBAL query_cache_size = 64 * 1024 * 1024;
-      - action: notify.ha_mariadb_command
-        data:
-          message: SET GLOBAL query_cache_type = 1;
 
   - alias: '[System] Hass Updater'
     initial_state: on
