@@ -1,341 +1,310 @@
-"""Switch platform for Unraid."""
+"""Switch entities for Unraid integration."""
+
 from __future__ import annotations
 
-from typing import Any, Dict, Callable
 import logging
-from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription # type: ignore
-from homeassistant.config_entries import ConfigEntry # type: ignore
-from homeassistant.core import HomeAssistant, callback # type: ignore
-from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ignore
-from homeassistant.helpers.update_coordinator import CoordinatorEntity # type: ignore
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.exceptions import HomeAssistantError
 
-from .const import (
-    DOMAIN,
-)
+from .const import DOMAIN, PARALLEL_UPDATES, STATE_CONTAINER_RUNNING, VM_RUNNING_STATES
+from .models import DockerContainer, VmDomain
 
-from .entity_naming import EntityNaming
-from .coordinator import UnraidDataUpdateCoordinator
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
+    from . import UnraidConfigEntry
+    from .api import UnraidAPIClient
+    from .coordinator import UnraidSystemCoordinator, UnraidSystemData
 
 _LOGGER = logging.getLogger(__name__)
 
-@dataclass
-class UnraidSwitchEntityDescription(SwitchEntityDescription):
-    """Describes Unraid switch entity."""
-    value_fn: Callable[[dict[str, Any]], bool | None] = field(default=lambda x: None)
-    turn_on_fn: Callable[[Any], None] = field(default=lambda x: None)
-    turn_off_fn: Callable[[Any], None] = field(default=lambda x: None)
+# Export PARALLEL_UPDATES for Home Assistant
+__all__ = ["PARALLEL_UPDATES", "async_setup_entry"]
 
-class UnraidSwitchEntity(CoordinatorEntity, SwitchEntity):
-    """Base entity for Unraid switches."""
 
-    entity_description: UnraidSwitchEntityDescription
+class UnraidSwitchEntity(SwitchEntity):
+    """Base class for Unraid switch entities."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(
         self,
-        coordinator: UnraidDataUpdateCoordinator,
-        description: UnraidSwitchEntityDescription,
+        coordinator: UnraidSystemCoordinator,
+        api_client: UnraidAPIClient,
+        server_uuid: str,
+        server_name: str,
+        resource_id: str,
+        name: str,
+        server_info: dict | None = None,
     ) -> None:
-        """Initialize the switch."""
-        super().__init__(coordinator)
-        self.entity_description = description
-
-        # Initialize entity naming helper
-        naming = EntityNaming(
-            domain=DOMAIN,
-            hostname=coordinator.hostname,
-            component=description.key.split('_')[0]  # Get first part of key as component
-        )
-
-        # Set consistent entity ID
-        self._attr_unique_id = naming.get_entity_id(description.key)
-
-        # Keep the name simple and human-readable
-        self._attr_name = f"{description.name}"
-
-        _LOGGER.debug("Entity initialized | unique_id: %s | name: %s",
-            self._attr_unique_id, self._attr_name)
-
-        # All switches belong to main server device
+        """Initialize switch entity."""
+        self.coordinator = coordinator
+        self.api_client = api_client
+        self._server_uuid = server_uuid
+        self._server_name = server_name
+        self._attr_unique_id = f"{server_uuid}_{resource_id}"
+        self._attr_name = name
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, coordinator.entry.entry_id)},
-            "name": f"{coordinator.hostname.title()}",
-            "manufacturer": "Lime Technology",
-            "model": "Unraid Server",
+            "identifiers": {(DOMAIN, server_uuid)},
+            "name": server_name,
+            "manufacturer": server_info.get("manufacturer") if server_info else None,
+            "model": server_info.get("model") if server_info else None,
+            "sw_version": server_info.get("sw_version") if server_info else None,
+            "hw_version": server_info.get("hw_version") if server_info else None,
         }
-        self._attr_has_entity_name = True
 
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
+        """Return whether entity is available."""
         return self.coordinator.last_update_success
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the switch is on."""
-        try:
-            return self.entity_description.value_fn(self.coordinator.data)
-        except Exception as err:
-            _LOGGER.debug(
-                "Error getting state for %s: %s",
-                self.entity_description.key,
-                err
-            )
+    async def async_added_to_hass(self) -> None:
+        """Connect to dispatcher when added to Home Assistant."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._async_write_ha_state)
+        )
+
+
+class DockerContainerSwitch(UnraidSwitchEntity):
+    """Docker container control switch."""
+
+    _attr_translation_key = "docker_container"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        api_client: UnraidAPIClient,
+        server_uuid: str,
+        server_name: str,
+        container: DockerContainer,
+    ) -> None:
+        """Initialize docker container switch."""
+        self._container_id = container.id
+        self._container_name = container.name.lstrip("/")
+        self._cached_container: DockerContainer | None = None
+        self._cache_data_id: int | None = None
+        super().__init__(
+            coordinator=coordinator,
+            api_client=api_client,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"container_switch_{container.id}",
+            name=f"Container {self._container_name}",
+        )
+
+    def _get_container(self) -> DockerContainer | None:
+        """Get current container from coordinator data with caching."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
             return None
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.async_write_ha_state()
+        # Use cache if data object hasn't changed (same coordinator refresh)
+        data_id = id(data)
+        if (
+            self._cache_data_id is not None
+            and data_id == self._cache_data_id
+            and self._cached_container is not None
+        ):
+            return self._cached_container
 
-class UnraidDockerContainerSwitch(UnraidSwitchEntity):
-    """Representation of an Unraid Docker container switch."""
-
-    def __init__(
-        self,
-        coordinator: UnraidDataUpdateCoordinator,
-        container_name: str
-    ) -> None:
-        """Initialize the Docker container switch."""
-        self._container_name = container_name
-        super().__init__(
-            coordinator,
-            UnraidSwitchEntityDescription(
-                key=f"docker_{container_name}",
-                name=f"{container_name}",
-                icon="mdi:docker",
-                value_fn=self._get_container_state,
-            )
-        )
-
-    def _get_container_state(self, data: dict) -> bool:
-        """Get container state."""
-        for container in data["docker_containers"]:
-            if container["name"] == self._container_name:
-                return container["state"] == "running"
-        return False
+        # Build lookup dict for O(1) access
+        container_map = {c.id: c for c in data.containers}
+        self._cached_container = container_map.get(self._container_id)
+        self._cache_data_id = data_id
+        return self._cached_container
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return the state attributes."""
-        for container in self.coordinator.data["docker_containers"]:
-            if container["name"] == self._container_name:
-                return {
-                    "container_id": container["id"],
-                    "status": container["status"],
-                    "image": container["image"]
-                }
-        return {}
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the container on."""
-        await self.coordinator.api.start_container(self._container_name)
-        await self.coordinator.async_request_refresh()
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the container off."""
-        await self.coordinator.api.stop_container(self._container_name)
-        await self.coordinator.async_request_refresh()
-
-class UnraidVMSwitch(UnraidSwitchEntity):
-    """Representation of an Unraid VM switch."""
-
-    def __init__(
-        self,
-        coordinator: UnraidDataUpdateCoordinator,
-        vm_name: str
-    ) -> None:
-        """Initialize the VM switch."""
-        self._vm_name = vm_name
-        self._last_known_state = None
-
-        # Create a safe entity ID from VM name with collision detection
-        from .utils import normalize_name
-        safe_name = normalize_name(vm_name)
-        # Ensure it doesn't start with a number (Home Assistant requirement)
-        if safe_name and safe_name[0].isdigit():
-            safe_name = f"vm_{safe_name}"
-
-        # Handle entity ID collisions by checking existing VMs
-        safe_name = self._ensure_unique_entity_id(safe_name, vm_name, coordinator)
-
-        super().__init__(
-            coordinator,
-            UnraidSwitchEntityDescription(
-                key=f"vm_{safe_name}",
-                name=f"{vm_name}",
-                value_fn=self._get_vm_state,
-            )
-        )
-        self._attr_entity_registry_enabled_default = True
-
-        # Get OS type for specific model info
-        self._get_os_type_info(vm_name, coordinator)
-
-    def _ensure_unique_entity_id(self, base_name: str, vm_name: str, coordinator) -> str:
-        """Ensure the entity ID is unique by checking for collisions with existing VMs.
-
-        Args:
-            base_name: The normalized base name for the entity ID
-            vm_name: The original VM name
-            coordinator: The coordinator containing VM data
-
-        Returns:
-            A unique entity ID that won't collide with existing VMs
-        """
-        from .utils import normalize_name
-
-        # Get all existing VM names from coordinator data
-        existing_vms = coordinator.data.get("vms", [])
-        existing_normalized_names = set()
-
-        for vm in existing_vms:
-            existing_vm_name = vm.get("name", "")
-            if existing_vm_name and existing_vm_name != vm_name:  # Don't include current VM
-                existing_normalized = normalize_name(existing_vm_name)
-                if existing_normalized and existing_normalized[0].isdigit():
-                    existing_normalized = f"vm_{existing_normalized}"
-                existing_normalized_names.add(existing_normalized)
-
-        # If no collision, return the base name
-        if base_name not in existing_normalized_names:
-            return base_name
-
-        # Handle collision by adding a suffix based on original VM name characteristics
-        # Strategy: Use distinguishing characteristics from the original name
-
-        # Try to create a unique suffix based on the original name
-        import re
-
-        # Extract unique characteristics from the original VM name
-        # 1. Check for different separators (dash vs space vs underscore)
-        if '-' in vm_name and ' ' not in vm_name:
-            suffix = "dash"
-        elif ' ' in vm_name and '-' not in vm_name:
-            suffix = "space"
-        elif '_' in vm_name:
-            suffix = "underscore"
-        else:
-            # 2. Use position-based numbering or character-based differentiation
-            # Extract any numbers or special patterns
-            numbers = re.findall(r'\d+', vm_name)
-            if numbers:
-                suffix = f"n{numbers[-1]}"  # Use last number found
-            else:
-                # 3. Use length or hash-based suffix as last resort
-                suffix = f"len{len(vm_name)}"
-
-        candidate_name = f"{base_name}_{suffix}"
-
-        # If still collision, fall back to incremental numbering
-        counter = 2
-        while candidate_name in existing_normalized_names:
-            candidate_name = f"{base_name}_{suffix}_{counter}"
-            counter += 1
-
-        return candidate_name
-
-    def _get_os_type_info(self, vm_name: str, coordinator) -> None:
-        """Get OS type for specific model info."""
-        for vm in coordinator.data.get("vms", []):
-            if vm["name"] == vm_name and "os_type" in vm:
-                self._attr_device_info["model"] = f"{vm['os_type'].capitalize()} Virtual Machine"
-                break
-
-    def _get_vm_state(self, data: dict) -> bool:
-        """Get VM state."""
-        for vm in data.get("vms", []):
-            if vm["name"] == self._vm_name:
-                state = vm["status"].lower()
-                self._last_known_state = state
-                return state == "running"
-        return False
-
-    @property
-    def icon(self) -> str:
-        """Return the icon based on OS type."""
-        for vm in self.coordinator.data.get("vms", []):
-            if vm["name"] == self._vm_name:
-                if vm.get("os_type") == "windows":
-                    return "mdi:microsoft-windows"
-                elif vm.get("os_type") == "linux":
-                    return "mdi:linux"
-                return "mdi:desktop-tower"
-        return "mdi:desktop-tower"
-
-    @property
-    def available(self) -> bool:
-        """Return if the switch is available."""
-        if not self.coordinator.last_update_success:
+    def is_on(self) -> bool:
+        """Return True if container is running."""
+        container = self._get_container()
+        if container is None:
             return False
-
-        vms_enabled = "vms" in self.coordinator.data and isinstance(self.coordinator.data["vms"], list)
-        return vms_enabled and any(vm["name"] == self._vm_name for vm in self.coordinator.data.get("vms", []))
+        return container.state == STATE_CONTAINER_RUNNING
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return the state attributes."""
-        attrs = {
-            "status": "unknown",
-            "os_type": "unknown",
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes, filtering out None values."""
+        container = self._get_container()
+        if container is None:
+            return {}
+        attrs: dict[str, Any] = {
+            "status": container.state,
         }
-
-        for vm in self.coordinator.data.get("vms", []):
-            if vm["name"] == self._vm_name:
-                attrs.update({
-                    "status": vm.get("status", "unknown"),
-                    "os_type": vm.get("os_type", "unknown"),
-                })
-                break
-
+        if container.image is not None:
+            attrs["image"] = container.image
+        if container.webUiUrl is not None:
+            attrs["web_ui_url"] = container.webUiUrl
+        if container.iconUrl is not None:
+            attrs["icon_url"] = container.iconUrl
         return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the VM on."""
-        await self.coordinator.api.start_vm(self._vm_name)
-        await self.coordinator.async_request_refresh()
+        """Start container."""
+        try:
+            await self.api_client.start_container(self._container_id)
+            _LOGGER.debug("Started Docker container: %s", self._container_id)
+        except Exception as err:
+            _LOGGER.error("Failed to start Docker container: %s", err)
+            raise HomeAssistantError(f"Failed to start container: {err}") from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the VM off."""
-        await self.coordinator.api.stop_vm(self._vm_name)
-        await self.coordinator.async_request_refresh()
+        """Stop container."""
+        try:
+            await self.api_client.stop_container(self._container_id)
+            _LOGGER.debug("Stopped Docker container: %s", self._container_id)
+        except Exception as err:
+            _LOGGER.error("Failed to stop Docker container: %s", err)
+            raise HomeAssistantError(f"Failed to stop container: {err}") from err
+
+
+class VirtualMachineSwitch(UnraidSwitchEntity):
+    """Virtual machine control switch."""
+
+    _attr_translation_key = "virtual_machine"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        api_client: UnraidAPIClient,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+    ) -> None:
+        """Initialize virtual machine switch."""
+        self._vm_id = vm.id
+        self._vm_name = vm.name
+        self._cached_vm: VmDomain | None = None
+        self._cache_data_id: int | None = None
+        super().__init__(
+            coordinator=coordinator,
+            api_client=api_client,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"vm_switch_{vm.id}",
+            name=f"VM {vm.name}",
+        )
+
+    def _get_vm(self) -> VmDomain | None:
+        """Get current VM from coordinator data with caching."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+
+        # Use cache if data object hasn't changed (same coordinator refresh)
+        data_id = id(data)
+        if (
+            self._cache_data_id is not None
+            and data_id == self._cache_data_id
+            and self._cached_vm is not None
+        ):
+            return self._cached_vm
+
+        # Build lookup dict for O(1) access
+        vm_map = {v.id: v for v in data.vms}
+        self._cached_vm = vm_map.get(self._vm_id)
+        self._cache_data_id = data_id
+        return self._cached_vm
+
+    @property
+    def is_on(self) -> bool:
+        """Return True if VM is running or idle."""
+        vm = self._get_vm()
+        if vm is None:
+            return False
+        return vm.state in VM_RUNNING_STATES
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes, filtering out None values."""
+        vm = self._get_vm()
+        if vm is None:
+            return {}
+        attrs: dict[str, Any] = {
+            "state": vm.state,
+        }
+        if vm.memory is not None:
+            attrs["memory"] = vm.memory
+        if vm.vcpu is not None:
+            attrs["vcpu"] = vm.vcpu
+        return attrs
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Start VM."""
+        try:
+            await self.api_client.start_vm(self._vm_id)
+            _LOGGER.debug("Started VM: %s", self._vm_id)
+        except Exception as err:
+            _LOGGER.error("Failed to start VM: %s", err)
+            raise HomeAssistantError(f"Failed to start VM: {err}") from err
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Stop VM."""
+        try:
+            await self.api_client.stop_vm(self._vm_id)
+            _LOGGER.debug("Stopped VM: %s", self._vm_id)
+        except Exception as err:
+            _LOGGER.error("Failed to stop VM: %s", err)
+            raise HomeAssistantError(f"Failed to stop VM: {err}") from err
+
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant,  # noqa: ARG001
+    entry: UnraidConfigEntry,
+    async_add_entities: Any,
 ) -> None:
-    """Set up Unraid switch based on a config entry."""
-    coordinator: UnraidDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up switch entities."""
+    _LOGGER.debug("Setting up Unraid switch platform")
 
-    switches = []
+    # Get coordinators and API client from runtime_data (HA 2024.4+ pattern)
+    runtime_data = entry.runtime_data
+    system_coordinator = runtime_data.system_coordinator
+    api_client = runtime_data.api_client
+    server_info = runtime_data.server_info
 
-    # Add Docker container switches
-    if "docker_containers" in coordinator.data:  # This checks base Docker container data, not docker_insights
-        _LOGGER.debug("Setting up Docker container switches")
-        switches.extend([
-            UnraidDockerContainerSwitch(
-                coordinator=coordinator,
-                container_name=container["name"]
+    # Server info is now a flat dict with uuid, name, manufacturer, etc.
+    server_uuid = server_info.get("uuid", "unknown")
+    server_name = server_info.get("name", entry.data.get("host", "Unraid"))
+
+    entities: list[UnraidSwitchEntity] = []
+
+    # Add Docker container switches (only when Docker service is running)
+    if system_coordinator.data and system_coordinator.data.containers:
+        _LOGGER.debug(
+            "Docker service running with %d container(s), creating switches",
+            len(system_coordinator.data.containers),
+        )
+        for container in system_coordinator.data.containers:
+            entities.append(
+                DockerContainerSwitch(
+                    system_coordinator, api_client, server_uuid, server_name, container
+                )
             )
-            for container in coordinator.data["docker_containers"]
-        ])
     else:
-        _LOGGER.debug("No Docker containers found for switches")
+        _LOGGER.info(
+            "Docker service not running or no containers on %s",
+            server_name,
+        )
 
-    # Add VM switches
-    if "vms" in coordinator.data:
-        _LOGGER.debug("Setting up VM switches")
-        switches.extend([
-            UnraidVMSwitch(
-                coordinator=coordinator,
-                vm_name=vm["name"]
+    # Add VM switches (only when VM/libvirt service is running)
+    if system_coordinator.data and system_coordinator.data.vms:
+        _LOGGER.debug(
+            "VM service running with %d VM(s), creating switches",
+            len(system_coordinator.data.vms),
+        )
+        for vm in system_coordinator.data.vms:
+            entities.append(
+                VirtualMachineSwitch(
+                    system_coordinator, api_client, server_uuid, server_name, vm
+                )
             )
-            for vm in coordinator.data["vms"]
-        ])
     else:
-        _LOGGER.debug("No VMs found for switches")
+        _LOGGER.info(
+            "VM service not available or no VMs on %s, skipping VM switches",
+            server_name,
+        )
 
-    if switches:
-        async_add_entities(switches)
+    _LOGGER.debug("Adding %d switch entities", len(entities))
+    async_add_entities(entities)

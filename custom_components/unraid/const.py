@@ -1,219 +1,222 @@
 """Constants for the Unraid integration."""
-from enum import Enum, IntEnum
-from typing import Final, Dict
-from homeassistant.const import ( # type: ignore
-    Platform,
-    PERCENTAGE,
-    UnitOfPower,
-    UnitOfElectricPotential,
-    UnitOfTime,
-    UnitOfEnergy,
-)
 
-# Unraid Server
-DOMAIN = "unraid"
-DEFAULT_PORT = 22
+from typing import Final
 
-# Migration version
-MIGRATION_VERSION = 2
+# =============================================================================
+# Integration Info
+# =============================================================================
+DOMAIN: Final = "unraid"
+INTEGRATION_VERSION: Final = "2025.12.1"
+MANUFACTURER: Final = "Lime Technology"
 
-# Unraid Server Hostname
-CONF_HOSTNAME = "hostname"
-MAX_HOSTNAME_LENGTH = 32
-DEFAULT_NAME = "unraid"  # Fallback name if no hostname
+# =============================================================================
+# Configuration Keys
+# =============================================================================
+CONF_SYSTEM_INTERVAL: Final = "system_interval"
+CONF_STORAGE_INTERVAL: Final = "storage_interval"
+CONF_UPS_CAPACITY_VA: Final = "ups_capacity_va"
 
-# Update intervals
-MIN_UPDATE_INTERVAL = 1          # minutes
-MAX_GENERAL_INTERVAL = 60        # minutes
+# =============================================================================
+# Default Values
+# =============================================================================
+DEFAULT_SYSTEM_POLL_INTERVAL: Final = 30  # seconds
+DEFAULT_STORAGE_POLL_INTERVAL: Final = 300  # seconds (5 minutes)
+DEFAULT_UPS_CAPACITY_VA: Final = 0  # 0 = disabled, user must set their UPS VA rating
+DEFAULT_UPS_POWER_FACTOR: Final = 0.6  # Typical UPS power factor
 
-# Disk update intervals
-MIN_DISK_INTERVAL_MINUTES = 5    # minutes
-MAX_DISK_INTERVAL_HOURS = 24     # hours
-DEFAULT_GENERAL_INTERVAL = 5     # minutes
-DEFAULT_DISK_INTERVAL = 60       # minutes (1 hour)
-
-# General update interval options in minutes
-GENERAL_INTERVAL_OPTIONS = [
-    1,    # 1 minute
-    2,    # 2 minutes
-    3,    # 3 minutes
-    5,    # 5 minutes
-    10,   # 10 minutes
-    15,   # 15 minutes
-    30,   # 30 minutes
-    60    # 60 minutes (1 hour)
-]
-
-# Disk update interval options in minutes
-DISK_INTERVAL_OPTIONS = [
-    5,    # 5 minutes
-    10,   # 10 minutes
-    15,   # 15 minutes
-    30,   # 30 minutes
-    45,   # 45 minutes
-    60,   # 1 hour
-    120,  # 2 hours
-    180,  # 3 hours
-    240,  # 4 hours
-    300,  # 5 hours
-    360,  # 6 hours
-    480,  # 8 hours
-    720,  # 12 hours
-    1440  # 24 hours
-]
-
-UPDATE_FAILED_RETRY_DELAY: Final = 30  # seconds
-MAX_FAILED_UPDATE_COUNT: Final = 3
-MAX_UPDATE_METRICS_HISTORY: Final = 10
-
-# Configuration and options
-CONF_GENERAL_INTERVAL = "general_interval"
-CONF_DISK_INTERVAL = "disk_interval"
-CONF_HAS_UPS = "has_ups"
-CONF_HOST = "host"
-CONF_USERNAME = "username"
-CONF_PASSWORD = "password"
-
-
+# =============================================================================
 # Platforms
-PLATFORMS = [
-    Platform.BINARY_SENSOR,
-    Platform.SENSOR,
-    Platform.SWITCH,
-    Platform.BUTTON,
-]
+# =============================================================================
+PLATFORMS: list[str] = []
 
-# Signals
-SIGNAL_UPDATE_UNRAID = f"{DOMAIN}_update"
+# =============================================================================
+# Entity Keys (for coordinator data)
+# =============================================================================
+KEY_SYSTEM: Final = "system"
+KEY_ARRAY: Final = "array"
+KEY_DISKS: Final = "disks"
+KEY_SHARES: Final = "shares"
+KEY_CONTAINERS: Final = "containers"
+KEY_VMS: Final = "vms"
+KEY_UPS: Final = "ups"
+KEY_NOTIFICATIONS: Final = "notifications"
 
-# Services
-SERVICE_FORCE_UPDATE = "force_update"
+# =============================================================================
+# Sensor Types
+# =============================================================================
+SENSOR_CPU_USAGE: Final = "cpu_usage"
+SENSOR_RAM_USAGE: Final = "ram_usage"
+SENSOR_CPU_TEMP: Final = "cpu_temperature"
+SENSOR_CPU_POWER: Final = "cpu_power"
+SENSOR_UPTIME: Final = "uptime"
+SENSOR_ARRAY_STATE: Final = "array_state"
+SENSOR_ARRAY_USAGE: Final = "array_usage"
+SENSOR_PARITY_PROGRESS: Final = "parity_progress"
+SENSOR_DISK_TEMP: Final = "disk_temperature"
+SENSOR_DISK_USAGE: Final = "disk_usage"
+SENSOR_DISK_HEALTH: Final = "disk_health"
+SENSOR_UPS_BATTERY: Final = "ups_battery"
+SENSOR_UPS_LOAD: Final = "ups_load"
+SENSOR_UPS_RUNTIME: Final = "ups_runtime"
+SENSOR_UPS_POWER: Final = "ups_power"
+SENSOR_SHARE_USAGE: Final = "share_usage"
+SENSOR_FLASH_USAGE: Final = "flash_usage"
+SENSOR_NOTIFICATIONS: Final = "active_notifications"
 
-# Config Entry Attributes
-ATTR_CONFIG_ENTRY_ID = "config_entry_id"
+# =============================================================================
+# Binary Sensor Types
+# =============================================================================
+BINARY_SENSOR_ARRAY_STARTED: Final = "array_started"
+BINARY_SENSOR_PARITY_CHECK_RUNNING: Final = "parity_check_running"
+BINARY_SENSOR_PARITY_VALID: Final = "parity_valid"
+BINARY_SENSOR_DISK_HEALTH: Final = "disk_health"
+BINARY_SENSOR_DISK_STANDBY: Final = "disk_standby"
+BINARY_SENSOR_UPS_CONNECTED: Final = "ups_connected"
 
-# Units
-UNIT_PERCENTAGE = "%"
+# =============================================================================
+# Switch Types
+# =============================================================================
+SWITCH_CONTAINER: Final = "container"
+SWITCH_VM: Final = "vm"
 
-# CPU Temperature monitoring thresholds (Celsius)
-TEMP_WARN_THRESHOLD: Final = 80  # Temperature above which warning state is triggered
-TEMP_CRIT_THRESHOLD: Final = 90  # Temperature above which critical state is triggered
+# =============================================================================
+# Button Types
+# =============================================================================
+BUTTON_ARRAY_START: Final = "array_start"
+BUTTON_ARRAY_STOP: Final = "array_stop"
+BUTTON_PARITY_CHECK_START: Final = "parity_check_start"
+BUTTON_PARITY_CHECK_STOP: Final = "parity_check_stop"
+BUTTON_DISK_SPIN_UP: Final = "disk_spin_up"
+BUTTON_DISK_SPIN_DOWN: Final = "disk_spin_down"
 
-# UPS metric validation ranges
-UPS_METRICS: Final[Dict[str, dict]] = {
-    "NOMPOWER": {"min": 0, "max": 10000, "unit": UnitOfPower.WATT},
-    "LOADPCT": {"min": 0, "max": 100, "unit": PERCENTAGE},
-    "BCHARGE": {"min": 0, "max": 100, "unit": PERCENTAGE},
-    "LINEV": {"min": 0, "max": 500, "unit": UnitOfElectricPotential.VOLT},
-    "BATTV": {"min": 0, "max": 60, "unit": UnitOfElectricPotential.VOLT},
-    "TIMELEFT": {"min": 0, "max": 1440, "unit": UnitOfTime.MINUTES},
-    "ITEMP": {"min": 0, "max": 60, "unit": "°C"},
-    "CUMONKWHOURS": {"min": 0, "max": 1000000, "unit": UnitOfEnergy.KILO_WATT_HOUR},
-}
+# =============================================================================
+# Icons - Material Design Icons (mdi:)
+# =============================================================================
+# System
+ICON_CPU: Final = "mdi:cpu-64-bit"
+ICON_MEMORY: Final = "mdi:memory"
+ICON_TEMPERATURE: Final = "mdi:thermometer"
+ICON_POWER: Final = "mdi:lightning-bolt"
+ICON_UPTIME: Final = "mdi:clock-outline"
 
-# UPS model patterns for power calculation
-UPS_MODEL_PATTERNS: Final[Dict[str, float]] = {
-    r'smart-ups.*?(\d{3,4})': 1.0,       # Smart-UPS models use direct VA rating
-    r'back-ups.*?(\d{3,4})': 0.9,        # Back-UPS models typically 90% of VA
-    r'back-ups pro.*?(\d{3,4})': 0.95,   # Back-UPS Pro models ~95% of VA
-    r'smart-ups\s*x.*?(\d{3,4})': 1.0,   # Smart-UPS X series
-    r'smart-ups\s*xl.*?(\d{3,4})': 1.0,  # Smart-UPS XL series
-    r'smart-ups\s*rt.*?(\d{3,4})': 1.0,  # Smart-UPS RT series
-    r'symmetra.*?(\d{3,4})': 1.0,        # Symmetra models
-    r'sua\d{3,4}': 1.0,                  # Smart-UPS alternative model format
-    r'smx\d{3,4}': 1.0,                  # Smart-UPS SMX model format
-    r'smt\d{3,4}': 1.0,                  # Smart-UPS SMT model format
-}
+# Storage
+ICON_ARRAY: Final = "mdi:harddisk"
+ICON_PARITY: Final = "mdi:shield-check"
+ICON_PARITY_SYNC: Final = "mdi:shield-sync"
+ICON_HARDDISK: Final = "mdi:harddisk"
+ICON_SHARE: Final = "mdi:folder-network"
+ICON_FLASH: Final = "mdi:usb-flash-drive"
+ICON_DATABASE: Final = "mdi:database"
+ICON_HEART_PULSE: Final = "mdi:heart-pulse"
+ICON_PROGRESS: Final = "mdi:progress-check"
 
-# UPS default values and thresholds
-UPS_DEFAULT_POWER_FACTOR: Final = 0.9
-UPS_TEMP_WARN_THRESHOLD: Final = 45  # °C
-UPS_TEMP_CRIT_THRESHOLD: Final = 60  # °C
-UPS_BATTERY_LOW_THRESHOLD: Final = 50  # %
-UPS_BATTERY_CRITICAL_THRESHOLD: Final = 20  # %
-UPS_LOAD_HIGH_THRESHOLD: Final = 80  # %
-UPS_LOAD_CRITICAL_THRESHOLD: Final = 95  # %
+# Docker & VMs
+ICON_CONTAINER: Final = "mdi:docker"
+ICON_VM: Final = "mdi:desktop-tower"
 
-# SpinDownDelay class
-class SpinDownDelay(IntEnum):
-    """Unraid disk spin down delay settings."""
-    NEVER = 0  # Default in Unraid
-    MINUTES_15 = 15
-    MINUTES_30 = 30
-    MINUTES_45 = 45
-    HOUR_1 = 1
-    HOURS_2 = 2
-    HOURS_3 = 3
-    HOURS_4 = 4
-    HOURS_5 = 5
-    HOURS_6 = 6
-    HOURS_7 = 7
-    HOURS_8 = 8
-    HOURS_9 = 9
+# UPS
+ICON_UPS: Final = "mdi:battery"
+ICON_UPS_BATTERY: Final = "mdi:battery"
+ICON_UPS_LOAD: Final = "mdi:gauge"
+ICON_UPS_RUNTIME: Final = "mdi:timer"
 
-    @classmethod
-    def _missing_(cls, value: object) -> "SpinDownDelay":
-        """Handle invalid values by mapping to closest valid option."""
-        try:
-            # Convert value to int for comparison
-            val = int(str(value))
-            valid_values = sorted([m.value for m in cls])
-            # Find closest valid value
-            closest = min(valid_values, key=lambda x: abs(x - val))
-            return cls(closest)
-        except (ValueError, TypeError):
-            return cls.NEVER
+# Network
+ICON_NETWORK: Final = "mdi:ethernet"
 
-    def to_human_readable(self) -> str:
-        """Convert spin down delay to human readable format."""
-        try:
-            if self == self.NEVER:
-                return "Never"
-            if self.value < 60:
-                return f"{self.value} minutes"
-            return f"{self.value // 60} hours"
-        except ValueError:
-            return f"Unknown ({self.value})"
+# Notifications
+ICON_NOTIFICATION: Final = "mdi:bell"
+ICON_NOTIFICATION_ALERT: Final = "mdi:bell-alert"
 
-    def to_seconds(self) -> int:
-        """Convert delay to seconds for calculations."""
-        if self == self.NEVER:
-            return 0
-        return self.value * 60  # Convert minutes to seconds
+# Button/Control Icons
+ICON_PLAY: Final = "mdi:play"
+ICON_STOP: Final = "mdi:stop"
+ICON_PAUSE: Final = "mdi:pause"
+ICON_RESTART: Final = "mdi:restart"
+ICON_SPIN_UP: Final = "mdi:rotate-right"
+ICON_SPIN_DOWN: Final = "mdi:sleep"
 
-# DiskStatus class
-class DiskStatus(str, Enum):
-    """Disk status enum."""
-    ACTIVE = "active"
-    STANDBY = "standby"
-    UNKNOWN = "unknown"
+# =============================================================================
+# Attributes
+# =============================================================================
+# System attributes
+ATTR_HOSTNAME: Final = "hostname"
+ATTR_VERSION: Final = "version"
+ATTR_CPU_MODEL: Final = "cpu_model"
+ATTR_CPU_CORES: Final = "cpu_cores"
+ATTR_CPU_THREADS: Final = "cpu_threads"
+ATTR_RAM_TOTAL: Final = "ram_total"
 
-# DiskHealth class
-class DiskHealth(str, Enum):
-    """Disk health status enum."""
-    PASSED = "PASSED"
-    FAILED = "FAILED"
-    UNKNOWN = "Unknown"
+# Array attributes
+ATTR_ARRAY_STATE: Final = "array_state"
+ATTR_NUM_DISKS: Final = "num_disks"
+ATTR_NUM_DATA_DISKS: Final = "num_data_disks"
+ATTR_NUM_PARITY_DISKS: Final = "num_parity_disks"
+ATTR_PARITY_STATUS: Final = "parity_status"
+ATTR_PARITY_CHECK_STATUS: Final = "parity_check_status"
 
-# Device identifier patterns
-DEVICE_ID_SERVER = "{}_server_{}"  # DOMAIN, entry_id
-DEVICE_ID_DOCKER = "{}_docker_{}_{}"  # DOMAIN, container_name, entry_id
-DEVICE_ID_VM = "{}_vm_{}_{}"  # DOMAIN, vm_name, entry_id
-DEVICE_ID_DISK = "{}_disk_{}_{}"  # DOMAIN, disk_name, entry_id
-DEVICE_ID_UPS = "{}_ups_{}"  # DOMAIN, entry_id
+# Disk attributes
+ATTR_SMART_STATUS: Final = "smart_status"
+ATTR_SMART_ERRORS: Final = "smart_errors"
+ATTR_SPIN_STATE: Final = "spin_state"
 
-# Device info defaults
-DEVICE_INFO_SERVER = {
-    "manufacturer": "Lime Technology",
-    "model": "Unraid Server",
-}
+# Container attributes
+ATTR_CONTAINER_ID: Final = "container_id"
+ATTR_CONTAINER_IMAGE: Final = "container_image"
+ATTR_CONTAINER_STATUS: Final = "container_status"
+ATTR_CONTAINER_PORTS: Final = "container_ports"
 
-DEVICE_INFO_DOCKER = {
-    "manufacturer": "Docker",
-    "model": "Container Engine",
-}
+# VM attributes
+ATTR_VM_ID: Final = "vm_id"
+ATTR_VM_VCPUS: Final = "vm_vcpus"
+ATTR_VM_MEMORY: Final = "vm_memory"
 
-DEVICE_INFO_VM = {
-    "manufacturer": "Unraid",
-    "model": "Virtual Machine",
-}
+# UPS attributes
+ATTR_UPS_STATUS: Final = "ups_status"
+ATTR_UPS_MODEL: Final = "ups_model"
+
+# Network attributes
+ATTR_NETWORK_MAC: Final = "network_mac"
+ATTR_NETWORK_IP: Final = "network_ip"
+ATTR_NETWORK_SPEED: Final = "network_speed"
+
+# =============================================================================
+# Error Messages
+# =============================================================================
+ERROR_CANNOT_CONNECT: Final = "cannot_connect"
+ERROR_INVALID_AUTH: Final = "invalid_auth"
+ERROR_UNKNOWN: Final = "unknown"
+ERROR_TIMEOUT: Final = "timeout"
+ERROR_ALREADY_CONFIGURED: Final = "already_configured"
+ERROR_CONTROL_FAILED: Final = "control_failed"
+
+# =============================================================================
+# State Values (for consistent state comparisons)
+# =============================================================================
+# Array states
+STATE_ARRAY_STARTED: Final = "STARTED"
+STATE_ARRAY_STOPPED: Final = "STOPPED"
+
+# Container states
+STATE_CONTAINER_RUNNING: Final = "RUNNING"
+STATE_CONTAINER_PAUSED: Final = "PAUSED"
+STATE_CONTAINER_EXITED: Final = "EXITED"
+
+# VM states
+STATE_VM_RUNNING: Final = "RUNNING"
+STATE_VM_IDLE: Final = "IDLE"
+STATE_VM_PAUSED: Final = "PAUSED"
+STATE_VM_SHUTOFF: Final = "SHUTOFF"
+
+# Running states for VMs (states where VM is considered "on")
+VM_RUNNING_STATES: Final = frozenset({STATE_VM_RUNNING, STATE_VM_IDLE})
+
+# =============================================================================
+# Repair Issue IDs
+# =============================================================================
+REPAIR_AUTH_FAILED: Final = "auth_failed"
+REPAIR_CONNECTIVITY: Final = "connectivity_issue"
+
+# =============================================================================
+# Parallel Updates (one at a time per platform to avoid API overload)
+# =============================================================================
+PARALLEL_UPDATES: Final = 1

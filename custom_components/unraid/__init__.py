@@ -1,167 +1,224 @@
-"""The Unraid integration."""
+"""
+The Unraid integration.
+
+This integration connects Home Assistant to Unraid servers via GraphQL API.
+Provides monitoring and control for system metrics, storage, Docker, and VMs.
+"""
+
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.const import (
+    CONF_API_KEY,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_VERIFY_SSL,
+    Platform,
+)
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import issue_registry as ir
+
+from .api import UnraidAPIClient
+from .const import (
+    CONF_STORAGE_INTERVAL,
+    CONF_SYSTEM_INTERVAL,
+    DEFAULT_STORAGE_POLL_INTERVAL,
+    DEFAULT_SYSTEM_POLL_INTERVAL,
+    DOMAIN,
+    REPAIR_AUTH_FAILED,
+)
+from .coordinator import UnraidStorageCoordinator, UnraidSystemCoordinator
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
-# Import only what's needed for setup
-DOMAIN = "unraid"
-
-# Define platforms to load
-PLATFORMS = [
-    Platform.BINARY_SENSOR,
+PLATFORMS: list[Platform] = [
     Platform.SENSOR,
+    Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.BUTTON,
 ]
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Unraid integration."""
-    # This function is called when the integration is loaded via configuration.yaml
-    # We don't support configuration.yaml setup, so just return True
+
+@dataclass
+class UnraidRuntimeData:
+    """Runtime data for Unraid integration (stored in entry.runtime_data)."""
+
+    api_client: UnraidAPIClient
+    system_coordinator: UnraidSystemCoordinator
+    storage_coordinator: UnraidStorageCoordinator
+    server_info: dict
+
+
+# Type alias for config entries with runtime data
+type UnraidConfigEntry = ConfigEntry[UnraidRuntimeData]
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bool:
+    """Set up Unraid from a config entry."""
+    host = entry.data[CONF_HOST]
+    port = entry.data.get(CONF_PORT, 443)
+    api_key = entry.data[CONF_API_KEY]
+    verify_ssl = entry.data.get(CONF_VERIFY_SSL, True)
+
+    # Get polling intervals from options (or use defaults)
+    system_interval = entry.options.get(
+        CONF_SYSTEM_INTERVAL, DEFAULT_SYSTEM_POLL_INTERVAL
+    )
+    storage_interval = entry.options.get(
+        CONF_STORAGE_INTERVAL, DEFAULT_STORAGE_POLL_INTERVAL
+    )
+
+    # Create API client
+    api_client = UnraidAPIClient(
+        host=host,
+        port=port,
+        api_key=api_key,
+        verify_ssl=verify_ssl,
+    )
+
+    # Test connection and get server info
+    try:
+        await api_client.test_connection()
+        info = await api_client.query(
+            """
+            query SystemInfo {
+                info {
+                    system { uuid manufacturer model }
+                    baseboard { manufacturer model }
+                    os { hostname distro release kernel arch }
+                    versions { core { unraid api } }
+                }
+                registration { type state }
+            }
+            """
+        )
+        # Clear any previous auth repair issues on successful connection
+        ir.async_delete_issue(hass, DOMAIN, REPAIR_AUTH_FAILED)
+    except Exception as err:
+        await api_client.close()
+        error_str = str(err).lower()
+        # Check for authentication errors
+        if "401" in error_str or "403" in error_str or "unauthorized" in error_str:
+            # Create repair issue for auth failure
+            ir.async_create_issue(
+                hass,
+                DOMAIN,
+                REPAIR_AUTH_FAILED,
+                is_fixable=True,
+                is_persistent=True,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="auth_failed",
+                translation_placeholders={"host": host},
+            )
+            msg = f"Authentication failed for Unraid server {host}"
+            raise ConfigEntryAuthFailed(msg) from err
+        msg = f"Failed to connect to Unraid server: {err}"
+        raise ConfigEntryNotReady(msg) from err
+
+    # Extract server info for device registration
+    info_data = info.get("info", {})
+    system_data = info_data.get("system", {})
+    baseboard_data = info_data.get("baseboard", {})
+    os_data = info_data.get("os", {})
+    versions_data = info_data.get("versions", {}).get("core", {})
+    registration_data = info.get("registration", {})
+
+    # Use baseboard manufacturer/model if system is empty
+    manufacturer = (
+        system_data.get("manufacturer")
+        or baseboard_data.get("manufacturer")
+        or "Lime Technology"
+    )
+    model = system_data.get("model") or baseboard_data.get("model") or "Unraid Server"
+
+    server_name = os_data.get("hostname") or host
+    server_uuid = system_data.get("uuid")
+
+    # Build comprehensive server info for device registration
+    server_info = {
+        "uuid": server_uuid,
+        "name": server_name,
+        "manufacturer": manufacturer,
+        "model": model,
+        "sw_version": versions_data.get("unraid"),
+        "hw_version": os_data.get("kernel"),
+        "os_distro": os_data.get("distro"),
+        "os_release": os_data.get("release"),
+        "os_arch": os_data.get("arch"),
+        "api_version": versions_data.get("api"),
+        "license_type": registration_data.get("type"),
+    }
+
+    # Create coordinators
+    system_coordinator = UnraidSystemCoordinator(
+        hass=hass,
+        api_client=api_client,
+        server_name=server_name,
+        update_interval=system_interval,
+    )
+
+    storage_coordinator = UnraidStorageCoordinator(
+        hass=hass,
+        api_client=api_client,
+        server_name=server_name,
+        update_interval=storage_interval,
+    )
+
+    # Fetch initial data
+    await system_coordinator.async_config_entry_first_refresh()
+    await storage_coordinator.async_config_entry_first_refresh()
+
+    # Store runtime data in config entry (HA 2024.4+ pattern)
+    entry.runtime_data = UnraidRuntimeData(
+        api_client=api_client,
+        system_coordinator=system_coordinator,
+        storage_coordinator=storage_coordinator,
+        server_info=server_info,
+    )
+
+    # Forward setup to platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(_async_options_update_listener))
+
+    _LOGGER.info(
+        "Unraid integration setup complete for %s (system: %ds, storage: %ds)",
+        server_name,
+        system_interval,
+        storage_interval,
+    )
+
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Unraid from a config entry."""
-    # Import dependencies lazily to avoid blocking the event loop
-    from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
-    from homeassistant.exceptions import ConfigEntryNotReady
 
-    # Import local modules lazily
-    from .coordinator import UnraidDataUpdateCoordinator
-    from .unraid import UnraidAPI
-    from .api.logging_helper import LogManager
-    from . import services
-
-    # Create a log manager instance here to avoid module-level instantiation
-    log_manager = LogManager()
-    log_manager.configure()
-
-    # Set up data structures
-    hass.data.setdefault(DOMAIN, {})
-
-    try:
-        # Extract configuration
-        host = entry.data[CONF_HOST]
-        username = entry.data[CONF_USERNAME]
-        password = entry.data[CONF_PASSWORD]
-        port = entry.data.get(CONF_PORT, 22)
-
-        # Create API client
-        api = UnraidAPI(host, username, password, port)
-
-        # Create coordinator
-        coordinator = UnraidDataUpdateCoordinator(hass, api, entry)
-
-        # Clean up any duplicate entities before setting up new ones
-        from .migrations import async_cleanup_duplicate_entities
-        try:
-            duplicates_removed = await async_cleanup_duplicate_entities(hass, entry)
-            if duplicates_removed > 0:
-                _LOGGER.info("Cleaned up %d duplicate entities during setup", duplicates_removed)
-        except Exception as cleanup_err:
-            _LOGGER.warning("Failed to clean up duplicate entities: %s", cleanup_err)
-
-        # Get initial data
-        await coordinator.async_config_entry_first_refresh()
-
-        # Store coordinator in hass.data
-        hass.data[DOMAIN][entry.entry_id] = coordinator
-
-        # Set up platforms
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-        # Set up services
-        await services.async_setup_services(hass)
-
-        # Register update listener for options
-        entry.async_on_unload(entry.add_update_listener(update_listener))
-
-        return True
-
-    except Exception as err:
-        _LOGGER.error("Failed to set up Unraid integration: %s", err)
-        raise ConfigEntryNotReady from err
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bool:
     """Unload a config entry."""
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    # Clean up coordinator
-    if unload_ok and entry.entry_id in hass.data[DOMAIN]:
-        coordinator = hass.data[DOMAIN][entry.entry_id]
-        await coordinator.async_stop()
-        hass.data[DOMAIN].pop(entry.entry_id)
+    if unload_ok:
+        # Close API client
+        await entry.runtime_data.api_client.close()
+        _LOGGER.info("Unraid integration unloaded for entry %s", entry.title)
 
     return unload_ok
 
-async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle options update."""
-    # Reload the integration
+
+async def _async_options_update_listener(
+    hass: HomeAssistant, entry: UnraidConfigEntry
+) -> None:
+    """Handle options update - triggers full entry reload."""
+    _LOGGER.info(
+        "Options changed for %s, reloading integration",
+        entry.title,
+    )
+    # Reload the entry to apply new options
     await hass.config_entries.async_reload(entry.entry_id)
-
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old entry to new version.
-
-    This function handles migration of config entries from older versions to the current version.
-    It supports:
-    - Migration from version 1 to version 2
-    - Migration from no version (None) to version 2
-    - Migration from any lower version to the current version
-
-    Returns True if migration is successful, False otherwise.
-    """
-    from .const import MIGRATION_VERSION
-    from .migrations import async_migrate_with_rollback
-
-    _LOGGER.debug("Migrating from version %s.%s to %s.%s",
-                 entry.version, getattr(entry, 'minor_version', 0),
-                 MIGRATION_VERSION, 0)
-
-    # If the user has downgraded from a future version, we can't migrate
-    if entry.version is not None and entry.version > MIGRATION_VERSION:
-        _LOGGER.error(
-            "Cannot migrate from version %s to %s (downgrade not supported)",
-            entry.version, MIGRATION_VERSION
-        )
-        return False
-
-    # Handle migration from version 1 to version 2
-    if entry.version == 1:
-        try:
-            if await async_migrate_with_rollback(hass, entry):
-                # Update entry version after successful migration
-                hass.config_entries.async_update_entry(
-                    entry,
-                    version=MIGRATION_VERSION
-                )
-                _LOGGER.info("Successfully migrated entry %s from version 1 to %s",
-                            entry.entry_id, MIGRATION_VERSION)
-                return True
-        except Exception as err:
-            _LOGGER.error("Migration failed: %s", err)
-            return False
-
-    # Handle any entry with no version (None) or other versions
-    elif entry.version is None or entry.version < MIGRATION_VERSION:
-        _LOGGER.info("Migrating entry %s from version %s to %s",
-                    entry.entry_id, entry.version, MIGRATION_VERSION)
-
-        # Simply update the version without any data changes
-        # This is safe because we're not changing the data structure
-        hass.config_entries.async_update_entry(
-            entry,
-            version=MIGRATION_VERSION
-        )
-
-        _LOGGER.info("Migration to version %s successful", MIGRATION_VERSION)
-        return True
-
-    # If we get here, the entry is already at the current version
-    return True
