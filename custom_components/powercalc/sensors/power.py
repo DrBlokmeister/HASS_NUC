@@ -43,6 +43,7 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.typing import ConfigType, StateType
 
+from custom_components.powercalc.analytics.analytics import collect_analytics
 from custom_components.powercalc.common import SourceEntity
 from custom_components.powercalc.const import (
     ATTR_CALCULATION_MODE,
@@ -70,11 +71,14 @@ from custom_components.powercalc.const import (
     CONF_STANDBY_POWER,
     CONF_UNAVAILABLE_POWER,
     DATA_DISCOVERY_MANAGER,
+    DATA_POWER_PROFILES,
     DATA_STANDBY_POWER_SENSORS,
+    DATA_STRATEGIES,
     DEFAULT_POWER_SENSOR_PRECISION,
     DOMAIN,
     DUMMY_ENTITY_ID,
     OFF_STATES,
+    OFF_STATES_BY_DOMAIN,
     SIGNAL_POWER_SENSOR_STATE_CHANGE,
     CalculationStrategy,
 )
@@ -171,6 +175,11 @@ async def create_virtual_power_sensor(
         calculation_strategy_factory = PowerCalculatorStrategyFactory.get_instance(hass)
 
         standby_power, standby_power_on = _get_standby_power(sensor_config, power_profile)
+
+        # Collect runtime statistics, which we can publish daily
+        a = collect_analytics(hass, config_entry)
+        a.inc(DATA_STRATEGIES, strategy)
+        a.add(DATA_POWER_PROFILES, power_profile)
 
         _LOGGER.debug(
             "Creating power sensor (entity_id=%s entity_category=%s, sensor_name=%s strategy=%s manufacturer=%s model=%s unique_id=%s)",
@@ -356,6 +365,7 @@ class VirtualPowerSensor(SensorEntity, PowerSensor):
         self._calculation_strategy = calculation_strategy
         self._calculation_enabled_condition: Template | None = None
         self._source_entity = source_entity
+        self._off_states: set[str] = OFF_STATES_BY_DOMAIN.get(source_entity.domain, set()) | OFF_STATES
         self._attr_name = name
         self._power: Decimal | None = None
         self._standby_power = standby_power
@@ -594,7 +604,7 @@ class VirtualPowerSensor(SensorEntity, PowerSensor):
 
         # Handle standby power
         standby_power = None
-        if entity_state.state in OFF_STATES or not await self.is_calculation_enabled(entity_state):
+        if entity_state.state in self._off_states or not await self.is_calculation_enabled(entity_state):
             if isinstance(self._strategy_instance, PlaybookStrategy):
                 await self._strategy_instance.stop_playbook()
             standby_power = await self.calculate_standby_power(entity_state)

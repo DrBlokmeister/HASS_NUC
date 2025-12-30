@@ -15,6 +15,7 @@ from homeassistant.components.utility_meter.sensor import UtilityMeterSensor
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.entity import async_generate_entity_id
 import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.typing import StateType
 
@@ -29,7 +30,7 @@ from custom_components.powercalc.const import (
     DEFAULT_ENERGY_SENSOR_PRECISION,
     DOMAIN,
 )
-from custom_components.powercalc.select import SIGNAL_CREATE_SELECT_ENTITIES
+from custom_components.powercalc.select import DATA_PENDING_SELECT_ENTITIES, SIGNAL_CREATE_SELECT_ENTITIES
 
 from .abstract import BaseEntity
 from .energy import EnergySensor, RealEnergySensor
@@ -128,20 +129,19 @@ async def create_meters_for_type(
 
     # Create tariff-specific utility meters
     if tariffs:
-        tariff_sensors.extend(
-            await create_tariff_meters(
-                hass,
-                energy_sensor,
-                entity_id,
-                name,
-                sensor_config,
-                config_entry,
-                meter_type,
-                unique_id,
-                tariffs,
-            ),
+        new_tariff_sensors = await create_tariff_meters(
+            hass,
+            energy_sensor,
+            entity_id,
+            name,
+            sensor_config,
+            config_entry,
+            meter_type,
+            unique_id,
+            tariffs,
         )
-        utility_meters.extend(tariff_sensors)
+        tariff_sensors.extend(new_tariff_sensors)
+        utility_meters.extend(new_tariff_sensors)
 
     hass.data[DATA_UTILITY][entity_id] = {DATA_TARIFF_SENSORS: tariff_sensors}
     return utility_meters
@@ -199,10 +199,15 @@ async def create_tariff_select(
         tariffs,
         unique_id=select_unique_id,
     )
+    tariff_select.entity_id = async_generate_entity_id("select.{}", name, hass=hass)
+
+    key = config_entry.entry_id if config_entry else ""
+    pending = hass.data[DOMAIN].setdefault(DATA_PENDING_SELECT_ENTITIES, {}).setdefault(key, [])
+    pending.append(tariff_select)
 
     async_dispatcher_send(
         hass,
-        SIGNAL_CREATE_SELECT_ENTITIES.format(config_entry.entry_id if config_entry else ""),
+        SIGNAL_CREATE_SELECT_ENTITIES.format(key),
         [tariff_select],
     )
 

@@ -38,6 +38,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 import voluptuous as vol
 
 from . import DATA_GROUP_ENTITIES
+from .analytics.analytics import collect_analytics
 from .common import (
     SourceEntity,
     create_source_entity,
@@ -105,9 +106,13 @@ from .const import (
     CONF_VALUE_TEMPLATE,
     CONF_VARIABLES,
     CONF_WLED,
+    DATA_CONFIG_TYPES,
     DATA_CONFIGURED_ENTITIES,
     DATA_DOMAIN_ENTITIES,
     DATA_ENTITIES,
+    DATA_HAS_GROUP_INCLUDE,
+    DATA_SENSOR_TYPES,
+    DATA_SOURCE_DOMAINS,
     DATA_USED_UNIQUE_IDS,
     DISCOVERY_TYPE,
     DOMAIN,
@@ -679,7 +684,12 @@ async def setup_individual_sensors(
 ) -> EntitiesBucket:
     """Set up an individual sensor."""
     merged_sensor_config = get_merged_sensor_configuration(global_config, config)
-    sensor_type = config.get(CONF_SENSOR_TYPE)
+    sensor_type = SensorType(str(config.get(CONF_SENSOR_TYPE, SensorType.VIRTUAL_POWER)))
+
+    # Collect runtime analytics data, for publishing later on.
+    a = collect_analytics(hass, config_entry)
+    a.inc(DATA_SENSOR_TYPES, sensor_type)
+    a.inc(DATA_CONFIG_TYPES, "yaml" if context.is_yaml else "gui")
 
     if sensor_type == SensorType.GROUP:
         return EntitiesBucket(new=await create_group_sensors(hass, merged_sensor_config, config_entry))
@@ -736,6 +746,8 @@ async def add_discovered_entities(
 ) -> None:
     """Add discovered entities based on include configuration."""
     if CONF_INCLUDE in config:
+        collect_analytics(hass).set_flag(DATA_HAS_GROUP_INCLUDE)
+
         include_config: dict = cast(dict, config[CONF_INCLUDE])
         include_non_powercalc: bool = include_config.get(CONF_INCLUDE_NON_POWERCALC_SENSORS, True)
         entity_filter = create_composite_filter(include_config, hass, FilterOperator.AND)
@@ -814,6 +826,7 @@ async def create_individual_sensors(
     """Create entities (power, energy, utility meters) which track the appliance."""
 
     source_entity = await create_source_entity(sensor_config[CONF_ENTITY_ID], hass)
+
     if (used_unique_ids := hass.data[DOMAIN].get(DATA_USED_UNIQUE_IDS)) is None:
         used_unique_ids = hass.data[DOMAIN][DATA_USED_UNIQUE_IDS] = []  # pragma: no cover
 
@@ -854,6 +867,8 @@ async def create_individual_sensors(
     unique_id = sensor_config.get(CONF_UNIQUE_ID) or source_entity.unique_id
     if unique_id:
         used_unique_ids.append(unique_id)
+
+    collect_analytics(hass, config_entry).inc(DATA_SOURCE_DOMAINS, source_entity.domain)
 
     return EntitiesBucket(new=entities_to_add, existing=[])
 

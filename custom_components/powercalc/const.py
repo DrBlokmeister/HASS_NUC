@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
+from homeassistant.components import cover, device_tracker
 from homeassistant.components.utility_meter.const import DAILY, MONTHLY, WEEKLY
 from homeassistant.const import (
     STATE_CLOSED,
@@ -27,6 +29,16 @@ DATA_ENTITIES = "entities"
 DATA_GROUP_ENTITIES = "group_entities"
 DATA_USED_UNIQUE_IDS = "used_unique_ids"
 DATA_STANDBY_POWER_SENSORS = "standby_power_sensors"
+DATA_ANALYTICS = "analytics"
+DATA_ANALYTICS_SEEN_ENTRIES = "analytics_seen_entries"
+DATA_POWER_PROFILES: Literal["power_profiles"] = "power_profiles"
+DATA_SENSOR_TYPES: Literal["sensor_types"] = "sensor_types"
+DATA_CONFIG_TYPES: Literal["config_types"] = "config_types"
+DATA_SOURCE_DOMAINS: Literal["source_domains"] = "source_domains"
+DATA_GROUP_TYPES: Literal["group_types"] = "group_types"
+DATA_STRATEGIES: Literal["strategies"] = "strategies"
+DATA_GROUP_SIZES: Literal["group_sizes"] = "group_sizes"
+DATA_HAS_GROUP_INCLUDE: Literal["has_group_include"] = "has_group_include"
 
 ENTRY_DATA_ENERGY_ENTITY = "_energy_entity"
 ENTRY_DATA_POWER_ENTITY = "_power_entity"
@@ -36,6 +48,7 @@ DUMMY_ENTITY_ID = "sensor.dummy"
 
 CONF_ALL = "all"
 CONF_AND = "and"
+CONF_ENABLE_ANALYTICS = "enable_analytics"
 CONF_AREA = "area"
 CONF_AUTOSTART = "autostart"
 CONF_AVAILABILITY_ENTITY = "availability_entity"
@@ -197,6 +210,7 @@ DISCOVERY_POWER_PROFILES = "power_profiles"
 DISCOVERY_TYPE = "discovery_type"
 
 LIBRARY_URL = "https://library.powercalc.nl"
+API_URL = "https://api.powercalc.nl"
 
 MANUFACTURER_WLED = "WLED"
 
@@ -223,7 +237,11 @@ SERVICE_RELOAD = "reload"
 
 SIGNAL_POWER_SENSOR_STATE_CHANGE = "powercalc_power_sensor_state_change"
 
-OFF_STATES = (STATE_OFF, STATE_NOT_HOME, STATE_STANDBY, STATE_UNAVAILABLE, STATE_OPEN, STATE_CLOSED)
+OFF_STATES = {STATE_OFF, STATE_STANDBY, STATE_UNAVAILABLE}
+OFF_STATES_BY_DOMAIN: dict[str, set[str]] = {
+    cover.DOMAIN: {STATE_CLOSED, STATE_OPEN},
+    device_tracker.DOMAIN: {STATE_NOT_HOME},
+}
 
 
 class CalculationStrategy(StrEnum):
