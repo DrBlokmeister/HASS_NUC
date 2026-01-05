@@ -53,8 +53,14 @@ class UnraidButtonEntity(ButtonEntity):
             "name": server_name,
             "manufacturer": server_info.get("manufacturer") if server_info else None,
             "model": server_info.get("model") if server_info else None,
+            "serial_number": (
+                server_info.get("serial_number") if server_info else None
+            ),
             "sw_version": server_info.get("sw_version") if server_info else None,
             "hw_version": server_info.get("hw_version") if server_info else None,
+            "configuration_url": (
+                server_info.get("configuration_url") if server_info else None
+            ),
         }
 
 
@@ -307,6 +313,7 @@ class DiskSpinUpButton(UnraidButtonEntity):
 
     _attr_translation_key = "disk_spin_up"
     _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
@@ -348,6 +355,7 @@ class DiskSpinDownButton(UnraidButtonEntity):
 
     _attr_translation_key = "disk_spin_down"
     _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
