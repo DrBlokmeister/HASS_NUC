@@ -130,7 +130,7 @@ cards:
             type: sensor
             detail: 2
             entity: sensor.living_room_aqm_humidity
-            name: Humidity LR
+            name: Living Room
             icon: mdi:water-percent
             hours_to_show: 12
             card_mod:
@@ -147,7 +147,7 @@ cards:
             type: sensor
             detail: 2
             entity: sensor.study_aqm_humidity
-            name: Humidity Study
+            name: Study
             icon: mdi:water-percent
             hours_to_show: 12
             card_mod:
@@ -164,7 +164,7 @@ cards:
             type: sensor
             detail: 2
             entity: sensor.shed_aqm_humidity
-            name: Humidity Outside
+            name: Outside
             icon: mdi:water-percent
             hours_to_show: 12
             card_mod:
@@ -241,13 +241,155 @@ cards:
             entity: sensor.date_time
             color: black
         card_mod:
-          style: |
-            ha-card .title p {
-              font-size: 14px;
-              padding: 0px !important;
-            }
+          style:
+            .: |
+              /* Subtitle text */
+              .content.subtitle p {
+                color: black !important;
+                font-weight: 700 !important;
+                font-size: 14px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              /* Subtitle icon */
+              .content.subtitle ha-icon {
+                color: black !important;
+                --mdc-icon-color: black !important;
+              }
+              /* Helps if the theme is being "helpful" */
+              ha-card {
+                --primary-text-color: black;
+                --secondary-text-color: black;
+              }
+            hui-heading-badge:
+              $: |
+                /* The badge lives in here (shadow DOM) */
+                :host {
+                  --primary-text-color: black;
+                  --secondary-text-color: black;
+                }
+                /* Brute force common badge internals */
+                ha-badge, ha-badge * {
+                  font-weight: 700 !important;
+                  color: black !important;
+                }
+                ha-state-label, ha-state-label * {
+                  color: black !important;
+                }
 
 badges:
+  # Sander
+  - type: custom:mod-card
+    card:
+      type: custom:mushroom-template-badge
+      entity: person.sander_blok
+      label: Sander
+      content: >
+        {% set s = states('person.sander_blok') | lower %}
+        {% if s == 'home' %}
+          Home
+        {% elif s in ['not_home', 'away', 'unknown', 'unavailable'] %}
+          Away
+        {% else %}
+          {{ states('person.sander_blok') }}
+        {% endif %}
+      icon: >
+        {% set s = states('person.sander_blok') | lower %}
+        {% if s == 'home' %}
+          mdi:home
+        {% elif 'parent' in s %}
+          mdi:home-heart
+        {% elif 'gym' in s %}
+          mdi:dumbbell
+        {% elif 'hackalot' in s %}
+          mdi:laptop
+        {% else %}
+          mdi:map-marker-off
+        {% endif %}
+      color: black
+      tap_action:
+        action: more-info
+    card_mod:
+      style:
+        mushroom-template-badge:
+          $: |
+            .badge {
+              --divider-color: black;
+              --ha-card-border-width: 2px;
+              --mdc-icon-size: 32px !important;
+              .info {
+                .label {
+                  font-size: 12px;
+                  --secondary-text-color: black;
+                }
+                .content {
+                  font-size: 14px;
+                  color: black;
+                }
+              }
+            }
+        .: |
+          ha-card {
+            background: none;
+            border: none;
+          }
+
+  # Tamara
+  - type: custom:mod-card
+    card:
+      type: custom:mushroom-template-badge
+      entity: person.tamara
+      label: Tamara
+      content: >
+        {% set s = states('person.tamara') | lower %}
+        {% if s == 'home' %}
+          Home
+        {% elif s in ['not_home', 'away', 'unknown', 'unavailable'] %}
+          Away
+        {% else %}
+          {{ states('person.tamara') }}
+        {% endif %}
+      icon: >
+        {% set s = states('person.tamara') | lower %}
+        {% if s == 'home' %}
+          mdi:home
+        {% elif 'parent' in s %}
+          mdi:home-heart
+        {% elif 'gym' in s %}
+          mdi:dumbbell
+        {% elif 'hackalot' in s %}
+          mdi:laptop
+        {% else %}
+          mdi:map-marker-off
+        {% endif %}
+      color: black
+      tap_action:
+        action: more-info
+    card_mod:
+      style:
+        mushroom-template-badge:
+          $: |
+            .badge {
+              --divider-color: black;
+              --ha-card-border-width: 2px;
+              --mdc-icon-size: 32px !important;
+              .info {
+                .label {
+                  font-size: 12px;
+                  --secondary-text-color: black;
+                }
+                .content {
+                  font-size: 14px;
+                  color: black;
+                }
+              }
+            }
+        .: |
+          ha-card {
+            background: none;
+            border: none;
+          }
+
   # Back door
   - type: custom:mod-card
     card:
@@ -261,7 +403,7 @@ badges:
         {% else %}
           mdi:door-closed
         {% endif %}
-      color: grey
+      color: black
       tap_action:
         action: more-info
     card_mod:
@@ -301,7 +443,7 @@ badges:
         {% else %}
           mdi:door-closed
         {% endif %}
-      color: grey
+      color: black
       tap_action:
         action: more-info
     card_mod:
@@ -341,7 +483,7 @@ badges:
         {% else %}
           mdi:door-closed
         {% endif %}
-      color: grey
+      color: black
       tap_action:
         action: more-info
     card_mod:
@@ -382,7 +524,7 @@ badges:
         {% else %}
           mdi:washing-machine
         {% endif %}
-      color: grey
+      color: black
       tap_action:
         action: more-info
     card_mod:
