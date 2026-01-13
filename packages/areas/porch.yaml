@@ -31,6 +31,7 @@ automation:
     trigger:
       - platform: sun
         event: sunset
+        offset: "-00:15:00"
         id: "turn_on"
       - platform: time
         at: "22:45"
@@ -40,6 +41,8 @@ automation:
           - conditions:
               - condition: template
                 value_template: "{{ trigger.id == 'turn_on' }}"
+              - condition: time
+                before: "22:45"
             sequence:
               - service: light.turn_on
                 data:
@@ -64,6 +67,38 @@ automation:
       # - service: light.turn_off
       #   data:
       #     entity_id: light.shelly_porch
+
+  - alias: "[porch|light] Turn on at 06:00 if before sunrise, off 10 min after sunrise"
+    id: yaml_automation_porch_light_turn_on_0600_if_before_sunrise_off_10_min_after_sunrise
+    description: "Turns porch light on at 06:00 only if it's still dark; turns it off 10 minutes after sunrise."
+    mode: single
+    trigger:
+      - platform: time
+        at: "06:00:00"
+        id: turn_on
+      - platform: sun
+        event: sunrise
+        offset: "00:10:00"
+        id: turn_off
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_on' }}"
+              - condition: sun
+                before: sunrise
+            sequence:
+              - service: light.turn_on
+                target:
+                  entity_id: light.shelly_porch
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'turn_off' }}"
+            sequence:
+              - service: light.turn_off
+                target:
+                  entity_id: light.shelly_porch
+
 ################
 #    SCENES    #
 ################
