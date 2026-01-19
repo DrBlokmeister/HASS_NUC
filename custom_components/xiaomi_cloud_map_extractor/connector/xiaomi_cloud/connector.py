@@ -10,12 +10,12 @@ import time
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional, Self, Unpack
+from typing import Optional, Self, Unpack, Any
 from urllib.parse import parse_qs, urlparse
 
 import tzlocal
 from aiohttp import ClientSession, ClientResponse
-from aiohttp.client import _RequestOptions
+from aiohttp.client import _RequestOptions, ClientTimeout
 from aiohttp.typedefs import StrOrURL
 from yarl import URL
 
@@ -28,14 +28,15 @@ from ..utils.exceptions import (
     FailedConnectionException,
     CaptchaRequiredException
 )
+from ..utils.dict_operations import path_extractor
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
 class XiaomiCloudConnectorConfig:
-    username: str
-    password: str
+    username: str | None
+    password: str | None
     server: str
     user_id: str
     c_user_id: str
@@ -45,11 +46,13 @@ class XiaomiCloudConnectorConfig:
     device_id: str
 
     @classmethod
-    def from_dict(cls, data: dict[str,str] | XiaomiCloudConnectorConfig) -> XiaomiCloudConnectorConfig:
-        _LOGGER.debug("Restoring connector config from data: %s", data)
+    def from_dict(
+        cls, data: dict[str, str] | XiaomiCloudConnectorConfig
+    ) -> XiaomiCloudConnectorConfig:
+        _LOGGER.debug("Restoring connector config...")
         if isinstance(data, XiaomiCloudConnectorConfig):
             return data
-        expiration = data['expiration']
+        expiration = data["expiration"]
         if expiration is not None:
             expiration = datetime.datetime.fromisoformat(expiration)
         return cls(**{**data, "expiration": expiration})
@@ -119,24 +122,25 @@ class XiaomiCloudSessionData:
 
 # noinspection PyBroadException
 class XiaomiCloudConnector:
-    _username: str
-    _password: str
+    _username: str | None
+    _password: str | None
+    _long_polling_url: str | None
     _session_data: XiaomiCloudSessionData | None
     _locale: str
     _timezone: str
     _sign: str | None
     server: str | None
 
-    def __init__(self: Self, session_creator: Callable[[], ClientSession], username: str, password: str,
-                 server: str | None = None):
-        self._username = username
-        self._password = password
+    def __init__(self: Self, session_creator: Callable[[], ClientSession], server: str | None = None):
+        self._username = None
+        self._password = None
         self._session_creator = session_creator
         self._locale = locale.getdefaultlocale()[0] or "en_GB"
         timezone = datetime.datetime.now(tzlocal.get_localzone()).strftime('%z')
         self._timezone = f"GMT{timezone[:-2]}:{timezone[-2:]}"
         self.server = server
         self._session_data = None
+        self._long_polling_url = None
         self.device_id = generate_device_id()
 
     async def create_session(self: Self) -> None:
@@ -154,7 +158,21 @@ class XiaomiCloudConnector:
 
         self._session_data = XiaomiCloudSessionData(session, headers)
 
-    async def _login_step_1(self: Self) -> str:
+    async def login_with_credentials(self: Self, username: str, password: str) -> str | None:
+        self._username = username
+        self._password = password
+        _LOGGER.debug("Logging in...")
+        await self.create_session()
+        sign = await self._login_with_credentials_step_1()
+        if not sign.startswith('http'):
+            location = await self._login_with_credentials_step_2(sign)
+        else:
+            location = sign
+        await self._login_with_credentials_step_3(location)
+        _LOGGER.debug("Logged in.")
+        return self._session_data.serviceToken
+
+    async def _login_with_credentials_step_1(self: Self) -> str:
         _LOGGER.debug("Xiaomi cloud login - step 1")
         url = "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true"
         cookies = {
@@ -167,7 +185,7 @@ class XiaomiCloudConnector:
             response_text = await response.text()
             _LOGGER.debug("Xiaomi cloud login - step 1 content: %s", response_text)
             response_json = to_json(response_text)
-        except:
+        except Exception:
             raise FailedLoginException()
 
         successful = response.status == 200 and "_sign" in response_json
@@ -179,7 +197,7 @@ class XiaomiCloudConnector:
         _LOGGER.debug("Xiaomi cloud login - step 1 sign missing")
         return ""
 
-    async def _login_step_2(self: Self, sign: str, captcha_code: str | None = None) -> str:
+    async def _login_with_credentials_step_2(self: Self, sign: str, captcha_code: str | None = None) -> str:
         _LOGGER.debug("Xiaomi cloud login - step 2")
         url = "https://account.xiaomi.com/pass/serviceLoginAuth2"
         params = {
@@ -199,7 +217,7 @@ class XiaomiCloudConnector:
             response_text = await response.text()
             _LOGGER.debug("Xiaomi cloud login - step 2 content: %s", response_text)
             response_json = to_json(response_text)
-        except:
+        except Exception:
             raise InvalidCredentialsException()
         if response.status == 200:
             if "ssecurity" in response_json:
@@ -228,37 +246,105 @@ class XiaomiCloudConnector:
                     raise CaptchaRequiredException(captcha_url, captcha_data)
         raise InvalidCredentialsException()
 
-    async def _login_step_3(self: Self, location: str) -> None:
+    async def _login_with_credentials_step_3(self: Self, location: str) -> None:
         _LOGGER.debug("Xiaomi cloud login - step 3 (location: %s)", location)
         try:
             response = await self._session_data.get(location)
             _LOGGER.debug("Xiaomi cloud login - step 3 status: %s", response.status)
             response_text = await response.text()
             _LOGGER.debug("Xiaomi cloud login - step 3 content: %s", response_text)
-        except:
+        except Exception:
             raise InvalidCredentialsException()
         if response.status == 200 and "serviceToken" in response.cookies:
             self._session_data.serviceToken = response.cookies.get("serviceToken").value
         else:
             raise InvalidCredentialsException()
 
-    async def login(self: Self) -> str | None:
-        _LOGGER.debug("Logging in...")
+    async def login_with_qr_get_code(self: Self) -> tuple[bytes, str]:
         await self.create_session()
-        sign = await self._login_step_1()
-        if not sign.startswith('http'):
-            location = await self._login_step_2(sign)
-        else:
-            location = sign
-        await self._login_step_3(location)
-        _LOGGER.debug("Logged in.")
-        return self._session_data.serviceToken
+
+        resp = await self._session_data.get("https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true")
+        if resp.status != 200:
+            _LOGGER.debug("Step 1 of QR login failed (code %s): %s", resp.status, await resp.text())
+            raise FailedLoginException("Step 1 of QR login failed")
+
+        # step 2
+        json_resp = to_json(await resp.text())
+        location = json_resp["location"]
+        location_parsed = dict(URL(location).query)
+
+        data = {
+            "_qrsize": "480",
+            "qs": json_resp["qs"],
+            "bizDeviceType": "",
+            "callback": json_resp["callback"],
+            "_json": "true",
+            "theme": "",
+            "sid": "xiaomiio",
+            "needTheme": "false",
+            "showActiveX": "false",
+            "serviceParam": location_parsed["serviceParam"],
+            "_local": "zh_CN",
+            "_sign": json_resp["_sign"],
+            "_dc": str(int(time.time() * 1000)),
+        }
+        url = URL("https://account.xiaomi.com/longPolling/loginUrl").with_query(data)
+        resp = await self._session_data.get(url)
+
+        if resp.status != 200:
+            _LOGGER.debug("Xiaomi cloud qr login - Failed to obtain the QR code URL (code %s): %s", resp.status, await resp.text())
+            raise FailedLoginException('Failed to obtain the QR code URL')
+
+        json_resp = to_json(await resp.text())
+        if json_resp["code"] != 0:
+            _LOGGER.debug("Xiaomi cloud qr login - QR code unavailable (code %s): %s", json_resp['code'], json_resp['desc'])
+            raise FailedLoginException("QR code unavailable")
+
+        _LOGGER.debug("Xiaomi cloud qr login - JSON response: %s", json_resp)
+        qr_response = await self._session_data.get(json_resp["qr"])
+        qr_data = await qr_response.read()
+        self._long_polling_url = json_resp["lp"]
+
+        return qr_data, json_resp["loginUrl"]
+
+    async def login_with_qr_wait_for_completion(self: Self) -> None:
+        try:
+            resp = await self._session_data.get(self._long_polling_url,
+                                                timeout=ClientTimeout(total=60),
+                                                headers={'Connection': 'keep-alive'})
+        except asyncio.TimeoutError:
+            _LOGGER.debug("Xiaomi cloud qr login - Timeout, please try again")
+            raise FailedLoginException("Timeout, please try again")
+        if resp.status != 200:
+            _LOGGER.debug("Xiaomi cloud qr login - Long polling failed (code %s): %s", resp.status, await resp.text())
+            raise FailedLoginException("Long polling failed, please try again")
+
+        json_resp = to_json(await resp.text())
+        max_age = int(resp.cookies.get("userId").get("max-age"))
+
+        if json_resp['code'] != 0:
+            _LOGGER.debug("Xiaomi cloud qr login - Long polling succeeded, but returned error %s: %s", json_resp['code'], json_resp['desc'])
+            raise FailedLoginException("Long polling succeeded, but returned error")
+
+        resp = await self._session_data.get(json_resp["location"])
+        if resp.status != 200:
+            _LOGGER.debug("Xiaomi cloud qr login - Failed to obtain last jump position %s: %s", resp.status, await resp.text())
+            raise FailedLoginException("Failed to obtain last jump position")
+
+        _LOGGER.debug("Xiaomi cloud qr login - JSON response polling: %s", json_resp)
+
+        self._session_data.userId = json_resp["userId"]
+        self._session_data.ssecurity = json_resp["ssecurity"]
+
+        self._session_data.serviceToken = resp.cookies.get("serviceToken").value
+        self._session_data.expiration = datetime.datetime.now() + datetime.timedelta(seconds=max_age)
+        _LOGGER.debug("Xiaomi cloud qr login - session data: %s", self._session_data)
 
     async def continue_login_with_captcha(self: Self, captcha_code: str) -> str | None:
         _LOGGER.debug("Continuing login with captcha entered.")
 
-        location = await self._login_step_2(self._sign, captcha_code)
-        await self._login_step_3(location)
+        location = await self._login_with_credentials_step_2(self._sign, captcha_code)
+        await self._login_with_credentials_step_3(location)
 
         _LOGGER.debug("Logged in.")
         return self._session_data.serviceToken
@@ -468,7 +554,7 @@ class XiaomiCloudConnector:
             service_token = sts_cookies.get("serviceToken")
             if service_token:
                 self._session_data.serviceToken = service_token.value
-        except Exception:
+        except BaseException:
             pass
         found = bool(self._session_data.serviceToken)
         text = await r.text()
@@ -483,13 +569,23 @@ class XiaomiCloudConnector:
         # self.install_service_token_cookies(self._serviceToken)  # Method not implemented
 
         # Update ids from cookies if available
-        user_id_cookie = self._session_data.session.cookie_jar.filter_cookies("https://account.xiaomi.com").get("userId") or \
-                         self._session_data.session.cookie_jar.filter_cookies("https://sts.api.io.mi.com").get("userId")
+        user_id_cookie = self._session_data.session.cookie_jar.filter_cookies(
+            "https://account.xiaomi.com"
+        ).get("userId") or self._session_data.session.cookie_jar.filter_cookies(
+            "https://sts.api.io.mi.com"
+        ).get(
+            "userId"
+        )
         if user_id_cookie:
             self._session_data.userId = user_id_cookie.value
 
-        cuserId_cookie = self._session_data.session.cookie_jar.filter_cookies("https://account.xiaomi.com").get("cUserId") or \
-                         self._session_data.session.cookie_jar.filter_cookies("https://sts.api.io.mi.com").get("cUserId")
+        cuserId_cookie = self._session_data.session.cookie_jar.filter_cookies(
+            "https://account.xiaomi.com"
+        ).get("cUserId") or self._session_data.session.cookie_jar.filter_cookies(
+            "https://sts.api.io.mi.com"
+        ).get(
+            "cUserId"
+        )
         if cuserId_cookie:
             self._session_data.cUserId = cuserId_cookie.value
 
@@ -526,7 +622,7 @@ class XiaomiCloudConnector:
             try:
                 _LOGGER.debug("Downloading raw map from \"%s\"...", map_url)
                 response = await self._session_data.session.get(map_url)
-            except:
+            except Exception:
                 _LOGGER.debug("Downloading the map failed.")
                 return None
             if response.status == 200:
@@ -547,18 +643,21 @@ class XiaomiCloudConnector:
         }
 
         homes = []
-
-        homes_response = await self.execute_api_call_encrypted(url, params)
+        try:
+            homes_response = await self.execute_api_call_encrypted(url, params)
+        except TimeoutError:
+            homes_response = None
         if homes_response is None:
             return homes
-        if homelist := homes_response["result"].get("homelist", None):
-            homes.extend([XiaomiCloudHome(int(home["id"]), home["uid"]) for home in homelist])
-        if homelist := homes_response["result"].get("share_home_list", None):
-            homes.extend([XiaomiCloudHome(int(home["id"]), home["uid"]) for home in homelist])
+        if homes_list := path_extractor(homes_response, "result.homelist"):
+            homes.extend([XiaomiCloudHome(int(home["id"]), home["uid"]) for home in homes_list])
+        if homes_list := path_extractor(homes_response, "result.share_home_list"):
+            homes.extend([XiaomiCloudHome(int(home["id"]), home["uid"]) for home in homes_list])
         return homes
 
-    async def _get_devices_from_home(self: Self, server: str, home_id: int, owner_id: int) -> list[
-        XiaomiCloudDeviceInfo]:
+    async def _get_devices_from_home(
+        self: Self, server: str, home_id: int, owner_id: int
+    ) -> list[XiaomiCloudDeviceInfo]:
         url = self.get_api_url(server) + "/v2/home/home_device_list"
         params = {
             "data": json.dumps(
@@ -571,7 +670,11 @@ class XiaomiCloudConnector:
                 }
             )
         }
-        if (response := await self.execute_api_call_encrypted(url, params)) is None:
+        try:
+            if (response := await self.execute_api_call_encrypted(url, params)) is None:
+                return []
+        except FailedConnectionException | TimeoutError as e:
+            _LOGGER.error("Failed to get devices from home: %s", e)
             return []
 
         if (raw_devices := response["result"]["device_info"]) is None:
@@ -604,19 +707,19 @@ class XiaomiCloudConnector:
         device_lists = await asyncio.gather(*device_coro_list)
         return [device for device_list in device_lists for device in device_list]
 
-    async def get_device_details(self: Self, token: str, server: Optional[str] = None) -> XiaomiCloudDeviceInfo | None:
+    async def get_device_details(self: Self, device_id: str, server: Optional[str] = None) -> XiaomiCloudDeviceInfo | None:
         devices = await self.get_devices(server)
-        matching_token = filter(lambda device: device.token == token, devices)
-        return next(matching_token, None)
+        matching_device = filter(lambda device: device.device_id == device_id, devices)
+        return next(matching_device, None)
 
-    async def get_other_info(self: Self, device_id: str, method: str, parameters: dict) -> any:
+    async def get_other_info(self: Self, device_id: str, method: str, parameters: dict) -> Any:
         url = self.get_api_url('sg') + "/v2/home/rpc/" + device_id
         params = {
             "data": json.dumps({"method": method, "params": parameters}, separators=(",", ":"))
         }
         return await self.execute_api_call_encrypted(url, params)
 
-    async def execute_api_call_encrypted(self: Self, url: str, params: dict[str, str]) -> any:
+    async def execute_api_call_encrypted(self: Self, url: str, params: dict[str, str]) -> Any:
         headers = {
             "Accept-Encoding": "identity",
             "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
@@ -643,8 +746,10 @@ class XiaomiCloudConnector:
         fields = generate_enc_params(url, "POST", signed_nonce, nonce, params, self._session_data.ssecurity)
 
         try:
+            _LOGGER.debug("Request URL: %s", url)
             response = await self._session_data.post(url, headers=headers, cookies=cookies, params=fields)
             response_text = await response.text()
+            _LOGGER.debug("API response: %s", response_text)
         except Exception as e:
             raise FailedConnectionException(e)
         if response.status == 200:
@@ -680,9 +785,9 @@ class XiaomiCloudConnector:
     @staticmethod
     async def from_config(config: XiaomiCloudConnectorConfig, session_creator: Callable[[], ClientSession]):
         connector = XiaomiCloudConnector(session_creator,
-                                         config.username,
-                                         config.password,
                                          server=config.server)
+        connector._username = config.username
+        connector._password = config.password
         connector.device_id = config.device_id
 
         await connector.create_session()

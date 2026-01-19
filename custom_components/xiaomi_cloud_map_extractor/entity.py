@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Self, Any
 
 from homeassistant.const import (
     CONF_HOST,
@@ -11,6 +11,7 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo, CONNECTION_NETWORK_MAC
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from vacuum_map_parser_base.map_data import MapData
 
 from .connector.model import XiaomiCloudMapExtractorData
 from .connector.vacuums.base.model import VacuumApi
@@ -21,6 +22,7 @@ from .types import XiaomiCloudMapExtractorConfigEntry
 
 class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDataUpdateCoordinator]):
     _attr_has_entity_name = True
+    _entity_component_unrecorded_attributes = frozenset({"path", "zones", "walls", "obstacles", "areas", "calibration_points", "rooms"})
     _host: str
     _token: str
     _mac: str
@@ -30,11 +32,14 @@ class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDat
     _device_id: str
     _server: str
     _used_map_api: VacuumApi
+    _attr_device_info: DeviceInfo
 
     def __init__(
             self: Self,
             coordinator: XiaomiCloudMapExtractorDataUpdateCoordinator,
-            config_entry: XiaomiCloudMapExtractorConfigEntry
+            config_entry: XiaomiCloudMapExtractorConfigEntry,
+            domain: str,
+            key: str,
     ) -> None:
         """Initialize."""
         super().__init__(coordinator)
@@ -55,22 +60,23 @@ class XiaomiCloudMapExtractorEntity(CoordinatorEntity[XiaomiCloudMapExtractorDat
             name=self._name,
             model=self._model,
         )
-        self._attr_unique_id = f"{self._device_id}"
+        self._attr_unique_id = f"{self._device_id}_{domain}_{key}"
 
     def _data(self: Self) -> XiaomiCloudMapExtractorData | None:
         return self.coordinator.data
 
+    def _map_data(self: Self) -> MapData | None:
+        if (data := self._data()) is None:
+            return None
+        return data.map_data
+
     @property
-    def extra_state_attributes(self: Self) -> dict[str, any]:
-        data = self._data()
-        if data is None:
+    def extra_state_attributes(self: Self) -> dict[str, Any]:
+        if (data := self._data()) is None:
             return {}
         attributes = {}
         if data.last_update_timestamp:
             attributes["last_update_timestamp"] = data.last_update_timestamp
         if data.last_successful_update_timestamp:
             attributes["last_successful_update_timestamp"] = data.last_successful_update_timestamp
-        if data.map_data:
-            attributes["calibration_points"] = data.map_data.calibration()
-            attributes["rooms"] = data.map_data.rooms
         return attributes
