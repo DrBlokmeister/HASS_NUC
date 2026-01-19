@@ -469,9 +469,21 @@ automation:
         entity_id: vacuum.alfred
         to: "error"
         id: "Alfred"
-      - platform: template
-        value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'remove_mop', 'clean_mop_pad', 'unavailable']) and (states('vacuum.moeke') in ['docked', 'paused', 'unavailable']) }}"
+      - platform: state
+        entity_id: vacuum.moeke
+        to: "error"
         id: "Moeke"
+      # - platform: state
+      #   entity_id: sensor.moeke_error
+      #   not_to:
+      #     - no_error
+      #     - clean_mop_pad
+      #     - remove_mop
+      #     - unavailable
+      #   id: "Moeke"
+      # - platform: template
+      #   value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'remove_mop', 'unavailable']) and (states('vacuum.moeke') in ['docked', 'paused', 'unavailable', 'error']) }}"
+      #   id: "Moeke"
     action:
       - variables:
           vacuumentityid: "{{ trigger.entity_id }}"
