@@ -237,7 +237,8 @@ command_line:
       unique_id: yaml_command_line_sensor_nuc_free_ram
       icon: mdi:memory
       command: >-
-        sh -c 'awk "/^MemFree:/ {print \$2}" /proc/meminfo'
+        awk '/^MemFree:/ {print $2}' /proc/meminfo
+      value_template: "{{ value | int(0) }}"
       command_timeout: 10
       scan_interval: 60
       unit_of_measurement: "kB"
@@ -246,15 +247,16 @@ command_line:
       unique_id: yaml_command_line_sensor_nuc_used_ram
       icon: mdi:memory
       command: >-
-        sh -c 'awk "
-          /^MemTotal:/ {mt=\$2}
-          /^MemFree:/ {mf=\$2}
-          /^Buffers:/ {b=\$2}
-          /^Cached:/ {c=\$2}
-          /^SReclaimable:/ {sr=\$2}
-          /^Shmem:/ {sh=\$2}
-          END {bc=b+c+sr-sh; used=mt-mf-bc; if (used<0) used=0; printf(\"%.0f\n\", used)}
-        " /proc/meminfo'
+        awk '
+          /^MemTotal:/ {mt=$2}
+          /^MemFree:/ {mf=$2}
+          /^Buffers:/ {b=$2}
+          /^Cached:/ {c=$2}
+          /^SReclaimable:/ {sr=$2}
+          /^Shmem:/ {sh=$2}
+          END {bc=b+c+sr-sh; used=mt-mf-bc; if (used<0) used=0; printf("%.0f\n", used)}
+        ' /proc/meminfo
+      value_template: "{{ value | int(0) }}"
       command_timeout: 10
       scan_interval: 60
       unit_of_measurement: "kB"
@@ -263,13 +265,14 @@ command_line:
       unique_id: yaml_command_line_sensor_nuc_buff_cached_ram
       icon: mdi:memory
       command: >-
-        sh -c 'awk "
-          /^Buffers:/ {b=\$2}
-          /^Cached:/ {c=\$2}
-          /^SReclaimable:/ {sr=\$2}
-          /^Shmem:/ {sh=\$2}
-          END {bc=b+c+sr-sh; if (bc<0) bc=0; printf(\"%.0f\n\", bc)}
-        " /proc/meminfo'
+        awk '
+          /^Buffers:/ {b=$2}
+          /^Cached:/ {c=$2}
+          /^SReclaimable:/ {sr=$2}
+          /^Shmem:/ {sh=$2}
+          END {bc=b+c+sr-sh; if (bc<0) bc=0; printf("%.0f\n", bc)}
+        ' /proc/meminfo
+      value_template: "{{ value | int(0) }}"
       command_timeout: 10
       scan_interval: 60
       unit_of_measurement: "kB"
@@ -278,7 +281,8 @@ command_line:
       unique_id: yaml_command_line_sensor_nuc_available_ram
       icon: mdi:memory
       command: >-
-        sh -c 'awk "/^MemAvailable:/ {print \$2}" /proc/meminfo'
+        awk '/^MemAvailable:/ {print $2}' /proc/meminfo
+      value_template: "{{ value | int(0) }}"
       command_timeout: 10
       scan_interval: 60
       unit_of_measurement: "kB"
@@ -287,11 +291,13 @@ command_line:
       unique_id: yaml_command_line_sensor_nuc_used_swap
       icon: mdi:memory
       command: >-
-        sh -c 'awk "
-          /^SwapTotal:/ {st=\$2}
-          /^SwapFree:/  {sf=\$2}
-          END {used=st-sf; if (used<0) used=0; printf(\"%.0f\n\", used)}
-        " /proc/meminfo'
+        awk '
+          BEGIN {st=0; sf=0}
+          /^SwapTotal:/ {st=$2}
+          /^SwapFree:/  {sf=$2}
+          END {used=st-sf; if (used<0) used=0; printf("%.0f\n", used)}
+        ' /proc/meminfo
+      value_template: "{{ value | int(0) }}"
       command_timeout: 10
       scan_interval: 60
       unit_of_measurement: "kB"
@@ -300,10 +306,12 @@ command_line:
       unique_id: yaml_command_line_sensor_nuc_free_swap
       icon: mdi:memory
       command: >-
-        sh -c 'awk "/^SwapFree:/ {print \$2}" /proc/meminfo'
+        awk '/^SwapFree:/ {print $2}' /proc/meminfo
+      value_template: "{{ value | int(0) }}"
       command_timeout: 10
       scan_interval: 60
       unit_of_measurement: "kB"
+
 
   # - sensor:
   #     name: "NUC NVMe Utilization"
