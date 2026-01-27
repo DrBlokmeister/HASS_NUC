@@ -18,6 +18,18 @@ counter:
     step: 1
     icon: mdi:alert
 
+utility_meter:
+  home_assistant_log_errors_utility_meter:
+    source: sensor.home_assistant_log_errors_file_total
+    unique_id: yaml_utility_meter_home_assistant_log_errors_utility_meter
+    always_available: true
+    periodically_resetting: true
+  home_assistant_log_warnings_utility_meter:
+    source: sensor.home_assistant_log_warnings_file_total
+    unique_id: yaml_utility_meter_home_assistant_log_warnings_utility_meter
+    always_available: true
+    periodically_resetting: true
+
 template:
   - sensor:
       - name: "Home Assistant Log Error Count"
@@ -341,20 +353,26 @@ command_line:
   #     scan_interval: 60
   #     unit_of_measurement: "°C"
 
-  # - sensor:
-  #     name: 'Home Assistant Log Error Count'
-  #     unique_id: yaml_command_line_sensor_home_assistant_log_error_count
-  #     scan_interval: 300
-  #     unit_of_measurement: "errors"
-  #     icon: mdi:alert-circle
-  #     command: "grep -c 'ERROR' /config/home-assistant.log.1"
-  # - sensor:
-  #     name: 'Home Assistant Log Warning Count'
-  #     unique_id: yaml_command_line_sensor_home_assistant_log_warning_count
-  #     scan_interval: 300
-  #     unit_of_measurement: "warnings"
-  #     icon: mdi:alert
-  #     command: "grep -c 'WARNING' /config/home-assistant.log.1"
+  - sensor:
+      name: "Home Assistant Log Errors (file total)"
+      unique_id: yaml_command_line_sensor_home_assistant_log_errors_file_total
+      icon: mdi:alert-circle
+      unit_of_measurement: "errors"
+      command: >-
+        sh -c '[ -f /config/home-assistant.log ] && grep -c " ERROR (" /config/home-assistant.log || echo 0'
+      value_template: "{{ value | int(0) }}"
+      command_timeout: 20
+      scan_interval: 300
+  - sensor:
+      name: "Home Assistant Log Warnings (file total)"
+      unique_id: yaml_command_line_sensor_home_assistant_log_warnings_file_total
+      icon: mdi:alert
+      unit_of_measurement: "warnings"
+      command: >-
+        sh -c '[ -f /config/home-assistant.log ] && grep -c " WARNING (" /config/home-assistant.log || echo 0'
+      value_template: "{{ value | int(0) }}"
+      command_timeout: 20
+      scan_interval: 300
 
 
 #################
@@ -499,7 +517,7 @@ sensor:
   - platform: statistics
     name: "Home Assistant Log Errors Per Hour"
     unique_id: yaml_statistics_sensor_home_assistant_log_errors_per_hour
-    entity_id: sensor.home_assistant_log_error_count
+    entity_id: sensor.home_assistant_log_errors_utility_meter
     state_characteristic: change
     max_age:
       hours: 1
@@ -507,7 +525,7 @@ sensor:
   - platform: statistics
     name: "Home Assistant Log Warnings Per Hour"
     unique_id: yaml_statistics_sensor_home_assistant_log_warnings_per_hour
-    entity_id: sensor.home_assistant_log_warning_count
+    entity_id: sensor.home_assistant_log_warnings_utility_meter
     state_characteristic: change
     max_age:
       hours: 1
@@ -836,32 +854,32 @@ automation:
             } %}
             {{ mapping[trigger.entity_id] }}
 
-  - alias: "[system|nuc] Increment log counters on system_log_event"
-    id: yaml_automation_system_nuc_increment_log_counters_on_system_log_event
-    description: >
-      Increment Home Assistant log warning/error counters whenever a system_log_event is fired.
-    mode: queued
-    trigger:
-      - platform: event
-        event_type: system_log_event
-    condition: []
-    action:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.level == 'WARNING' }}"
-            sequence:
-              - service: counter.increment
-                target:
-                  entity_id: counter.home_assistant_log_warning_count
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.level == 'ERROR' }}"
-            sequence:
-              - service: counter.increment
-                target:
-                  entity_id: counter.home_assistant_log_error_count
-        default: []
+  # - alias: "[system|nuc] Increment log counters on system_log_event"
+  #   id: yaml_automation_system_nuc_increment_log_counters_on_system_log_event
+  #   description: >
+  #     Increment Home Assistant log warning/error counters whenever a system_log_event is fired.
+  #   mode: queued
+  #   trigger:
+  #     - platform: event
+  #       event_type: system_log_event
+  #   condition: []
+  #   action:
+  #     - choose:
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ trigger.event.data.level == 'WARNING' }}"
+  #           sequence:
+  #             - service: counter.increment
+  #               target:
+  #                 entity_id: counter.home_assistant_log_warning_count
+  #         - conditions:
+  #             - condition: template
+  #               value_template: "{{ trigger.event.data.level == 'ERROR' }}"
+  #           sequence:
+  #             - service: counter.increment
+  #               target:
+  #                 entity_id: counter.home_assistant_log_error_count
+  #       default: []
 
 ################
 #    SCENES    #
