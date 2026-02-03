@@ -1638,6 +1638,37 @@ automation:
           seconds: 2
       - choose:
           - conditions:
+              - condition: state
+                entity_id: sensor.nordpool_energy_price
+                state:
+                  - 'unavailable'
+                  - 'unknown'
+                  - 'none'
+                  - ''
+            sequence:
+              - action: notify.mobile_app_blokmeisterp9pro
+                data:
+                  title: "Error: Electricity Price Tomorrow"
+                  message: "Nordpool price sensor is unavailable, so there’s nothing sane to graph."
+                  data:
+                    tag: "electricity_price_graph"
+                    channel: "Energy"
+              - stop: "Nordpool sensor unavailable"
+          - conditions:
+              - condition: state
+                entity_id: sensor.nordpool_energy_price
+                attribute: tomorrow_valid
+                state: 'false'
+            sequence:
+              - action: notify.mobile_app_blokmeisterp9pro
+                data:
+                  title: "Error: Electricity Price Tomorrow"
+                  message: "Tomorrow’s Nordpool prices are not valid yet (tomorrow_valid=false)."
+                  data:
+                    tag: "electricity_price_graph"
+                    channel: "Energy"
+              - stop: "Tomorrow prices not valid"
+          - conditions:
               - condition: template
                 value_template: >-
                   {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_completed' }}
@@ -1645,6 +1676,7 @@ automation:
               - action: notify.mobile_app_blokmeisterp9pro
                 data:
                   title: "Electricity Price Tomorrow"
+                  message: "Tomorrow's Electricity Graph"
                   data:
                     image: "{{ attachment_url }}"
                     tag: "electricity_price_graph"
