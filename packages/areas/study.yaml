@@ -972,99 +972,53 @@ automation:
     id: yaml_automation_study_light_toggle_ledstrips_based_on_desk_power_and_ambient_light
     description: >
       Turn ON when desk power >50W for 1m AND lux <20 AND light.study is off.
-      Turn OFF when desk power <50W for 5m AND light.study is off AND chair vibration sensor is off for 5m.
-      Also turn OFF when study light sensor >400 lux for 5m.
+      Turn OFF when desk power <50W for 5m AND light.study is off AND chair vibration is off for 5m.
+      Also turn OFF when study light sensor >400 lux for 5m (regardless of anything else).
     mode: single
     trigger:
-      - platform: numeric_state
-        entity_id: sensor.plug_study_desk_power
-        above: 50
+      # --- TURN ON when the whole "should be on" situation is true for 1m ---
+      - platform: template
+        id: on_ready
+        value_template: >
+          {{ states('sensor.plug_study_desk_power') | float(0) > 50
+            and states('sensor.study_light_1') | float(9999) < 20
+            and is_state('light.study', 'off') }}
         for: "00:01:00"
-        id: power_high
-      - platform: numeric_state
-        entity_id: sensor.plug_study_desk_power
-        below: 50
+      # --- TURN OFF when the whole "idle" situation is true for 5m ---
+      - platform: template
+        id: off_idle
+        value_template: >
+          {{ states('sensor.plug_study_desk_power') | float(0) < 50
+            and is_state('light.study', 'off')
+            and not is_state('binary_sensor.vibration_sensor_new_desk_chair', 'on') }}
         for: "00:05:00"
-        id: power_low
+      # --- TURN OFF when it's bright for 5m, no questions asked ---
       - platform: numeric_state
         entity_id: sensor.study_light_1
         above: 400
         for: "00:05:00"
-        id: lux_high
-      - platform: numeric_state
-        entity_id: sensor.study_light_1
-        below: 20
-        for: "00:05:00"
-        id: lux_low
-      - platform: state
-        entity_id: device_tracker.blokmeister_h2o2_proart
-        to: "home"
-        id: h2o_on
-      - platform: state
-        entity_id: device_tracker.blokmeister_h2o2_proart
-        to: "not_home"
-        for: "00:05:00"
-        id: h2o_off
-      - platform: state
-        entity_id: device_tracker.worklaptop_dock
-        to: "home"
-        id: worklaptop_on
-      - platform: state
-        entity_id: device_tracker.worklaptop_dock
-        to: "not_home"
-        for: "00:05:00"
-        id: worklaptop_off
+        id: off_lux
     condition: []
     action:
       - choose:
-          # --- TURN ON branch ---
           - conditions:
-              - condition: numeric_state
-                entity_id: sensor.study_light_1
-                below: 20
-              - condition: state
-                entity_id: light.study
-                state: "off"
-              - condition: or
-                conditions:
-                  - condition: state
-                    entity_id: device_tracker.blokmeister_h2o2_proart
-                    state: "home"
-                  - condition: state
-                    entity_id: device_tracker.worklaptop_dock
-                    state: "home"
+              - condition: trigger
+                id: on_ready
             sequence:
               - service: light.turn_on
-                data:
-                  brightness_pct: 100
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
                 target:
                   entity_id:
                     - light.study_cabinet_a_rgb_ledstrip
                     - light.study_desk_a_rgb_ledstrip
-          # --- TURN OFF branch ---
+                data:
+                  brightness_pct: 100
+                  color_temp_kelvin: >
+                    {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(3500) }}
           - conditions:
-              - condition: or
-                conditions:
-                  # Power low path
-                  - condition: and
-                    conditions:
-                      - condition: trigger
-                        id: power_low
-                      - condition: state
-                        entity_id: light.study
-                        state: "off"
-                      - condition: state
-                        entity_id: binary_sensor.vibration_sensor_new_desk_chair
-                        state: "off"
-                        for: "00:05:00"
-                  # Lux high path
-                  - condition: trigger
-                    id: lux_high
-                  - condition: trigger
-                    id: h2o_off
-                  - condition: trigger
-                    id: worklaptop_off
+              - condition: trigger
+                id:
+                  - off_idle
+                  - off_lux
             sequence:
               - service: light.turn_off
                 target:
@@ -1072,6 +1026,7 @@ automation:
                     - light.study_cabinet_a_rgb_ledstrip
                     - light.study_desk_a_rgb_ledstrip
         default: []
+
 
 
 #################
