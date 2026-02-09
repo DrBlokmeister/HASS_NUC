@@ -32,11 +32,11 @@ e131:
   method: unicast
 
 light:
-  - platform: neopixelbus
+  - platform: esp32_rmt_led_strip
     id: ledstrip
-    type: GRBW
-    variant: SK6812
-    method: ESP32_I2S
+    rgb_order: GRB
+    chipset: SK6812
+    is_rgbw: true
     pin: GPIO26
     num_leds: 122 #48 + 4
     gamma_correct: 2.0
@@ -53,32 +53,48 @@ light:
           name: "Simple Color Wipe"
           update_interval: 100ms
           lambda: |-
+            using esphome::Color;
+
             for (int i = it.size() - 1; i > 0; i--) {
               it[i] = it[i - 1].get();
             }
-            it[0] = ESPColor::random_color();  // Correct random color function
+
+            const uint32_t r = random_uint32();
+            const uint8_t red   = (r >>  0) & 0xFF;
+            const uint8_t green = (r >>  8) & 0xFF;
+            const uint8_t blue  = (r >> 16) & 0xFF;
+
+            // Color(red, green, blue, white) exists and is the right type for addressable LEDs.
+            it[0] = Color(red, green, blue, 0);
       - addressable_lambda:
           name: "Random Sparkle"
           update_interval: 50ms
           lambda: |-
-            it.all().fade_to_black(50);  // Correct fading method
-            if (random_uint32() % 10 > 8) {
-              it[random_uint32() % it.size()] = ESPColor::random_color();  // Correct random color function
+            using esphome::Color;
+
+            it.all().fade_to_black(50);
+
+            if ((random_uint32() % 10) > 8) {
+              const uint32_t r = random_uint32();
+              const uint8_t red   = (r >>  0) & 0xFF;
+              const uint8_t green = (r >>  8) & 0xFF;
+              const uint8_t blue  = (r >> 16) & 0xFF;
+
+              it[random_uint32() % it.size()] = Color(red, green, blue, 0);
             }
       - addressable_lambda:
           name: "Gradient Shift"
           update_interval: 50ms
           lambda: |-
-            static uint16_t start_index = 0;
+            using esphome::light::ESPHSVColor;
+
             it.shift_right(1);
-            start_index++;
-            if (start_index >= it.size()) {
-              start_index = 0;
-            }
-            float hue = float(start_index) / it.size();
-            int hue_deg = int(hue * 360);  // Convert to degrees
-            int saturation = 255;  // Maximum saturation
-            int value = 255;       // Maximum brightness
-            // Create an HSV color and set it to the first LED
-            ESPHSVColor hsv_color(hue_deg, saturation, value);
-            it[0].set_hsv(hsv_color);
+
+            static uint16_t start_index = 0;
+            start_index = (start_index + 1) % it.size();
+
+            // ESPHSVColor takes 0..255 for hue/sat/val (uint8_t), not degrees/floats.
+            const uint8_t hue = static_cast<uint8_t>((start_index * 255u) / it.size());
+
+            // You can assign HSV directly; ESPColorView has operator=(ESPHSVColor)
+            it[0] = ESPHSVColor(hue, 255, 255);
