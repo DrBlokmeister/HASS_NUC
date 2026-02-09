@@ -9,8 +9,8 @@ esphome:
 
 esp32:
   board: esp32-c3-devkitm-1
-  framework:
-    type: arduino
+  # framework:
+  #   type: arduino
 
 packages:
   wifi: !include common/wifi.yaml
@@ -20,16 +20,19 @@ packages:
 wifi:
   use_address: 10.0.30.127
 
+logger:
+  level: VERBOSE
+
 deep_sleep:
   id: deep_sleep_1
-  run_duration: 1min  # Device wake up and run 60s (enough to pull data and update)
-  sleep_duration: 10min  # deep sleep for 10m
+  run_duration: 10min  # Device wake up and run 60s (enough to pull data and update)
+  sleep_duration: 1min  # deep sleep for 10m
 
 globals:
   - id: deep_sleep_enabled
     type: bool
     restore_value: yes
-    initial_value: 'true'  # or 'false' if you want deep sleep disabled by default
+    initial_value: 'false'  # or 'false' if you want deep sleep disabled by default
 
 http_request:
   verify_ssl: false
@@ -99,11 +102,11 @@ switch:
       - deep_sleep.allow: deep_sleep_1
 online_image:
   - id: dashboard_image
-    format: PNG
+    format: BMP
     type: BINARY
     buffer_size: 30000
-    url: "http://10.0.0.252:10000/lovelace-epaper/0?viewport=800x480&colors=000000,FFFFFF&wait=2000&theme=graphite-eink-light&NEXT=600"
-    update_interval: 20s
+    url: "http://10.0.0.252:10000/lovelace-epaper/0?viewport=800x480&colors=000000,FFFFFF&wait=2000&theme=graphite-eink-light&NEXT=600&format=bmp"
+    update_interval: 60s
     on_download_finished:
       - lambda: |-
           if (cached) {
@@ -113,6 +116,11 @@ online_image:
           }
       - delay: 100ms
       - component.update: main_display
+    on_error: 
+      then:
+        - logger.log:
+            level: WARN
+            format: "online Image Error"
 
 spi:
   clk_pin: GPIO8
