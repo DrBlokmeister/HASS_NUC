@@ -117,11 +117,15 @@ void ShellyDimmer::dump_config() {
                 "ShellyDimmer:\n"
                 "  Leading Edge: %s\n"
                 "  Warmup Brightness: %d\n"
+                "  Kick Duration: %d ms\n"
+                "  Kick Brightness: %.0f%%\n"
                 "  Minimum Brightness: %d\n"
                 "  Maximum Brightness: %d\n"
                 "  STM32 current firmware version: %d.%d\n"
                 "  STM32 required firmware version: %d.%d",
-                YESNO(this->leading_edge_), this->warmup_brightness_, this->min_brightness_, this->max_brightness_,
+                YESNO(this->leading_edge_), this->warmup_brightness_, 
+                this->kick_duration_, this->kick_brightness_ * 100.0f,
+                this->min_brightness_, this->max_brightness_,
                 this->version_major_, this->version_minor_, USE_SHD_FIRMWARE_MAJOR_VERSION,
                 USE_SHD_FIRMWARE_MINOR_VERSION);
   LOG_PIN("  NRST Pin: ", this->pin_nrst_);
@@ -139,18 +143,79 @@ void ShellyDimmer::write_state(light::LightState *state) {
     return;
   }
 
-  float brightness;
-  state->current_values_as_brightness(&brightness);
+  float current_brightness;
+  state->current_values_as_brightness(&current_brightness);
 
-  const uint16_t brightness_int = this->convert_brightness_(brightness);
+  // 1. Determine if the light is being turned ON
+  // Use a small threshold (1%) to prevent noise or very low start transition values 
+  // from flip-flopping the 'is_on' state.
+  bool is_on = current_brightness > 0.001f;
+
+  // 2. Detect OFF -> ON transition
+  if (is_on && !this->was_on_) {
+    if (this->kick_duration_ > 0) {
+      this->is_kicking_ = true;
+      
+      ESP_LOGI(TAG, "Warmup Kick triggered: %f brightness for %d ms", 
+               this->kick_brightness_, this->kick_duration_);
+
+      // Start the timeout
+      this->set_timeout("warmup_kick", this->kick_duration_, [this]() {
+        this->is_kicking_ = false;
+        
+        // KICK ENDED: dynamic restore.
+        // We ask the state object for the CURRENT required brightness.
+        // This accounts for any transition that progressed while we were kicking.
+        float live_target = 0.0f;
+        if (this->state_ != nullptr) {
+            this->state_->current_values_as_brightness(&live_target);
+        }
+
+        uint16_t final_val = this->convert_brightness_(live_target);
+        
+        ESP_LOGD(TAG, "Warmup Kick finished. Restoring to live target: %d (raw: %f)", 
+                 final_val, live_target);
+        
+        this->send_brightness_(final_val);
+      });
+    }
+  }
+
+  // 3. If the light is turned OFF, cancel any active kick immediately.
+  if (!is_on) {
+    if (this->is_kicking_) {
+       ESP_LOGD(TAG, "Warmup Kick cancelled by turn off");
+    }
+    this->is_kicking_ = false;
+    this->cancel_timeout("warmup_kick");
+  }
+
+  // 4. Update state tracking
+  this->was_on_ = is_on;
+
+  // 5. DECIDE WHAT TO SEND
+  float brightness_to_send = current_brightness;
+
+  if (this->is_kicking_) {
+    brightness_to_send = this->kick_brightness_;
+  }
+
+  // 6. Send to Hardware
+  const uint16_t brightness_int = this->convert_brightness_(brightness_to_send);
+
+  // Optimization: Don't send if the hardware is already at this level
   if (brightness_int == this->brightness_) {
-    ESP_LOGV(TAG, "Not sending unchanged value");
     return;
   }
-  ESP_LOGD(TAG, "Brightness update: %d (raw: %f)", brightness_int, brightness);
-
+  
+  // Only log detailed brightness updates if we are NOT kicking (avoids log spam during kick)
+  if (!this->is_kicking_) {
+      ESP_LOGD(TAG, "Brightness update: %d (raw: %f)", brightness_int, current_brightness);
+  }
+  
   this->send_brightness_(brightness_int);
 }
+
 #ifdef USE_SHD_FIRMWARE_DATA
 bool ShellyDimmer::upgrade_firmware_() {
   ESP_LOGW(TAG, "Starting STM32 firmware upgrade");
