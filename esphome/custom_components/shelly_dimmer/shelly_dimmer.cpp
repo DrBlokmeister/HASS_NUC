@@ -114,26 +114,19 @@ void ShellyDimmer::update() { this->send_command_(SHELLY_DIMMER_PROTO_CMD_POLL, 
 
 void ShellyDimmer::dump_config() {
   ESP_LOGCONFIG(TAG,
-                "ShellyDimmer:
-"
-                "  Leading Edge: %s
-"
-                "  Warmup Brightness: %d
-"
-                "  Kick Duration: %u ms
-"
-                "  Kick Brightness: %.0f%%
-"
-                "  Minimum Brightness: %d
-"
-                "  Maximum Brightness: %d
-"
-                "  STM32 current firmware version: %d.%d
-"
+                "ShellyDimmer:\n"
+                "  Leading Edge: %s\n"
+                "  Warmup Brightness: %d\n"
+                "  Kick Duration: %u ms\n"
+                "  Kick Brightness: %.0f%%\n"
+                "  Minimum Brightness: %d\n"
+                "  Maximum Brightness: %d\n"
+                "  STM32 current firmware version: %d.%d\n"
                 "  STM32 required firmware version: %d.%d",
                 YESNO(this->leading_edge_), this->warmup_brightness_, this->kick_duration_ms_,
                 this->kick_brightness_ * 100.0f, this->min_brightness_, this->max_brightness_, this->version_major_,
                 this->version_minor_, USE_SHD_FIRMWARE_MAJOR_VERSION, USE_SHD_FIRMWARE_MINOR_VERSION);
+
   LOG_PIN("  NRST Pin: ", this->pin_nrst_);
   LOG_PIN("  BOOT0 Pin: ", this->pin_boot0_);
   LOG_UPDATE_INTERVAL(this);
@@ -147,6 +140,7 @@ void ShellyDimmer::dump_config() {
     ESP_LOGCONFIG(TAG, "  Kick: disabled");
   }
 }
+
 
 
 void ShellyDimmer::write_state(light::LightState *state) {
