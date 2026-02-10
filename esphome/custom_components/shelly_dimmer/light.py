@@ -45,10 +45,10 @@ CONF_LEADING_EDGE = "leading_edge"
 CONF_WARMUP_BRIGHTNESS = "warmup_brightness"
 # CONF_WARMUP_TIME = "warmup_time"
 
-# --- NEW CONFIG VARIABLES ---
+# --- NEW CONFIG VARIABLES (kick/boost on startup) ---
 CONF_KICK_DURATION = "kick_duration"
 CONF_KICK_BRIGHTNESS = "kick_brightness"
-# ----------------------------
+# ---------------------------------------------------
 
 CONF_NRST_PIN = "nrst_pin"
 CONF_BOOT0_PIN = "boot0_pin"
@@ -161,12 +161,12 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_LEADING_EDGE, default=False): cv.boolean,
             cv.Optional(CONF_WARMUP_BRIGHTNESS, default=100): cv.uint16_t,
             # cv.Optional(CONF_WARMUP_TIME, default=20): cv.uint16_t,
-            
-            # --- NEW PARAMS UPDATED DEFAULTS ---
-            cv.Optional(CONF_KICK_DURATION, default="50ms"): cv.positive_time_period_milliseconds,
+            #
+            # Kick/boost pulse on OFF->ON, intended to help some LED drivers start at very low brightness.
+            # Default: disabled.
+            cv.Optional(CONF_KICK_DURATION, default="0ms"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_KICK_BRIGHTNESS, default="30%"): cv.percentage,
-            # -----------------------------------
-            
+            #
             cv.Optional(CONF_MIN_BRIGHTNESS, default=0): cv.uint16_t,
             cv.Optional(CONF_MAX_BRIGHTNESS, default=1000): cv.uint16_t,
             cv.Optional(CONF_POWER): sensor.sensor_schema(
@@ -219,15 +219,13 @@ async def to_code(config):
     cg.add(var.set_leading_edge(config[CONF_LEADING_EDGE]))
     cg.add(var.set_warmup_brightness(config[CONF_WARMUP_BRIGHTNESS]))
     # cg.add(var.set_warmup_time(config[CONF_WARMUP_TIME]))
+
+    # Kick pulse parameters (duration is a TimePeriod; codegen will handle conversion to ms for uint32_t setter).
+    cg.add(var.set_kick_duration(config[CONF_KICK_DURATION]))
+    cg.add(var.set_kick_brightness(config[CONF_KICK_BRIGHTNESS]))
+
     cg.add(var.set_min_brightness(config[CONF_MIN_BRIGHTNESS]))
     cg.add(var.set_max_brightness(config[CONF_MAX_BRIGHTNESS]))
-    
-    # --- PASS NEW PARAMS TO C++ ---
-    if CONF_KICK_DURATION in config:
-        cg.add(var.set_kick_duration(config[CONF_KICK_DURATION]))
-    if CONF_KICK_BRIGHTNESS in config:
-        cg.add(var.set_kick_brightness(config[CONF_KICK_BRIGHTNESS]))
-    # ------------------------------
 
     for key in [CONF_POWER, CONF_VOLTAGE, CONF_CURRENT]:
         if key not in config:

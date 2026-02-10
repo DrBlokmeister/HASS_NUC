@@ -45,10 +45,10 @@ class ShellyDimmer : public PollingComponent, public light::LightOutput, public 
   void set_min_brightness(uint16_t min_brightness) { this->min_brightness_ = min_brightness; }
   void set_max_brightness(uint16_t max_brightness) { this->max_brightness_ = max_brightness; }
 
-  // --- NEW SETTERS ---
-  void set_kick_duration(uint32_t kick_duration) { this->kick_duration_ = kick_duration; }
+  // Kick/boost pulse on OFF->ON, intended to help some LED drivers start at very low brightness.
+  // Disabled by default (kick_duration = 0ms).
+  void set_kick_duration(uint32_t kick_duration_ms) { this->kick_duration_ms_ = kick_duration_ms; }
   void set_kick_brightness(float kick_brightness) { this->kick_brightness_ = kick_brightness; }
-  // -------------------
 
   void set_power_sensor(sensor::Sensor *power_sensor) { this->power_sensor_ = power_sensor; }
   void set_voltage_sensor(sensor::Sensor *voltage_sensor) { this->voltage_sensor_ = voltage_sensor; }
@@ -74,14 +74,12 @@ class ShellyDimmer : public PollingComponent, public light::LightOutput, public 
   uint16_t fade_rate_{0};
   uint16_t min_brightness_{0};
   uint16_t max_brightness_{1000};
-  
-  // --- NEW MEMBERS DEFAULTS UPDATED ---
-  uint32_t kick_duration_{50};
-  float kick_brightness_{0.3f};
+
+  // Kick/boost configuration & state
+  uint32_t kick_duration_ms_{0};   // 0 = disabled
+  float kick_brightness_{0.30f};   // 30%
   bool is_kicking_{false};
   bool was_on_{false};
-  float target_brightness_{0.0f};
-  // ------------------------------------
 
   light::LightState *state_{nullptr};
   sensor::Sensor *power_sensor_{nullptr};
