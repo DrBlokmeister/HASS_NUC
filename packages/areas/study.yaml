@@ -89,17 +89,6 @@ sensor:
 binary_sensor:
   - platform: template
     sensors:
-      study_motion_combined:
-        friendly_name: "Study Combined Motion"
-        unique_id: yaml_template_binary_sensor_study_motion_combined
-        device_class: motion
-        icon_template: mdi:motion-sensor
-        value_template: >-
-          {{
-            is_state('binary_sensor.study_motion_1', 'on') or
-            is_state('binary_sensor.study_motion_2', 'on')
-          }}
-        availability_template: "{{ (states('binary_sensor.study_motion_1') in ['on', 'off']) and (states('binary_sensor.study_motion_2') in ['on', 'off']) }}"
       power_above_soldering_power:
         friendly_name: "Power Above Soldering Power"
         unique_id: yaml_template_binary_sensor_power_above_soldering_power
@@ -164,7 +153,9 @@ automation:
       - wait_for_trigger:
           - platform: template
             value_template: >-
-              {{ is_state('group.study_motion_sensors', 'off') and is_state('binary_sensor.vibration_sensor_new_desk_chair', 'off') }}
+              {{ is_state('binary_sensor.study_motion_1', 'off')
+                and is_state('binary_sensor.study_motion_2', 'off')
+                and is_state('binary_sensor.vibration_sensor_new_desk_chair', 'off') }}
             for:
               minutes: >-
                 {% if is_state('device_tracker.blokmeister_h2o2_proart', 'home') or is_state('device_tracker.worklaptop_dock', 'home')%}
@@ -193,18 +184,6 @@ automation:
       - service: light.turn_off
         entity_id:
           - light.study_lights
-
-  #Turn off study lights if no motion has been detected for 1 hour
-  # - alias: study_nomotion_pc_turn_off
-  #   trigger:
-  #     platform: state
-  #     entity_id: binary_sensor.study_motion_combined
-  #     from: 'on'
-  #     to: 'off'
-  #     for: 01:00:00
-  #   action:
-  #     service: light.turn_off
-  #     entity_id: light.study_lights
 
   # - alias: 'Message when computer is still on when not home'
   #   trigger:
@@ -1190,10 +1169,6 @@ group:
   study_lighting_automations:
     entities:
       - automation.study_lights_turn_on_lights_when_motion_is_detected
-  study_motion_sensors:
-    entities:
-      - binary_sensor.study_motion_1
-      - binary_sensor.study_motion_2
 
 ################
 #    LIGHTS    #
