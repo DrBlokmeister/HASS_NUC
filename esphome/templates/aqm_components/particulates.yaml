@@ -73,3 +73,20 @@ sensor:
           - throttle_average: 60s
           - delta: 10
         - round: 0
+  - platform: aqi
+    name: "${location} Air Quality Index"
+    id: aqi_sensor
+    pm_2_5: pm2_5
+    pm_10_0: pm10
+    calculation_type: CAQI  # AQI or CAQI :contentReference[oaicite:3]{index=3}
+    # "All other options from Sensor" apply here too :contentReference[oaicite:4]{index=4}
+    icon: mdi:weather-hazy
+    accuracy_decimals: 0
+    filters:
+      - sliding_window_moving_average:
+          window_size: 5
+          send_every: 5
+      - or:
+          - throttle_average: 60s
+          - delta: 5
+      - round: 0
