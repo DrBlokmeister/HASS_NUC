@@ -23,12 +23,20 @@ void WeightedPulseMeter::setup() {
   this->last_debounced_change_ms_ = now;
   this->last_sample_ms_ = now;
 
-  // Restore total from flash
-  this->pref_total_ = global_preferences->make_preference<float>(this->get_object_id_hash());
+  // Restore total from flash (prefer new key, fall back to old key once)
+  this->pref_total_ = this->make_entity_preference<float>();
+
   float saved = 0.0f;
-  if (this->pref_total_.load(&saved)) {
-    this->total_l_ = saved;
+  if (!this->pref_total_.load(&saved)) {
+    // Legacy storage location (pre-migration)
+    auto legacy_pref = global_preferences->make_preference<float>(this->get_object_id_hash());
+    if (legacy_pref.load(&saved)) {
+      // Migrate forward so next boot uses the new key
+      this->pref_total_.save(&saved);
+    }
   }
+
+this->total_l_ = saved;
 
   // Publish initial states
   if (this->flow_sensor_ != nullptr) this->flow_sensor_->publish_state(this->flow_lpm_);
