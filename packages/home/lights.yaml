@@ -147,6 +147,42 @@ automation:
                 - automation.entry_lights_turn_on_lights_when_motion_is_detected
                 - automation.hallway1stfloor_lights_turn_on_lights_when_motion_is_detected
                 - automation.hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
+
+  - alias: "[home|lights] Turn off all lights when house becomes unoccupied"
+    id: yaml_automation_home_lights_turn_off_all_lights_when_house_becomes_unoccupied
+    description: >
+      When the house is marked unoccupied, turn off all configured lights (and the closet Shelly switch).
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.house_occupied
+        to: "off"
+        for:
+          minutes: 10
+    action:
+      - service: light.turn_off
+        target:
+          entity_id:
+            - light.kitchen
+            - light.living_room
+            - light.shelly_dinner_table
+            - light.entry
+            - light.shelly_bedroom
+            - light.bathroom_mirror_hue
+            - light.bathroom
+            - light.hallway_1st_floor
+            - light.babyroom
+            - light.study_lights
+            - light.ledstrip_study_workbench
+            - light.shelly_washroom
+            - light.hallway_2nd_floor
+            - light.guest_room
+            - light.bedside_guestroom
+            - light.shelly_tamara_s_room
+      - service: switch.turn_off
+        target:
+          entity_id: switch.shelly_closet
+
 ################
 #    SCENES    #
 ################
