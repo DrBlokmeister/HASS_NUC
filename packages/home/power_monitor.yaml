@@ -443,63 +443,97 @@ template:
               {{ none }}
             {% endif -%}
           today_rolling_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
-            {% set n = q | length -%}
-            {% set out = namespace(v=[]) -%}
-            {% for i in range(n) -%}
-              {% if (i + 3) < n -%}
-                {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3)] -%}
-              {% else -%}
-                {% set out.v = out.v + [none] -%}
-              {% endif -%}
-            {% endfor -%}
-            {{ out.v | to_json }}
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = q | length %}
+            [
+            {%- for i in range(0, n - 3) -%}
+              {{ ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3) }}
+              {{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          raw_today_rolling_hour_avg: >-
+            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
+            {% set n = r | length %}
+            [
+            {%- for i in range(0, n - 3) -%}
+              {%- set start = as_datetime(r[i]['start']) -%}
+              {
+                'start': "{{ start.isoformat() }}",
+                'end':   "{{ (start + timedelta(hours=1)).isoformat() }}",
+                'value': {{ ((r[i]['value']|float + r[i+1]['value']|float + r[i+2]['value']|float + r[i+3]['value']|float) / 4) | round(3) }}
+              }{{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
           today_rolling_two_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
-            {% set n = q | length -%}
-            {% set out = namespace(v=[]) -%}
-            {% for i in range(n) -%}
-              {% if (i + 7) < n -%}
-                {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float
-                                          + q[i+4]|float + q[i+5]|float + q[i+6]|float + q[i+7]|float) / 8) | round(3)] -%}
-              {% else -%}
-                {% set out.v = out.v + [none] -%}
-              {% endif -%}
-            {% endfor -%}
-            {{ out.v | to_json }}
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
+            {% set n = q | length %}
+            [
+            {%- for i in range(0, n - 7) -%}
+              {{ ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float
+                  + q[i+4]|float + q[i+5]|float + q[i+6]|float + q[i+7]|float) / 8) | round(3) }}
+              {{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          raw_today_rolling_two_hour_avg: >-
+            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
+            {% set n = r | length %}
+            [
+            {%- for i in range(0, n - 7) -%}
+              {%- set start = as_datetime(r[i]['start']) -%}
+              {
+                'start': "{{ start.isoformat() }}",
+                'end':   "{{ (start + timedelta(hours=2)).isoformat() }}",
+                'value': {{ ((r[i]['value']|float + r[i+1]['value']|float + r[i+2]['value']|float + r[i+3]['value']|float
+                            + r[i+4]['value']|float + r[i+5]['value']|float + r[i+6]['value']|float + r[i+7]['value']|float) / 8) | round(3) }}
+              }{{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
           tomorrow_rolling_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
-            {% if (q | length) == 0 -%}
-              {{ [] | to_json }}
-            {% else -%}
-              {% set n = q | length -%}
-              {% set out = namespace(v=[]) -%}
-              {% for i in range(n) -%}
-                {% if (i + 3) < n -%}
-                  {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3)] -%}
-                {% else -%}
-                  {% set out.v = out.v + [none] -%}
-                {% endif -%}
-              {% endfor -%}
-              {{ out.v | to_json }}
-            {% endif -%}
+            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] %}
+            {% set n = q | length %}
+            [
+            {%- for i in range(0, max(0, n - 3)) -%}
+              {{ ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3) }}
+              {{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          raw_tomorrow_rolling_hour_avg: >-
+            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] %}
+            {% set n = r | length %}
+            [
+            {%- for i in range(0, max(0, n - 3)) -%}
+              {%- set start = as_datetime(r[i]['start']) -%}
+              {
+                'start': "{{ start.isoformat() }}",
+                'end':   "{{ (start + timedelta(hours=1)).isoformat() }}",
+                'value': {{ ((r[i]['value']|float + r[i+1]['value']|float + r[i+2]['value']|float + r[i+3]['value']|float) / 4) | round(3) }}
+              }{{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
           tomorrow_rolling_two_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
-            {% if (q | length) == 0 -%}
-              {{ [] | to_json }}
-            {% else -%}
-              {% set n = q | length -%}
-              {% set out = namespace(v=[]) -%}
-              {% for i in range(n) -%}
-                {% if (i + 7) < n -%}
-                  {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float
-                                            + q[i+4]|float + q[i+5]|float + q[i+6]|float + q[i+7]|float) / 8) | round(3)] -%}
-                {% else -%}
-                  {% set out.v = out.v + [none] -%}
-                {% endif -%}
-              {% endfor -%}
-              {{ out.v | to_json }}
-            {% endif -%}
+            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] %}
+            {% set n = q | length %}
+            [
+            {%- for i in range(0, max(0, n - 7)) -%}
+              {{ ((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float
+                  + q[i+4]|float + q[i+5]|float + q[i+6]|float + q[i+7]|float) / 8) | round(3) }}
+              {{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
+          raw_tomorrow_rolling_two_hour_avg: >-
+            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] %}
+            {% set n = r | length %}
+            [
+            {%- for i in range(0, max(0, n - 7)) -%}
+              {%- set start = as_datetime(r[i]['start']) -%}
+              {
+                'start': "{{ start.isoformat() }}",
+                'end':   "{{ (start + timedelta(hours=2)).isoformat() }}",
+                'value': {{ ((r[i]['value']|float + r[i+1]['value']|float + r[i+2]['value']|float + r[i+3]['value']|float
+                            + r[i+4]['value']|float + r[i+5]['value']|float + r[i+6]['value']|float + r[i+7]['value']|float) / 8) | round(3) }}
+              }{{ ', ' if not loop.last }}
+            {%- endfor -%}
+            ]
 
 #######################
 #    INPUT NUMBERS    #
