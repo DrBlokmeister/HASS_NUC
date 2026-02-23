@@ -198,12 +198,21 @@ input_select:
     initial: bright_warm
     icon: mdi:lightbulb-on-outline
 
+template:
+  - sensor:
+      - name: Average Illumination Bedroom
+        device_class: illuminance
+        unit_of_measurement: 'lx'
+        state: >-
+          {{ (states('sensor.illumination_bedroom')|round(1) + states('sensor.lightlevel_12')|round(1))/2 }}
+        availability: "{{ states('sensor.illumination_bedroom')|is_number and states('sensor.lightlevel_12')|is_number }}"
+
 #################
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
+  # - platform: template
+  #   sensors:
       # bedscale_1_calibrated:
       #   friendly_name: "Bedscale 1 Calibrated"
       #   unit_of_measurement: kg
@@ -344,12 +353,6 @@ sensor:
       #       mdi:account-group
       #     {% endif %}
       #   availability_template: "{{ states('sensor.bed_weight_calibrated')|is_number }}"
-      average_illumination_bedroom:
-        device_class: illuminance
-        unit_of_measurement: 'lx'
-        value_template: >-
-          {{ (states('sensor.illumination_bedroom')|round(1) + states('sensor.lightlevel_12')|round(1))/2 }}
-        availability_template: "{{ states('sensor.illumination_bedroom')|is_number and states('sensor.lightlevel_12')|is_number }}"
 
   - platform: statistics
     entity_id: sensor.bedroom_co2

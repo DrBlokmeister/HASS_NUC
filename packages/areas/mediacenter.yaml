@@ -113,28 +113,11 @@ template:
         state: "{{ state_attr('sensor.coreelec_hdmi_info', 'color_space') }}"
         icon: mdi:hdr
 
-
-#################
-#    SENSORS    #
-#################
-sensor:
-
-########################
-#    BINARY SENSORS    #
-########################
-binary_sensor:
-
-##################
-#    SWITCHES    #
-##################
-switch:
-  - platform: template
-    switches:
-      ambilight:
-        friendly_name: "Ambilight"
+  - switch:
+      - name: "Ambilight"
         unique_id: yaml_template_switch_ambilight
-        icon_template: mdi:television-ambient-light
-        value_template: >-
+        icon: mdi:television-ambient-light
+        state: >-
           {{
             is_state('switch.ambilight', 'on') and
             is_state('light.atmoorb_left', 'on') and is_state('light.atmoorb_right', 'on') and is_state('light.ledstrip_falcon', 'on') and
@@ -145,11 +128,10 @@ switch:
           service: script.turn_on_ambilight
         turn_off:
           service: script.turn_off_ambilight
-      ambilight_hyperhdr:
-        friendly_name: "Ambilight HyperHDR"
+      - name: "Ambilight HyperHDR"
         unique_id: yaml_template_switch_ambilight_hyperhdr
-        icon_template: mdi:television-ambient-light
-        value_template: >-
+        icon: mdi:television-ambient-light
+        state: >-
           {{
             is_state('switch.ambilight', 'on') and
             is_state('light.atmoorb_left', 'on') and is_state('light.atmoorb_right', 'on') and is_state('light.ledstrip_falcon', 'on') and
@@ -161,12 +143,11 @@ switch:
           service: script.turn_on_ambilight_hyperhdr
         turn_off:
           service: script.turn_off_ambilight_hyperhdr
-      tv_json_cec:
-        friendly_name: "TV json CEC"
+      - name: "TV json CEC"
         unique_id: yaml_template_switch_tv_json_cec
-        icon_template: mdi:television
-        value_template: "{{ is_state('device_tracker.tv', 'home') }}"
-        availability_template: "{{ is_state('device_tracker.coreelec', 'home') and not is_state('media_player.coreelec', 'unavailable') }}"
+        icon: mdi:television
+        state: "{{ is_state('device_tracker.tv', 'home') }}"
+        availability: "{{ is_state('device_tracker.coreelec', 'home') and not is_state('media_player.coreelec', 'unavailable') }}"
         turn_on:
           service: kodi.call_method
           data:
@@ -183,6 +164,22 @@ switch:
             addonid: script.json-cec
             params:
               command: standby
+
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+##################
+#    SWITCHES    #
+##################
+switch:
 
 #####################
 #    AUTOMATIONS    #

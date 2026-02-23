@@ -58,6 +58,23 @@ utility_meter:
     name: Litterbox Yearly Counts
     # icon: mdi:cat
     periodically_resetting: true
+
+template:
+  - binary_sensor:
+      - name: "Entry Combined Motion"
+        unique_id: yaml_template_binary_sensor_entry_motion_combined
+        icon: mdi:motion-sensor
+        device_class: motion
+        state: >-
+          {{
+            is_state('binary_sensor.entry_motion_1', 'on') or
+            is_state('binary_sensor.entry_motion_2', 'on')
+          }}
+        availability: >-
+          {{
+            (states('binary_sensor.entry_motion_1') in ['on', 'off']) and
+            (states('binary_sensor.entry_motion_2') in ['on', 'off'])
+          }}
 #################
 #    SENSORS    #
 #################
@@ -85,23 +102,23 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      entry_motion_combined:
-        friendly_name: "Entry Combined Motion"
-        unique_id: yaml_template_binary_sensor_entry_motion_combined
-        device_class: motion
-        icon_template: mdi:motion-sensor
-        value_template: >-
-          {{
-            is_state('binary_sensor.entry_motion_1', 'on') or
-            is_state('binary_sensor.entry_motion_2', 'on')
-          }}
-        availability_template: >-
-          {{
-            (states('binary_sensor.entry_motion_1') in ['on', 'off']) and
-            (states('binary_sensor.entry_motion_2') in ['on', 'off'])
-          }}
+  # - platform: template
+  #   sensors:
+  #     entry_motion_combined:
+  #       friendly_name: "Entry Combined Motion"
+  #       unique_id: yaml_template_binary_sensor_entry_motion_combined
+  #       device_class: motion
+  #       icon_template: mdi:motion-sensor
+  #       value_template: >-
+  #         {{
+  #           is_state('binary_sensor.entry_motion_1', 'on') or
+  #           is_state('binary_sensor.entry_motion_2', 'on')
+  #         }}
+  #       availability_template: >-
+  #         {{
+  #           (states('binary_sensor.entry_motion_1') in ['on', 'off']) and
+  #           (states('binary_sensor.entry_motion_2') in ['on', 'off'])
+  #         }}
 ########################
 #    INPUT BOOLEANS    #
 ########################

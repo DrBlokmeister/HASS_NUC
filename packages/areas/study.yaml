@@ -62,19 +62,30 @@ input_select:
       - light.study_desk_a_rgb_ledstrip
       - light.ledstrip_study_workbench
     initial: "None"
+
+template:
+  - sensor:
+      - name: "Vibration Sensor Attributes"
+        unique_id: yaml_template_sensor_vibration_sensor_attributes
+        icon: mdi:vibrate
+        state: "{{ state_attr('binary_sensor.vibration_sensor_desk_chair', 'orientation'), state_attr('binary_sensor.vibration_sensor_desk_chair', 'tiltangle') }}"
+        availability: "{{ not states('binary_sensor.vibration_sensor_desk_chair') in ['unavailable', 'unknown', 'none', None] }}"
+
+  - binary_sensor:
+      - name: "Power Above Soldering Power"
+        unique_id: yaml_template_binary_sensor_power_above_soldering_power
+        icon: mdi:soldering-iron
+        device_class: power
+        state: "{{ (states('sensor.plug_study_workbench_power')|float(0) - states('sensor.alfred_power_estimate')|float(0)) | float >= 35 }}"
+        availability: >-
+          {{
+            states('sensor.plug_study_workbench_power')|is_number and
+            states('sensor.alfred_power_estimate')|is_number
+          }}
 #################
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      vibration_sensor_attributes:
-        friendly_name: "Vibration Sensor Attributes"
-        unique_id: yaml_template_sensor_vibration_sensor_attributes
-        icon_template: mdi:vibrate
-        value_template: "{{ state_attr('binary_sensor.vibration_sensor_desk_chair', 'orientation'), state_attr('binary_sensor.vibration_sensor_desk_chair', 'tiltangle') }}"
-        availability_template: "{{ not states('binary_sensor.vibration_sensor_desk_chair') in ['unavailable', 'unknown', 'none', None] }}"
-
   - platform: history_stats
     name: "Power Above Soldering Power Last 5 Minutes"
     entity_id: binary_sensor.power_above_soldering_power
@@ -87,19 +98,6 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      power_above_soldering_power:
-        friendly_name: "Power Above Soldering Power"
-        unique_id: yaml_template_binary_sensor_power_above_soldering_power
-        device_class: power
-        icon_template: mdi:soldering-iron
-        value_template: "{{ (states('sensor.plug_study_workbench_power')|float(0) - states('sensor.alfred_power_estimate')|float(0)) | float >= 35 }}"
-        availability_template: >-
-          {{
-            states('sensor.plug_study_workbench_power')|is_number and
-            states('sensor.alfred_power_estimate')|is_number
-          }}
 ########################
 #    INPUT BOOLEANS    #
 ########################

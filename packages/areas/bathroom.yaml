@@ -12,6 +12,79 @@ input_number:
 timer:
   bathroom_lights:
 
+template:
+  - sensor:
+      - name: "Shower Occupied Bayesian Probability"
+        unit_of_measurement: Chance
+        state: >
+          {% set prior = 0.02 %}
+          {% set light_on = is_state("light.bathroom", "on") %}
+          {% set humidity_increase = (states('sensor.humidity_bathroom')|float - states('sensor.home_mean_humidity_without_bathroom')|float) > 20 %}
+          {% set water_usage = states('sensor.water_usage')|float > 1 %}
+          {% set temperature_change = states('sensor.tapwater_temperature_change_1min')|float < -5 %}
+
+          {% set prob_light_given_shower = 0.8 if light_on else 0.08 %}
+          {% set prob_humidity_given_shower = 0.80 if humidity_increase else 0.05 %}
+          {% set prob_water_usage_given_shower = 0.80 if water_usage else 0.10 %}
+          {% set prob_temp_change_given_shower = 0.80 if temperature_change else 0.02 %}
+
+          {% set numerator = prior * prob_light_given_shower * prob_humidity_given_shower * prob_water_usage_given_shower * prob_temp_change_given_shower %}
+          {% set denominator = (prior * prob_light_given_shower * prob_humidity_given_shower * prob_water_usage_given_shower * prob_temp_change_given_shower) + ((1-prior) * (1-prob_light_given_shower) * (1-prob_humidity_given_shower) * (1-prob_water_usage_given_shower) * (1-prob_temp_change_given_shower)) %}
+
+          {% set posterior_probability = numerator / denominator %}
+
+          {{ posterior_probability }}
+        availability: >
+          {{ not (
+              states('light.bathroom') in [None, 'unavailable', 'unknown'] or
+              states('sensor.humidity_bathroom') in [None, 'unavailable', 'unknown'] or
+              states('sensor.home_mean_humidity_without_bathroom') in [None, 'unavailable', 'unknown'] or
+              states('sensor.water_usage') in [None, 'unavailable', 'unknown'] or
+              states('sensor.tapwater_temperature_change_1min') in [None, 'unavailable', 'unknown']
+            ) }}
+
+  - binary_sensor:
+      - name: "Bathroom Shower Occupied"
+        unique_id: yaml_template_binary_sensor_bathroom_shower_occupied
+        icon: mdi:shower
+        device_class: occupancy
+        state: "{{ states('sensor.humidity_bathroom')|int(0) > states('sensor.humidity_bathroom_median')|int(0) + 15 }}"
+        availability: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_median', 'unavailable') }}"
+      - name: "Bathroom Shower Left"
+        unique_id: yaml_template_binary_sensor_bathroom_shower_left
+        icon: mdi:shower-head
+        device_class: occupancy
+        state: "{{ states('sensor.humidity_bathroom')|int(0) < states('sensor.humidity_bathroom_max')|int(0) - 15 }}"
+        availability: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_max', 'unavailable') }}"
+      - name: "Bathroom Bayesian Test - Humidity"
+        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_humidity_contition
+        icon: mdi:water-percent
+        device_class: moisture
+        state: "{{ (states('sensor.humidity_bathroom')|int(0) - states('sensor.humidity_bathroom_min')|int(0)) > 15 }}"
+      - name: "Bathroom Bayesian Test - Light"
+        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_light_contition
+        icon: mdi:lightbulb-on
+        device_class: light
+        state: "{{ is_state('light.bathroom', 'on') }}"
+      - name: "Bathroom Bayesian Test - Water Usage"
+        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_water_usage_contition
+        icon: mdi:water-pump
+        device_class: moisture
+        state: "{{ states('sensor.water_usage')|int(0) > 20 }}"
+      - name: "Water Usage > 5 L/min"
+        unique_id: yaml_template_binary_sensor_water_usage_above_5_l_min
+        icon: mdi:water
+        device_class: moisture
+        state: "{{ states('sensor.water_usage')|int(0) > 5 }}"
+      - name: "Hot Water Used"
+        unique_id: yaml_template_binary_sensor_hot_water_used
+        icon: mdi:water-boiler
+        device_class: moisture
+        state: >
+          {{
+            states('sensor.water_usage_above_5_l_min')|float(0) > 0 and
+            states('sensor.tapwater_temperature_change_5min')|float(0) <= -1
+          }}
 #################
 #    SENSORS    #
 #################
@@ -50,96 +123,10 @@ sensor:
       minutes: 30
     keep_last_sample: false
 
-  - platform: template
-    sensors:
-      shower_occupied_bayesian_probability:
-        friendly_name: "Shower Occupied Bayesian Probability"
-        unit_of_measurement: Chance
-        value_template: >
-          {% set prior = 0.02 %}
-          {% set light_on = is_state("light.bathroom", "on") %}
-          {% set humidity_increase = (states('sensor.humidity_bathroom')|float - states('sensor.home_mean_humidity_without_bathroom')|float) > 20 %}
-          {% set water_usage = states('sensor.water_usage')|float > 1 %}
-          {% set temperature_change = states('sensor.tapwater_temperature_change_1min')|float < -5 %}
-
-          {% set prob_light_given_shower = 0.8 if light_on else 0.08 %}
-          {% set prob_humidity_given_shower = 0.80 if humidity_increase else 0.05 %}
-          {% set prob_water_usage_given_shower = 0.80 if water_usage else 0.10 %}
-          {% set prob_temp_change_given_shower = 0.80 if temperature_change else 0.02 %}
-
-          {% set numerator = prior * prob_light_given_shower * prob_humidity_given_shower * prob_water_usage_given_shower * prob_temp_change_given_shower %}
-          {% set denominator = (prior * prob_light_given_shower * prob_humidity_given_shower * prob_water_usage_given_shower * prob_temp_change_given_shower) + ((1-prior) * (1-prob_light_given_shower) * (1-prob_humidity_given_shower) * (1-prob_water_usage_given_shower) * (1-prob_temp_change_given_shower)) %}
-
-          {% set posterior_probability = numerator / denominator %}
-
-          {{ posterior_probability }}
-        availability_template: >
-          {{ not (
-              states('light.bathroom') in [None, 'unavailable', 'unknown'] or
-              states('sensor.humidity_bathroom') in [None, 'unavailable', 'unknown'] or
-              states('sensor.home_mean_humidity_without_bathroom') in [None, 'unavailable', 'unknown'] or
-              states('sensor.water_usage') in [None, 'unavailable', 'unknown'] or
-              states('sensor.tapwater_temperature_change_1min') in [None, 'unavailable', 'unknown']
-            ) }}
-
 ########################
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      bathroom_shower_occupied:
-        friendly_name: "Bathroom Shower Occupied"
-        unique_id: yaml_template_binary_sensor_bathroom_shower_occupied
-        value_template: "{{ states('sensor.humidity_bathroom')|int(0) > states('sensor.humidity_bathroom_median')|int(0) + 15 }}"
-        device_class: occupancy
-        icon_template: mdi:shower
-        availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_median', 'unavailable') }}"
-
-      bathroom_shower_left:
-        friendly_name: "Bathroom Shower Left"
-        unique_id: yaml_template_binary_sensor_bathroom_shower_left
-        value_template: "{{ states('sensor.humidity_bathroom')|int(0) < states('sensor.humidity_bathroom_max')|int(0) - 15 }}"
-        device_class: occupancy
-        icon_template: mdi:shower-head
-        availability_template: "{{ not is_state('sensor.humidity_bathroom', 'unavailable') and not is_state('sensor.humidity_bathroom_max', 'unavailable') }}"
-      bathroom_bayesian_test_humidity_contition:
-        friendly_name: "Bathroom Bayesian Test - Humidity"
-        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_humidity_contition
-        value_template: "{{ (states('sensor.humidity_bathroom')|int(0) - states('sensor.humidity_bathroom_min')|int(0)) > 15 }}"
-        device_class: moisture
-        icon_template: mdi:water-percent
-      bathroom_bayesian_test_light_contition:
-        friendly_name: "Bathroom Bayesian Test - Light"
-        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_light_contition
-        value_template: "{{ is_state('light.bathroom', 'on') }}"
-        device_class: light
-        icon_template: mdi:lightbulb-on
-      bathroom_bayesian_test_water_usage_contition:
-        friendly_name: "Bathroom Bayesian Test - Water Usage"
-        unique_id: yaml_template_binary_sensor_bathroom_bayesian_test_water_usage_contition
-        value_template: "{{ states('sensor.water_usage')|int(0) > 20 }}"
-        device_class: moisture
-        icon_template: mdi:water-pump
-      water_usage_above_5_l_min:
-        friendly_name: "Water Usage > 5 L/min"
-        unique_id: yaml_template_binary_sensor_water_usage_above_5_l_min
-        value_template: "{{ states('sensor.water_usage')|int(0) > 5 }}"
-        device_class: moisture
-        icon_template: mdi:water
-      hot_water_used:
-        friendly_name: "Hot Water Used"
-        unique_id: yaml_template_binary_sensor_hot_water_used
-        value_template: >
-          {{
-            states('sensor.water_usage_above_5_l_min')|float(0) > 0 and
-            states('sensor.tapwater_temperature_change_5min')|float(0) <= -1
-          }}
-        device_class: moisture
-        icon_template: mdi:water-boiler
-
-
-
   - platform: bayesian
     name: Shower Occupied
     device_class: occupancy
