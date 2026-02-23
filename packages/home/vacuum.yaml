@@ -496,11 +496,16 @@ automation:
             {% else %}
               {{ 'image.' ~ vac_slug ~ '_map' }}
             {% endif %}
+          map_type: >-
+            {% if trigger.id == 'Moeke' %}
+              camera
+            {% else %}
+              image
+            {% endif %}
           # unique file per run (parallel-safe)
           snapshot_file: >-
             /config/www/tmp/snapshot_vacuum_error_{{ vac_slug }}_{{ now().timestamp()|int }}.jpg
           snapshot_local_url: "{{ snapshot_file | replace('/config/www', '/local') }}"
-
       - choose:
           # Case 1: Moeke
           - conditions:
@@ -537,18 +542,18 @@ automation:
                     - If everything seems okay but a transient error occurred, say it might be a fluke.
                     - End with a relevant emoji (💧 if water, 🧼 if cleaning-related, 🤖 otherwise).
                     - No markdown, titles, or formatting — just the plain text.
-              - delay:
-                  seconds: 5
-              - service: camera.snapshot
-                continue_on_error: true
-                data:
-                  entity_id: "{{ map_entity_id }}"
-                  filename: "{{ snapshot_file }}"
+              # - delay:
+              #     seconds: 5
+              # - service: camera.snapshot
+              #   continue_on_error: true
+              #   data:
+              #     entity_id: "{{ map_entity_id }}"
+              #     filename: "{{ snapshot_file }}"
         # Case 2: Argus or Alfred
         default:
-          - service: homeassistant.update_entity
-            target:
-              entity_id: "{{ map_entity_id }}"
+          # - service: homeassistant.update_entity
+          #   target:
+          #     entity_id: "{{ map_entity_id }}"
           - service: conversation.process
             response_variable: gpt_vacuum_error_response
             data:
@@ -560,22 +565,22 @@ automation:
                 Vacuum name: {{ trigger.id }},
                 Floor location: {% if trigger.id == 'Argus' %}First floor{% else %}Second floor{% endif %},
                 Entity state: {{ states(trigger.entity_id) }},
-                Error description: {{ state_attr(trigger.entity_id, 'error') }} (None means no error description or no error),
+                Error description: {{ state_attr(trigger.entity_id, 'error') }},
 
                 Extra information regarding different errors:
+                  - Error description: None means no error description or no error.
                   - Device Stuck, clean area: the device is stuck, the area around the robot needs to be cleared.
                   - Wheels on top of void, move robot: the robot's wheels are suspended, robot needs to be moved.
 
                 Mention the floor and the name, say it's in error, clearly describe the type of error if available, and be brief (~150 characters).
                 One friendly sentence is enough. Add a relevant emoji.
-          - delay:
-              seconds: 5
-          - service: image.snapshot
-            continue_on_error: true
-            data:
-              entity_id: "{{ map_entity_id }}"
-              filename: "{{ snapshot_file }}"
-
+          # - delay:
+          #     seconds: 5
+          # - service: image.snapshot
+          #   continue_on_error: true
+          #   data:
+          #     entity_id: "{{ map_entity_id }}"
+          #     filename: "{{ snapshot_file }}"
       # - service: homeassistant.update_entity
       #   target:
       #     entity_id: "camera.{{ vacuumentityname.split('.')[1] }}_map"
@@ -598,7 +603,8 @@ automation:
             group: vacuum
             tag: vacuumerror
             notification_icon: mdi:robot-vacuum
-            image: "{{ snapshot_local_url }}"
+            image: /api/{{ map_type }}_proxy/{{ map_entity_id }}
+            #image: "{{ snapshot_local_url }}"
       - service: scene.create
         data:
           scene_id: "atmoorb_bulbs_before"
