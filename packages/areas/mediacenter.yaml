@@ -339,21 +339,21 @@ automation:
           id: "turntable"
           event: 1004  # Double press
     action:
-      - service: scene.create
-        data:
-          scene_id: amplifier_power_turntable_before
-          snapshot_entities:
-            - switch.amplifier_power
       - choose:
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1002 }}"
             sequence:
+              - service: scene.create
+                data:
+                  scene_id: scene.amplifier_power_turntable_before
+                  snapshot_entities:
+                    - switch.amplifier_power
               - service: switch.turn_on
                 data:
                   entity_id: switch.amplifier_power
               - repeat:
-                  count: 10
+                  count: 5
                   sequence:
                     - delay:
                         seconds: 0.5
@@ -372,6 +372,8 @@ automation:
                     - service: button.press
                       target:
                         entity_id: button.set_livingroom_channel_to_tv
+              - delay:
+                  seconds: 2
               - service: scene.turn_on
                 data:
                   entity_id: scene.amplifier_power_turntable_before
