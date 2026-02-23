@@ -315,3 +315,70 @@ cards:
             name: High accuracy interval
           - entity: sensor.pixel_9a_last_update_trigger
             name: Last update trigger
+
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    span:
+      start: day
+    header:
+      show: true
+      title: Electricity Price Comparison
+      show_states: true
+      colorize_states: true
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    chart_type: line
+    update_interval: 1m
+    yaxis:
+      - min: ~0.00
+        max: ~0.50
+        decimals: 3
+        apex_config:
+          tickAmount: 5
+          forceNiceScale: True
+    all_series_config:
+      stroke_width: 2
+      float_precision: 3
+      transform: "return Math.round(x * 1000) / 1000;"
+      unit: €/kWh
+      show:
+        in_header: false
+        legend_value: false
+    series:
+      - entity: sensor.nordpool_energy_price
+        name: Nordpool (15m)
+        color: "#7ED321" # green, different from the averages
+        stroke_width: 2
+        opacity: 0.6
+        show:
+          in_header: true
+        data_generator: |
+          const data = entity.attributes.raw_today || [];
+          return data
+            .filter(p => p && p.start && p.value != null)
+            .map(p => [Date.parse(p.start), p.value]);
+      - entity: sensor.nordpool_energy_price_rolling_hour_15m
+        name: Rolling 1 Hour
+        color: "#f9d423" # bright yellow
+        stroke_width: 4
+        show:
+          in_header: true
+        data_generator: |
+          const data = entity.attributes.raw_today_rolling_hour_avg || [];
+          return data
+            .filter(p => p && p.start && p.value != null)
+            .map(p => [Date.parse(p.start), p.value]);
+      - entity: sensor.nordpool_energy_price_rolling_hour_15m
+        name: Rolling 2 Hour
+        color: "#4A90E2" # clean blue
+        stroke_width: 3
+        show:
+          in_header: true
+        data_generator: |
+          const data = entity.attributes.raw_today_rolling_two_hour_avg || [];
+          return data
+            .filter(p => p && p.start && p.value != null)
+            .map(p => [Date.parse(p.start), p.value]);
