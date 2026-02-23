@@ -392,6 +392,115 @@ template:
         icon: mdi:calendar-today
         device_class: connectivity
 
+  - sensor:
+      - name: "Nordpool Energy Price (Rolling Hour @ 15m)"
+        unique_id: yaml_template_sensor_nordpool_energy_price_rolling_hour_15m
+        icon: mdi:flash
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+          {% set idx = now().hour * 4 + (now().minute // 15) -%}
+          {% if (idx + 3) < (q | length) -%}
+            {{ ((q[idx]|float + q[idx+1]|float + q[idx+2]|float + q[idx+3]|float) / 4) | round(3) }}
+          {% else -%}
+            unknown
+          {% endif -%}
+        availability: >-
+          {% set q = state_attr('sensor.nordpool_energy_price', 'today') -%}
+          {% if q is none -%}
+            false
+          {% else -%}
+            {% set idx = now().hour * 4 + (now().minute // 15) -%}
+            {{ (q | length) >= (idx + 4) }}
+          {% endif -%}
+        attributes:
+          unit: "{{ state_attr('sensor.nordpool_energy_price', 'unit') }}"
+          currency: "{{ state_attr('sensor.nordpool_energy_price', 'currency') }}"
+          country: "{{ state_attr('sensor.nordpool_energy_price', 'country') }}"
+          region: "{{ state_attr('sensor.nordpool_energy_price', 'region') }}"
+          price_in_cents: "{{ state_attr('sensor.nordpool_energy_price', 'price_in_cents') }}"
+          tomorrow_valid: "{{ state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') }}"
+          additional_costs_current_hour: "{{ state_attr('sensor.nordpool_energy_price', 'additional_costs_current_hour') }}"
+          current_quarter_index: >-
+            {{ now().hour * 4 + (now().minute // 15) }}
+          current_hour_avg: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set idx = now().hour * 4 + (now().minute // 15) -%}
+            {% if (idx + 3) < (q | length) -%}
+              {{ ((q[idx]|float + q[idx+1]|float + q[idx+2]|float + q[idx+3]|float) / 4) | round(3) }}
+            {% else -%}
+              {{ none }}
+            {% endif -%}
+          current_two_hour_avg: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set idx = now().hour * 4 + (now().minute // 15) -%}
+            {% if (idx + 7) < (q | length) -%}
+              {{ ((q[idx]|float + q[idx+1]|float + q[idx+2]|float + q[idx+3]|float
+                    + q[idx+4]|float + q[idx+5]|float + q[idx+6]|float + q[idx+7]|float) / 8) | round(3) }}
+            {% else -%}
+              {{ none }}
+            {% endif -%}
+          today_rolling_hour_avg: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set n = q | length -%}
+            {% set out = namespace(v=[]) -%}
+            {% for i in range(n) -%}
+              {% if (i + 3) < n -%}
+                {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3)] -%}
+              {% else -%}
+                {% set out.v = out.v + [none] -%}
+              {% endif -%}
+            {% endfor -%}
+            {{ out.v | to_json }}
+          today_rolling_two_hour_avg: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set n = q | length -%}
+            {% set out = namespace(v=[]) -%}
+            {% for i in range(n) -%}
+              {% if (i + 7) < n -%}
+                {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float
+                                          + q[i+4]|float + q[i+5]|float + q[i+6]|float + q[i+7]|float) / 8) | round(3)] -%}
+              {% else -%}
+                {% set out.v = out.v + [none] -%}
+              {% endif -%}
+            {% endfor -%}
+            {{ out.v | to_json }}
+          tomorrow_rolling_hour_avg: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% if (q | length) == 0 -%}
+              {{ [] | to_json }}
+            {% else -%}
+              {% set n = q | length -%}
+              {% set out = namespace(v=[]) -%}
+              {% for i in range(n) -%}
+                {% if (i + 3) < n -%}
+                  {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float) / 4) | round(3)] -%}
+                {% else -%}
+                  {% set out.v = out.v + [none] -%}
+                {% endif -%}
+              {% endfor -%}
+              {{ out.v | to_json }}
+            {% endif -%}
+          tomorrow_rolling_two_hour_avg: >-
+            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% if (q | length) == 0 -%}
+              {{ [] | to_json }}
+            {% else -%}
+              {% set n = q | length -%}
+              {% set out = namespace(v=[]) -%}
+              {% for i in range(n) -%}
+                {% if (i + 7) < n -%}
+                  {% set out.v = out.v + [((q[i]|float + q[i+1]|float + q[i+2]|float + q[i+3]|float
+                                            + q[i+4]|float + q[i+5]|float + q[i+6]|float + q[i+7]|float) / 8) | round(3)] -%}
+                {% else -%}
+                  {% set out.v = out.v + [none] -%}
+                {% endif -%}
+              {% endfor -%}
+              {{ out.v | to_json }}
+            {% endif -%}
+
 #######################
 #    INPUT NUMBERS    #
 #######################
