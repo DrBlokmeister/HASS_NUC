@@ -3,11 +3,20 @@ automation:
     id: yaml_automation_misc_morning_brief_morning_agenda_after_wakeup
     mode: single
     trigger:
-      - platform: template
-        value_template: >
-          {{ is_state('sensor.sleep_as_android_state', 'sleep_tracking_stopped') or
-            is_state('sensor.sleep_as_android_state', 'alarm_alert_dismiss') or
-            is_state('sensor.sleep_as_android_state', 'alarm_rescheduled')}}
+      - id: wakeup
+        platform: state
+        entity_id: sensor.sleep_as_android_state
+        not_from:
+          - awake
+          - alarm_rescheduled
+          - sleep_tracking_stopped
+          - alarm_alert_dismiss
+          - unavailable
+          - unknown
+        to:
+          - alarm_rescheduled
+          - sleep_tracking_stopped
+          - alarm_alert_dismiss
         for:
           minutes: 10
     action:
