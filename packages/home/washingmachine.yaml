@@ -1,6 +1,11 @@
 homeassistant:
   customize: {}
 
+template:
+  - binary_sensor:
+      - name: Washingmachine On
+        state: "{{ states('sensor.plug_washing_machine_power')|float > 25 }}"
+        availability: "{{ states('sensor.plug_washing_machine_power')|is_number }}"
 #################
 #    SENSORS    #
 #################
@@ -10,11 +15,7 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      washingmachine_on:
-        value_template: "{{ states('sensor.plug_washing_machine_power')|float > 25 }}"
-        availability_template: "{{ states('sensor.plug_washing_machine_power')|is_number }}"
+
 ########################
 #    INPUT BOOLEANS    #
 ########################

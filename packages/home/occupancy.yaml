@@ -46,18 +46,12 @@ template:
           last_triggered_entity_id: "{{ states('sensor.last_triggered_motion_sensor') }}"
           last_triggered_state: "{{ states(trigger.entity_id) }}"
 
-#################
-#    SENSORS    #
-#################
-sensor:
-  - platform: template
-    sensors:
-      guest_wifi_clients:
-        friendly_name: "Guest WiFi Clients"
+  - sensor:
+      - name: "Guest WiFi Clients"
         unique_id: yaml_template_sensor_guest_wifi_clients
-        icon_template: mdi:account-group
+        icon: mdi:account-group
         unit_of_measurement: "clients"
-        value_template: >-
+        state: >-
           {% set ns = namespace(counter=0) %}
           {% for entity in states.device_tracker %}
             {% if 'essid' in entity['attributes'].keys() %}
@@ -67,7 +61,7 @@ sensor:
             {% endif %}
           {% endfor %}
           {{ ns.counter }}
-        attribute_templates:
+        attributes:
           clients: >-
             {% set clients = namespace(list=[]) %}
             {%- for entity in states.device_tracker -%}
@@ -78,7 +72,71 @@ sensor:
               {%- endif -%}
             {%- endfor -%}
             {{ clients.list | join(', ') if clients.list else 'No clients' }}
+    binary_sensor:
+      - name: "House occupied"
+        unique_id: yaml_template_binary_sensor_house_occupied
+        icon: mdi:home
+        device_class: occupancy
+        state: >-
+          {{
+            is_state('person.sander_blok','home') or
+            is_state('person.tamara','home') or
+            is_state('device_tracker.phone_toos', 'home') or
+            is_state('device_tracker.phone_eddy', 'home') or
+            is_state('device_tracker.a55_van_ben', 'home') or
+            is_state('device_tracker.a55_van_heidi', 'home') or
+            states('sensor.guest_wifi_clients')|int(0) > 0
+          }}
+        availability: >-
+          {{
+            states('person.sander_blok') not in ['unavailable', 'unknown', 'none', None] or
+            states('person.tamara') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.phone_toos') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.phone_eddy') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.a55_van_ben') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.a55_van_heidi') not in ['unavailable', 'unknown', 'none', None] or
+            states('sensor.guest_wifi_clients') | is_number()
+          }}
+      - name: "Sander home alone"
+        unique_id: yaml_template_binary_sensor_sander_home_alone
+        icon: mdi:home
+        device_class: occupancy
+        state: >-
+          {{
+            is_state('person.sander_blok','home') and
+            not is_state('person.tamara','home') and
+            not is_state('device_tracker.phone_toos', 'home') and
+            not is_state('device_tracker.phone_eddy', 'home') and
+            not is_state('device_tracker.a55_van_ben', 'home') and
+            not is_state('device_tracker.a55_van_heidi', 'home') and
+            states('sensor.guest_wifi_clients')|int(0) == 0
+          }}
+        availability: >-
+          {{
+            states('person.sander_blok') not in ['unavailable', 'unknown', 'none', None] or
+            states('person.tamara') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.phone_toos') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.phone_eddy') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.a55_van_ben') not in ['unavailable', 'unknown', 'none', None] or
+            states('device_tracker.a55_van_heidi') not in ['unavailable', 'unknown', 'none', None] or
+            states('sensor.guest_wifi_clients') | is_number()
+          }}
+    switch:
+      - name: "Tamara mode"
+        unique_id: yaml_template_switch_tamara_mode
+        icon: mdi:account-heart
+        state: "{{ is_state('input_boolean.tamara_mode', 'on') }}"
+        turn_on:
+          service: input_boolean.turn_on
+          entity_id: input_boolean.tamara_mode
+        turn_off:
+          service: input_boolean.turn_off
+          entity_id: input_boolean.tamara_mode
 
+#################
+#    SENSORS    #
+#################
+sensor:
   - platform: statistics
     name: Motion Events Per Minute
     unique_id: yaml_statistics_sensor_motion_events_per_minute
@@ -89,58 +147,7 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  - platform: template
-    sensors:
-      house_occupied:
-        friendly_name: "House occupied"
-        unique_id: yaml_template_binary_sensor_house_occupied
-        icon_template: mdi:home
-        device_class: occupancy
-        value_template: >-
-          {{
-            is_state('person.sander_blok','home') or
-            is_state('person.tamara','home') or
-            is_state('device_tracker.phone_toos', 'home') or
-            is_state('device_tracker.phone_eddy', 'home') or
-            is_state('device_tracker.a55_van_ben', 'home') or
-            is_state('device_tracker.a55_van_heidi', 'home') or
-            states('sensor.guest_wifi_clients')|int(0) > 0
-          }}
-        availability_template: >-
-          {{
-            states('person.sander_blok') not in ['unavailable', 'unknown', 'none', None] or
-            states('person.tamara') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.phone_toos') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.phone_eddy') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.a55_van_ben') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.a55_van_heidi') not in ['unavailable', 'unknown', 'none', None] or
-            states('sensor.guest_wifi_clients') | is_number()
-          }}
-      sander_home_alone:
-        friendly_name: "Sander home alone"
-        unique_id: yaml_template_binary_sensor_sander_home_alone
-        icon_template: mdi:home
-        device_class: occupancy
-        value_template: >-
-          {{
-            is_state('person.sander_blok','home') and
-            not is_state('person.tamara','home') and
-            not is_state('device_tracker.phone_toos', 'home') and
-            not is_state('device_tracker.phone_eddy', 'home') and
-            not is_state('device_tracker.a55_van_ben', 'home') and
-            not is_state('device_tracker.a55_van_heidi', 'home') and
-            states('sensor.guest_wifi_clients')|int(0) == 0
-          }}
-        availability_template: >-
-          {{
-            states('person.sander_blok') not in ['unavailable', 'unknown', 'none', None] or
-            states('person.tamara') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.phone_toos') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.phone_eddy') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.a55_van_ben') not in ['unavailable', 'unknown', 'none', None] or
-            states('device_tracker.a55_van_heidi') not in ['unavailable', 'unknown', 'none', None] or
-            states('sensor.guest_wifi_clients') | is_number()
-          }}
+
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -156,20 +163,6 @@ input_boolean:
 #    SWITCHES    #
 ##################
 switch:
-  - platform: template
-    switches:
-      tamara_mode:
-        friendly_name: "Tamara mode"
-        unique_id: yaml_template_switch_tamara_mode
-        icon_template: mdi:account-heart
-        value_template: "{{ is_state('input_boolean.tamara_mode', 'on') }}"
-        turn_on:
-          service: input_boolean.turn_on
-          entity_id: input_boolean.tamara_mode
-        turn_off:
-          service: input_boolean.turn_off
-          entity_id: input_boolean.tamara_mode
-
 
 #####################
 #    AUTOMATIONS    #

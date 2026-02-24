@@ -26,37 +26,34 @@ input_boolean:
 #     builtinicons: 1
 #     printwastetypes: 0
 
+template:
+  - sensor:
+    - name: "Days to GFT"
+      unique_id: yaml_template_sensor_days_to_gft
+      icon: mdi:leaf
+      unit_of_measurement: 'days'
+      state: >-
+        {{ (strptime(states('sensor.afval_voor_gft'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
+      availability: "{{ states('sensor.afval_voor_gft') not in ['unknown', 'unavailable', 'none'] }}"
+    - name: "Days to Papier"
+      unique_id: yaml_template_sensor_days_to_papier
+      icon: mdi:newspaper-variant
+      unit_of_measurement: 'days'
+      state: >-
+        {{ (strptime(states('sensor.afval_voor_papier'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
+      availability: "{{ states('sensor.afval_voor_papier') not in ['unknown', 'unavailable', 'none'] }}"
+    - name: "Days to Restafval"
+      unique_id: yaml_template_sensor_days_to_restafval
+      icon: mdi:delete
+      unit_of_measurement: 'days'
+      state: >-
+        {{ (strptime(states('sensor.afval_voor_restafval'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
+      availability: "{{ states('sensor.afval_voor_restafval') not in ['unknown', 'unavailable', 'none'] }}"
+
 #################
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      days_to_gft:
-        friendly_name: "Days to GFT"
-        unique_id: yaml_template_sensor_days_to_gft
-        icon_template: mdi:leaf
-        unit_of_measurement: 'days'
-        value_template: >-
-          {{ (strptime(states('sensor.afval_voor_gft'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
-        availability_template: "{{ states('sensor.afval_voor_gft') not in ['unknown', 'unavailable', 'none'] }}"
-      days_to_papier:
-        friendly_name: "Days to Papier"
-        unique_id: yaml_template_sensor_days_to_papier
-        icon_template: mdi:newspaper-variant
-        unit_of_measurement: 'days'
-        value_template: >-
-          {{ (strptime(states('sensor.afval_voor_papier'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
-        availability_template: "{{ states('sensor.afval_voor_papier') not in ['unknown', 'unavailable', 'none'] }}"
-      days_to_restafval:
-        friendly_name: "Days to Restafval"
-        unique_id: yaml_template_sensor_days_to_restafval
-        icon_template: mdi:delete
-        unit_of_measurement: 'days'
-        value_template: >-
-          {{ (strptime(states('sensor.afval_voor_restafval'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
-        availability_template: "{{ states('sensor.afval_voor_restafval') not in ['unknown', 'unavailable', 'none'] }}"
-
 
 ########################
 #    BINARY SENSORS    #

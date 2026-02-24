@@ -1,20 +1,19 @@
 homeassistant:
   customize: {}
 
+template:
+  - sensor:
+      - name: "Ventilation Power Estimate"
+        unique_id: yaml_template_sensor_ventilation_power_estimate
+        icon: mdi:fan
+        unit_of_measurement: "W"
+        state: >-
+          {{ (28.4 + 0.069*(states('sensor.fan_speed_setting')|float) + 0.0062*(states('sensor.fan_speed_setting')|float)**2)|round }}
+        availability: "{{ states('sensor.fan_speed_setting')|is_number }}"
 #################
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      ventilation_power_estimate:
-        friendly_name: "Ventilation Power Estimate"
-        unique_id: yaml_template_sensor_ventilation_power_estimate
-        icon_template: mdi:fan
-        unit_of_measurement: "W"
-        value_template: >-
-          {{ (28.4 + 0.069*(states('sensor.fan_speed_setting')|float) + 0.0062*(states('sensor.fan_speed_setting')|float)**2)|round }}
-        availability_template: "{{ states('sensor.fan_speed_setting')|is_number }}"
   - platform: integration
     source: sensor.ventilation_power_estimate
     name: Ventilation Energy Usage

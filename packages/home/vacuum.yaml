@@ -53,38 +53,28 @@ utility_meter:
     periodically_resetting: true
     always_available: true
 
-#################
-#    SENSORS    #
-#################
-sensor:
-  - platform: template
-    sensors:
-##### BATTERY ESTIMATIONS #####
-      alfred_battery:
-        friendly_name: "Alfred Battery"
+template:
+  - sensor:
+      - name: "Alfred Battery"
         unique_id: yaml_template_sensor_alfred_battery
-        unit_of_measurement: "%"
+        icon: mdi:battery
         device_class: battery
-        icon_template: mdi:battery
-        value_template: "{{ state_attr('vacuum.alfred', 'battery_level') }}"
-        availability_template: "{{ states('vacuum.alfred') not in ['None', 'unavailable', 'unknown', None] }}"
-      argus_battery:
-        friendly_name: "Argus Battery"
+        unit_of_measurement: "%"
+        state: "{{ state_attr('vacuum.alfred', 'battery_level') }}"
+        availability: "{{ states('vacuum.alfred') not in ['None', 'unavailable', 'unknown', None] }}"
+      - name: "Argus Battery"
         unique_id: yaml_template_sensor_argus_battery
-        unit_of_measurement: "%"
+        icon: mdi:battery
         device_class: battery
-        icon_template: mdi:battery
-        value_template: "{{ state_attr('vacuum.argus', 'battery_level') }}"
-        availability_template: "{{ states('vacuum.argus') not in ['None', 'unavailable', 'unknown', None] }}"
-
-##### POWER ESTIMATION #####
-      moeke_power_estimate:
-        friendly_name: "Moeke Power Estimate"
+        unit_of_measurement: "%"
+        state: "{{ state_attr('vacuum.argus', 'battery_level') }}"
+        availability: "{{ states('vacuum.argus') not in ['None', 'unavailable', 'unknown', None] }}"
+      - name: "Moeke Power Estimate"
         unique_id: yaml_template_sensor_moeke_power_estimate
-        unit_of_measurement: "W"
+        icon: mdi:flash
         device_class: power
-        icon_template: mdi:flash
-        value_template: >-
+        unit_of_measurement: "W"
+        state: >-
           {% if is_state('vacuum.moeke', 'docked') and states('sensor.moeke_battery_level')|int(100) < 100 and is_state('sensor.moeke_self_wash_base_status', 'drying') %}
             60
           {% elif is_state('vacuum.moeke', 'docked') and states('sensor.moeke_battery_level')|int(100) < 100 and not is_state('sensor.moeke_self_wash_base_status', 'drying') %}
@@ -96,14 +86,12 @@ sensor:
           {% else %}
             0
           {% endif %}
-        #availability_template: "{{ states('vacuum.moeke') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
-      argus_power_estimate:
-        friendly_name: "Argus Power Estimate"
+      - name: "Argus Power Estimate"
         unique_id: yaml_template_sensor_argus_power_estimate
-        unit_of_measurement: "W"
+        icon: mdi:flash
         device_class: power
-        icon_template: mdi:flash
-        value_template: >-
+        unit_of_measurement: "W"
+        state: >-
           {% if states.vacuum.argus == None or states.vacuum.argus.state in ['unknown', 'unavailable', None, 'None'] %}
             0
           {% elif is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int(100) < 100 %}
@@ -113,14 +101,12 @@ sensor:
           {% else %}
             0
           {% endif %}
-        #availability_template: "{{ states('vacuum.argus') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
-      alfred_power_estimate:
-        friendly_name: "Alfred Power Estimate"
+      - name: "Alfred Power Estimate"
         unique_id: yaml_template_sensor_alfred_power_estimate
-        unit_of_measurement: "W"
+        icon: mdi:flash
         device_class: power
-        icon_template: mdi:flash
-        value_template: >-
+        unit_of_measurement: "W"
+        state: >-
           {% if states.vacuum.alfred == None or states.vacuum.alfred.state in ['unknown', 'unavailable', None, 'None'] %}
             0
           {% elif is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int(100) < 100 %}
@@ -130,8 +116,17 @@ sensor:
           {% else %}
             0
           {% endif %}
-        #availability_template: "{{ states('vacuum.alfred') not in ['unavailable', 'unknown', 'none', None, 'None'] }}"
-
+    binary_sensor:
+      - name: "Tamara or Sander Downstairs"
+        unique_id: yaml_template_binary_sensor_tamara_or_sander_downstairs
+        icon: mdi:stairs-down
+        device_class: occupancy
+        state: "{{ is_state_attr('device_tracker.tamaraphonep9a_unifi', 'ap_mac', 'd0:21:f9:64:06:39') or is_state_attr('device_tracker.blokmeisterp9pro_unifi', 'ap_mac', 'd0:21:f9:64:06:39') }}"
+        availability: "{{ not is_state('device_tracker.tamaraphonep9a_unifi', 'unavailable') or not is_state('device_tracker.blokmeisterp9pro_unifi', 'unavailable') }}"
+#################
+#    SENSORS    #
+#################
+sensor:
   - platform: min_max
     name: Vacuums Power Estimate
     type: sum

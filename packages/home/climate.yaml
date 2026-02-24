@@ -1,6 +1,99 @@
 homeassistant:
   customize: {}
 
+template:
+  - sensor:
+      - name: Warmtebron in-uit Delta T
+        unique_id: yaml_template_sensor_warmtebron_in_uit_delta
+        icon: mdi:thermometer-lines
+        unit_of_measurement: '°C'
+        state: "{{ states('sensor.heatpump_heat_source_output_temperature')|float - states('sensor.heatpump_heat_source_input_temperature')|float}}"
+        availability: "{{ states.sensor.heatpump_heat_source_output_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_heat_source_input_temperature not in ['unavailable', 'unknown', 'none', None] }}"
+      - name: Vloerverwarming in-uit Delta T
+        unique_id: yaml_template_sensor_vloerverwarming_in_uit_delta
+        icon: mdi:thermometer-lines
+        unit_of_measurement: '°C'
+        state: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
+        availability: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
+      - name: "Heatpump Efficiency"
+        unique_id: yaml_template_sensor_heatpump_efficiency
+        icon: mdi:percent
+        unit_of_measurement: '%'
+        state: >-
+          {% set output = states('sensor.heatpump_current_heat_output') | float(0) %}
+          {% set input = states('sensor.shelly_heat_pump_power') | float(0) %}
+          {% if input > 2 %}
+            {{ (100 * output / input) | round(0) }}
+          {% else %}
+            0
+          {% endif %}
+        availability: >-
+          {{ states('sensor.heatpump_current_heat_output') not in ['unavailable', 'unknown', 'none', ''] and
+              states('sensor.shelly_heat_pump_power') not in ['unavailable', 'unknown', 'none', ''] }}
+      - name: Heatpump Source Heat Dissipation
+        unique_id: yaml_template_sensor_heatpump_source_heat_dissipation
+        icon: mdi:fire
+        unit_of_measurement: 'kW'
+        state: "{{ (states('sensor.warmtebron_in_uit_delta')|float * states('sensor.heatpump_heat_source_flow_rate')|float * 4186 / 3600 / 1000)|round(2) }}"
+        availability: "{{ states('sensor.warmtebron_in_uit_delta')|is_number and states('sensor.heatpump_heat_source_flow_rate')|is_number}}"
+      - name: Bathroom Alpha Home Temperature
+        unique_id: yaml_template_sensor_bathroom_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.badkamer', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.badkamer', 'current_temperature')|is_number }}"
+      - name: Bedroom Alpha Home Temperature
+        unique_id: yaml_template_sensor_bedroom_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.slaapkamer', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.slaapkamer', 'current_temperature')|is_number }}"
+      - name: Baby Room Alpha Home Temperature
+        unique_id: yaml_template_sensor_nursery_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.babykamer', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.babykamer', 'current_temperature')|is_number }}"
+      - name: Study Alpha Home Temperature
+        unique_id: yaml_template_sensor_study_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.studeerkamer', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.studeerkamer', 'current_temperature')|is_number }}"
+      - name: Tamara's Room Alpha Home Temperature
+        unique_id: yaml_template_sensor_tamaras_room_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.tamara', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.tamara', 'current_temperature')|is_number }}"
+      - name: Guest Room Alpha Home Temperature
+        unique_id: yaml_template_sensor_guest_room_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.logeerkamer', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.logeerkamer', 'current_temperature')|is_number }}"
+      - name: Living Room Alpha Home Temperature
+        unique_id: yaml_template_sensor_living_room_alphahome_temperature
+        icon: mdi:thermostat
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.woonkamer', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.woonkamer', 'current_temperature')|is_number }}"
+      - name: Tapwater Heat-Up Energy Required
+        unique_id: yaml_template_sensor_tapwater_heat_up_energy_required
+        icon: mdi:lightning-bolt
+        device_class: energy
+        unit_of_measurement: kWh
+        state: >-
+          {{ (((0.0012 * states('input_number.tapwater_heat_up_temperature')|float()**2) + (-0.0593 * states('input_number.tapwater_heat_up_temperature')|float) + 0.6177) -
+              ((0.0012 * states('sensor.heatpump_tapwater_temperature')|float()**2) + (-0.0593 * states('sensor.heatpump_tapwater_temperature')|float) + 0.6177))|round(2) }}
+        availability: "{{ states('input_number.tapwater_heat_up_temperature')|is_number and states('sensor.heatpump_tapwater_temperature')|is_number }}"
 #######################
 #    INPUT SELECTS    #
 #######################
@@ -204,131 +297,6 @@ sensor:
     entity_ids:
       - sensor.guest_room_aqm_temperature
       - sensor.guestroom_alphahome_temperature
-
-  - platform: template
-    sensors:
-      warmtebron_in_uit_delta:
-        friendly_name: Warmtebron in-uit Delta T
-        unique_id: yaml_template_sensor_warmtebron_in_uit_delta
-        icon_template: mdi:thermometer-lines
-        unit_of_measurement: '°C'
-        value_template: "{{ states('sensor.heatpump_heat_source_output_temperature')|float - states('sensor.heatpump_heat_source_input_temperature')|float}}"
-        availability_template: "{{ states.sensor.heatpump_heat_source_output_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_heat_source_input_temperature not in ['unavailable', 'unknown', 'none', None] }}"
-      vloerverwarming_in_uit_delta:
-        friendly_name: Vloerverwarming in-uit Delta T
-        unique_id: yaml_template_sensor_vloerverwarming_in_uit_delta
-        icon_template: mdi:thermometer-lines
-        unit_of_measurement: '°C'
-        value_template: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
-        availability_template: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
-      # tapwater_heat_amount_updating:
-      #   friendly_name: Tapwater Heat Amount Updating
-      #   unit_of_measurement: "kWh"
-      #   value_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
-      #   attribute_templates:
-      #     update_minute: "{{ now().minute }}"
-      #   availability_template: "{{ states('sensor.heatpump_tapwater_heat_amount')|is_number() }}"
-      # heating_heat_amount_updating:
-      #   friendly_name: Heating Heat Amount Updating
-      #   unit_of_measurement: "kWh"
-      #   value_template: "{{ states('sensor.heatpump_heat_amount_heating')|float() + ((((now().minute % 2) | float) - 0.5) / 100) }}"
-      #   attribute_templates:
-      #     update_minute: "{{ now().minute }}"
-      #   availability_template: "{{ states('sensor.heatpump_heat_amount_heating')|is_number() }}"
-      heatpump_efficiency:
-        friendly_name: "Heatpump Efficiency"
-        unique_id: yaml_template_sensor_heatpump_efficiency
-        icon_template: mdi:percent
-        unit_of_measurement: '%'
-        value_template: >-
-          {% set output = states('sensor.heatpump_current_heat_output') | float(0) %}
-          {% set input = states('sensor.shelly_heat_pump_power') | float(0) %}
-          {% if input > 2 %}
-            {{ (100 * output / input) | round(0) }}
-          {% else %}
-            0
-          {% endif %}
-        availability_template: >-
-          {{ states('sensor.heatpump_current_heat_output') not in ['unavailable', 'unknown', 'none', ''] and
-              states('sensor.shelly_heat_pump_power') not in ['unavailable', 'unknown', 'none', ''] }}
-      heatpump_source_heat_dissipation:
-        friendly_name: Heatpump Source Heat Dissipation
-        unique_id: yaml_template_sensor_heatpump_source_heat_dissipation
-        icon_template: mdi:fire
-        unit_of_measurement: 'kW'
-        value_template: "{{ (states('sensor.warmtebron_in_uit_delta')|float * states('sensor.heatpump_heat_source_flow_rate')|float * 4186 / 3600 / 1000)|round(2) }}"
-        availability_template: "{{ states('sensor.warmtebron_in_uit_delta')|is_number and states('sensor.heatpump_heat_source_flow_rate')|is_number}}"
-      # heatpump_floor_heat_dissipation:
-      #   friendly_name: Heatpump Floor Heat Dissipation
-      #   unit_of_measurement: 'kW'
-      #   value_template: "{{ states('sensor.vloerverwarming_in_uit_delta')|float * states('sensor.heatpump_heat_source_flow_rate')|float * 4186 / 3600 / 1000}}"
-      bathroom_alphahome_temperature:
-        friendly_name: Bathroom Alpha Home Temperature
-        unique_id: "yaml_template_sensor_bathroom_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.badkamer', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.badkamer', 'current_temperature')|is_number }}"
-      bedroom_alphahome_temperature:
-        friendly_name: Bedroom Alpha Home Temperature
-        unique_id: "yaml_template_sensor_bedroom_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.slaapkamer', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.slaapkamer', 'current_temperature')|is_number }}"
-      baby_room_alphahome_temperature:
-        friendly_name: Baby Room Alpha Home Temperature
-        unique_id: "yaml_template_sensor_nursery_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.babykamer', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.babykamer', 'current_temperature')|is_number }}"
-      study_alphahome_temperature:
-        friendly_name: Study Alpha Home Temperature
-        unique_id: "yaml_template_sensor_study_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.studeerkamer', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.studeerkamer', 'current_temperature')|is_number }}"
-      tamaras_room_alphahome_temperature:
-        friendly_name: Tamara's Room Alpha Home Temperature
-        unique_id: "yaml_template_sensor_tamaras_room_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.tamara', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.tamara', 'current_temperature')|is_number }}"
-      guestroom_alphahome_temperature:
-        friendly_name: Guest Room Alpha Home Temperature
-        unique_id: "yaml_template_sensor_guest_room_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.logeerkamer', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.logeerkamer', 'current_temperature')|is_number }}"
-      living_room_alphahome_temperature:
-        friendly_name: Living Room Alpha Home Temperature
-        unique_id: "yaml_template_sensor_living_room_alphahome_temperature"
-        device_class: temperature
-        unit_of_measurement: "°C"
-        icon_template: mdi:thermostat
-        value_template: "{{ state_attr('climate.woonkamer', 'current_temperature') }}"
-        availability_template: "{{ state_attr('climate.woonkamer', 'current_temperature')|is_number }}"
-      tapwater_heat_up_energy_required:
-        friendly_name: Tapwater Heat-Up Energy Required
-        unique_id: yaml_template_sensor_tapwater_heat_up_energy_required
-        device_class: energy
-        unit_of_measurement: kWh
-        icon_template: mdi:lightning-bolt
-        value_template: >-
-          {{ (((0.0012 * states('input_number.tapwater_heat_up_temperature')|float()**2) + (-0.0593 * states('input_number.tapwater_heat_up_temperature')|float) + 0.6177) -
-             ((0.0012 * states('sensor.heatpump_tapwater_temperature')|float()**2) + (-0.0593 * states('sensor.heatpump_tapwater_temperature')|float) + 0.6177))|round(2) }}
-        availability_template: "{{ states('input_number.tapwater_heat_up_temperature')|is_number and states('sensor.heatpump_tapwater_temperature')|is_number }}"
-
 
   # CO2 calibration notification helpers
   - platform: statistics
