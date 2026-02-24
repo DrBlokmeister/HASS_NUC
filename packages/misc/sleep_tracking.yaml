@@ -74,6 +74,16 @@ template:
           {% else %}
             {{ s }}
           {% endif %}
+      - name: "Sleep Efficiency"
+        unit_of_measurement: '%'
+        state: >
+          {% set sleep_time = states('sensor.actual_sleep_time') | float %}
+          {% set in_bed_time = states('sensor.total_sleep_time') | float %}
+          {% if in_bed_time > 0 %}
+            {{ ((sleep_time / in_bed_time) * 100) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
 
 #################
 #    SENSORS    #
@@ -149,21 +159,6 @@ sensor:
       {% endif %}
     end: "{{ now() }}"
     
-  # Sleep Efficiency Calculation
-  - platform: template
-    sensors:
-      sleep_efficiency:
-        friendly_name: "Sleep Efficiency"
-        unit_of_measurement: '%'
-        value_template: >
-          {% set sleep_time = states('sensor.actual_sleep_time') | float %}
-          {% set in_bed_time = states('sensor.total_sleep_time') | float %}
-          {% if in_bed_time > 0 %}
-            {{ ((sleep_time / in_bed_time) * 100) | round(2) }}
-          {% else %}
-            0
-          {% endif %}
-
   - platform: statistics
     name: "Monthly Mean Total Sleep Time"
     entity_id: sensor.daily_total_sleep_time

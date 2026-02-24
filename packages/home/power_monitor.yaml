@@ -543,16 +543,19 @@ template:
           {{ states( 'sensor.electricity_meter_power_consumption' )|float(0) - states( 'sensor.electricity_meter_power_production' )|float(0) }}
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Electricity Meter Power (W)"
+        default_entity_id: sensor.electricity_meter_power_consumption_watt
         icon: mdi:flash-outline
         unit_of_measurement: "W"
         state: "{{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 | float | round(2) }}"
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
       - name: "Electricity Meter Power Production (W)"
+        default_entity_id: sensor.electricity_meter_power_production_watt
         icon: mdi:flash-outline
         unit_of_measurement: "W"
         state: "{{ states('sensor.electricity_meter_power_production') | float * 1000 }}"
         availability: "{{ states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Total Power Consumption (W)"
+        default_entity_id: sensor.total_power_consumption_watt
         icon: mdi:flash-outline
         unit_of_measurement: "W"
         state: >-
@@ -563,6 +566,7 @@ template:
           {% endif %}
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Total Power Consumption (kW)"
+        default_entity_id: sensor.total_power_consumption_kilowatt
         icon: mdi:flash-outline
         unit_of_measurement: "kW"
         state: "{{ states('sensor.total_power_consumption_watt')|float/1000 }}"

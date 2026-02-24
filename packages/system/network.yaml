@@ -64,41 +64,35 @@ command_line:
   #       - interface
   #       - server
 
+template:
+  - sensor:
+      - name: "Router Download Speed"
+        unit_of_measurement: MB/s
+        state: "{{ (states('sensor.unifi_dream_machine_kib_s_received')|float/1024)|round(1) }}"
+        availability: "{{ states('sensor.unifi_dream_machine_kib_s_received')|is_number }}"
+      - name: "Router Upload Speed"
+        unit_of_measurement: MB/s
+        state: "{{ (states('sensor.unifi_dream_machine_kib_s_sent')|float/1024)|round(1) }}"
+        availability: "{{ states('sensor.unifi_dream_machine_kib_s_sent')|is_number }}"
+      - name: "Router Total Download"
+        unit_of_measurement: GB
+        state: "{{ (states('sensor.unifi_dream_machine_b_received')|float/1024**3)|round(1) }}"
+        availability: "{{ states('sensor.unifi_dream_machine_b_received')|is_number }}"
+      - name: "Router Total Upload"
+        unit_of_measurement: GB
+        state: "{{ (states('sensor.unifi_dream_machine_b_sent')|float/1024**3)|round(1) }}"
+        availability: "{{ states('sensor.unifi_dream_machine_b_sent')|is_number }}"
+      - name: "Number of Guests Wifi Clients Connected"
+        unique_id: yaml_template_sensor_number_of_guests_connected
+        icon: mdi:account-network
+        unit_of_measurement: "Clients"
+        state: "{{ states.device_tracker | selectattr('attributes.essid','defined') | selectattr('attributes.essid','eq','BlokmeisterWIFI_Guest') | list | count }}"
+        availability: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
+
 #################
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      udmp_download_speed_mbs:
-        value_template: "{{ (states('sensor.unifi_dream_machine_kib_s_received')|float/1024)|round(1) }}"
-        unit_of_measurement: MB/s
-        friendly_name: "Router Download Speed"
-        availability_template: "{{ states('sensor.unifi_dream_machine_kib_s_received')|is_number }}"
-      udmp_upload_speed_mbs:
-        value_template: "{{ (states('sensor.unifi_dream_machine_kib_s_sent')|float/1024)|round(1) }}"
-        unit_of_measurement: MB/s
-        friendly_name: "Router Download Speed"
-        availability_template: "{{ states('sensor.unifi_dream_machine_kib_s_sent')|is_number }}"
-      udmp_download_gb:
-        value_template: "{{ (states('sensor.unifi_dream_machine_b_received')|float/1024**3)|round(1) }}"
-        unit_of_measurement: GB
-        friendly_name: "Router Total Download"
-        availability_template: "{{ states('sensor.unifi_dream_machine_b_received')|is_number }}"
-      udmp_upload_gb:
-        value_template: "{{ (states('sensor.unifi_dream_machine_b_sent')|float/1024**3)|round(1) }}"
-        unit_of_measurement: GB
-        friendly_name: "Router Total Upload"
-        availability_template: "{{ states('sensor.unifi_dream_machine_b_sent')|is_number }}"
-
-      number_of_guests_connected:
-        friendly_name: "Number of Guests Wifi Clients Connected"
-        unique_id: yaml_template_sensor_number_of_guests_connected
-        icon_template: mdi:account-network
-        value_template: "{{ states.device_tracker | selectattr('attributes.essid','defined') | selectattr('attributes.essid','eq','BlokmeisterWIFI_Guest') | list | count }}"
-        unit_of_measurement: "Clients"
-        availability_template: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
-
   - platform: min_max
     name: USW Lite 16 Total PoE Power
     entity_ids:

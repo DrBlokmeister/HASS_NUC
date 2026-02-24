@@ -54,7 +54,22 @@ template:
         icon: mdi:alert-circle
         unit_of_measurement: "errors/hour"
         state: "{{ states('sensor.home_assistant_log_warnings_per_hour') }}"
-
+      - name: "Running Automations"
+        unique_id: yaml_template_running_automations
+        icon: "mdi:counter"
+        state: >
+          {{ states.automation | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | count() }}
+        attributes:
+          automations: >
+            {{ states.automation | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
+      - name: "Running Scripts"
+        unique_id: yaml_template_running_scripts
+        icon: "mdi:counter"
+        state: >
+          {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | count() }}
+        attributes:
+          scripts: >
+            {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
 #############
 #    SQL    #
 #############
@@ -389,90 +404,6 @@ command_line:
 #    SENSORS    #
 #################
 sensor:
-  - platform: template
-    sensors:
-      running_automations:
-        friendly_name: "Running Automations"
-        unique_id: yaml_template_running_automations
-        icon_template: "mdi:counter"
-        value_template: >
-          {{ states.automation | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | count() }}
-        attribute_templates:
-          automations: >
-            {{ states.automation | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
-      running_scripts:
-        friendly_name: "Running Scripts"
-        unique_id: yaml_template_running_scripts
-        icon_template: "mdi:counter"
-        value_template: >
-          {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | count() }}
-        attribute_templates:
-          automations: >
-            {{ states.script | selectattr('attributes.current', 'eq', 1) | map(attribute='entity_id') | list() | join(', ') }}
-      # nuc_nvme_queue_size:
-      #   friendly_name: "NUC NVMe Queue Size"
-      #   unique_id: yaml_template_nuc_monitor_nvme_queue_size
-      #   icon_template: "mdi:database"
-      #   unit_of_measurement: "requests"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Queue Size') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-      # nuc_nvme_read_latency:
-      #   friendly_name: "NUC NVMe Read Latency"
-      #   unique_id: yaml_template_nuc_monitor_nvme_read_latency
-      #   icon_template: "mdi:clock-outline"
-      #   unit_of_measurement: "ms"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Read Latency') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-      # nuc_nvme_write_latency:
-      #   friendly_name: "NUC NVMe Write Latency"
-      #   unique_id: yaml_template_nuc_monitor_nvme_write_latency
-      #   icon_template: "mdi:clock-outline"
-      #   unit_of_measurement: "ms"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Write Latency') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-      # nuc_nvme_read_operations:
-      #   friendly_name: "NUC NVMe Read Operations"
-      #   unique_id: yaml_template_nuc_monitor_nvme_read_operations
-      #   icon_template: "mdi:chart-line"
-      #   unit_of_measurement: "Operations/s"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Read Operations') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-      # nuc_nvme_read_throughput:
-      #   friendly_name: "NUC NVMe Read Throughput"
-      #   unique_id: yaml_template_nuc_monitor_nvme_read_throughput
-      #   icon_template: "mdi:download"
-      #   unit_of_measurement: "kB/s"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Read Throughput') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-      # nuc_nvme_write_operations:
-      #   friendly_name: "NUC NVMe Write Operations"
-      #   unique_id: yaml_template_nuc_monitor_nvme_write_operations
-      #   icon_template: "mdi:chart-line"
-      #   unit_of_measurement: "Operations/s"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Write Operations') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-      # nuc_nvme_write_throughput:
-      #   friendly_name: "NUC NVMe Write Throughput"
-      #   unique_id: yaml_template_nuc_monitor_nvme_write_throughput
-      #   icon_template: "mdi:upload"
-      #   unit_of_measurement: "kB/s"
-      #   value_template: >
-      #     {{ state_attr('sensor.nuc_nvme_utilization', 'Write Throughput') }}
-      #   availability_template: >
-      #     {{ states('sensor.nuc_nvme_utilization') not in ['unknown', 'unavailable'] }}
-
   - platform: filter
     name: "Filtered NUC CPU Temperature"
     entity_id: sensor.processor_temperature
