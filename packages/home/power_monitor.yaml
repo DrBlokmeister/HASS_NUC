@@ -230,7 +230,7 @@ template:
 
   - sensor:
       - name: "Lowest Quartile Electricity Price Today"
-        #unique_id: "cheapest_night_price_sensor"
+        unique_id: yaml_template_sensor_lowest_quartile_electricity_price_today
         unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] }}"
         attributes:
@@ -238,7 +238,7 @@ template:
           ratio_to_minimum: "{{ ((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] / (state_attr('sensor.nordpool_energy_price_hourly','today') | min())) | round(3) }}"
         availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
       - name: "Highest Quartile Electricity Price Today"
-        #unique_id: "cheapest_night_price_sensor"
+        unique_id: yaml_template_sensor_highest_quartile_electricity_price_today
         unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] }}"
         attributes:
@@ -246,7 +246,7 @@ template:
           ratio_to_maximum: "{{ ((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] / (state_attr('sensor.nordpool_energy_price_hourly','today') | max())) | round(3) }}"
         availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
       - name: "Interquartile Range Electricity Price Today"
-        #unique_id: "cheapest_night_price_sensor"
+        unique_id: yaml_template_sensor_interquartile_range_electricity_price_today
         unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5] }}"
         attributes:
@@ -254,7 +254,7 @@ template:
           ratio_to_range: "{{ (((state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[17] - (state_attr('sensor.nordpool_energy_price_hourly','today') | sort())[5]) / ((state_attr('sensor.nordpool_energy_price_hourly','today') | max()) - (state_attr('sensor.nordpool_energy_price_hourly','today') | min()))) | round(3)}}"
         availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
       - name: "Total Range Electricity Price Today"
-        #unique_id: "cheapest_night_price_sensor"
+        unique_id: yaml_template_sensor_total_range_electricity_price_today
         unit_of_measurement: '€/kWh'
         state: "{{ (state_attr('sensor.nordpool_energy_price_hourly','today') | max()) - (state_attr('sensor.nordpool_energy_price_hourly','today') | min()) }}"
         availability: "{{ state_attr('sensor.nordpool_energy_price_hourly','today') is not none }}"
@@ -537,24 +537,28 @@ template:
 
   - sensor:
       - name: "Net Energy Usage"
+        unique_id: yaml_template_sensor_net_energy_usage
         icon: mdi:flash
         unit_of_measurement: 'kW'
         state: >-
           {{ states( 'sensor.electricity_meter_power_consumption' ) | float(0) - states( 'sensor.electricity_meter_power_production' ) | float(0) }}
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Electricity Meter Power (W)"
+        unique_id: yaml_template_sensor_electricity_meter_power_watt
         default_entity_id: sensor.electricity_meter_power_consumption_watt
         icon: mdi:flash-outline
         unit_of_measurement: "W"
         state: "{{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 | round(2) }}"
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number }}"
       - name: "Electricity Meter Power Production (W)"
+        unique_id: yaml_template_sensor_electricity_meter_power_production_watt
         default_entity_id: sensor.electricity_meter_power_production_watt
         icon: mdi:flash-outline
         unit_of_measurement: "W"
         state: "{{ states('sensor.electricity_meter_power_production') | float(0) * 1000 }}"
         availability: "{{ states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Total Power Consumption (W)"
+        unique_id: yaml_template_sensor_total_power_consumption_watt
         default_entity_id: sensor.total_power_consumption_watt
         icon: mdi:flash-outline
         unit_of_measurement: "W"
@@ -566,6 +570,7 @@ template:
           {% endif %}
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Total Power Consumption (kW)"
+        unique_id: yaml_template_sensor_total_power_consumption_kilowatt
         default_entity_id: sensor.total_power_consumption_kilowatt
         icon: mdi:flash-outline
         unit_of_measurement: "kW"
@@ -636,6 +641,7 @@ template:
             (now().month == 1 and now().day == 1 and now().hour == 0 and states('sensor.nordpool_energy_price_hourly')|is_number)
           }}
       - name: Heatpump Tapwater Power Estimate
+        unique_id: yaml_template_sensor_heatpump_tapwater_power_estimate
         unit_of_measurement: "W"
         state: >-
           {% if is_state('binary_sensor.heatpump_tapwater_recirculation_pump', 'on')%}
@@ -649,6 +655,7 @@ template:
           {% endif %}
         availability: "{{ states('sensor.heatpump_tapwater_temperature')|is_number }}"
       - name: Heatpump Heating Power Estimate
+        unique_id: yaml_template_sensor_heatpump_heating_power_estimate
         unit_of_measurement: "W"
         state: >-
           {% if is_state('binary_sensor.heatpump_additional_circulation_pump', 'on') and is_state('binary_sensor.heatpump_tapwater_recirculation_pump', 'off') %}
@@ -664,6 +671,7 @@ template:
           {% endif %}
         availability: "{{ states('sensor.heatpump_hot_gas_temperature')|is_number }}"
       - name: Heatpump Tapwater Power
+        unique_id: yaml_template_sensor_heatpump_tapwater_power
         unit_of_measurement: "W"
         state: >-
           {% if is_state('sensor.heatpump_status', 'hot_water') or is_state('sensor.heatpump_status', 'domestic water') %}
@@ -675,6 +683,7 @@ template:
           {% endif %}
         availability: "{{ states('sensor.shelly_heat_pump_power')|is_number }}"
       - name: Heatpump Heating Power
+        unique_id: yaml_template_sensor_heatpump_heating_power
         unit_of_measurement: "W"
         state: >-
           {% if is_state('sensor.heatpump_status', 'heating')%}
@@ -686,21 +695,28 @@ template:
           {% endif %}
         availability: "{{ states('sensor.shelly_heat_pump_power')|is_number }}"
       - name: "Current Electricity Cost per Hour"
+        #unique_id: yaml_template_sensor_current_electricity_cost_per_hour
         icon: mdi:currency-eur
         unit_of_measurement: "€/h"
         state: "{{ ((states('sensor.total_power_consumption_watt') | float(0))/1000 * states('sensor.nordpool_energy_price_hourly') | float(0)) | round(3) }}"
         availability: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.nordpool_energy_price_hourly')|is_number }}"
-      - name: "Potential Electricity Usage Costs (Lowest Price)"
+      - name: "Potential Electricity Usage Cost (Lowest Price)"
+        #unique_id: yaml_template_sensor_potential_electricity_usage_cost_lowest_price
+        default_entity_id: sensor.potential_electricity_usage_cost_lowest_price
         icon: mdi:currency-eur
         unit_of_measurement: "€"
         state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'min') | float(0) ) | round(3) }}"
         availability: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'min')|is_number }}"
-      - name: "Potential Electricity Usage Costs (Highest Price)"
+      - name: "Potential Electricity Usage Cost (Highest Price)"
+        #unique_id: yaml_template_sensor_potential_electricity_usage_cost_highest_price
+        default_entity_id: sensor.potential_electricity_usage_cost_highest_price
         icon: mdi:currency-eur
         unit_of_measurement: "€"
         state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'max') | float(0) ) | round(3) }}"
         availability: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'max')|is_number }}"
-      - name: "Potential Electricity Usage Costs (Mean Price)"
+      - name: "Potential Electricity Usage Cost (Mean Price)"
+        #unique_id: yaml_template_sensor_potential_electricity_usage_cost_mean_price
+        default_entity_id: sensor.potential_electricity_usage_cost_mean_price
         icon: mdi:currency-eur
         unit_of_measurement: "€"
         state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'mean') | float(0) ) | round(3) }}"
