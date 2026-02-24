@@ -19,9 +19,9 @@ template:
         state: >
           {% set prior = 0.02 %}
           {% set light_on = is_state("light.bathroom", "on") %}
-          {% set humidity_increase = (states('sensor.humidity_bathroom')|float - states('sensor.home_mean_humidity_without_bathroom')|float) > 20 %}
-          {% set water_usage = states('sensor.water_usage')|float > 1 %}
-          {% set temperature_change = states('sensor.tapwater_temperature_change_1min')|float < -5 %}
+          {% set humidity_increase = (states('sensor.humidity_bathroom')| float(0) - states('sensor.home_mean_humidity_without_bathroom')| float(0)) > 20 %}
+          {% set water_usage = states('sensor.water_usage')| float(0) > 1 %}
+          {% set temperature_change = states('sensor.tapwater_temperature_change_1min')| float(0) < -5 %}
 
           {% set prob_light_given_shower = 0.8 if light_on else 0.08 %}
           {% set prob_humidity_given_shower = 0.80 if humidity_increase else 0.05 %}
@@ -285,7 +285,7 @@ automation:
           {% if trigger.to_state.state == 'on' %}
             true
           {% else %}
-            states('sensor.tapwater_temperature_change_5min')|float <= -1
+            {{ states('sensor.tapwater_temperature_change_5min') | float(0) <= -1 }}
           {% endif %}
     action:
       - choose:

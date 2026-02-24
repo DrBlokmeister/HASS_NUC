@@ -7,13 +7,13 @@ template:
         unique_id: yaml_template_sensor_warmtebron_in_uit_delta
         icon: mdi:thermometer-lines
         unit_of_measurement: '°C'
-        state: "{{ states('sensor.heatpump_heat_source_output_temperature')|float - states('sensor.heatpump_heat_source_input_temperature')|float}}"
+        state: "{{ states('sensor.heatpump_heat_source_output_temperature') | float(0) - states('sensor.heatpump_heat_source_input_temperature') | float(0)}}"
         availability: "{{ states.sensor.heatpump_heat_source_output_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_heat_source_input_temperature not in ['unavailable', 'unknown', 'none', None] }}"
       - name: Vloerverwarming in-uit Delta T
         unique_id: yaml_template_sensor_vloerverwarming_in_uit_delta
         icon: mdi:thermometer-lines
         unit_of_measurement: '°C'
-        state: "{{ states('sensor.heatpump_flow_in_temperature')|float - states('sensor.heatpump_flow_out_temperature')|float}}"
+        state: "{{ states('sensor.heatpump_flow_in_temperature') | float(0) - states('sensor.heatpump_flow_out_temperature') | float(0)}}"
         availability: "{{ states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] and states.sensor.heatpump_flow_in_temperature not in ['unavailable', 'unknown', 'none', None] }}"
       - name: "Heatpump Efficiency"
         unique_id: yaml_template_sensor_heatpump_efficiency
@@ -34,7 +34,7 @@ template:
         unique_id: yaml_template_sensor_heatpump_source_heat_dissipation
         icon: mdi:fire
         unit_of_measurement: 'kW'
-        state: "{{ (states('sensor.warmtebron_in_uit_delta')|float * states('sensor.heatpump_heat_source_flow_rate')|float * 4186 / 3600 / 1000)|round(2) }}"
+        state: "{{ (states('sensor.warmtebron_in_uit_delta') | float(0) * states('sensor.heatpump_heat_source_flow_rate') | float(0) * 4186 / 3600 / 1000)|round(2) }}"
         availability: "{{ states('sensor.warmtebron_in_uit_delta')|is_number and states('sensor.heatpump_heat_source_flow_rate')|is_number}}"
       - name: Bathroom Alpha Home Temperature
         unique_id: yaml_template_sensor_bathroom_alphahome_temperature
@@ -91,8 +91,8 @@ template:
         device_class: energy
         unit_of_measurement: kWh
         state: >-
-          {{ (((0.0012 * states('input_number.tapwater_heat_up_temperature')|float()**2) + (-0.0593 * states('input_number.tapwater_heat_up_temperature')|float) + 0.6177) -
-              ((0.0012 * states('sensor.heatpump_tapwater_temperature')|float()**2) + (-0.0593 * states('sensor.heatpump_tapwater_temperature')|float) + 0.6177))|round(2) }}
+          {{ (((0.0012 * states('input_number.tapwater_heat_up_temperature') | float(0)**2) + (-0.0593 * states('input_number.tapwater_heat_up_temperature') | float(0)) + 0.6177) -
+              ((0.0012 * states('sensor.heatpump_tapwater_temperature') | float(0)**2) + (-0.0593 * states('sensor.heatpump_tapwater_temperature') | float(0)) + 0.6177))|round(2) }}
         availability: "{{ states('input_number.tapwater_heat_up_temperature')|is_number and states('sensor.heatpump_tapwater_temperature')|is_number }}"
 #######################
 #    INPUT SELECTS    #
@@ -467,7 +467,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('input_number.heatpump_cooling_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('input_number.heatpump_cooling_fixed_price_threshold') | float(0) }}"
             sequence:
               - service: switch.turn_on
                 target:
@@ -477,7 +477,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) > states('input_number.heatpump_cooling_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) > states('input_number.heatpump_cooling_fixed_price_threshold') | float(0) }}"
             sequence:
               - service: switch.turn_off
                 target:
@@ -489,7 +489,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('sensor.highest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('sensor.highest_quartile_electricity_price_today') | float(0) }}"
             sequence:
               - service: switch.turn_on
                 target:
@@ -499,7 +499,7 @@ automation:
                 entity_id: input_select.heatpump_cooling_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float > states('sensor.highest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) > states('sensor.highest_quartile_electricity_price_today') | float(0) }}"
             sequence:
               - service: switch.turn_off
                 target:
@@ -548,13 +548,13 @@ automation:
                 entity_id: input_select.heatpump_price_control
                 state: "Fixed Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float <= states('input_number.heatpump_fixed_price_threshold') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('input_number.heatpump_fixed_price_threshold') | float(0) }}"
             sequence:
               - service: number.set_value
                 target:
                   entity_id: number.heatpump_heating_target_correction
                 data:
-                  value: "{{ states('input_number.heatpump_target_correction') | int }}"
+                  value: "{{ states('input_number.heatpump_target_correction') | int(0) }}"
 
           # If control mode is Quartile Price and price is below quartile sensor
           - conditions:
@@ -562,13 +562,13 @@ automation:
                 entity_id: input_select.heatpump_price_control
                 state: "Quartile Price"
               - condition: template
-                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float <= states('sensor.lowest_quartile_electricity_price_today') | float }}"
+                value_template: "{{ states('sensor.nordpool_energy_price_hourly') | float(0.3) <= states('sensor.lowest_quartile_electricity_price_today') | float(0) }}"
             sequence:
               - service: number.set_value
                 target:
                   entity_id: number.heatpump_heating_target_correction
                 data:
-                  value: "{{ states('input_number.heatpump_target_correction') | int }}"
+                  value: "{{ states('input_number.heatpump_target_correction') | int(0) }}"
 
       # Default action (turn off if none of the conditions above were met)
         default:
