@@ -531,8 +531,8 @@ automation:
                 target:
                   entity_id: light.bedside_right
                 data:
-                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1004 }}" # Double click of switch
@@ -551,7 +551,7 @@ automation:
                 target:
                   entity_id: light.shelly_bedroom
                 data:
-                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
 
 
   #Cycle bedroom lights when switch is pressed twice
@@ -877,7 +877,7 @@ automation:
   #     to: 'on'
   #   condition:
   #     - condition: template
-  #       value_template: "{{ states('sensor.average_illumination_bedroom')|int < states('input_number.bedroom_illumination_limit')|int }}"
+  #       value_template: "{{ states('sensor.average_illumination_bedroom')|int < states('input_number.bedroom_illumination_limit') | int(0) }}"
   #     - condition: state
   #       entity_id: binary_sensor.house_occupied
   #       state: 'on'
@@ -893,9 +893,9 @@ automation:
   #           entity_id: binary_sensor.bedroom_motion_1
   #           to: 'off'
   #           for:
-  #             minutes: "{{ states('input_number.bedroom_light_timeout')|int }}"
+  #             minutes: "{{ states('input_number.bedroom_light_timeout') | int(10) }}"
   #         - platform: template
-  #           value_template: "{{ states('sensor.average_illumination_bedroom')|int > states('input_number.bedroom_illumination_limit')|int }}"
+  #           value_template: "{{ states('sensor.average_illumination_bedroom')|int > states('input_number.bedroom_illumination_limit') | int(0) }}"
   #           for:
   #             minutes: 10
   #     - service: light.turn_on

@@ -384,7 +384,7 @@ automation:
           - condition: not
             conditions:
               - condition: template
-                value_template: "{{ states('sensor.plug_washing_machine_power')|int < 5 }}"
+                value_template: "{{ states('sensor.plug_washing_machine_power') | int(0) < 5 }}"
                 # for:
                 #   minutes: 15
           - condition: template
@@ -400,7 +400,7 @@ automation:
           display_device_id: 89b2b0672c4ebd0eeb86b7a8672e1b2a
           sleep_duration: >-
             {% set interval = 15 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(0) }}
 
   - alias: '[misc|epaperlink]Update study displays'
     id: misc_epaperlink_update_study_displays
@@ -450,7 +450,7 @@ automation:
           display_device_id: bee8d1c7023925de74fc4e839cae072e
           sleep_duration: >-
             {% set interval = 15 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - delay:
           seconds: 2
       - service: script.update_study_energy_display #Sanity check. This for Moeke/Litterbox tags (this is tag 0000021DC3BF3413 http://blokmeisternuc.local:8123/config/devices/device/8a5608d777be457d781e79b5948c2332)
@@ -459,7 +459,7 @@ automation:
           display_device_id: 8a5608d777be457d781e79b5948c2332
           sleep_duration: >-
             {% set interval = 15 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - delay:
           seconds: 2
       - service: script.update_study_climate_display
@@ -467,13 +467,13 @@ automation:
           display_device_id: ab510c02b314bf3bf98fa4d65f911229
           sleep_duration: >-
             {% set interval = 15 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - service: script.update_router_speedtest_display
         data:
           display_device_id: 696378a0a18ab5f3b2eca6c1c991b0f8
           sleep_duration: >-
             {% set interval = 15 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: '[misc|epaperlink]Timed update electricity price display'
     id: misc_epaperlink_timed_update_electricity_price_display
@@ -504,7 +504,7 @@ automation:
                   #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
                 sleep_duration: >-
                   {% set interval = 15 %}
-                  {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+                  {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
             - delay:
                 seconds: 10
             - service: script.update_energy_price_today_larger_display
@@ -516,7 +516,7 @@ automation:
                   #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
                 sleep_duration: >-
                   {% set interval = 15 %}
-                  {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+                  {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
             - delay:
                 seconds: 10
             - service: script.update_energy_price_today_larger_display
@@ -528,7 +528,7 @@ automation:
                   # - fceb879457ffabc7cdd9e21651afbe11 #New Display 2
                 sleep_duration: >-
                   {% set interval = 15 %}
-                  {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+                  {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
         default:
             - service: script.update_energy_price_transition_larger_display
               continue_on_error: true
@@ -539,7 +539,7 @@ automation:
                   #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
                 sleep_duration: >-
                   {% set interval = 15 %}
-                  {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+                  {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
             - delay:
                 seconds: 10
             - service: script.update_energy_price_transition_larger_display
@@ -551,7 +551,7 @@ automation:
                   #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
                 sleep_duration: >-
                   {% set interval = 15 %}
-                  {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+                  {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
             - delay:
                 seconds: 10
             - service: script.update_energy_price_transition_larger_display
@@ -563,7 +563,7 @@ automation:
                   #- fceb879457ffabc7cdd9e21651afbe11 #New Display 2
                 sleep_duration: >-
                   {% set interval = 15 %}
-                  {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+                  {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: "[misc|epaperlink] Timed Update Moeke Water Tank Display"
     id: misc_epaperlink_timed_update_moeke_water_tank_display
@@ -593,13 +593,13 @@ automation:
           display_device_id: a5fb0b3999b39d6b82d0c338d9bc211e
           sleep_duration: >-
             {% set interval = 30 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - service: script.update_moeke_water_tank_display #Sanity check for tag 0000021EF7993413 (http://blokmeisternuc.local:8123/config/devices/device/1a55b4b3210d9df377ff1da5f8bd8ebe)
         data:
           display_device_id: 1a55b4b3210d9df377ff1da5f8bd8ebe
           sleep_duration: >-
             {% set interval = 30 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: "[misc|epaperlink] Update Pixel Litterbox Display"
     id: misc_epaperlink_update_pixel_litterbox_display
@@ -622,7 +622,7 @@ automation:
           display_device_id: 5f61de1a08a9f1dcb162b383d8be9a4e
           sleep_duration: >-
             {% set interval = 30 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: "[misc|epaperlink] Update Study Powerstrip Display"
     id: misc_epaperlink_update_study_powerstrip_display
@@ -650,7 +650,7 @@ automation:
           display_device_id: fcf0279b783325a85401128ab88eefd4
           sleep_duration: >-
             {% set interval = 5 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: "[misc|epaperlink] Update Calendar Displays"
     id: yaml_script_misc_epaperlink_update_calendar_displays
@@ -675,7 +675,7 @@ automation:
           display_device_id: 0384f3ad3a85237fcb589d95931ddc60
           sleep_duration: >-
             {% set interval = 60 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: "[misc|epaperlink] Tag Button Update of Displays"
     id: automation_yaml_misc_epaperlink_tag_button_update_of_displays
@@ -971,7 +971,7 @@ automation:
           rssi_entity_id: sensor.0000021dc3ca3411_rssi
           sleep_duration: >-
             {% set interval = 60 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - service: script.update_epaper_tag_overview
         data:
           display_device_id: e76212580c62854dba3177bd312db385
@@ -981,7 +981,7 @@ automation:
           rssi_entity_id: sensor.0000021dba8e341f_rssi
           sleep_duration: >-
             {% set interval = 60 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - service: script.update_epaper_tag_overview
         data:
           display_device_id: b75bcc738e59bd0c656de14fcc3f30f9
@@ -991,7 +991,7 @@ automation:
           rssi_entity_id: sensor.0000021dca1b3414_rssi
           sleep_duration: >-
             {% set interval = 60 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
       - service: script.update_epaper_tag_overview
         data:
           display_device_id: 8c58bdceb5e736e3e5a8a55e2ee1da40
@@ -1001,7 +1001,7 @@ automation:
           rssi_entity_id: sensor.0000021dc3e4341d_rssi
           sleep_duration: >-
             {% set interval = 60 %}
-            {{ (((interval - now().minute % interval) + 1) * 60) | int }}
+            {{ (((interval - now().minute % interval) + 1) * 60) | int(5) }}
 
   - alias: '[misc|epaperlink] Reload Integration Each Morning'
     id: yaml_automation_misc_epaperlink_reload_integration_each_morning
@@ -1445,7 +1445,7 @@ script:
               font: "ppb.ttf"
 
             # - type: text
-            #   value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max')|float()) }}"
+            #   value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max') | float(0)) }}"
             #   x: 285
             #   "y": 2
             #   size: 13
@@ -1453,7 +1453,7 @@ script:
             #   font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
             #   anchor: rt
             # - type: text
-            #   value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min')|float()) }}"
+            #   value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min') | float(0)) }}"
             #   x: 285
             #   "y": 15
             #   size: 13
@@ -1461,7 +1461,7 @@ script:
             #   font: "/config/www/fonts/poppins/Poppins-Black.ttf" #"ppb.ttf"
             #   anchor: rt
             # - type: text
-            #   value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly')|float()) }}"
+            #   value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly') | float(0)) }}"
             #   x: 285
             #   "y": 28
             #   size: 13
@@ -1470,7 +1470,7 @@ script:
             #   anchor: rt
 
             - type: text
-              value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max')|float()) }}"
+              value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max') | float(0)) }}"
               x: 285
               "y": 2
               size: 10
@@ -1478,7 +1478,7 @@ script:
               font: "/config/www/fonts/Pixolletta_8px_h14.ttf" #"ppb.ttf"
               anchor: rt
             - type: text
-              value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min')|float()) }}"
+              value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min') | float(0)) }}"
               x: 285
               "y": 15
               size: 10
@@ -1486,7 +1486,7 @@ script:
               font: "/config/www/fonts/Pixolletta_8px_h14.ttf" #"ppb.ttf"
               anchor: rt
             - type: text
-              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly')|float()) }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly') | float(0)) }}"
               x: 285
               "y": 28
               size: 10
@@ -1495,7 +1495,7 @@ script:
               anchor: rt
 
             - type: text
-              value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max')|float()) }}"
+              value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max') | float(0)) }}"
               x: 185
               "y": 2
               size: 10
@@ -1503,7 +1503,7 @@ script:
               font: "/config/www/fonts/PixeloidMono_9px_h10.ttf" #"ppb.ttf"
               anchor: rt
             - type: text
-              value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min')|float()) }}"
+              value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min') | float(0)) }}"
               x: 185
               "y": 15
               size: 10
@@ -1511,7 +1511,7 @@ script:
               font: "/config/www/fonts/PixeloidMono_9px_h10.ttf" #"ppb.ttf"
               anchor: rt
             - type: text
-              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly')|float()) }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly') | float(0)) }}"
               x: 185
               "y": 28
               size: 10
@@ -2211,7 +2211,7 @@ script:
               font: "ppb.ttf"
 
             - type: text
-              value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max')|float()) }}"
+              value: "High: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max') | float(0)) }}"
               x: 285
               "y": 2
               size: 13
@@ -2219,7 +2219,7 @@ script:
               font: "ppb.ttf"
               anchor: rt
             - type: text
-              value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min')|float()) }}"
+              value: "Low: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min') | float(0)) }}"
               x: 285
               "y": 15
               size: 13
@@ -2227,7 +2227,7 @@ script:
               font: "ppb.ttf"
               anchor: rt
             - type: text
-              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly')|float()) }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly') | float(0)) }}"
               x: 285
               "y": 28
               size: 13
@@ -2597,7 +2597,7 @@ script:
               font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
 
             - type: text
-              value: "Max: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max')|float()) }}"
+              value: "Max: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max') | float(0)) }}"
               x: 373
               "y": 3
               size: 16
@@ -2607,7 +2607,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Min: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min')|float()) }}"
+              value: "Min: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min') | float(0)) }}"
               x: 373
               "y": 19
               size: 16
@@ -2617,7 +2617,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly')|float()) }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly') | float(0)) }}"
               x: 373
               "y": 35
               size: 16
@@ -2978,7 +2978,7 @@ script:
               font: "/config/www/fonts/Pixolletta_8px_h14.ttf"
 
             - type: text
-              value: "Max: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max')|float()) }}"
+              value: "Max: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'max') | float(0)) }}"
               x: 373
               "y": 3
               size: 16
@@ -2988,7 +2988,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Min: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min')|float()) }}"
+              value: "Min: €{{ '{:0.3f}'.format(state_attr('sensor.nordpool_energy_price_hourly', 'min') | float(0)) }}"
               x: 373
               "y": 19
               size: 16
@@ -2998,7 +2998,7 @@ script:
               stroke_fill: 'white'
               anchor: rt
             - type: text
-              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly')|float()) }}"
+              value: "Current: €{{ '{:0.3f}'.format(states('sensor.nordpool_energy_price_hourly') | float(0)) }}"
               x: 373
               "y": 35
               size: 16
@@ -3064,7 +3064,7 @@ script:
               outline: white
               fill: >-
                 {{'white' if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_restafval') | int > 1 else 'red' }}
+                states('sensor.days_to_restafval') | int(0) > 1 else 'red' }}
               width: 1
               x_start: 5
               y_start: 5
@@ -3078,14 +3078,14 @@ script:
               size: 18
               color: >-
                 {{'black' if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_restafval') | int > 1 else 'white' }}
+                states('sensor.days_to_restafval') | int(0) > 1 else 'white' }}
             - type: text
               value: >-
                 {% if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] %}
                   Unknown
-                {% elif states('sensor.days_to_restafval') | int == 0 %}
+                {% elif states('sensor.days_to_restafval') | int(0) == 0 %}
                   Today
-                {% elif states('sensor.days_to_restafval') | int == 1 %}
+                {% elif states('sensor.days_to_restafval') | int(0) == 1 %}
                   Tonight
                 {% else %}
                   {{states('sensor.days_to_restafval')}} days
@@ -3096,13 +3096,13 @@ script:
               size: 18
               color: >-
                 {{'black' if states('sensor.days_to_restafval') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_restafval') | int > 1 else 'white' }}
+                states('sensor.days_to_restafval') | int(0) > 1 else 'white' }}
 
             - type: rectangle
               outline: white
               fill: >-
                 {{'white' if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_papier') | int > 1 else 'red' }}
+                states('sensor.days_to_papier') | int(0) > 1 else 'red' }}
               width: 1
               x_start: 168
               y_start: 5
@@ -3116,14 +3116,14 @@ script:
               size: 18
               color: >-
                 {{'black' if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_papier') | int > 1 else 'white' }}
+                states('sensor.days_to_papier') | int(0) > 1 else 'white' }}
             - type: text
               value: >-
                 {% if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] %}
                   Unknown
-                {% elif states('sensor.days_to_papier') | int == 0 %}
+                {% elif states('sensor.days_to_papier') | int(0) == 0 %}
                   Today
-                {% elif states('sensor.days_to_papier') | int == 1 %}
+                {% elif states('sensor.days_to_papier') | int(0) == 1 %}
                   Tonight
                 {% else %}
                   {{states('sensor.days_to_papier')}} days
@@ -3134,13 +3134,13 @@ script:
               size: 18
               color: >-
                 {{'black' if states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_papier') | int > 1 else 'white' }}
+                states('sensor.days_to_papier') | int(0) > 1 else 'white' }}
 
             - type: rectangle
               outline: white
               fill: >-
                 {{'white' if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_gft') | int > 1 else 'red' }}
+                states('sensor.days_to_gft') | int(0) > 1 else 'red' }}
               width: 1
               x_start: 5
               y_start: 70
@@ -3154,14 +3154,14 @@ script:
               size: 18
               color: >-
                 {{'black' if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_gft') | int > 1 else 'white' }}
+                states('sensor.days_to_gft') | int(0) > 1 else 'white' }}
             - type: text
               value: >-
                 {% if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] %}
                   Unknown
-                {% elif states('sensor.days_to_gft') | int == 0 %}
+                {% elif states('sensor.days_to_gft') | int(0) == 0 %}
                   Today
-                {% elif states('sensor.days_to_gft') | int == 1 %}
+                {% elif states('sensor.days_to_gft') | int(0) == 1 %}
                   Tonight
                 {% else %}
                   {{states('sensor.days_to_gft')}} days
@@ -3172,7 +3172,7 @@ script:
               size: 18
               color: >-
                 {{'black' if states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] or
-                states('sensor.days_to_gft') | int > 1 else 'white' }}
+                states('sensor.days_to_gft') | int(0) > 1 else 'white' }}
 
             - type: rectangle
               outline: white
@@ -3205,7 +3205,7 @@ script:
                   states('sensor.days_to_papier') in ['unknown', 'unavailable', 'none'] else
                   states('sensor.days_to_papier')),(14 if
                   states('sensor.days_to_gft') in ['unknown', 'unavailable', 'none'] else
-                  states('sensor.days_to_gft')) ]) | min ) | int < 2 else
+                  states('sensor.days_to_gft')) ]) | min ) | int(0) < 2 else
                 'black' }}
 
   update_study_climate_display:
@@ -3803,7 +3803,7 @@ script:
           payload:
             - type: rectangle
               fill: >
-                {{ 'red' if states('sensor.litterbox_total_counts') | int > 15 else 'white' }}
+                {{ 'red' if states('sensor.litterbox_total_counts') | int(0) > 15 else 'white' }}
               outline: white
               width: 0
               x_start: 0
@@ -3818,7 +3818,7 @@ script:
               y: 10
               size: 20
               color: >
-                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+                {{ 'white' if states('sensor.litterbox_total_counts') | int(0) > 15 else 'black' }}
             - type: text
               value: "{{ states('sensor.litterbox_total_counts') }}"
               font: ppb.ttf
@@ -3827,7 +3827,7 @@ script:
               y: 40
               size: 30
               color: >
-                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+                {{ 'white' if states('sensor.litterbox_total_counts') | int(0) > 15 else 'black' }}
             - type: text
               value: "Today"
               font: ppb.ttf
@@ -3836,7 +3836,7 @@ script:
               y: 80
               size: 20
               color: >
-                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+                {{ 'white' if states('sensor.litterbox_total_counts') | int(0) > 15 else 'black' }}
             - type: text
               value: "{{ states('sensor.litterbox_counts_today') }}"
               font: ppb.ttf
@@ -3845,7 +3845,7 @@ script:
               y: 110
               size: 40
               color: >
-                {{ 'white' if states('sensor.litterbox_total_counts') | int > 15 else 'black' }}
+                {{ 'white' if states('sensor.litterbox_total_counts') | int(0) > 15 else 'black' }}
 
   update_study_powerstrip_display:
     alias: "Update Study Powerstrip Display"
@@ -4024,7 +4024,7 @@ script:
             - type: icon
               size: 32
               color: >
-                {% if states('sensor.google_dns_round_trip_time_average') | float > 1000 %}
+                {% if states('sensor.google_dns_round_trip_time_average') | float(0) > 1000 %}
                   red
                 {% else %}
                   black
@@ -4037,7 +4037,7 @@ script:
               font: ppb.ttf
               size: 24
               color: >
-                {% if states('sensor.google_dns_round_trip_time_average') | float > 1000 %}
+                {% if states('sensor.google_dns_round_trip_time_average') | float(0) > 1000 %}
                   red
                 {% else %}
                   black
@@ -4050,7 +4050,7 @@ script:
               font: ppb.ttf
               size: 18
               color: >
-                {% if states('sensor.google_dns_round_trip_time_average') | float > 1000 %}
+                {% if states('sensor.google_dns_round_trip_time_average') | float(0) > 1000 %}
                   red
                 {% else %}
                   black
@@ -4436,7 +4436,7 @@ script:
               fill: red
               outline: black
               width: 2
-              progress: "{{ progress_percent | int }}"
+              progress: "{{ progress_percent | int(0) }}"
               direction: right
               show_percentage: true
               font: "ppb.ttf"

@@ -157,7 +157,7 @@ automation:
       # data:
       #   entity_id: light.entry
       #   brightness: 255
-      #   color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      #   color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
 
   - alias: '[entry|light]Lights_when_utility_cabinet_is_open'
     id: entry_light_utility_cabinet
@@ -207,7 +207,7 @@ automation:
           }}
     condition:
       - condition: template
-        value_template: "{{ (states('sensor.entry_light_1')|int(1000) ) < states('input_number.entry_illumination_limit')|int }}"
+        value_template: "{{ (states('sensor.entry_light_1')|int(1000) ) < states('input_number.entry_illumination_limit') | int(0) }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -215,8 +215,8 @@ automation:
       - service: light.turn_on
         data:
           entity_id: light.entry
-          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
       - wait_for_trigger:
           - platform: state
             entity_id: binary_sensor.entry_motion_combined
@@ -224,16 +224,16 @@ automation:
             for:
       #         minutes: 3
       #     - platform: template
-      #       value_template: "{{ states('sensor.entry_light_1')|int > states('input_number.entry_illumination_limit')|int }}"
+      #       value_template: "{{ states('sensor.entry_light_1')|int > states('input_number.entry_illumination_limit') | int(0) }}"
       #       for:
       #         minutes: 10
       # - service: light.turn_off
       #   entity_id: light.entry
-              minutes: "{{ states('input_number.entry_light_timeout')|int }}"
+              minutes: "{{ states('input_number.entry_light_timeout') | int(10) }}"
           - platform: template
-            value_template: "{{ (states('sensor.entry_light_1')|int(0) - states('input_number.entry_light_illumination_difference')|int(0)) > states('input_number.entry_illumination_limit')|int }}"
+            value_template: "{{ (states('sensor.entry_light_1')|int(0) - states('input_number.entry_light_illumination_difference')|int(0)) > states('input_number.entry_illumination_limit') | int(0) }}"
             for:
-              minutes: "{{ states('input_number.entry_light_timeout')|int }}"
+              minutes: "{{ states('input_number.entry_light_timeout') | int(10) }}"
       - service: light.turn_on
         data:
           entity_id: light.entry
@@ -307,7 +307,7 @@ automation:
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int > 5) }}"
+        value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int(0) > 5) }}"
     action:
       - parallel:
           - service: notify.sander_and_tamara_phones

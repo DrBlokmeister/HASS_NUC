@@ -54,7 +54,7 @@ command_line:
   #     scan_interval: 3600
   #     command_timeout: 120
   #     icon: mdi:speedometer
-  #     value_template: "{{ value_json.ping.latency | float | round(2) }}"
+  #     value_template: "{{ value_json.ping.latency  | float(0) | round(2) }}"
   #     json_attributes:
   #       - ping
   #       - download.bandwidth
@@ -68,19 +68,19 @@ template:
   - sensor:
       - name: "Router Download Speed"
         unit_of_measurement: MB/s
-        state: "{{ (states('sensor.unifi_dream_machine_kib_s_received')|float/1024)|round(1) }}"
+        state: "{{ (states('sensor.unifi_dream_machine_kib_s_received') | float(0)/1024)|round(1) }}"
         availability: "{{ states('sensor.unifi_dream_machine_kib_s_received')|is_number }}"
       - name: "Router Upload Speed"
         unit_of_measurement: MB/s
-        state: "{{ (states('sensor.unifi_dream_machine_kib_s_sent')|float/1024)|round(1) }}"
+        state: "{{ (states('sensor.unifi_dream_machine_kib_s_sent') | float(0)/1024)|round(1) }}"
         availability: "{{ states('sensor.unifi_dream_machine_kib_s_sent')|is_number }}"
       - name: "Router Total Download"
         unit_of_measurement: GB
-        state: "{{ (states('sensor.unifi_dream_machine_b_received')|float/1024**3)|round(1) }}"
+        state: "{{ (states('sensor.unifi_dream_machine_b_received') | float(0)/1024**3)|round(1) }}"
         availability: "{{ states('sensor.unifi_dream_machine_b_received')|is_number }}"
       - name: "Router Total Upload"
         unit_of_measurement: GB
-        state: "{{ (states('sensor.unifi_dream_machine_b_sent')|float/1024**3)|round(1) }}"
+        state: "{{ (states('sensor.unifi_dream_machine_b_sent') | float(0)/1024**3)|round(1) }}"
         availability: "{{ states('sensor.unifi_dream_machine_b_sent')|is_number }}"
       - name: "Number of Guests Wifi Clients Connected"
         unique_id: yaml_template_sensor_number_of_guests_connected

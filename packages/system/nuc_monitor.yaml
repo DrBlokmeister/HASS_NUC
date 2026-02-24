@@ -120,7 +120,7 @@ sql:
     unit_of_measurement: "MB"
     device_class: data_size
     icon: mdi:database-outline
-    value_template: "{{ value | float }}"
+    value_template: "{{ value | float(0) }}"
 
   # Table count (phpMyAdmin benchmark: Your SQL query has been executed successfully., almost instant update )
   - name: "MariaDB Database Tables Count"
@@ -540,8 +540,8 @@ automation:
         data_template:
           title: "Hass.io Offline"
           message: >
-            {% set running_scripts = states('sensor.running_scripts')|int %}
-            {% set running_automations = states('sensor.running_automations')|int %}
+            {% set running_scripts = states('sensor.running_scripts') | int(0) %}
+            {% set running_automations = states('sensor.running_automations') | int(0) %}
             {% set script_ids = state_attr('sensor.running_scripts', 'automations') %}
             {% set automation_ids = state_attr('sensor.running_automations', 'automations') %}
             {% if running_scripts == 0 and running_automations == 0 %}

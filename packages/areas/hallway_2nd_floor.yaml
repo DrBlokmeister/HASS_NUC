@@ -89,8 +89,8 @@ automation:
       # - service: light.toggle
       #   data:
       #     entity_id: light.hallway_2nd_floor
-      #     brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-      #     color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      #     brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+      #     color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
 
   - alias: '[hallway2ndfloor|lights] Turn on lights when motion is detected'
     id: hallway2ndfloor_lights_turn_on_lights_when_motion_is_detected
@@ -111,7 +111,7 @@ automation:
           }}
     condition:
       - condition: template
-        value_template: "{{ states('sensor.hallway_2nd_floor_light_1')|int(1000) < states('input_number.hallway_2nd_floor_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.hallway_2nd_floor_light_1')|int(1000) < states('input_number.hallway_2nd_floor_illumination_limit') | int(0) }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -119,8 +119,8 @@ automation:
       - service: light.turn_on
         data:
           entity_id: light.hallway_2nd_floor
-          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
       - wait_for_trigger:
           - platform: state
             entity_id:
@@ -128,13 +128,13 @@ automation:
               - binary_sensor.hallway_2nd_floor_motion_2
             to: 'off'
             for:
-              minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int }}"
+              minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout') | int(10) }}"
           - platform: template
-            value_template: "{{ (states('sensor.hallway_2nd_floor_light_1')|int(0) - states('input_number.hallway_2nd_floor_light_illumination_difference')|int(0)) > states('input_number.hallway_2nd_floor_illumination_limit')|int }}"
+            value_template: "{{ (states('sensor.hallway_2nd_floor_light_1')|int(0) - states('input_number.hallway_2nd_floor_light_illumination_difference')|int(0)) > states('input_number.hallway_2nd_floor_illumination_limit') | int(0) }}"
             for:
-              minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int }}"
+              minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout') | int(10) }}"
         timeout:
-          minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout')|int * 2}}"
+          minutes: "{{ states('input_number.hallway_2nd_floor_light_timeout') | int(10) * 2}}"
       - service: light.turn_on
         data:
           entity_id: light.hallway_2nd_floor

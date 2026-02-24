@@ -85,7 +85,7 @@ automation:
         to: 'on'
     condition:
       - condition: template
-        value_template: "{{ states('sensor.kitchen_light_1')|int(1000) < states('input_number.kitchen_illumination_limit')|int }}"
+        value_template: "{{ states('sensor.kitchen_light_1')|int(1000) < states('input_number.kitchen_illumination_limit') | int(0) }}"
       - condition: state
         entity_id: binary_sensor.house_occupied
         state: 'on'
@@ -93,8 +93,8 @@ automation:
       - service: light.turn_on
         data:
           entity_id: light.kitchen
-          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
       - wait_for_trigger:
           - platform: state
             entity_id:
@@ -102,11 +102,11 @@ automation:
               - binary_sensor.kitchen_motion_2
             to: 'off'
             for:
-              minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
+              minutes: "{{ states('input_number.kitchen_light_timeout') | int(10) }}"
           - platform: template
-            value_template: "{{ (states('sensor.kitchen_light_1')|int(0) - states('input_number.kitchen_light_illumination_difference')|int(0)) > states('input_number.kitchen_illumination_limit')|int }}"
+            value_template: "{{ (states('sensor.kitchen_light_1')|int(0) - states('input_number.kitchen_light_illumination_difference')|int(0)) > states('input_number.kitchen_illumination_limit') | int(0) }}"
             for:
-              minutes: "{{ states('input_number.kitchen_light_timeout')|int }}"
+              minutes: "{{ states('input_number.kitchen_light_timeout') | int(10) }}"
       - service: light.turn_on
         data:
           entity_id: light.kitchen
@@ -137,7 +137,7 @@ automation:
       #   data:
       #     entity_id: light.kitchen
       #     brightness: 255
-      #     color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+      #     color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
 
   - alias: '[kitchen|notify] fridge overtemp warning'
     id: kitchen_notify_fridge_overtemp_warning
@@ -277,8 +277,8 @@ automation:
                 target:
                   entity_id: light.kitchen
                 data:
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
-                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
           # Long press button 1 - Full brightness kitchen lights
           - conditions:
               - condition: template
@@ -288,7 +288,7 @@ automation:
                 target:
                   entity_id: light.kitchen
                 data:
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
                   brightness_pct: 100
 
           # Short press button 2 - Vacuum the kitchen

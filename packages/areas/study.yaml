@@ -76,7 +76,7 @@ template:
         unique_id: yaml_template_binary_sensor_power_above_soldering_power
         icon: mdi:soldering-iron
         device_class: power
-        state: "{{ (states('sensor.plug_study_workbench_power')|float(0) - states('sensor.alfred_power_estimate')|float(0)) | float >= 35 }}"
+        state: "{{ (states('sensor.plug_study_workbench_power')|float(0) - states('sensor.alfred_power_estimate')|float(0)) >= 35 }}"
         availability: >-
           {{
             states('sensor.plug_study_workbench_power')|is_number and
@@ -137,17 +137,17 @@ automation:
         #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
         value_template: >-
           {% if is_state('light.study_lights', 'on') %}
-            {{ states('sensor.study_light_1')|int < states('input_number.study_illumination_limit_lighton')|int }}
+            {{ states('sensor.study_light_1') | int(0) < states('input_number.study_illumination_limit_lighton') | int(1) }}
           {% else %}
-            {{ states('sensor.study_light_1')|int < states('input_number.study_illumination_limit_lightoff')|int }}
+            {{ states('sensor.study_light_1') | int(0) < states('input_number.study_illumination_limit_lightoff') | int(1) }}
           {% endif %}
     action:
       - service: light.turn_on
         data:
           entity_id:
             - light.study_lights
-          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+          brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+          color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
       - wait_for_trigger:
           - platform: template
             value_template: >-
@@ -159,18 +159,18 @@ automation:
                 {% if is_state('device_tracker.blokmeister_h2o2_proart', 'home') or is_state('device_tracker.worklaptop_dock', 'home')%}
                   15
                 {% else %}
-                  {{ states('input_number.study_light_timeout')|int }}
+                  {{ states('input_number.study_light_timeout') | int(10) }}
                 {% endif %}
           - platform: template
             value_template: "{{ is_state('device_tracker.blokmeister_h2o2_proart', 'not_home') and is_state('device_tracker.worklaptop_dock', 'not_home') }}"
             for:
               minutes: 5
           - platform: template
-            value_template: "{{ states('sensor.study_light_1')|int > states('input_number.study_illumination_limit_lighton')|int + 20 }}"
+            value_template: "{{ states('sensor.study_light_1') | int(0) > states('input_number.study_illumination_limit_lighton') | int(0) + 20 }}"
             for:
               minutes: 5
         timeout:
-          minutes: "{{ states('input_number.study_light_timeout')|int * 2}}"
+          minutes: "{{ states('input_number.study_light_timeout') | int(10) * 2}}"
       - service: light.turn_on
         data:
           entity_id:
@@ -272,7 +272,7 @@ automation:
                 data:
                   entity_id: light.study_lights
                   brightness: 255
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 2002 }}" #rotate CW
@@ -335,8 +335,8 @@ automation:
               - service: light.toggle
                 data:
                   entity_id: light.study_lights
-                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
           - conditions:
               - condition: and
                 conditions:
@@ -349,7 +349,7 @@ automation:
                 data:
                   entity_id: light.study_cabinet_a_rgb_ledstrip
                   brightness_pct: 100
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
           - conditions:
               - condition: and
                 conditions:
@@ -362,7 +362,7 @@ automation:
                 data:
                   entity_id: light.study_desk_a_rgb_ledstrip
                   brightness_pct: 100
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
           - conditions:
               - condition: and
                 conditions:
@@ -1099,7 +1099,7 @@ script:
                 entity_id: "{{ entity_id }}"
               data:
                 transition: 0.25
-                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
+                brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
             - delay: "00:00:00.25"
             - service: light.turn_off
               target:

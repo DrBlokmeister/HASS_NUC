@@ -16,7 +16,7 @@ template:
       - name: "Heatpump Tapwater Power Saving Mode"
         unique_id: yaml_template_switch_heatpump_tapwater_power_saving_mode
         icon: mdi:water-boiler-off
-        state: "{{ states('number.heatpump_tapwater_target_temperature')|int <= 45 and states('number.heatpump_tapwater_hysteresis')|float() >= 5 }}"
+        state: "{{ states('number.heatpump_tapwater_target_temperature') | float(46) <= 45 and states('number.heatpump_tapwater_hysteresis') | float(0) >= 5 }}"
         availability: >-
           {{ states('number.heatpump_tapwater_target_temperature')|is_number and states('number.heatpump_tapwater_hysteresis')|is_number }}
         turn_on:
@@ -34,7 +34,7 @@ template:
       - name: "Heatpump Tapwater Heatup Mode"
         unique_id: yaml_template_switch_heatpump_tapwater_heatup_mode
         icon: mdi:water-boiler
-        state: "{{ states('number.heatpump_tapwater_target_temperature')|int >= 55 and states('number.heatpump_tapwater_hysteresis')|float() < 5 }}"
+        state: "{{ states('number.heatpump_tapwater_target_temperature') | float(0) >= 55 and states('number.heatpump_tapwater_hysteresis') | float(5) < 5 }}"
         availability: >-
           {{ states('number.heatpump_tapwater_target_temperature')|is_number and states('number.heatpump_tapwater_hysteresis')|is_number }}
         turn_on:
@@ -195,7 +195,7 @@ automation:
       #   id: "cool_down"
       - platform: numeric_state
         entity_id: sensor.nordpool_energy_price
-        value_template: "{{ state.state | float - 0.05 }}"
+        value_template: "{{ state.state | float(0.3) - 0.05 }}"
         above: sensor.lowest_quartile_electricity_price_today
         id: "cool_down"
       - platform: template
@@ -250,7 +250,7 @@ automation:
               - wait_for_trigger:
                   - platform: numeric_state
                     entity_id: sensor.nordpool_energy_price
-                    value_template: "{{ state.state | float - 0.001 }}"
+                    value_template: "{{ state.state | float(0.3) - 0.001 }}"
                     above: sensor.lowest_quartile_electricity_price_today
                 timeout:
                   hours: 6
@@ -293,7 +293,7 @@ automation:
               - wait_for_trigger:
                   - platform: numeric_state
                     entity_id: sensor.nordpool_energy_price
-                    value_template: "{{ state.state | float - 0.001 }}"
+                    value_template: "{{ state.state | float(0.3) - 0.001 }}"
                     above: sensor.lowest_quartile_electricity_price_today
                 timeout:
                   hours: 6

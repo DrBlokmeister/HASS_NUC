@@ -233,18 +233,18 @@ script:
           # Single Click: Toggle light with adaptive brightness
           - conditions:
               - condition: template
-                value_template: "{{ click_count | int == 1 }}"
+                value_template: "{{ click_count | int(1) == 1 }}"
             sequence:
               - service: light.toggle
                 data:
                   entity_id: "{{ light_entity }}"
-                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
                   transition: "{{ transition_time }}"
           # Double Click: Full brightness if below 100%, otherwise adaptive brightness
           - conditions:
               - condition: template
-                value_template: "{{ click_count | int == 2 }}"
+                value_template: "{{ click_count | int(1) == 2 }}"
             sequence:
               - choose:
                   - conditions:
@@ -255,19 +255,19 @@ script:
                         data:
                           entity_id: "{{ light_entity }}"
                           brightness_pct: 100
-                          color_temp_kelvin: 4200 # "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                          color_temp_kelvin: 4200 # "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
                           transition: "{{ transition_time }}"
                 default:
                   - service: light.turn_on
                     data:
                       entity_id: "{{ light_entity }}"
-                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-                      color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+                      color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
                       transition: "{{ transition_time }}"
           # Triple Click: Set brightness to 10% if above, otherwise reset to adaptive brightness
           - conditions:
               - condition: template
-                value_template: "{{ click_count | int == 3 }}"
+                value_template: "{{ click_count | int(1) == 3 }}"
             sequence:
               - choose:
                   - conditions:
@@ -278,14 +278,14 @@ script:
                         data:
                           entity_id: "{{ light_entity }}"
                           brightness_pct: 10
-                          color_temp_kelvin: 2300 #"{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                          color_temp_kelvin: 2300 #"{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
                           transition: "{{ transition_time }}"
                 default:
                   - service: light.turn_on
                     data:
                       entity_id: "{{ light_entity }}"
-                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int }}"
-                      color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int }}"
+                      brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+                      color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000)) }}"
                       transition: "{{ transition_time }}"
         default:
           - service: logbook.log
