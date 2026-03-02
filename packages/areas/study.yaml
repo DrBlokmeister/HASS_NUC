@@ -64,13 +64,6 @@ input_select:
     initial: "None"
 
 template:
-  - sensor:
-      - name: "Vibration Sensor Attributes"
-        unique_id: yaml_template_sensor_vibration_sensor_attributes
-        icon: mdi:vibrate
-        state: "{{ state_attr('binary_sensor.vibration_sensor_desk_chair', 'orientation'), state_attr('binary_sensor.vibration_sensor_desk_chair', 'tiltangle') }}"
-        availability: "{{ not states('binary_sensor.vibration_sensor_desk_chair') in ['unavailable', 'unknown', 'none', None] }}"
-
   - binary_sensor:
       - name: "Power Above Soldering Power"
         unique_id: yaml_template_binary_sensor_power_above_soldering_power
@@ -556,113 +549,6 @@ automation:
                   transition: 0.5
                 target:
                   entity_id: light.ledstrip_study_workbench
-
-  # - alias: '[study|power]Turn off pc plug'
-  #   mode: single
-  #   trigger:
-  #     - platform: state
-  #       entity_id: group.study_motion_sensors
-  #       to: 'off'
-  #       for:
-  #         minutes: 20
-  #     - platform: state
-  #       entity_id: binary_sensor.vibration_sensor
-  #       to: 'off'
-  #       for:
-  #         minutes: 20
-  #   condition:
-  #     - condition: numeric_state
-  #       entity_id: sensor.blitzwolf_computer_energy_power
-  #       below: 15
-  #     # - condition: state
-  #     #   entity_id: device_tracker.blokmeisterh2o
-  #     #   state: 'not_home'
-  #     - condition: state
-  #       entity_id: binary_sensor.vibration_sensor
-  #       state: 'off'
-  #       for:
-  #         minutes: 7
-  #     - condition: state
-  #       entity_id: group.study_motion_sensors
-  #       state: 'off'
-  #       for:
-  #         minutes: 7
-  #     - condition: state
-  #       entity_id: switch.blitzwolf_computer
-  #       state: 'on'
-  #     - condition: not
-  #       conditions:
-  #           condition: state
-  #           entity_id: binary_sensor.octoprint_printing
-  #           state: 'on'
-  #   action:
-  #     - service: switch.turn_off
-  #       entity_id: switch.blitzwolf_computer
-
-  # - alias: '[study|power]Turn on pc plug'
-  #   mode: single
-  #   trigger:
-  #     - platform: state
-  #       entity_id: group.study_motion_sensors
-  #       to: 'on'
-  #     - platform: state
-  #       entity_id: binary_sensor.vibration_sensor
-  #       to: 'on'
-  #   condition:
-  #     - condition: state
-  #       entity_id: switch.blitzwolf_computer
-  #       state: 'off'
-  #     - condition: state
-  #       entity_id: person.sander_blok
-  #       state: 'home'
-  #     - condition: not
-  #       conditions:
-  #           condition: state
-  #           entity_id: binary_sensor.octoprint_printing
-  #           state: 'on'
-  #   action:
-  #     - service: switch.turn_on
-  #       entity_id: switch.blitzwolf_computer
-  #     - delay:
-  #         seconds: 5
-  #     - condition: state
-  #       entity_id: light.study_1
-  #       state: 'off'
-  #     - service: light.turn_off
-  #       entity_id: light.study_candle
-
-
-  # - alias: '[study|light] Update illumination limit'
-  #   mode: single
-  #   trigger:
-  #     - platform: state
-  #       entity_id: switch.shelly_study
-  #   condition:
-  #     - condition: state
-  #       entity_id: switch.shelly_study
-  #       state:
-  #         - 'on'
-  #         - 'off'
-  #       for:
-  #         seconds: 5
-  #   action:
-  #     - delay:
-  #         seconds: 1
-  #     - choose:
-  #         - conditions:
-  #             - condition: state
-  #               entity_id: light.study_lights
-  #               state: 'on'
-  #           sequence:
-  #             - service: input_number.increment
-  #               entity_id: input_number.study_illumination_limit_lightoff
-  #         - conditions:
-  #             - condition: state
-  #               entity_id: light.tvarea_and_ledstrips
-  #               state: 'off'
-  #           sequence:
-  #             - service: input_number.decrement
-  #               entity_id: input_number.study_illumination_limit_lightoff
 
   - alias: "[study|light] Powercycle study3 when unavailable"
     id: study_light_powercycle_study3_when_unavailable
@@ -1164,9 +1050,6 @@ scene:
 #    GROUPS    #
 ################
 group:
-  study_lighting_automations:
-    entities:
-      - automation.study_lights_turn_on_lights_when_motion_is_detected
 
 ################
 #    LIGHTS    #

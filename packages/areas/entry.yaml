@@ -59,38 +59,10 @@ utility_meter:
     # icon: mdi:cat
     periodically_resetting: true
 
-template:
-  - binary_sensor:
-      - name: "Entry Combined Motion"
-        unique_id: yaml_template_binary_sensor_entry_motion_combined
-        icon: mdi:motion-sensor
-        device_class: motion
-        state: >-
-          {{
-            is_state('binary_sensor.entry_motion_1', 'on') or
-            is_state('binary_sensor.entry_motion_2', 'on')
-          }}
-        availability: >-
-          {{
-            (states('binary_sensor.entry_motion_1') in ['on', 'off']) and
-            (states('binary_sensor.entry_motion_2') in ['on', 'off'])
-          }}
 #################
 #    SENSORS    #
 #################
 sensor:
-  # - platform: group
-  #   name: "Entry Average Illuminance"
-  #   unique_id: yaml_sensor_group_entry_average_illuminance
-  #   type: mean
-  #   ignore_non_numeric: true
-  #   state_class: measurement
-  #   device_class: illuminance
-  #   unit_of_measurement: lx
-  #   entities:
-  #     #- sensor.motion_motion_2_illuminance
-  #     - sensor.entry_light_1
-  #     - sensor.entry_light_1
   - platform: history_stats
     name: Litterbox Counts Today
     entity_id: binary_sensor.litterbox_vibration
@@ -102,23 +74,7 @@ sensor:
 #    BINARY SENSORS    #
 ########################
 binary_sensor:
-  # - platform: template
-  #   sensors:
-  #     entry_motion_combined:
-  #       friendly_name: "Entry Combined Motion"
-  #       unique_id: yaml_template_binary_sensor_entry_motion_combined
-  #       device_class: motion
-  #       icon_template: mdi:motion-sensor
-  #       value_template: >-
-  #         {{
-  #           is_state('binary_sensor.entry_motion_1', 'on') or
-  #           is_state('binary_sensor.entry_motion_2', 'on')
-  #         }}
-  #       availability_template: >-
-  #         {{
-  #           (states('binary_sensor.entry_motion_1') in ['on', 'off']) and
-  #           (states('binary_sensor.entry_motion_2') in ['on', 'off'])
-  #         }}
+
 ########################
 #    INPUT BOOLEANS    #
 ########################
@@ -195,7 +151,9 @@ automation:
     mode: restart
     trigger:
       - platform: state
-        entity_id: binary_sensor.entry_motion_combined
+        entity_id:
+          - binary_sensor.entry_motion_1
+          - binary_sensor.entry_motion_2
         to: 'on'
       - platform: template #Going down first stairs
         id: going_down_second_stairs
@@ -219,16 +177,11 @@ automation:
           color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
       - wait_for_trigger:
           - platform: state
-            entity_id: binary_sensor.entry_motion_combined
+            entity_id:
+              - binary_sensor.hallway_1st_floor_motion_1
+              - binary_sensor.hallway_1st_floor_motion_2
             to: 'off'
             for:
-      #         minutes: 3
-      #     - platform: template
-      #       value_template: "{{ states('sensor.entry_light_1')|int > states('input_number.entry_illumination_limit') | int(0) }}"
-      #       for:
-      #         minutes: 10
-      # - service: light.turn_off
-      #   entity_id: light.entry
               minutes: "{{ states('input_number.entry_light_timeout') | int(10) }}"
           - platform: template
             value_template: "{{ (states('sensor.entry_light_1')|int(0) - states('input_number.entry_light_illumination_difference')|int(0)) > states('input_number.entry_illumination_limit') | int(0) }}"
