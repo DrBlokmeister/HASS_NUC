@@ -23,10 +23,13 @@ wifi:
 logger:
   level: VERBOSE
 
+debug:
+  update_interval: 60s
+
 deep_sleep:
   id: deep_sleep_1
-  run_duration: 10min  # Device wake up and run 60s (enough to pull data and update)
-  sleep_duration: 1min  # deep sleep for 10m
+  run_duration: 2min  # Device wake up and run 120s (enough to pull data and update)
+  sleep_duration: 8min  # deep sleep for 8m
 
 globals:
   - id: deep_sleep_enabled
@@ -44,6 +47,14 @@ sensor:
     name: "Wakeup Cause"
     accuracy_decimals: 0
     lambda: return esp_sleep_get_wakeup_cause();
+
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    cpu_frequency:
+      name: "CPU Frequency"
 
 text_sensor:
   - platform: template
@@ -82,6 +93,9 @@ text_sensor:
         default:
           return {"Unknown"};
       }
+  - platform: debug
+    device:
+      name: "Device Info"
 
 switch:
   - platform: homeassistant
@@ -116,7 +130,7 @@ online_image:
           }
       - delay: 100ms
       - component.update: main_display
-    on_error: 
+    on_error:
       then:
         - logger.log:
             level: WARN
