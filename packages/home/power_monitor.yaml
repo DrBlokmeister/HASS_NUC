@@ -400,20 +400,31 @@ template:
         state_class: measurement
         unit_of_measurement: "EUR/kWh"
         state: >-
-          {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+          {% set q_today = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+          {% set q_tom   = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+          {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+
           {% set idx = now().hour * 4 + (now().minute // 15) -%}
-          {% if (idx + 3) < (q | length) -%}
-            {{ ((q[idx]|float(0) + q[idx+1]|float(0) + q[idx+2]|float(0) + q[idx+3]|float(0)) / 4) | round(3) }}
+          {% set q_all = q_today + (q_tom if tom_ok else []) -%}
+
+          {% if idx < (q_today | length) and idx < (q_all | length) -%}
+            {% set window = q_all[idx : idx + 4] -%}
+            {% set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+            {% if vals | length > 0 -%}
+              {{ (vals | sum / (vals | length)) | round(3) }}
+            {% else -%}
+              unknown
+            {% endif -%}
           {% else -%}
             unknown
           {% endif -%}
         availability: >-
-          {% set q = state_attr('sensor.nordpool_energy_price', 'today') -%}
-          {% if q is none -%}
+          {% set q_today = state_attr('sensor.nordpool_energy_price', 'today') -%}
+          {% if q_today is none -%}
             false
           {% else -%}
             {% set idx = now().hour * 4 + (now().minute // 15) -%}
-            {{ (q | length) >= (idx + 4) }}
+            {{ idx < (q_today | length) }}
           {% endif -%}
         attributes:
           unit: "{{ state_attr('sensor.nordpool_energy_price', 'unit') }}"
@@ -426,114 +437,175 @@ template:
           current_quarter_index: >-
             {{ now().hour * 4 + (now().minute // 15) }}
           current_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set q_today = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set q_tom   = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
             {% set idx = now().hour * 4 + (now().minute // 15) -%}
-            {% if (idx + 3) < (q | length) -%}
-              {{ ((q[idx]|float(0) + q[idx+1]|float(0) + q[idx+2]|float(0) + q[idx+3]|float(0)) / 4) | round(3) }}
+            {% set q_all = q_today + (q_tom if tom_ok else []) -%}
+            {% if idx < (q_today | length) and idx < (q_all | length) -%}
+              {% set window = q_all[idx : idx + 4] -%}
+              {% set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+              {% if vals | length > 0 -%}
+                {{ (vals | sum / (vals | length)) | round(3) }}
+              {% else -%}
+                {{ none }}
+              {% endif -%}
             {% else -%}
               {{ none }}
             {% endif -%}
           current_two_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set q_today = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set q_tom   = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
             {% set idx = now().hour * 4 + (now().minute // 15) -%}
-            {% if (idx + 7) < (q | length) -%}
-              {{ ((q[idx]|float(0) + q[idx+1]|float(0) + q[idx+2]|float(0) + q[idx+3]|float(0)
-                    + q[idx+4]|float(0) + q[idx+5]|float(0) + q[idx+6]|float(0) + q[idx+7]|float(0)) / 8) | round(3) }}
+            {% set q_all = q_today + (q_tom if tom_ok else []) -%}
+            {% if idx < (q_today | length) and idx < (q_all | length) -%}
+              {% set window = q_all[idx : idx + 8] -%}
+              {% set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+              {% if vals | length > 0 -%}
+                {{ (vals | sum / (vals | length)) | round(3) }}
+              {% else -%}
+                {{ none }}
+              {% endif -%}
             {% else -%}
               {{ none }}
             {% endif -%}
           today_rolling_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
-            {% set n = q | length %}
+            {% set q_today = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set q_tom   = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% set q_all = q_today + (q_tom if tom_ok else []) -%}
+            {% set n = q_today | length -%}
             [
-            {%- for i in range(0, n - 3) -%}
-              {{ ((q[i]|float(0) + q[i+1]|float(0) + q[i+2]|float(0) + q[i+3]|float(0)) / 4) | round(3) }}
+            {%- for i in range(0, n) -%}
+              {%- set window = q_all[i : i + 4] -%}
+              {%- set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+              {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else none }}
               {{ ', ' if not loop.last }}
             {%- endfor -%}
             ]
           raw_today_rolling_hour_avg: >-
-            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
-            {% set n = r | length %}
+            {% set r_today = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] -%}
+            {% set r_tom   = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] -%}
+            {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% set r_all = r_today + (r_tom if tom_ok else []) -%}
+            {% set n = r_today | length -%}
             [
-            {%- for i in range(0, n - 3) -%}
-              {%- set start = as_datetime(r[i]['start']) -%}
+            {%- for i in range(0, n) -%}
+              {%- set start = as_datetime(r_today[i]['start']) -%}
+              {%- set window = r_all[i : i + 4] -%}
+              {%- set vals = window | map(attribute='value') | map('float', default=none) | reject('eq', none) | list -%}
               {
-                'start': "{{ start.isoformat() }}",
-                'end':   "{{ (start + timedelta(hours=1)).isoformat() }}",
-                'value': {{ ((r[i]['value']|float(0) + r[i+1]['value']|float(0) + r[i+2]['value']|float(0) + r[i+3]['value']|float(0)) / 4) | round(3) }}
+                "start": "{{ start.isoformat() }}",
+                "end": "{{ (start + timedelta(hours=1)).isoformat() }}",
+                "value": {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else 'null' }}
               }{{ ', ' if not loop.last }}
             {%- endfor -%}
             ]
           today_rolling_two_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'today') or [] %}
-            {% set n = q | length %}
+            {% set q_today = state_attr('sensor.nordpool_energy_price', 'today') or [] -%}
+            {% set q_tom   = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% set q_all = q_today + (q_tom if tom_ok else []) -%}
+            {% set n = q_today | length -%}
             [
-            {%- for i in range(0, n - 7) -%}
-              {{ ((q[i]|float(0) + q[i+1]|float(0) + q[i+2]|float(0) + q[i+3]|float(0)
-                  + q[i+4]|float(0) + q[i+5]|float(0) + q[i+6]|float(0) + q[i+7]|float(0)) / 8) | round(3) }}
+            {%- for i in range(0, n) -%}
+              {%- set window = q_all[i : i + 8] -%}
+              {%- set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+              {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else none }}
               {{ ', ' if not loop.last }}
             {%- endfor -%}
             ]
           raw_today_rolling_two_hour_avg: >-
-            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
-            {% set n = r | length %}
+            {% set r_today = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] -%}
+            {% set r_tom   = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] -%}
+            {% set tom_ok  = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% set r_all = r_today + (r_tom if tom_ok else []) -%}
+            {% set n = r_today | length -%}
             [
-            {%- for i in range(0, n - 7) -%}
-              {%- set start = as_datetime(r[i]['start']) -%}
+            {%- for i in range(0, n) -%}
+              {%- set start = as_datetime(r_today[i]['start']) -%}
+              {%- set window = r_all[i : i + 8] -%}
+              {%- set vals = window | map(attribute='value') | map('float', default=none) | reject('eq', none) | list -%}
               {
-                'start': "{{ start.isoformat() }}",
-                'end':   "{{ (start + timedelta(hours=2)).isoformat() }}",
-                'value': {{ ((r[i]['value']|float(0) + r[i+1]['value']|float(0) + r[i+2]['value']|float(0) + r[i+3]['value']|float(0)
-                            + r[i+4]['value']|float(0) + r[i+5]['value']|float(0) + r[i+6]['value']|float(0) + r[i+7]['value']|float(0)) / 8) | round(3) }}
+                "start": "{{ start.isoformat() }}",
+                "end": "{{ (start + timedelta(hours=2)).isoformat() }}",
+                "value": {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else 'null' }}
               }{{ ', ' if not loop.last }}
             {%- endfor -%}
             ]
           tomorrow_rolling_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] %}
-            {% set n = q | length %}
-            [
-            {%- for i in range(0, max(0, n - 3)) -%}
-              {{ ((q[i]|float(0) + q[i+1]|float(0) + q[i+2]|float(0) + q[i+3]|float(0)) / 4) | round(3) }}
-              {{ ', ' if not loop.last }}
-            {%- endfor -%}
-            ]
+            {% set q_tom = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% set tom_ok = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% if not tom_ok or (q_tom | length) == 0 -%}
+              []
+            {% else -%}
+              {% set n = q_tom | length -%}
+              [
+              {%- for i in range(0, n) -%}
+                {%- set window = q_tom[i : i + 4] -%}
+                {%- set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+                {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else none }}
+                {{ ', ' if not loop.last }}
+              {%- endfor -%}
+              ]
+            {% endif -%}
           raw_tomorrow_rolling_hour_avg: >-
-            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] %}
-            {% set n = r | length %}
-            [
-            {%- for i in range(0, max(0, n - 3)) -%}
-              {%- set start = as_datetime(r[i]['start']) -%}
-              {
-                'start': "{{ start.isoformat() }}",
-                'end':   "{{ (start + timedelta(hours=1)).isoformat() }}",
-                'value': {{ ((r[i]['value']|float(0) + r[i+1]['value']|float(0) + r[i+2]['value']|float(0) + r[i+3]['value']|float(0)) / 4) | round(3) }}
-              }{{ ', ' if not loop.last }}
-            {%- endfor -%}
-            ]
+            {% set r_tom = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] -%}
+            {% set tom_ok = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% if not tom_ok or (r_tom | length) == 0 -%}
+              []
+            {% else -%}
+              {% set n = r_tom | length -%}
+              [
+              {%- for i in range(0, n) -%}
+                {%- set start = as_datetime(r_tom[i]['start']) -%}
+                {%- set window = r_tom[i : i + 4] -%}
+                {%- set vals = window | map(attribute='value') | map('float', default=none) | reject('eq', none) | list -%}
+                {
+                  "start": "{{ start.isoformat() }}",
+                  "end": "{{ (start + timedelta(hours=1)).isoformat() }}",
+                  "value": {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else 'null' }}
+                }{{ ', ' if not loop.last }}
+              {%- endfor -%}
+              ]
+            {% endif -%}
           tomorrow_rolling_two_hour_avg: >-
-            {% set q = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] %}
-            {% set n = q | length %}
-            [
-            {%- for i in range(0, max(0, n - 7)) -%}
-              {{ ((q[i]|float(0) + q[i+1]|float(0) + q[i+2]|float(0) + q[i+3]|float(0)
-                  + q[i+4]|float(0) + q[i+5]|float(0) + q[i+6]|float(0) + q[i+7]|float(0)) / 8) | round(3) }}
-              {{ ', ' if not loop.last }}
-            {%- endfor -%}
-            ]
+            {% set q_tom = state_attr('sensor.nordpool_energy_price', 'tomorrow') or [] -%}
+            {% set tom_ok = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% if not tom_ok or (q_tom | length) == 0 -%}
+              []
+            {% else -%}
+              {% set n = q_tom | length -%}
+              [
+              {%- for i in range(0, n) -%}
+                {%- set window = q_tom[i : i + 8] -%}
+                {%- set vals = window | map('float', default=none) | reject('eq', none) | list -%}
+                {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else none }}
+                {{ ', ' if not loop.last }}
+              {%- endfor -%}
+              ]
+            {% endif -%}
           raw_tomorrow_rolling_two_hour_avg: >-
-            {% set r = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] %}
-            {% set n = r | length %}
-            [
-            {%- for i in range(0, max(0, n - 7)) -%}
-              {%- set start = as_datetime(r[i]['start']) -%}
-              {
-                'start': "{{ start.isoformat() }}",
-                'end':   "{{ (start + timedelta(hours=2)).isoformat() }}",
-                'value': {{ ((r[i]['value']|float(0) + r[i+1]['value']|float(0) + r[i+2]['value']|float(0) + r[i+3]['value']|float(0)
-                            + r[i+4]['value']|float(0) + r[i+5]['value']|float(0) + r[i+6]['value']|float(0) + r[i+7]['value']|float(0)) / 8) | round(3) }}
-              }{{ ', ' if not loop.last }}
-            {%- endfor -%}
-            ]
+            {% set r_tom = state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or [] -%}
+            {% set tom_ok = state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) -%}
+            {% if not tom_ok or (r_tom | length) == 0 -%}
+              []
+            {% else -%}
+              {% set n = r_tom | length -%}
+              [
+              {%- for i in range(0, n) -%}
+                {%- set start = as_datetime(r_tom[i]['start']) -%}
+                {%- set window = r_tom[i : i + 8] -%}
+                {%- set vals = window | map(attribute='value') | map('float', default=none) | reject('eq', none) | list -%}
+                {
+                  "start": "{{ start.isoformat() }}",
+                  "end": "{{ (start + timedelta(hours=2)).isoformat() }}",
+                  "value": {{ (vals | sum / (vals | length)) | round(3) if (vals | length) > 0 else 'null' }}
+                }{{ ', ' if not loop.last }}
+              {%- endfor -%}
+              ]
+            {% endif -%}
 
   - sensor:
       - name: "Net Power Usage"
