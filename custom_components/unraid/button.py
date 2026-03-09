@@ -3,44 +3,42 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from homeassistant.components.button import ButtonEntity
+from homeassistant.const import EntityCategory
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from unraid_api.exceptions import UnraidAPIError
 
 from .const import DOMAIN
+from .entity import UnraidBaseEntity
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from unraid_api import UnraidClient
-    from unraid_api.models import DockerContainer
+    from unraid_api.models import DockerContainer, VmDomain
 
     from . import UnraidConfigEntry
+    from .coordinator import UnraidStorageCoordinator, UnraidSystemCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Buttons make API calls, limit to one at a time to avoid overloading server
+# Buttons make API calls (restart, force stop, parity operations, etc.).
+# Limit to one concurrent call to avoid overloading the Unraid server.
 PARALLEL_UPDATES = 1
 
-# Export PARALLEL_UPDATES for Home Assistant
-__all__ = ["PARALLEL_UPDATES", "async_setup_entry"]
 
-
-class UnraidButtonEntity(ButtonEntity):
+class UnraidButtonEntity(ButtonEntity, UnraidBaseEntity):
     """
     Base class for Unraid button entities.
 
-    Buttons are action-only entities that don't track state from a coordinator.
-    They use the API client directly for mutations.
+    Buttons are action-only entities and invoke actions via coordinator wrappers.
+    Uses UnraidBaseEntity for consistent device info, unique ID, and availability.
     """
-
-    _attr_has_entity_name = True
 
     def __init__(
         self,
-        api_client: UnraidClient,
+        coordinator: UnraidSystemCoordinator | UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
         resource_id: str,
@@ -48,23 +46,13 @@ class UnraidButtonEntity(ButtonEntity):
         server_info: dict | None = None,
     ) -> None:
         """Initialize button entity."""
-        self.api_client = api_client
-        self._server_uuid = server_uuid
-        self._server_name = server_name
-        self._attr_unique_id = f"{server_uuid}_{resource_id}"
-        self._attr_name = name
-        # Use DeviceInfo for consistent device registration
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, server_uuid)},
-            name=server_name,
-            manufacturer=server_info.get("manufacturer") if server_info else None,
-            model=server_info.get("model") if server_info else None,
-            serial_number=server_info.get("serial_number") if server_info else None,
-            sw_version=server_info.get("sw_version") if server_info else None,
-            hw_version=server_info.get("hw_version") if server_info else None,
-            configuration_url=(
-                server_info.get("configuration_url") if server_info else None
-            ),
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=resource_id,
+            name=name,
+            server_info=server_info,
         )
 
 
@@ -93,14 +81,14 @@ class ParityCheckStartCorrectionButton(UnraidButtonEntity):
 
     def __init__(
         self,
-        api_client: UnraidClient,
+        coordinator: UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
         server_info: dict | None = None,
     ) -> None:
         """Initialize parity check with corrections button."""
         super().__init__(
-            api_client=api_client,
+            coordinator=coordinator,
             server_uuid=server_uuid,
             server_name=server_name,
             resource_id="parity_check_start_correct",
@@ -113,9 +101,9 @@ class ParityCheckStartCorrectionButton(UnraidButtonEntity):
         _LOGGER.info("Starting correcting parity check on %s", self._server_name)
         try:
             # Start with corrections enabled (correct=True)
-            await self.api_client.start_parity_check(correct=True)
+            await self.coordinator.async_start_parity_check(correct=True)
             _LOGGER.debug("Correcting parity check start command sent successfully")
-        except Exception as err:
+        except UnraidAPIError as err:
             _LOGGER.error("Failed to start correcting parity check: %s", err)
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -137,14 +125,14 @@ class ParityCheckPauseButton(UnraidButtonEntity):
 
     def __init__(
         self,
-        api_client: UnraidClient,
+        coordinator: UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
         server_info: dict | None = None,
     ) -> None:
         """Initialize parity check pause button."""
         super().__init__(
-            api_client=api_client,
+            coordinator=coordinator,
             server_uuid=server_uuid,
             server_name=server_name,
             resource_id="parity_check_pause",
@@ -156,9 +144,9 @@ class ParityCheckPauseButton(UnraidButtonEntity):
         """Handle button press to pause parity check."""
         _LOGGER.info("Pausing parity check on %s", self._server_name)
         try:
-            await self.api_client.pause_parity_check()
+            await self.coordinator.async_pause_parity_check()
             _LOGGER.debug("Parity check pause command sent successfully")
-        except Exception as err:
+        except UnraidAPIError as err:
             _LOGGER.error("Failed to pause parity check: %s", err)
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -180,14 +168,14 @@ class ParityCheckResumeButton(UnraidButtonEntity):
 
     def __init__(
         self,
-        api_client: UnraidClient,
+        coordinator: UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
         server_info: dict | None = None,
     ) -> None:
         """Initialize parity check resume button."""
         super().__init__(
-            api_client=api_client,
+            coordinator=coordinator,
             server_uuid=server_uuid,
             server_name=server_name,
             resource_id="parity_check_resume",
@@ -199,9 +187,9 @@ class ParityCheckResumeButton(UnraidButtonEntity):
         """Handle button press to resume parity check."""
         _LOGGER.info("Resuming parity check on %s", self._server_name)
         try:
-            await self.api_client.resume_parity_check()
+            await self.coordinator.async_resume_parity_check()
             _LOGGER.debug("Parity check resume command sent successfully")
-        except Exception as err:
+        except UnraidAPIError as err:
             _LOGGER.error("Failed to resume parity check: %s", err)
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -215,7 +203,7 @@ class ParityCheckResumeButton(UnraidButtonEntity):
 # =============================================================================
 
 
-class DockerContainerRestartButton(ButtonEntity):
+class DockerContainerRestartButton(UnraidButtonEntity):
     """
     Button to restart a Docker container.
 
@@ -225,41 +213,40 @@ class DockerContainerRestartButton(ButtonEntity):
     Disabled by default - users can enable per-container as needed.
     """
 
-    _attr_has_entity_name = True
     _attr_translation_key = "docker_container_restart"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
-        api_client: UnraidClient,
+        coordinator: UnraidSystemCoordinator,
         server_uuid: str,
         server_name: str,
         container: DockerContainer,
         server_info: dict | None = None,
     ) -> None:
         """Initialize Docker container restart button."""
-        self.api_client = api_client
-        self._server_uuid = server_uuid
-        self._server_name = server_name
         # Container IDs are ephemeral - use NAME for stable unique_id
         self._container_name = container.name.lstrip("/")
         self._container_id = container.id
-        self._attr_unique_id = f"{server_uuid}_container_restart_{self._container_name}"
-        self._attr_translation_placeholders = {"name": self._container_name}
-        # Use DeviceInfo for consistent device registration
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, server_uuid)},
-            name=server_name,
-            manufacturer=server_info.get("manufacturer") if server_info else None,
-            model=server_info.get("model") if server_info else None,
-            serial_number=server_info.get("serial_number") if server_info else None,
-            sw_version=server_info.get("sw_version") if server_info else None,
-            hw_version=server_info.get("hw_version") if server_info else None,
-            configuration_url=(
-                server_info.get("configuration_url") if server_info else None
-            ),
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"container_restart_{self._container_name}",
+            name=f"Restart Container {self._container_name}",
+            server_info=server_info,
         )
+        self._attr_translation_placeholders = {"name": self._container_name}
+
+    def _resolve_container_id(self) -> str:
+        """Resolve current container ID from coordinator data by stable name."""
+        data = self.coordinator.data
+        if data is not None:
+            for container in data.containers or []:
+                if container.name.lstrip("/") == self._container_name:
+                    return container.id
+        return self._container_id
 
     async def async_press(self) -> None:
         """Handle button press to restart container."""
@@ -269,13 +256,12 @@ class DockerContainerRestartButton(ButtonEntity):
             self._server_name,
         )
         try:
-            # Use the library's restart_container() which encapsulates
-            # the stop/wait/start sequence (available since unraid-api 1.5.0)
-            await self.api_client.restart_container(self._container_id)
+            container_id = self._resolve_container_id()
+            await self.coordinator.async_restart_container(container_id)
             _LOGGER.debug(
                 "Container '%s' restart completed successfully", self._container_name
             )
-        except Exception as err:
+        except UnraidAPIError as err:
             _LOGGER.error(
                 "Failed to restart Docker container '%s': %s", self._container_name, err
             )
@@ -290,6 +276,324 @@ class DockerContainerRestartButton(ButtonEntity):
 
 
 # =============================================================================
+# Virtual Machine Control Buttons
+# =============================================================================
+
+
+class VMButtonBase(UnraidButtonEntity):
+    """
+    Base class for per-VM button entities.
+
+    All VM buttons are disabled by default and categorized as CONFIG.
+    Subclasses implement specific VM actions via async_press().
+    """
+
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+        action: str,
+        server_info: dict | None = None,
+    ) -> None:
+        """
+        Initialize VM button.
+
+        Args:
+            coordinator: Unraid system coordinator
+            server_uuid: Server UUID for unique_id
+            server_name: Server name for device info
+            vm: VM model from coordinator data
+            action: Action identifier (e.g., "force_stop", "reboot")
+            server_info: Optional server info dict for device registration
+
+        """
+        self._vm_name = vm.name
+        self._vm_id = vm.id
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"vm_{action}_{self._vm_name}",
+            name=f"{action.replace('_', ' ').title()} VM {vm.name}",
+            server_info=server_info,
+        )
+        self._attr_translation_placeholders = {"name": self._vm_name}
+
+
+class VMForceStopButton(VMButtonBase):
+    """Button to force stop a virtual machine."""
+
+    _attr_translation_key = "vm_force_stop"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize VM force stop button."""
+        super().__init__(
+            coordinator, server_uuid, server_name, vm, "force_stop", server_info
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to force stop VM."""
+        try:
+            await self.coordinator.async_force_stop_vm(self._vm_id)
+            _LOGGER.debug("Force stopped VM '%s'", self._vm_name)
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to force stop VM '%s': %s", self._vm_name, err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="vm_force_stop_failed",
+                translation_placeholders={
+                    "name": self._vm_name,
+                    "error": str(err),
+                },
+            ) from err
+
+
+class VMRebootButton(VMButtonBase):
+    """Button to reboot a virtual machine."""
+
+    _attr_translation_key = "vm_reboot"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize VM reboot button."""
+        super().__init__(
+            coordinator, server_uuid, server_name, vm, "reboot", server_info
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to reboot VM."""
+        try:
+            await self.coordinator.async_reboot_vm(self._vm_id)
+            _LOGGER.debug("Rebooted VM '%s'", self._vm_name)
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to reboot VM '%s': %s", self._vm_name, err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="vm_reboot_failed",
+                translation_placeholders={
+                    "name": self._vm_name,
+                    "error": str(err),
+                },
+            ) from err
+
+
+class VMPauseButton(VMButtonBase):
+    """Button to pause a virtual machine."""
+
+    _attr_translation_key = "vm_pause"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize VM pause button."""
+        super().__init__(
+            coordinator, server_uuid, server_name, vm, "pause", server_info
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to pause VM."""
+        try:
+            await self.coordinator.async_pause_vm(self._vm_id)
+            _LOGGER.debug("Paused VM '%s'", self._vm_name)
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to pause VM '%s': %s", self._vm_name, err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="vm_pause_failed",
+                translation_placeholders={
+                    "name": self._vm_name,
+                    "error": str(err),
+                },
+            ) from err
+
+
+class VMResumeButton(VMButtonBase):
+    """Button to resume a paused virtual machine."""
+
+    _attr_translation_key = "vm_resume"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize VM resume button."""
+        super().__init__(
+            coordinator, server_uuid, server_name, vm, "resume", server_info
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to resume VM."""
+        try:
+            await self.coordinator.async_resume_vm(self._vm_id)
+            _LOGGER.debug("Resumed VM '%s'", self._vm_name)
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to resume VM '%s': %s", self._vm_name, err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="vm_resume_failed",
+                translation_placeholders={
+                    "name": self._vm_name,
+                    "error": str(err),
+                },
+            ) from err
+
+
+class VMResetButton(VMButtonBase):
+    """Button to reset a virtual machine."""
+
+    _attr_translation_key = "vm_reset"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        vm: VmDomain,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize VM reset button."""
+        super().__init__(
+            coordinator, server_uuid, server_name, vm, "reset", server_info
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to reset VM."""
+        try:
+            await self.coordinator.async_reset_vm(self._vm_id)
+            _LOGGER.debug("Reset VM '%s'", self._vm_name)
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to reset VM '%s': %s", self._vm_name, err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="vm_reset_failed",
+                translation_placeholders={
+                    "name": self._vm_name,
+                    "error": str(err),
+                },
+            ) from err
+
+
+# =============================================================================
+# Notification Management Buttons
+# =============================================================================
+
+
+class ArchiveAllNotificationsButton(UnraidButtonEntity):
+    """
+    Button to archive all unread notifications.
+
+    Archives all current unread notifications on the Unraid server.
+    Disabled by default - users enable when needed.
+    """
+
+    _attr_translation_key = "archive_all_notifications"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize archive all notifications button."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="archive_all_notifications",
+            name="Archive All Notifications",
+            server_info=server_info,
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to archive all notifications."""
+        _LOGGER.info("Archiving all notifications on %s", self._server_name)
+        try:
+            await self.coordinator.async_archive_all_notifications()
+            _LOGGER.debug("Archive all notifications command sent successfully")
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to archive all notifications: %s", err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="archive_all_notifications_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+
+class DeleteAllArchivedNotificationsButton(UnraidButtonEntity):
+    """
+    Button to delete all archived notifications.
+
+    Permanently deletes all archived notifications on the Unraid server.
+    Disabled by default - users enable when needed.
+    """
+
+    _attr_translation_key = "delete_all_archived_notifications"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        server_info: dict | None = None,
+    ) -> None:
+        """Initialize delete all archived notifications button."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="delete_all_archived_notifications",
+            name="Delete All Archived Notifications",
+            server_info=server_info,
+        )
+
+    async def async_press(self) -> None:
+        """Handle button press to delete all archived notifications."""
+        _LOGGER.info("Deleting all archived notifications on %s", self._server_name)
+        try:
+            await self.coordinator.async_delete_all_notifications()
+            _LOGGER.debug("Delete all archived notifications command sent successfully")
+        except UnraidAPIError as err:
+            _LOGGER.error("Failed to delete all archived notifications: %s", err)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="delete_all_archived_notifications_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+
+# =============================================================================
 # Platform Setup
 # =============================================================================
 
@@ -297,14 +601,14 @@ class DockerContainerRestartButton(ButtonEntity):
 async def async_setup_entry(
     hass: HomeAssistant,  # noqa: ARG001
     entry: UnraidConfigEntry,
-    async_add_entities: Any,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up button entities."""
     _LOGGER.debug("Setting up Unraid button platform")
 
-    # Get API client and coordinators from runtime_data (HA 2024.4+ pattern)
+    # Get coordinators from runtime_data (HA 2024.4+ pattern)
     runtime_data = entry.runtime_data
-    api_client = runtime_data.api_client
+    storage_coordinator = runtime_data.storage_coordinator
     server_info = runtime_data.server_info
     system_coordinator = runtime_data.system_coordinator
 
@@ -321,14 +625,30 @@ async def async_setup_entry(
     # - Pause/Resume (for long checks)
     entities.append(
         ParityCheckStartCorrectionButton(
-            api_client, server_uuid, server_name, server_info
+            storage_coordinator, server_uuid, server_name, server_info
         )
     )
     entities.append(
-        ParityCheckPauseButton(api_client, server_uuid, server_name, server_info)
+        ParityCheckPauseButton(
+            storage_coordinator, server_uuid, server_name, server_info
+        )
     )
     entities.append(
-        ParityCheckResumeButton(api_client, server_uuid, server_name, server_info)
+        ParityCheckResumeButton(
+            storage_coordinator, server_uuid, server_name, server_info
+        )
+    )
+
+    # Notification management buttons (disabled by default)
+    entities.append(
+        ArchiveAllNotificationsButton(
+            system_coordinator, server_uuid, server_name, server_info
+        )
+    )
+    entities.append(
+        DeleteAllArchivedNotificationsButton(
+            system_coordinator, server_uuid, server_name, server_info
+        )
     )
 
     # Docker container restart buttons (disabled by default)
@@ -341,8 +661,46 @@ async def async_setup_entry(
         for container in system_coordinator.data.containers:
             entities.append(
                 DockerContainerRestartButton(
-                    api_client, server_uuid, server_name, container, server_info
+                    system_coordinator,
+                    server_uuid,
+                    server_name,
+                    container,
+                    server_info,
                 )
+            )
+
+    # ==========================================================================
+    # VM Control Buttons (disabled by default)
+    # ==========================================================================
+    # These provide actions not available through the VM on/off switch:
+    # - Force Stop: immediate power off (vs graceful shutdown)
+    # - Reboot: restart without full stop/start cycle
+    # - Pause/Resume: freeze/unfreeze VM state
+    # - Reset: hard reset (equivalent to power cycle)
+    if system_coordinator.data and system_coordinator.data.vms:
+        _LOGGER.debug(
+            "Creating control buttons for %d VM(s)",
+            len(system_coordinator.data.vms),
+        )
+        for vm in system_coordinator.data.vms:
+            entities.extend(
+                [
+                    VMForceStopButton(
+                        system_coordinator, server_uuid, server_name, vm, server_info
+                    ),
+                    VMRebootButton(
+                        system_coordinator, server_uuid, server_name, vm, server_info
+                    ),
+                    VMPauseButton(
+                        system_coordinator, server_uuid, server_name, vm, server_info
+                    ),
+                    VMResumeButton(
+                        system_coordinator, server_uuid, server_name, vm, server_info
+                    ),
+                    VMResetButton(
+                        system_coordinator, server_uuid, server_name, vm, server_info
+                    ),
+                ]
             )
 
     _LOGGER.debug("Adding %d button entities", len(entities))

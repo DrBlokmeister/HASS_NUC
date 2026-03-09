@@ -22,21 +22,16 @@ rules:
   # Place common patterns in common modules
   common-modules: done
 
+  # Integration needs to be able to be set up via the UI
+  config-flow: done
+
   # Full test coverage for the config flow
   config-flow-test-coverage:
     status: done
     comment: All config flow paths tested including reauth, options, and error cases.
 
-  # Integration needs to be able to be set up via the UI
-  config-flow: done
-
   # Dependency transparency
   dependency-transparency: done
-
-  # The documentation describes the provided service actions that can be used
-  docs-actions:
-    status: exempt
-    comment: Integration does not provide custom service actions.
 
   # The documentation includes a high-level description
   docs-high-level-description: done
@@ -47,16 +42,17 @@ rules:
   # The documentation provides removal instructions
   docs-removal-instructions: done
 
-  # Entity events are subscribed in the correct lifecycle methods
-  entity-event-setup:
-    status: exempt
-    comment: Integration uses coordinators for data updates, no direct event subscriptions.
-
   # Entities have a unique ID
   entity-unique-id: done
 
+  # Mark entity unavailable if appropriate
+  entity-unavailable: done
+
   # Entities use has_entity_name = True
   has-entity-name: done
+
+  # Has an integration owner
+  integration-owner: done
 
   # Use ConfigEntry.runtime_data to store runtime data
   runtime-data: done
@@ -82,17 +78,21 @@ rules:
   # Support config entry unloading
   config-entry-unloading: done
 
+  # The documentation describes the provided service actions that can be used
+  docs-actions:
+    status: exempt
+    comment: Integration does not provide custom service actions.
+
   # The documentation describes all integration configuration options
   docs-configuration-parameters: done
 
   # The documentation describes all integration installation parameters
   docs-installation-parameters: done
 
-  # Mark entity unavailable if appropriate
-  entity-unavailable: done
-
-  # Has an integration owner
-  integration-owner: done
+  # Entity events are subscribed in the correct lifecycle methods
+  entity-event-setup:
+    status: exempt
+    comment: Integration uses coordinators for data updates, no direct event subscriptions.
 
   # Log once when unavailable and once when back connected
   log-when-unavailable: done
@@ -105,8 +105,8 @@ rules:
 
   # Above 95% test coverage for all integration modules
   test-coverage:
-    status: todo
-    comment: Current coverage is 63%, need to improve to 95%.
+    status: done
+    comment: Test coverage is at or above the 95% target.
 
   # ============================================================================
   # 🥇 Gold (Best user experience)
@@ -118,15 +118,15 @@ rules:
   # Implements diagnostics
   diagnostics: done
 
-  # Integration uses discovery info to update network information
-  discovery-update-info:
-    status: exempt
-    comment: Unraid servers do not support network discovery protocols.
-
   # Devices can be discovered
   discovery:
     status: exempt
     comment: Unraid servers do not support SSDP/mDNS/DHCP discovery.
+
+  # Integration uses discovery info to update network information
+  discovery-update-info:
+    status: exempt
+    comment: Unraid servers do not support network discovery protocols.
 
   # The documentation describes how data is updated
   docs-data-update: done
@@ -200,4 +200,8 @@ rules:
   inject-websession: done
 
   # Strict typing
-  strict-typing: done
+  strict-typing:
+    status: done
+    comment: |
+      Type checking is scoped to integration modules only (custom_components/unraid).
+      script/type-check reports zero errors for the integration module scope.

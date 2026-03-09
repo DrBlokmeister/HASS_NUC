@@ -23,6 +23,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from unraid_api import ServerInfo, UnraidClient
 from unraid_api.exceptions import (
+    UnraidAPIError,
     UnraidAuthenticationError,
     UnraidConnectionError,
     UnraidSSLError,
@@ -34,7 +35,11 @@ from .const import (
     DOMAIN,
     REPAIR_AUTH_FAILED,
 )
-from .coordinator import UnraidStorageCoordinator, UnraidSystemCoordinator
+from .coordinator import (
+    UnraidInfraCoordinator,
+    UnraidStorageCoordinator,
+    UnraidSystemCoordinator,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -57,6 +62,7 @@ class UnraidRuntimeData:
     api_client: UnraidClient
     system_coordinator: UnraidSystemCoordinator
     storage_coordinator: UnraidStorageCoordinator
+    infra_coordinator: UnraidInfraCoordinator
     server_info: dict
 
 
@@ -153,9 +159,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bo
         await api_client.close()
         msg = f"Failed to connect to Unraid server: {err}"
         raise ConfigEntryNotReady(msg) from err
-    except Exception as err:
+    except UnraidAPIError as err:
         await api_client.close()
-        msg = f"Unexpected error connecting to Unraid server: {err}"
+        msg = f"Unraid API error connecting to server {host}: {err}"
         raise ConfigEntryNotReady(msg) from err
 
     # Build server info using helper function
@@ -177,15 +183,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bo
         config_entry=entry,
     )
 
+    infra_coordinator = UnraidInfraCoordinator(
+        hass=hass,
+        api_client=api_client,
+        server_name=server_name,
+        config_entry=entry,
+    )
+
     # Fetch initial data
-    await system_coordinator.async_config_entry_first_refresh()
-    await storage_coordinator.async_config_entry_first_refresh()
+    try:
+        await system_coordinator.async_config_entry_first_refresh()
+        await storage_coordinator.async_config_entry_first_refresh()
+        await infra_coordinator.async_config_entry_first_refresh()
+    except (ConfigEntryAuthFailed, ConfigEntryNotReady):
+        await api_client.close()
+        raise
 
     # Store runtime data in config entry (HA 2024.4+ pattern)
     entry.runtime_data = UnraidRuntimeData(
         api_client=api_client,
         system_coordinator=system_coordinator,
         storage_coordinator=storage_coordinator,
+        infra_coordinator=infra_coordinator,
         server_info=server_info,
     )
 
