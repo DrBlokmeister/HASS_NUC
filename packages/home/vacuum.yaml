@@ -103,13 +103,25 @@ template:
           {% else %}
             0
           {% endif %}
-    binary_sensor:
+
+  - binary_sensor:
       - name: "Tamara or Sander Downstairs"
         unique_id: yaml_template_binary_sensor_tamara_or_sander_downstairs
         icon: mdi:stairs-down
         device_class: occupancy
-        state: "{{ is_state_attr('device_tracker.tamaraphonep9a_unifi', 'ap_mac', 'd0:21:f9:64:06:39') or is_state_attr('device_tracker.blokmeisterp9pro_unifi', 'ap_mac', 'd0:21:f9:64:06:39') }}"
-        availability: "{{ not is_state('device_tracker.tamaraphonep9a_unifi', 'unavailable') or not is_state('device_tracker.blokmeisterp9pro_unifi', 'unavailable') }}"
+        state: >-
+          {{
+            ( is_state('device_tracker.tamaraphonep9a_unifi', 'home')
+              and is_state('sensor.tamara_phone_ap_name', 'U6-LR') )
+            or
+            ( is_state('device_tracker.blokmeisterp9pro_unifi', 'home')
+              and is_state('sensor.sander_phone_ap_name', 'U6-LR') )
+          }}
+        availability: >-
+          {{ not (
+              is_state('device_tracker.tamaraphonep9a_unifi', 'unavailable')
+              and is_state('device_tracker.blokmeisterp9pro_unifi', 'unavailable')
+            ) }}
 #################
 #    SENSORS    #
 #################
@@ -160,16 +172,7 @@ sensor:
 ########################
 #    BINARY SENSORS    #
 ########################
-binary_sensor:
-  - platform: template
-    sensors:
-      tamara_or_sander_downstairs:
-        friendly_name: "Tamara or Sander Downstairs"
-        unique_id: yaml_template_binary_sensor_tamara_or_sander_downstairs
-        device_class: occupancy
-        icon_template: mdi:stairs-down
-        value_template: "{{ is_state_attr('device_tracker.tamaraphonep9a_unifi', 'ap_mac', 'd0:21:f9:64:06:39') or is_state_attr('device_tracker.blokmeisterp9pro_unifi', 'ap_mac', 'd0:21:f9:64:06:39') }}"
-        availability_template: "{{ not is_state('device_tracker.tamaraphonep9a_unifi', 'unavailable') or not is_state('device_tracker.blokmeisterp9pro_unifi', 'unavailable') }}"
+
 ##################
 #    SWITCHES    #
 ##################
