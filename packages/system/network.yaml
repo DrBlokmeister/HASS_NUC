@@ -93,6 +93,56 @@ template:
         state: "{{ states.device_tracker | selectattr('attributes.essid','defined') | selectattr('attributes.essid','eq','BlokmeisterWIFI_Guest') | list | count }}"
         availability: "{{ is_state('device_tracker.udmpro', 'home' ) }}"
 
+  - sensor:
+      - name: "Tamara Phone AP Name"
+        unique_id: yaml_template_sensor_tamara_phone_ap_name
+        icon: mdi:access-point-network
+        state: >-
+          {% set tracker = 'device_tracker.tamaraphonep9a_unifi' %}
+          {% set ap_mac = state_attr(tracker, 'ap_mac') %}
+          {% if is_state(tracker, 'home') %}
+            {% if ap_mac == 'd0:21:f9:b7:9c:88' %}
+              AP-Lite 1st Floor
+            {% elif ap_mac == 'd0:21:f9:b7:ea:68' %}
+              AP-Lite Outside
+            {% elif ap_mac == 'd0:21:f9:64:06:39' %}
+              U6-LR
+            {% elif ap_mac == 'ac:8b:a9:15:ef:09' %}
+              U6-Pro 2nd Floor
+            {% else %}
+              Unknown AP, MAC: {{ap_mac}}
+            {% endif %}
+          {% else %}
+            {{ states(this.entity_id) }}
+          {% endif %}
+        availability: >-
+          {% set tracker = 'device_tracker.tamaraphonep9a_unifi' %}
+          {{ is_state(tracker, 'home') and state_attr(tracker, 'ap_mac') is not none }}
+      - name: "Sander Phone AP Name"
+        unique_id: yaml_template_sensor_sander_phone_ap_name
+        icon: mdi:access-point-network
+        state: >-
+          {% set tracker = 'device_tracker.blokmeisterp9pro_unifi' %}
+          {% set ap_mac = state_attr(tracker, 'ap_mac') %}
+          {% if is_state(tracker, 'home') %}
+            {% if ap_mac == 'd0:21:f9:b7:9c:88' %}
+              AP-Lite 1st Floor
+            {% elif ap_mac == 'd0:21:f9:b7:ea:68' %}
+              AP-Lite Outside
+            {% elif ap_mac == 'd0:21:f9:64:06:39' %}
+              U6-LR
+            {% elif ap_mac == 'ac:8b:a9:15:ef:09' %}
+              U6-Pro 2nd Floor
+            {% else %}
+              Unknown AP, MAC: {{ap_mac}}
+            {% endif %}
+          {% else %}
+            {{ states(this.entity_id) }}
+          {% endif %}
+        availability: >-
+          {% set tracker = 'device_tracker.blokmeisterp9pro_unifi' %}
+          {{ is_state(tracker, 'home') and state_attr(tracker, 'ap_mac') is not none }}
+
 #################
 #    SENSORS    #
 #################
