@@ -339,6 +339,7 @@ template:
           - "06:05"
           - "07:05"
           - "08:05"
+          - "09:05"
     sensor:
       - name: "Cheapest Day Price (10-18)"
         unique_id: yaml_template_sensor_cheapest_day_price_10_18
@@ -396,7 +397,181 @@ template:
                 {%- endif -%}
               {%- endif -%}
             {%- endfor -%}
-            {{- as_datetime(ns.cheapest.start).hour if ns.cheapest else 'Unavailable' -}}
+            {{- as_datetime(ns.cheapest.start).hour if ns.cheapest else 'Unavailable' -}}      - name: "Nordpool Rolling 1h Cheapest Day Price (10-18)"
+      - name: "Nordpool Rolling 1h Cheapest Day Price (10-18)"
+        unique_id: yaml_template_sensor_nordpool_rolling_1h_cheapest_day_10_18
+        icon: mdi:cash-clock
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        availability: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(day=[]) %}
+          {% for p in valid %}
+            {% set s = as_datetime(p.start) %}
+            {% set e = as_datetime(p.end) %}
+            {% if s.date() == e.date()
+                  and s.hour >= 10
+                  and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+              {% set ns.day = ns.day + [p] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.day | count > 0 }}
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(day=[]) %}
+          {% for p in valid %}
+            {% set s = as_datetime(p.start) %}
+            {% set e = as_datetime(p.end) %}
+            {% if s.date() == e.date()
+                  and s.hour >= 10
+                  and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+              {% set ns.day = ns.day + [p] %}
+            {% endif %}
+          {% endfor %}
+          {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+          {{ best.value | float | round(3) if best else 'Unavailable' }}
+        attributes:
+          start_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(day=[]) %}
+            {% for p in valid %}
+              {% set s = as_datetime(p.start) %}
+              {% set e = as_datetime(p.end) %}
+              {% if s.date() == e.date()
+                    and s.hour >= 10
+                    and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+                {% set ns.day = ns.day + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+            {{ best.start if best else none }}
+          end_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(day=[]) %}
+            {% for p in valid %}
+              {% set s = as_datetime(p.start) %}
+              {% set e = as_datetime(p.end) %}
+              {% if s.date() == e.date()
+                    and s.hour >= 10
+                    and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+                {% set ns.day = ns.day + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+            {{ best.end if best else none }}
+          is_current_day_minimum: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(day=[]) %}
+            {% for p in valid %}
+              {% set s = as_datetime(p.start) %}
+              {% set e = as_datetime(p.end) %}
+              {% if s.date() == e.date()
+                    and s.hour >= 10
+                    and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+                {% set ns.day = ns.day + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+            {% if best %}
+              {% set best_start = as_datetime(best.start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best_start == cur }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 2h Cheapest Day Price (10-18)"
+        unique_id: yaml_template_sensor_nordpool_rolling_2h_cheapest_day_10_18
+        icon: mdi:cash-clock
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        availability: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(day=[]) %}
+          {% for p in valid %}
+            {% set s = as_datetime(p.start) %}
+            {% set e = as_datetime(p.end) %}
+            {% if s.date() == e.date()
+                  and s.hour >= 10
+                  and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+              {% set ns.day = ns.day + [p] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.day | count > 0 }}
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(day=[]) %}
+          {% for p in valid %}
+            {% set s = as_datetime(p.start) %}
+            {% set e = as_datetime(p.end) %}
+            {% if s.date() == e.date()
+                  and s.hour >= 10
+                  and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+              {% set ns.day = ns.day + [p] %}
+            {% endif %}
+          {% endfor %}
+          {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+          {{ best.value | float | round(3) if best else 'Unavailable' }}
+        attributes:
+          start_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(day=[]) %}
+            {% for p in valid %}
+              {% set s = as_datetime(p.start) %}
+              {% set e = as_datetime(p.end) %}
+              {% if s.date() == e.date()
+                    and s.hour >= 10
+                    and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+                {% set ns.day = ns.day + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+            {{ best.start if best else none }}
+          end_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(day=[]) %}
+            {% for p in valid %}
+              {% set s = as_datetime(p.start) %}
+              {% set e = as_datetime(p.end) %}
+              {% if s.date() == e.date()
+                    and s.hour >= 10
+                    and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+                {% set ns.day = ns.day + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+            {{ best.end if best else none }}
+          is_current_day_minimum: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set valid = today | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(day=[]) %}
+            {% for p in valid %}
+              {% set s = as_datetime(p.start) %}
+              {% set e = as_datetime(p.end) %}
+              {% if s.date() == e.date()
+                    and s.hour >= 10
+                    and (e.hour < 18 or (e.hour == 18 and e.minute == 0)) %}
+                {% set ns.day = ns.day + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.day | sort(attribute='value') | first if ns.day else none %}
+            {% if best %}
+              {% set best_start = as_datetime(best.start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best_start == cur }}
+            {% else %}
+              false
+            {% endif %}
 
   - sensor:
       - name: "Lowest Quartile Electricity Price Today"
