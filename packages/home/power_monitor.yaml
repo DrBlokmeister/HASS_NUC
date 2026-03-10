@@ -110,6 +110,7 @@ template:
     sensor:
       - name: "Cheapest Night Price"
         unique_id: "cheapest_night_price_sensor"
+        icon: mdi:weather-night
         unit_of_measurement: '€/kWh'
         state: >
           {%- set ns = namespace(cheapest=None) -%}
@@ -161,6 +162,175 @@ template:
             {% set raw_tomorrow = state_attr('sensor.nordpool_energy_price_hourly', 'raw_tomorrow') %}
             {{- 'Yes' if not (raw_tomorrow is not defined or raw_tomorrow == none or (raw_tomorrow | length == 0)) else 'No' -}}
             {# {{- 'Yes' if now().hour >= 15 else 'No' -}} #}
+      # Rolling hourly averages lowest night prices
+      - name: "Nordpool Rolling 1h Cheapest Night Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_1h_cheapest_night
+        icon: mdi:weather-night
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(night=[]) %}
+          {% for p in valid %}
+            {% set dt_start = as_datetime(p.start) %}
+            {% set dt_end = as_datetime(p.end) %}
+            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+              {% set ns.night = ns.night + [p] %}
+            {% endif %}
+          {% endfor %}
+          {% set best = ns.night | sort(attribute='value') | first %}
+          {{ best.value | float | round(3) }}
+        availability: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(night=[]) %}
+          {% for p in valid %}
+            {% set dt_start = as_datetime(p.start) %}
+            {% set dt_end = as_datetime(p.end) %}
+            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+              {% set ns.night = ns.night + [p] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.night | count > 0 }}
+        attributes:
+          start_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(night=[]) %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% set dt_end = as_datetime(p.end) %}
+              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+            {{ best.start if best else none }}
+          end_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(night=[]) %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% set dt_end = as_datetime(p.end) %}
+              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+            {{ best.end if best else none }}
+          is_current_night_minimum: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(night=[]) %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% set dt_end = as_datetime(p.end) %}
+              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+            {% if best %}
+              {% set best_start = as_datetime(best.start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best_start == cur }}
+            {% else %}
+              false
+            {% endif %}
+          whole_night_included: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) }}
+      - name: "Nordpool Rolling 2h Cheapest Night Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_2h_cheapest_night
+        icon: mdi:weather-night
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(night=[]) %}
+          {% for p in valid %}
+            {% set dt_start = as_datetime(p.start) %}
+            {% set dt_end = as_datetime(p.end) %}
+            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+              {% set ns.night = ns.night + [p] %}
+            {% endif %}
+          {% endfor %}
+          {% set best = ns.night | sort(attribute='value') | first %}
+          {{ best.value | float | round(3) }}
+        availability: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+          {% set ns = namespace(night=[]) %}
+          {% for p in valid %}
+            {% set dt_start = as_datetime(p.start) %}
+            {% set dt_end = as_datetime(p.end) %}
+            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+              {% set ns.night = ns.night + [p] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.night | count > 0 }}
+        attributes:
+          start_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(night=[]) %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% set dt_end = as_datetime(p.end) %}
+              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+            {{ best.start if best else none }}
+          end_time: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(night=[]) %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% set dt_end = as_datetime(p.end) %}
+              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+            {{ best.end if best else none }}
+          is_current_night_minimum: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
+            {% set ns = namespace(night=[]) %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% set dt_end = as_datetime(p.end) %}
+              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+            {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+            {% if best %}
+              {% set best_start = as_datetime(best.start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best_start == cur }}
+            {% else %}
+              false
+            {% endif %}
+          whole_night_included: >-
+            {{ state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') | default(false) }}
 
   - trigger:
       - platform: time
@@ -606,6 +776,233 @@ template:
               {%- endfor -%}
               ]
             {% endif -%}
+
+      ##### Rolling average statistics sensors #####
+      - name: "Nordpool Rolling 1h Min Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_1h_min_price
+        icon: mdi:arrow-collapse-down
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | list %}
+          {{ (valid | min) | round(3) if valid else 'unknown' }}
+        attributes:
+          min_start: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | list %}
+            {{ valid[0].start if valid else none }}
+          min_end: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | list %}
+            {{ valid[0].end if valid else none }}
+          is_current_min: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | list %}
+            {% if valid %}
+              {% set best = as_datetime(valid[0].start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best == cur }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 1h Max Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_1h_max_price
+        icon: mdi:arrow-collapse-up
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | list %}
+          {{ (valid | max) | round(3) if valid else 'unknown' }}
+        attributes:
+          max_start: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | reverse | list %}
+            {{ valid[0].start if valid else none }}
+          max_end: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | reverse | list %}
+            {{ valid[0].end if valid else none }}
+          is_current_max: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | reverse | list %}
+            {% if valid %}
+              {% set best = as_datetime(valid[0].start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best == cur }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 1h Q25 Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_1h_q25_price
+        icon: mdi:percent
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+          {{ valid[valid|length // 4] | round(3) if valid else 'unknown' }}
+        attributes:
+          is_current_at_or_below_q25: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+            {% if valid %}
+              {% set thr = valid[valid|length // 4] | float %}
+              {% set cur = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'current_hour_avg') | float(none) %}
+              {{ (cur <= thr) if cur is not none else false }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 1h Q75 Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_1h_q75_price
+        icon: mdi:percent
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+          {{ valid[(valid|length * 3) // 4] | round(3) if valid else 'unknown' }}
+        attributes:
+          is_current_at_or_above_q75: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+            {% if valid %}
+              {% set thr = valid[(valid|length * 3) // 4] | float %}
+              {% set cur = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'current_hour_avg') | float(none) %}
+              {{ (cur >= thr) if cur is not none else false }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 2h Min Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_2h_min_price
+        icon: mdi:arrow-collapse-down
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | list %}
+          {{ (valid | min) | round(3) if valid else 'unknown' }}
+        attributes:
+          min_start: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | list %}
+            {{ valid[0].start if valid else none }}
+          min_end: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | list %}
+            {{ valid[0].end if valid else none }}
+          is_current_min: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | list %}
+            {% if valid %}
+              {% set best = as_datetime(valid[0].start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best == cur }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 2h Max Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_2h_max_price
+        icon: mdi:arrow-collapse-up
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | list %}
+          {{ (valid | max) | round(3) if valid else 'unknown' }}
+        attributes:
+          max_start: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | reverse | list %}
+            {{ valid[0].start if valid else none }}
+          max_end: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | reverse | list %}
+            {{ valid[0].end if valid else none }}
+          is_current_max: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | sort(attribute='value') | reverse | list %}
+            {% if valid %}
+              {% set best = as_datetime(valid[0].start) %}
+              {% set cur = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
+              {{ best == cur }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 2h Q25 Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_2h_q25_price
+        icon: mdi:percent
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+          {{ valid[valid|length // 4] | round(3) if valid else 'unknown' }}
+        attributes:
+          is_current_at_or_below_q25: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+            {% if valid %}
+              {% set thr = valid[valid|length // 4] | float %}
+              {% set cur = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'current_two_hour_avg') | float(none) %}
+              {{ (cur <= thr) if cur is not none else false }}
+            {% else %}
+              false
+            {% endif %}
+      - name: "Nordpool Rolling 2h Q75 Price"
+        unique_id: yaml_template_sensor_nordpool_rolling_2h_q75_price
+        icon: mdi:percent
+        device_class: monetary
+        state_class: measurement
+        unit_of_measurement: "EUR/kWh"
+        state: >-
+          {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+          {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+          {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+          {{ valid[(valid|length * 3) // 4] | round(3) if valid else 'unknown' }}
+        attributes:
+          is_current_at_or_above_q75: >-
+            {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
+            {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
+            {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | map(attribute='value') | sort | list %}
+            {% if valid %}
+              {% set thr = valid[(valid|length * 3) // 4] | float %}
+              {% set cur = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'current_two_hour_avg') | float(none) %}
+              {{ (cur >= thr) if cur is not none else false }}
+            {% else %}
+              false
+            {% endif %}
+
 
   - sensor:
       - name: "Net Power Usage"
