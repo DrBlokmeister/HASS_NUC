@@ -44,16 +44,6 @@ template:
 #    SQL    #
 #############
 sql:
-  # MariaDB Status (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0005 seconds.) )
-  - name: "MariaDB Status"
-    query: >-
-      SELECT 'running' as status 
-      FROM information_schema.GLOBAL_STATUS 
-      WHERE VARIABLE_NAME = 'Uptime' 
-      AND CAST(VARIABLE_VALUE AS UNSIGNED) > 0;
-    column: "status"
-    value_template: "{{ value if value else 'stopped' }}"
-
   # MariaDB Version
   - name: "MariaDB Version"
     query: >-
@@ -64,7 +54,7 @@ sql:
     icon: mdi:database
 
   # MariaDB Performance (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0015 seconds.) )
-  - name: "MariaDB Performance"
+  - name: "MariaDB Average Queries Since Startup"
     query: >-
       SELECT CONCAT(
         ROUND(
@@ -87,7 +77,7 @@ sql:
       FROM information_schema.tables 
       WHERE table_schema = 'homeassistant';
     column: "size"
-    unit_of_measurement: "MB"
+    unit_of_measurement: "MiB"
     device_class: data_size
     icon: mdi:database-outline
     value_template: "{{ value | float(0) }}"
@@ -102,36 +92,6 @@ sql:
     unit_of_measurement: "tables"
     #device_class: None
     icon: mdi:table
-
-  # Oldest record (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 6.2007 seconds.) NULL result)
-  # - name: "Database Oldest Record"
-  #   query: >-
-  #     SELECT DATE_FORMAT(MIN(last_updated), '%Y-%m-%d') as oldest 
-  #     FROM states;
-  #   column: "oldest"
-  #   unit_of_measurement: "date"
-  #   device_class: timestamp
-  #   icon: mdi:calendar-clock
-
-  # Total records (phpMyAdmin benchmark: Your SQL query has been executed successfully. (stopwatched to about 6 seconds) )
-  # - name: "Database Total Records"
-  #   query: >-
-  #     SELECT COUNT(*) as count 
-  #     FROM states;
-  #   column: "count"
-  #   unit_of_measurement: "records"
-  #   #device_class: None
-  #   icon: mdi:database-check
-
-  # Records per day (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 7.0855 seconds.))
-  # - name: "Database Records Per Day"
-  #   query: >-
-  #     SELECT ROUND(COUNT(*) / DATEDIFF(NOW(), MIN(last_updated)), 0) as avg 
-  #     FROM states;
-  #   column: "avg"
-  #   unit_of_measurement: "records/day"
-  #   #device_class: None
-  #   icon: mdi:calendar-multiselect
 
   # MariaDB uptime (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0006 seconds.) )
   - name: "MariaDB Uptime"
@@ -170,7 +130,7 @@ sql:
     query: >
       SELECT ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1) AS value;
     column: "value"
-    unit_of_measurement: "GB"
+    unit_of_measurement: "GiB"
     device_class: data_size
     icon: mdi:database
 
@@ -188,7 +148,7 @@ sql:
     query: >
       SELECT ROUND(@@innodb_log_file_size/1024/1024, 0) AS value;
     column: "value"
-    unit_of_measurement: "MB"
+    unit_of_measurement: "MiB"
     device_class: data_size
     icon: mdi:file-document
 
@@ -197,7 +157,7 @@ sql:
     query: >
       SELECT ROUND(@@tmp_table_size/1024/1024, 0) AS value;
     column: "value"
-    unit_of_measurement: "MB"
+    unit_of_measurement: "MiB"
     device_class: data_size
     icon: mdi:table
 
@@ -210,31 +170,88 @@ sql:
     #device_class: None
     icon: mdi:speedometer
 
-  #MariaDB IO Threads (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0001 seconds.) )
-  - name: "MariaDB IO Threads"
-    query: >-
-      SELECT CONCAT(
-        'Read: ', @@innodb_read_io_threads,
-        ', Write: ', @@innodb_write_io_threads
-      ) as value;
-    column: "value"
-
   # MariaDB Table Cache (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0003 seconds.) )
   - name: "MariaDB Table Cache"
     query: >-
       SELECT @@table_open_cache as value;
     column: "value"
+    unit_of_measurement: "tables"
 
-  # MariaDB Buffer Sizes (phpMyAdmin benchmark: Showing rows 0 - 0 (1 total, Query took 0.0002 seconds.) )
-  - name: "MariaDB Buffer Sizes"
+  - name: "MariaDB Buffer Pool Data"
     query: >-
-      SELECT CONCAT(
-        'Sort: ', ROUND(@@sort_buffer_size/1024/1024, 0), 'M, ',
-        'Read: ', ROUND(@@read_buffer_size/1024/1024, 0), 'M, ',
-        'Join: ', ROUND(@@join_buffer_size/1024/1024, 0), 'M'
-      ) as value;
+      SELECT ROUND(CAST(VARIABLE_VALUE AS UNSIGNED) / 1024 / 1024, 1) AS value
+      FROM information_schema.GLOBAL_STATUS
+      WHERE VARIABLE_NAME = 'Innodb_buffer_pool_bytes_data';
     column: "value"
+    unit_of_measurement: "MiB"
+    device_class: data_size
+    icon: mdi:database-arrow-up
 
+  - name: "MariaDB Buffer Pool Dirty"
+    query: >-
+      SELECT ROUND(CAST(VARIABLE_VALUE AS UNSIGNED) / 1024 / 1024, 1) AS value
+      FROM information_schema.GLOBAL_STATUS
+      WHERE VARIABLE_NAME = 'Innodb_buffer_pool_bytes_dirty';
+    column: "value"
+    unit_of_measurement: "MiB"
+    device_class: data_size
+    icon: mdi:database-sync
+
+  - name: "MariaDB Buffer Pool Free"
+    query: >-
+      SELECT ROUND(
+        CAST(
+          (SELECT VARIABLE_VALUE
+           FROM information_schema.GLOBAL_STATUS
+           WHERE VARIABLE_NAME = 'Innodb_buffer_pool_pages_free') AS UNSIGNED
+        ) *
+        CAST(
+          (SELECT VARIABLE_VALUE
+           FROM information_schema.GLOBAL_VARIABLES
+           WHERE VARIABLE_NAME = 'innodb_page_size') AS UNSIGNED
+        ) / 1024 / 1024, 1
+      ) AS value;
+    column: "value"
+    unit_of_measurement: "MiB"
+    device_class: data_size
+    icon: mdi:database-remove
+
+  - name: "MariaDB Buffer Pool Fill"
+    query: >-
+      SELECT ROUND(
+        100 * CAST(
+          (SELECT VARIABLE_VALUE
+           FROM information_schema.GLOBAL_STATUS
+           WHERE VARIABLE_NAME = 'Innodb_buffer_pool_bytes_data') AS UNSIGNED
+        ) /
+        NULLIF(CAST(
+          (SELECT VARIABLE_VALUE
+           FROM information_schema.GLOBAL_VARIABLES
+           WHERE VARIABLE_NAME = 'innodb_buffer_pool_size') AS UNSIGNED
+        ), 0),
+        1
+      ) AS value;
+    column: "value"
+    unit_of_measurement: "%"
+    icon: mdi:database-percent
+
+  - name: "MariaDB Slow Queries"
+    query: >-
+      SELECT CAST(VARIABLE_VALUE AS UNSIGNED) AS value
+      FROM information_schema.GLOBAL_STATUS
+      WHERE VARIABLE_NAME = 'Slow_queries';
+    column: "value"
+    unit_of_measurement: "queries"
+    icon: mdi:snail
+
+  - name: "MariaDB Threads Running"
+    query: >-
+      SELECT CAST(VARIABLE_VALUE AS UNSIGNED) AS value
+      FROM information_schema.GLOBAL_STATUS
+      WHERE VARIABLE_NAME = 'Threads_running';
+    column: "value"
+    unit_of_measurement: "threads"
+    icon: mdi:run-fast
 ######################
 #    COMMAND LINE    #
 ######################
