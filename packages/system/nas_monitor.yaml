@@ -675,14 +675,14 @@ automation:
             group: "plex_log_alert"
             notification_icon: "mdi:database-alert"
 
-  - alias: "[system|nas] Notify if any Disk temperature is too high"
+  - alias: "[system|nas] Notify if any disk temperature is too high"
     id: yaml_automation_system_nas_notify_if_any_disk_temperature_is_too_high
     description: >
       Notifies mobile if any Unraid disk or parity gets over 45°C for 30+ minutes,
-      or instantly if over 50°C.
-    mode: single
+      or instantly if over 50°C. Repeats every 5 minutes while any disk remains
+      above 45°C.
+    mode: restart
     trigger:
-      # Trigger instantly if any disk > 50°C
       - platform: numeric_state
         entity_id:
           - sensor.unraid_parity_temperature
@@ -692,7 +692,7 @@ automation:
           - sensor.unraid_disk_4_temperature
           - sensor.unraid_disk_5_temperature
         above: 50
-      # Trigger if any disk > 45°C for at least 30 minutes
+        id: critical
       - platform: numeric_state
         entity_id:
           - sensor.unraid_parity_temperature
@@ -704,6 +704,7 @@ automation:
         above: 45
         for:
           minutes: 30
+        id: warning
     condition: []
     action:
       - variables:
@@ -720,33 +721,79 @@ automation:
               name: Disk 4
             - entity_id: sensor.unraid_disk_5_temperature
               name: Disk 5
-          overheating_disk_str: >-
-            {%- set ns = namespace(list='') -%}
-            {%- for disk in disks -%}
-              {%- set temp = states(disk.entity_id) | float(0) -%}
-              {%- if temp > 45 -%}
-                {%- if ns.list != '' -%}
-                  {%- set ns.list = ns.list + ', ' -%}
-                {%- endif -%}
-                {%- set ns.list = ns.list + disk.name ~ ' (' ~ '%.1f' | format(temp) ~ '°C)' -%}
-              {%- endif -%}
-            {%- endfor -%}
-            {{ ns.list }}
-      - choose:
-          - conditions: "{{ overheating_disk_str != '' }}"
-            sequence:
-              - service: notify.mobile_app_blokmeisterp9pro
+      - repeat:
+          sequence:
+            - variables:
+                overheating_disks: >-
+                  {%- set ns = namespace(items=[]) -%}
+                  {%- for disk in disks -%}
+                    {%- set temp = states(disk.entity_id) | float(none) -%}
+                    {%- if temp is not none and temp > 45 -%}
+                      {%- set ns.items = ns.items + [disk.name ~ ' (' ~ ('%.1f' | format(temp)) ~ '°C)'] -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                  {{ ns.items | join(', ') }}
+                max_temp: >-
+                  {%- set ns = namespace(values=[]) -%}
+                  {%- for disk in disks -%}
+                    {%- set temp = states(disk.entity_id) | float(none) -%}
+                    {%- if temp is not none -%}
+                      {%- set ns.values = ns.values + [temp] -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                  {{ (ns.values | max) if ns.values | count > 0 else none }}
+                any_disk_above_45: >-
+                  {%- set ns = namespace(found=false) -%}
+                  {%- for disk in disks -%}
+                    {%- set temp = states(disk.entity_id) | float(none) -%}
+                    {%- if temp is not none and temp > 45 -%}
+                      {%- set ns.found = true -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                  {{ ns.found }}
+            - condition: template
+              value_template: "{{ any_disk_above_45 }}"
+            - service: notify.mobile_app_blokmeisterp9pro
+              data:
+                title: >-
+                  {% if max_temp is not none and max_temp >= 50 %}
+                    🚨 HDD Temperature Critical!
+                  {% else %}
+                    ⚠️ HDD Temperature Alert!
+                  {% endif %}
+                message: >-
+                  The following disk(s) are overheating: {{ overheating_disks }}.
                 data:
-                  title: "⚠️ HDD Temperature Alert!"
-                  message: "The following disk(s) are overheating: {{ overheating_disk_str }}."
-                  data:
-                    ttL: 0
-                    priority: high
-                    clickAction: '/lovelace-default/6'
-                    group: "hdd_overheat"
-                    tag: "hdd_overheat"
-                    notification_icon: mdi:harddisk
-        default: []
+                  ttl: 0
+                  priority: high
+                  clickAction: /lovelace-default/6
+                  group: hdd_overheat
+                  tag: hdd_overheat
+                  notification_icon: mdi:harddisk
+            - wait_for_trigger:
+                - platform: template
+                  value_template: >-
+                    {%- set ns = namespace(found=false) -%}
+                    {%- for disk in disks -%}
+                      {%- set temp = states(disk.entity_id) | float(none) -%}
+                      {%- if temp is not none and temp > 45 -%}
+                        {%- set ns.found = true -%}
+                      {%- endif -%}
+                    {%- endfor -%}
+                    {{ not ns.found }}
+              timeout: "00:05:00"
+              continue_on_timeout: true
+          while:
+            - condition: template
+              value_template: >-
+                {%- set ns = namespace(found=false) -%}
+                {%- for disk in disks -%}
+                  {%- set temp = states(disk.entity_id) | float(none) -%}
+                  {%- if temp is not none and temp > 45 -%}
+                    {%- set ns.found = true -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {{ ns.found }}
 
 
 ################
