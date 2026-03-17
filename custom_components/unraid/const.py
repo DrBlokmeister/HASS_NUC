@@ -65,6 +65,7 @@ PLACEHOLDER_UUIDS: Final = frozenset(
 # =============================================================================
 CONF_UPS_CAPACITY_VA: Final = "ups_capacity_va"
 CONF_UPS_NOMINAL_POWER: Final = "ups_nominal_power"
+CONF_IGNORE_SSL: Final = "ignore_ssl"
 
 # =============================================================================
 # Default Values

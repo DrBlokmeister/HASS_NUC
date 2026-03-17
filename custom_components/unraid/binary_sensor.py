@@ -11,6 +11,15 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from unraid_api.const import (
+    DISK_STATUS_DISABLED,
+    DISK_STATUS_DSBL_NEW,
+    DISK_STATUS_NEW,
+    DISK_STATUS_NP,
+    DISK_STATUS_NP_DSBL,
+    DISK_STATUS_NP_MISSING,
+    DISK_STATUS_WRONG,
+)
 
 from .const import ARRAY_STATE_STARTED
 from .entity import UnraidBaseEntity
@@ -33,6 +42,23 @@ _LOGGER = logging.getLogger(__name__)
 
 # Coordinator handles all data updates, no parallel entity updates needed
 PARALLEL_UPDATES = 0
+
+_DISABLED_DISK_STATUSES = frozenset(
+    {DISK_STATUS_DISABLED, DISK_STATUS_DSBL_NEW, DISK_STATUS_NP_DSBL}
+)
+_MISSING_DISK_STATUSES = frozenset({DISK_STATUS_NP_MISSING})
+_INVALID_DISK_STATUSES = frozenset({DISK_STATUS_NP, DISK_STATUS_NEW, DISK_STATUS_WRONG})
+
+
+def _count_storage_disk_statuses(
+    data: UnraidStorageData | None, statuses: frozenset[str]
+) -> int | None:
+    """Count storage disks whose status matches one of the provided values."""
+    if data is None:
+        return None
+
+    disks = [*data.parities, *data.disks, *data.caches]
+    return sum(1 for disk in disks if disk.status in statuses)
 
 
 class UnraidBinarySensorEntity(UnraidBaseEntity, BinarySensorEntity):
@@ -710,7 +736,7 @@ class DisksDisabledBinarySensor(UnraidBinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: UnraidInfraCoordinator,
+        coordinator: UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
     ) -> None:
@@ -725,11 +751,9 @@ class DisksDisabledBinarySensor(UnraidBinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """Return True if any disks are disabled."""
-        data: UnraidInfraData | None = self.coordinator.data
-        if data is None or data.vars is None:
-            return None
-        count = data.vars.md_num_disabled
+        """Return True if any live storage disks are disabled."""
+        data: UnraidStorageData | None = self.coordinator.data
+        count = _count_storage_disk_statuses(data, _DISABLED_DISK_STATUSES)
         if count is None:
             return None
         return count > 0
@@ -737,10 +761,11 @@ class DisksDisabledBinarySensor(UnraidBinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return disabled disk count."""
-        data: UnraidInfraData | None = self.coordinator.data
-        if data is None or data.vars is None:
+        data: UnraidStorageData | None = self.coordinator.data
+        count = _count_storage_disk_statuses(data, _DISABLED_DISK_STATUSES)
+        if count is None:
             return {}
-        return {"count": data.vars.md_num_disabled}
+        return {"count": count}
 
 
 class DisksMissingBinarySensor(UnraidBinarySensorEntity):
@@ -757,7 +782,7 @@ class DisksMissingBinarySensor(UnraidBinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: UnraidInfraCoordinator,
+        coordinator: UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
     ) -> None:
@@ -772,11 +797,9 @@ class DisksMissingBinarySensor(UnraidBinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """Return True if any disks are missing."""
-        data: UnraidInfraData | None = self.coordinator.data
-        if data is None or data.vars is None:
-            return None
-        count = data.vars.md_num_missing
+        """Return True if any live storage disks are missing."""
+        data: UnraidStorageData | None = self.coordinator.data
+        count = _count_storage_disk_statuses(data, _MISSING_DISK_STATUSES)
         if count is None:
             return None
         return count > 0
@@ -784,10 +807,11 @@ class DisksMissingBinarySensor(UnraidBinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return missing disk count."""
-        data: UnraidInfraData | None = self.coordinator.data
-        if data is None or data.vars is None:
+        data: UnraidStorageData | None = self.coordinator.data
+        count = _count_storage_disk_statuses(data, _MISSING_DISK_STATUSES)
+        if count is None:
             return {}
-        return {"count": data.vars.md_num_missing}
+        return {"count": count}
 
 
 class DisksInvalidBinarySensor(UnraidBinarySensorEntity):
@@ -804,7 +828,7 @@ class DisksInvalidBinarySensor(UnraidBinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: UnraidInfraCoordinator,
+        coordinator: UnraidStorageCoordinator,
         server_uuid: str,
         server_name: str,
     ) -> None:
@@ -819,11 +843,9 @@ class DisksInvalidBinarySensor(UnraidBinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        """Return True if any disks are invalid."""
-        data: UnraidInfraData | None = self.coordinator.data
-        if data is None or data.vars is None:
-            return None
-        count = data.vars.md_num_invalid
+        """Return True if any live storage disks are invalid."""
+        data: UnraidStorageData | None = self.coordinator.data
+        count = _count_storage_disk_statuses(data, _INVALID_DISK_STATUSES)
         if count is None:
             return None
         return count > 0
@@ -831,10 +853,11 @@ class DisksInvalidBinarySensor(UnraidBinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return invalid disk count."""
-        data: UnraidInfraData | None = self.coordinator.data
-        if data is None or data.vars is None:
+        data: UnraidStorageData | None = self.coordinator.data
+        count = _count_storage_disk_statuses(data, _INVALID_DISK_STATUSES)
+        if count is None:
             return {}
-        return {"count": data.vars.md_num_invalid}
+        return {"count": count}
 
 
 class SafeModeBinarySensor(UnraidBinarySensorEntity):
@@ -1062,13 +1085,20 @@ async def async_setup_entry(
         RemoteAccessBinarySensor(infra_coordinator, server_uuid, server_name)
     )
 
-    # System health binary sensors from Vars (via infrastructure coordinator)
+    # Disk problem sensors are derived from live storage data because the vars
+    # payload can lag or report stale counters even when the array UI is healthy.
+    entities.extend(
+        [
+            DisksDisabledBinarySensor(storage_coordinator, server_uuid, server_name),
+            DisksMissingBinarySensor(storage_coordinator, server_uuid, server_name),
+            DisksInvalidBinarySensor(storage_coordinator, server_uuid, server_name),
+        ]
+    )
+
+    # Remaining system health sensors come from Vars via infrastructure coordinator.
     entities.extend(
         [
             MoverActiveBinarySensor(infra_coordinator, server_uuid, server_name),
-            DisksDisabledBinarySensor(infra_coordinator, server_uuid, server_name),
-            DisksMissingBinarySensor(infra_coordinator, server_uuid, server_name),
-            DisksInvalidBinarySensor(infra_coordinator, server_uuid, server_name),
             SafeModeBinarySensor(infra_coordinator, server_uuid, server_name),
             ConfigValidBinarySensor(infra_coordinator, server_uuid, server_name),
             FilesystemsUnmountableBinarySensor(
