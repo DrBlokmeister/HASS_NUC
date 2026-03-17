@@ -1,23 +1,5 @@
 homeassistant:
 
-counter:
-  home_assistant_log_error_count:  #counter.home_assistant_log_error_count
-    name: Home Assistant Log Error Count
-    #unique_id: yaml_input_number_home_assistant_log_error_count
-    initial: 0
-    restore: true
-    minimum: 0
-    step: 1
-    icon: mdi:alert-circle
-  home_assistant_log_warning_count:  #counter.home_assistant_log_warning_count
-    name: Home Assistant Log Warning Count
-    #unique_id: yaml_input_number_home_assistant_log_warning_count
-    initial: 0
-    restore: true
-    minimum: 0
-    step: 1
-    icon: mdi:alert
-
 utility_meter:
   home_assistant_log_errors_utility_meter:
     source: sensor.home_assistant_log_errors_file_total
@@ -32,18 +14,6 @@ utility_meter:
 
 template:
   - sensor:
-      - name: "Home Assistant Log Error Count"
-        unique_id: yaml_template_sensor_home_assistant_log_error_count
-        icon: mdi:alert-circle
-        unit_of_measurement: "errors"
-        state: "{{ states('counter.home_assistant_log_error_count') | int(0) }}"
-        state_class: total_increasing
-      - name: "Home Assistant Log Warning Count"
-        unique_id: yaml_template_sensor_home_assistant_log_warning_count
-        icon: mdi:alert
-        unit_of_measurement: "warnings"
-        state: "{{ states('counter.home_assistant_log_warning_count') | int(0) }}"
-        state_class: total_increasing
       - name: "Home Assistant Log Error Rate"
         unique_id: yaml_template_sensor_home_assistant_log_error_rate
         icon: mdi:alert-circle
@@ -387,7 +357,7 @@ command_line:
         sh -c '[ -f /config/home-assistant.log ] && grep -c " ERROR (" /config/home-assistant.log || echo 0'
       value_template: "{{ value | int(0) }}"
       command_timeout: 20
-      scan_interval: 300
+      scan_interval: 60
   - sensor:
       name: "Home Assistant Log Warnings (file total)"
       unique_id: yaml_command_line_sensor_home_assistant_log_warnings_file_total
@@ -397,7 +367,7 @@ command_line:
         sh -c '[ -f /config/home-assistant.log ] && grep -c " WARNING (" /config/home-assistant.log || echo 0'
       value_template: "{{ value | int(0) }}"
       command_timeout: 20
-      scan_interval: 300
+      scan_interval: 60
 
 
 #################
@@ -472,22 +442,22 @@ sensor:
       hours: 1
     keep_last_sample: true
 
-  - platform: statistics
-    name: "Home Assistant Log Errors Per Minute"
-    unique_id: yaml_statistics_sensor_home_assistant_log_errors_per_minute
-    entity_id: sensor.home_assistant_log_errors_utility_meter
-    state_characteristic: change
-    max_age:
-      minutes: 1
-    keep_last_sample: true
-  - platform: statistics
-    name: "Home Assistant Log Warnings Per Minute"
-    unique_id: yaml_statistics_sensor_home_assistant_log_warnings_per_minute
-    entity_id: sensor.home_assistant_log_warnings_utility_meter
-    state_characteristic: change
-    max_age:
-      minutes: 1
-    keep_last_sample: true
+  - platform: derivative
+    name: "Home Assistant Log Errors Per Hour"
+    unique_id: yaml_derivative_sensor_home_assistant_log_errors_per_hour
+    source: sensor.home_assistant_log_errors_utility_meter
+    unit_time: h
+    round: 1
+    time_window: "00:05:00"
+    max_sub_interval: "00:05:00"
+  - platform: derivative
+    name: "Home Assistant Log Warnings Per Hour"
+    unique_id: yaml_derivative_sensor_home_assistant_log_warnings_per_hour
+    source: sensor.home_assistant_log_warnings_utility_meter
+    unit_time: h
+    round: 1
+    time_window: "00:05:00"
+    max_sub_interval: "00:05:00"
 
 ########################
 #    BINARY SENSORS    #
