@@ -52,7 +52,7 @@ template:
       - name: "Home Assistant Log Warning Rate"
         unique_id: yaml_template_sensor_home_assistant_log_warning_rate
         icon: mdi:alert-circle
-        unit_of_measurement: "errors/hour"
+        unit_of_measurement: "warnings/hour"
         state: "{{ states('sensor.home_assistant_log_warnings_per_hour') }}"
       - name: "Running Automations"
         unique_id: yaml_template_running_automations
@@ -472,7 +472,22 @@ sensor:
       hours: 1
     keep_last_sample: true
 
-
+  - platform: statistics
+    name: "Home Assistant Log Errors Per Minute"
+    unique_id: yaml_statistics_sensor_home_assistant_log_errors_per_minute
+    entity_id: sensor.home_assistant_log_errors_utility_meter
+    state_characteristic: change
+    max_age:
+      minutes: 1
+    keep_last_sample: true
+  - platform: statistics
+    name: "Home Assistant Log Warnings Per Minute"
+    unique_id: yaml_statistics_sensor_home_assistant_log_warnings_per_minute
+    entity_id: sensor.home_assistant_log_warnings_utility_meter
+    state_characteristic: change
+    max_age:
+      minutes: 1
+    keep_last_sample: true
 
 ########################
 #    BINARY SENSORS    #
@@ -537,7 +552,7 @@ automation:
           message: "Home Assistant shut down"
           language: en-IE
       - service: notify.mobile_app_blokmeisterp9pro
-        data_template:
+        data:
           title: "Hass.io Offline"
           message: >
             {% set running_scripts = states('sensor.running_scripts') | int(0) %}
@@ -552,6 +567,8 @@ automation:
               {{ running_scripts }} {{ script_msg }} ({{ script_ids }}) and {{ running_automations }} {{ automation_msg }} ({{ automation_ids }}) were running at shutdown.
             {% endif %}
           data:
+            ttl: 0
+            priority: high
             sticky: "true"
             clickAction: "/lovelace-default/7"
             group: reminder
@@ -577,6 +594,8 @@ automation:
           message: "Hass.io was back online!"
           title: "Hass.io Online"
           data:
+            ttl: 0
+            priority: high
             sticky: "true"
             clickAction: "/lovelace-default/7"
             group: reminder
@@ -914,6 +933,8 @@ script:
                         title: "Firmware Update Problem"
                         message: "Update failed or timed-out for {{ current_update }}."
                         data:
+                          ttl: 0
+                          priority: high
                           group: esphome
                           tag: esphome_update_problem
               default:
