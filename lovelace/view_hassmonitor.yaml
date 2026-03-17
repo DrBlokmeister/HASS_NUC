@@ -113,44 +113,66 @@ cards:
             name: Errors
           - entity: sensor.home_assistant_log_warnings_utility_meter
             name: Warnings
-          - entity: sensor.home_assistant_log_errors_per_hour
+          - entity: sensor.home_assistant_log_errors_per_hour_2
             name: Errors/h
         columns: 4
         type: glance
       - type: custom:apexcharts-card
         header:
-          title: Error Rate (Last 7 Days)
+          title: Error Rate (Last 4 Days)
           show: true
           show_states: true
           colorize_states: true
         update_interval: 1min
-        graph_span: 7d
+        graph_span: 4d
+        layout: minimal
         apex_config:
           chart:
             toolbar:
               show: false
-            height: 100px
+            height: 120px
           grid:
             show: false
             padding:
               left: 0
               right: 0
               bottom: 0
-              top: -100
-        yaxis:
-          - min: 0
-            max: 30
+              top: -20
+          legend:
             show: false
-        layout: minimal
+        yaxis:
+          - id: errors
+            min: 0
+            max: ~10
+            decimals: 1
+            show: false
+          - id: warnings
+            min: 0
+            max: auto
+            decimals: 0
+            opposite: true
+            show: false
+            align_to: 5
+        all_series_config:
+          type: area
+          stroke_width: 2
+          opacity: 0.28
+          group_by:
+            func: median
+            duration: 10min
+          show:
+            extremas: false
         series:
-          - entity: sensor.home_assistant_log_errors_per_hour
+          - entity: sensor.home_assistant_log_errors_per_hour_2
             name: Error Rate
-            type: area
-            color: '#FF6384'
-            group_by:
-              func: median
-              duration: 10min
-            stroke_width: 3
+            yaxis_id: errors
+            color: '#EF476F'
+            curve: smooth
+          - entity: sensor.home_assistant_log_warnings_per_hour_2
+            name: Warning Rate
+            yaxis_id: warnings
+            color: '#FFD166'
+            curve: smooth
       - type: horizontal-stack
         cards:
           - type: custom:apexcharts-card
