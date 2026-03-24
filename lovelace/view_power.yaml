@@ -674,6 +674,10 @@ cards:
       template: energy_price_apexchart
       variables:
         - day: today
+    - type: custom:decluttering-card
+      template: energy_price_apexchart_15min
+      variables:
+        - day: today
     - type: conditional
       conditions:
         - condition: state
@@ -682,6 +686,17 @@ cards:
       card:
         type: custom:decluttering-card
         template: energy_price_apexchart
+        variables:
+          - span_offset: +1d
+          - day: tomorrow
+    - type: conditional
+      conditions:
+        - condition: state
+          entity: binary_sensor.tomorrow_s_electricity_prices_available
+          state: "on"
+      card:
+        type: custom:decluttering-card
+        template: energy_price_apexchart_15min
         variables:
           - span_offset: +1d
           - day: tomorrow

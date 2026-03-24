@@ -334,69 +334,241 @@ cards:
           - entity: sensor.pixel_9a_last_update_trigger
             name: Last update trigger
 
-  - type: custom:apexcharts-card
-    graph_span: 24h
-    span:
-      start: day
-    header:
-      show: true
-      title: Electricity Price Comparison
-      show_states: true
-      colorize_states: true
-    now:
-      show: true
-    apex_config:
-      legend:
-        show: false
-    chart_type: line
-    update_interval: 1m
-    yaxis:
-      - min: ~0.00
-        max: ~0.50
-        decimals: 3
+  - type: vertical-stack
+    cards:
+      - type: entities
+        title: Rolling Electricity Price Stats
+        show_header_toggle: false
+        entities:
+          - entity: sensor.nordpool_energy_price_rolling_hour_15m
+            name: Current Rolling 1h Price
+          - entity: sensor.nordpool_rolling_1h_cheapest_day_price_10_18
+            name: Rolling 1h Cheapest Day Price (10-18)
+          - entity: sensor.nordpool_rolling_1h_cheapest_night_price
+            name: Rolling 1h Cheapest Night Price
+          - entity: sensor.nordpool_rolling_1h_max_price
+            name: Rolling 1h Max Price
+          - entity: sensor.nordpool_rolling_1h_min_price
+            name: Rolling 1h Min Price
+          - entity: sensor.nordpool_rolling_1h_q25_price
+            name: Rolling 1h 25th Percentile
+          - entity: sensor.nordpool_rolling_1h_q75_price
+            name: Rolling 1h 75th Percentile
+          - entity: sensor.nordpool_rolling_2h_cheapest_day_price_10_18
+            name: Rolling 2h Cheapest Day Price (10-18)
+          - entity: sensor.nordpool_rolling_2h_cheapest_night_price
+            name: Rolling 2h Cheapest Night Price
+          - entity: sensor.nordpool_rolling_2h_max_price
+            name: Rolling 2h Max Price
+          - entity: sensor.nordpool_rolling_2h_min_price
+            name: Rolling 2h Min Price
+          - entity: sensor.nordpool_rolling_2h_q25_price
+            name: Rolling 2h 25th Percentile
+          - entity: sensor.nordpool_rolling_2h_q75_price
+            name: Rolling 2h 75th Percentile
+
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        span:
+          start: day
+        header:
+          show: true
+          title: Electricity Price Comparison Today
+          show_states: true
+          colorize_states: true
+        now:
+          show: true
+          label: Now
+        chart_type: line
+        update_interval: 1m
         apex_config:
-          tickAmount: 5
-          forceNiceScale: True
-    all_series_config:
-      stroke_width: 2
-      float_precision: 3
-      transform: "return Math.round(x * 1000) / 1000;"
-      unit: €/kWh
-      show:
-        in_header: false
-        legend_value: false
-    series:
-      - entity: sensor.nordpool_energy_price
-        name: Nordpool (15m)
-        color: "#7ED321" # green, different from the averages
-        stroke_width: 2
-        opacity: 0.6
-        show:
-          in_header: true
-        data_generator: |
-          const data = entity.attributes.raw_today || [];
-          return data
-            .filter(p => p && p.start && p.value != null)
-            .map(p => [Date.parse(p.start), p.value]);
-      - entity: sensor.nordpool_energy_price_rolling_hour_15m
-        name: Rolling 1 Hour
-        color: "#f9d423" # bright yellow
-        stroke_width: 4
-        show:
-          in_header: true
-        data_generator: |
-          const data = entity.attributes.raw_today_rolling_hour_avg || [];
-          return data
-            .filter(p => p && p.start && p.value != null)
-            .map(p => [Date.parse(p.start), p.value]);
-      - entity: sensor.nordpool_energy_price_rolling_hour_15m
-        name: Rolling 2 Hour
-        color: "#4A90E2" # clean blue
-        stroke_width: 3
-        show:
-          in_header: true
-        data_generator: |
-          const data = entity.attributes.raw_today_rolling_two_hour_avg || [];
-          return data
-            .filter(p => p && p.start && p.value != null)
-            .map(p => [Date.parse(p.start), p.value]);
+          chart:
+            height: 260px
+          legend:
+            show: false
+          grid:
+            padding:
+              left: 0
+              right: 0
+              top: 0
+              bottom: 0
+        yaxis:
+          - id: price
+            min: ~0.00
+            max: ~0.50
+            decimals: 3
+            apex_config:
+              tickAmount: 5
+              forceNiceScale: true
+        all_series_config:
+          yaxis_id: price
+          float_precision: 3
+          unit: €/kWh
+          transform: "return Math.round(x * 1000) / 1000;"
+          show:
+            legend_value: false
+        series:
+          - entity: sensor.nordpool_energy_price
+            name: Nordpool 15m
+            color: "#6FCF97"
+            stroke_width: 2
+            opacity: 0.55
+            extend_to: false
+            show:
+              in_header: true
+            data_generator: |
+              const data = entity.attributes.raw_today || [];
+              return data
+                .filter((p) => p && p.start && p.value != null)
+                .map((p) => [Date.parse(p.start), p.value]);
+          - entity: sensor.nordpool_energy_price_rolling_hour_15m
+            name: Rolling 1h
+            color: "#F2C94C"
+            stroke_width: 4
+            extend_to: false
+            show:
+              in_header: true
+            data_generator: |
+              const data = entity.attributes.raw_today_rolling_hour_avg || [];
+              return data
+                .filter((p) => p && p.start && p.value != null)
+                .map((p) => [Date.parse(p.start), p.value]);
+          - entity: sensor.nordpool_energy_price_rolling_hour_15m
+            name: Rolling 2h
+            color: "#4A90E2"
+            stroke_width: 3
+            extend_to: false
+            show:
+              in_header: true
+            data_generator: |
+              const data = entity.attributes.raw_today_rolling_two_hour_avg || [];
+              return data
+                .filter((p) => p && p.start && p.value != null)
+                .map((p) => [Date.parse(p.start), p.value]);
+          - entity: sensor.nordpool_rolling_1h_q25_price
+            name: 1h Q25
+            color: "#D9A441"
+            stroke_width: 2
+            stroke_dash: 5
+            opacity: 0.8
+            extend_to: end
+            show:
+              in_header: false
+          - entity: sensor.nordpool_rolling_1h_q75_price
+            name: 1h Q75
+            color: "#B88317"
+            stroke_width: 2
+            stroke_dash: 5
+            opacity: 0.8
+            extend_to: end
+            show:
+              in_header: false
+          - entity: sensor.nordpool_rolling_2h_q25_price
+            name: 2h Q25
+            color: "#7FB3FF"
+            stroke_width: 2
+            stroke_dash: 7
+            opacity: 0.75
+            extend_to: end
+            show:
+              in_header: false
+          - entity: sensor.nordpool_rolling_2h_q75_price
+            name: 2h Q75
+            color: "#2F6FB3"
+            stroke_width: 2
+            stroke_dash: 7
+            opacity: 0.75
+            extend_to: end
+            show:
+              in_header: false
+
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: binary_sensor.tomorrow_s_electricity_prices_available
+            state: "on"
+        card:
+          type: custom:apexcharts-card
+          graph_span: 24h
+          span:
+            start: day
+            offset: +1d
+          header:
+            show: true
+            title: Electricity Price Comparison Tomorrow
+            show_states: true
+            colorize_states: true
+          now:
+            show: true
+          chart_type: line
+          update_interval: 1m
+          apex_config:
+            chart:
+              height: 260px
+            legend:
+              show: false
+            grid:
+              padding:
+                left: 0
+                right: 0
+                top: 0
+                bottom: 0
+          yaxis:
+            - id: price
+              min: ~0.00
+              max: ~0.50
+              decimals: 3
+              apex_config:
+                tickAmount: 5
+                forceNiceScale: true
+          all_series_config:
+            yaxis_id: price
+            float_precision: 3
+            unit: €/kWh
+            transform: "return Math.round(x * 1000) / 1000;"
+            show:
+              legend_value: false
+
+          series:
+            - entity: sensor.nordpool_energy_price
+              name: Nordpool 15m Tomorrow
+              color: "#6FCF97"
+              stroke_width: 2
+              opacity: 0.55
+              extend_to: false
+              show:
+                in_header: true
+              data_generator: |
+                const data = entity.attributes.raw_tomorrow || [];
+                return data
+                  .filter((p) => p && p.start && p.value != null)
+                  .map((p) => [Date.parse(p.start), p.value]);
+
+            - entity: sensor.nordpool_energy_price_rolling_hour_15m
+              name: Rolling 1h Tomorrow
+              color: "#F2C94C"
+              stroke_width: 4
+              extend_to: false
+              show:
+                in_header: true
+              data_generator: |
+                const data = entity.attributes.raw_tomorrow_rolling_hour_avg || [];
+                return data
+                  .filter((p) => p && p.start && p.value != null)
+                  .map((p) => [Date.parse(p.start), p.value]);
+
+            - entity: sensor.nordpool_energy_price_rolling_hour_15m
+              name: Rolling 2h Tomorrow
+              color: "#4A90E2"
+              stroke_width: 3
+              extend_to: false
+              show:
+                in_header: true
+              data_generator: |
+                const data =
+                  entity.attributes.tomorrow_rolling_two_hour_avg ||
+                  entity.attributes.raw_tomorrow_rolling_two_hour_avg ||
+                  [];
+                return data
+                  .filter((p) => p && p.start && p.value != null)
+                  .map((p) => [Date.parse(p.start), p.value]);
