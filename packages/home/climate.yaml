@@ -578,6 +578,58 @@ automation:
             data:
               value: -5
 
+  - alias: "[home|climate] Create Todoist task when climate sensor battery is low"
+    id: yaml_automation_home_climate_create_todoist_task_when_climate_sensor_battery_is_low
+    description: >
+      Creates a new Todoist task in Inbox when one of the climate battery sensors
+      drops below 10%.
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.climate_badkamer_battery
+        below: 10
+        id: badkamer
+      - platform: numeric_state
+        entity_id: sensor.climate_slaapkamer_battery
+        below: 10
+        id: slaapkamer
+      - platform: numeric_state
+        entity_id: sensor.climate_babykamer_battery
+        below: 10
+        id: babykamer
+      - platform: numeric_state
+        entity_id: sensor.climate_studeerkamer_battery
+        below: 10
+        id: studeerkamer
+      - platform: numeric_state
+        entity_id: sensor.climate_tamara_battery
+        below: 10
+        id: tamara
+      - platform: numeric_state
+        entity_id: sensor.climate_logeerkamer_battery
+        below: 10
+        id: logeerkamer
+      - platform: numeric_state
+        entity_id: sensor.climate_woonkamer_battery
+        below: 10
+        id: woonkamer
+    variables:
+      room_name: >-
+        {% set room_map = {
+          'badkamer': 'Badkamer',
+          'slaapkamer': 'Slaapkamer',
+          'babykamer': 'Babykamer',
+          'studeerkamer': 'Studeerkamer',
+          'tamara': 'Tamara',
+          'logeerkamer': 'Logeerkamer',
+          'woonkamer': 'Woonkamer'
+        } %}
+        {{ room_map.get(trigger.id, trigger.id) }}
+    action:
+      - action: todoist.new_task
+        data:
+          project: Inbox
+          content: "Replace battery of climate sensor {{ room_name }}"
 
 ################
 #    SCENES    #
