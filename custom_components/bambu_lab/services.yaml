@@ -1,0 +1,344 @@
+send_command:
+  name: Send Command
+  description: Send an arbitrary gcode command to the 3D printer
+  fields:
+    device_id:
+      name: Bambu Printer
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+    command:
+      name: Command
+      description: The command to send to the printer. Must have a trailing new line.
+      required: true
+      example: "M104 S200"
+      selector:
+        text:
+
+print_project_file:
+  name: Print 3MF project file
+  description: Print sliced 3MF file stored on the SD card
+  fields:
+    device_id:
+      name: Bambu Printer
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+    filepath:
+      name: File path
+      description: Filename on SD card
+      required: true
+      example: "cache/filename.3mf"
+      selector:
+        text:
+    plate:
+      name: Plate number
+      required: true
+      default: 1
+      selector:
+        number:
+          mode: box
+          min: 1
+          max: 100
+    timelapse:
+      name: Record timelapse of the print
+      default: false
+      required: true
+      selector:
+        boolean:
+    bed_leveling:
+      name: Perform bed leveling before print
+      default: true
+      required: true
+      selector:
+        boolean:
+    flow_cali:
+      name: Perform flow calibration before print
+      default: true
+      required: true
+      selector:
+        boolean:
+    vibration_cali:
+      name: Perform vibration Calibration before print
+      default: true
+      required: true
+      selector:
+        boolean:
+    layer_inspect:
+      name: Perform first layer inspection before print
+      default: true
+      required: true
+      selector:
+        boolean:
+    use_ams:
+      name: Use AMS
+      default: false
+      required: true
+      selector:
+        boolean:
+    ams_mapping:
+      name: AMS Slots Mapping
+      description: https://community.home-assistant.io/t/bambu-lab-x1-x1c-mqtt/489510/738
+      default: "0"
+      example: "2,-1,0"
+      required: true
+      selector:
+        text:
+
+skip_objects:
+  name: Skip objects
+  description: Skip objects currently being printed
+  fields:
+    device_id:
+      name: Bambu Printer
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+    objects:
+      name: Object IDs
+      description: Object IDs are available from printable objects entity attributes
+      required: true
+      example: "409,1463"
+      selector:
+        text:
+
+move_axis:
+  name: Move axis
+  description: Move the printhead or bed
+  fields:
+    device_id:
+      name: Bambu Printer
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+    axis:
+      name: Axis
+      description: >-
+        The axis to move.
+        X/P/H printers, X and Y move the printhead, Z moves the bed.
+        A1, X moves the printhead, Y the bed, Z moves the gantry.
+      required: true
+      example: "X"
+      selector:
+        select:
+          multiple: false
+          mode: dropdown
+          options:
+            - X
+            - Y
+            - Z
+            - Home
+    distance:
+      name: Distance
+      description: >-
+        The distance (in mm) to move the axis
+        A negative distance moves Z up, X left, Y forward.
+      example: 10
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 1
+
+extrude_retract:
+  name: Extrude or retract filament
+  description: Perform an extrusion or extraction of the loaded filament
+  fields:
+    device_id:
+      name: Bambu printer
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+    type:
+      name: Type
+      description: The type of extrude action to perform
+      required: true
+      example: "Extrude"
+      selector:
+        select:
+          multiple: false
+          mode: dropdown
+          options:
+            - Extrude
+            - Retract
+    force:
+      name: Force
+      description: >-
+        Perform extrusion or retraction if nozzle temperature is below 170ºC.
+      example: false
+      selector:
+        boolean:
+
+retry_load_filament:
+  name: Retry loading external filament
+  description: Retry loading external filament
+
+done_load_filament:
+  name: Finish loading external filament
+  description: Once loading external filament is done, use this action to signal that to the printer.
+
+unload_filament:
+  name: Unload filament
+  description: Unload the filament currently loaded into the extruder
+  fields:
+    device_id:
+      name: AMS or External Spool device
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+
+load_filament:
+  name: Load filament
+  description: Load a new filament into the extruder passed an AMS tray or an External spool entity
+  fields:
+    entity_id:
+      name: Tray or External Spool entity
+      required: true
+      selector:
+        entity:
+          integration: bambu_lab
+    temperature:
+      name: Temperature
+      description: >-
+        Target nozzle temperature once the filament is loaded. By default uses
+        the midpoint between min and max temperature of the chosen filament.
+      example: 220
+      selector:
+        number:
+          min: 0
+          max: 250
+          step: 1
+
+set_filament:
+  name: Set filament
+  description: Sets filament details on an AMS tray or an External spool entity
+  fields:
+    entity_id:
+      name: Tray or External spool entity
+      required: true
+      selector:
+        entity:
+          integration: bambu_lab
+    tray_info_idx:
+      name: Filament ID
+      description: >-
+       Bambu's filament ID. E.g. GFL96 is Generic PLA Silk
+      required: true
+      example: GFL96
+      selector:
+        text:
+    tray_color:
+      name: Color
+      description: >-
+        RGBA value for the color. E.g. FF0000FF is opaque red.
+      required: true
+      example: FF0000FF
+      selector:
+        text:
+    tray_type:
+      name: Filament type
+      description: >-
+        Type of filament. E.g. 'PLA' or 'PETG'
+      required: true
+      example: PLA
+      selector:
+        text:
+    nozzle_temp_min:
+      name: Minimum recommended nozzle temperature
+      description: >-
+        The minimum temperature that it is recommended to print this filament at.
+      required: true
+      example: 220
+      selector:
+        number:
+          min: 160
+          max: 300
+          step: 1
+    nozzle_temp_max:
+      name: Maximum recommended nozzle temperature
+      description: >-
+        The maximum temperature that it is recommended to print this filament at.
+      required: true
+      example: 220
+      selector:
+        number:
+          min: 160
+          max: 300
+          step: 1
+
+get_filament_data:
+  name: Gets a json string with details about all known filaments
+  description: Gets a json string with details about all known filaments
+  fields:
+    device_id:
+      name: Bambu Printer
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+
+read_rfid:
+  name: Read the RFID tag on a Bambu spool
+  description: Triggers the AMS to attempt to re-read the RFID tag on the current spool.
+  fields:
+    entity_id:
+      name: AMS Tray
+      required: true
+      selector:
+        entity:
+          integration: bambu_lab
+
+start_filament_drying:
+  name: Start Filament Drying
+  description: Starts AMS filament drying.
+  fields:
+    device_id:
+      name: AMS 2 Pro or AMS HT
+      required: true
+      selector:
+        device:
+          integration: bambu_lab
+    temp:
+      name: Heating temperature
+      description: >-
+        AMS 2 max is 65C. AMS HT max is 85C.
+      required: true
+      example: 45
+      default: 45
+      selector:
+        number:
+          min: 45
+          max: 85
+          step: 1
+    rotate_tray:
+      name: Rotate tray while drying
+      default: false
+      required: true
+      selector:
+        boolean:
+    duration:
+      name: Duration (in Hours)
+      required: true
+      default: 2
+      selector:
+        number:
+          min: 1
+          max: 24
+
+stop_filament_drying:
+  name: Stop Filament Drying
+  description: Stops AMS filament drying.
+  fields:
+    device_id:
+      name: AMS Device
+      description: Select the AMS 2 or AMS HT device to stop drying on.
+      required: true
+      selector:
+        device:
+          integration: bambu_lab

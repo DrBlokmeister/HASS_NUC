@@ -1,0 +1,911 @@
+{
+  "device_automation": {
+    "trigger_type": {
+      "event_print_canceled": "Impressió cancel·lada",
+      "event_print_failed": "Impressió fallida",
+      "event_print_finished": "Impressió finalitzada",
+      "event_print_started": "Impressió iniciada",
+      "event_print_error": "Error d'impressió",
+      "event_print_error_cleared": "Error d'impressió esborrat",
+      "event_printer_error": "Error d'HMS",
+      "event_printer_error_cleared": "Error d'HMS esborrat"
+    }
+  },
+  "config": {
+    "abort": {
+      "already_configured": "El dispositiu ja estava configurat",
+      "no_printers": "No s'han trobat impressores configurades al compte.",
+      "cloudflare": "Cloudflare ha bloquejat l'intent de connexió.",
+      "curl_unavailable": "La llibreria curl_cffi no està disponible."
+    },
+    "error": {
+      "cannot_connect": "Error de connexió. Revisa les credencials.",
+      "invalid_auth": "Autenticació invàlida.",
+      "unknown": "Error inesperat.",
+      "code_needed": "S'ha de proporcionar el codi de verificació.",
+      "verifyCode": "Cal un codi de verificació. Comproveu el vostre correu electrònic o telèfon.",
+      "code_expired": "El codi de verificació ha caducat. S'ha sol·licitat un codi nou. Comproveu el vostre correu electrònic o telèfon.",
+      "code_incorrect": "El codi de verificació és incorrecte. Si us plau, introdueix-lo de nou.",
+      "tfaCode": "Cal codi 2FA. Si us plau, introdueix-ho.",
+      "cannot_connect_local_timeout": "No s'ha pogut connectar. La connexió s'ha esgotat.",
+      "cannot_connect_local_access_denied": "No s'ha pogut connectar. Accés denegat: comproveu el codi d'accés.",
+      "cannot_connect_local_incorrect_serial": "No s'ha pogut connectar. La connexió va ser tancada per la impressora: comproveu el número de sèrie.",
+      "cannot_connect_local_incorrect_address": "No s'ha pogut connectar. Connexió rebutjada: comproveu l'adreça IP.",
+      "cannot_connect_local_address_unreachable": "No s'ha pogut connectar. Adreça inaccessible: comproveu la connexió de xarxa.",
+      "cannot_connect_cloud_timeout": "S'ha esgotat el temps d'intent de connectar-se al núvol de Bambu Lab.",
+      "cannot_connect_cloud_access_denied": "Accés denegat pel núvol de Bambu Lab.",
+      "cannot_connect_cloud_connection_refused": "Connexió rebutjada pel núvol de Bambu Lab.",
+      "cannot_connect_cloud_address_unreachable": "L'adreça del núvol de Bambu Lab no és accessible.",
+      "cannot_connect_cloud_unknown": "Error desconegut en connectar-se al núvol de Bambu Lab.",
+      "cannot_connect_local_unknown": "No s'ha pogut connectar. Comproveu la configuració proporcionada."
+    },
+    "step": {
+      "user": {
+        "description": "La configuració a través del núvol Bambu Lab és la més senzilla i ràpida. Els comptes de xarxes socials sense contrasenya no són compatibles.\n\rTambé podeu reutilitzar les credencials d'autenticació que funcionen d'altres impressores. En cas de trobar-los, es mostraran a l'adreça de correu electrònic.\n\rO podeu connectar-vos proporcionant manualment els detalls de connexió local de la impressora. Això és necessari per a una impressora en mode Lan.",
+        "data": {
+          "printer_mode": "Mode de configuració de la impressora:"
+        }
+      },
+      "Bambu": {
+        "title": "Connexió al núvol de Bambu Lab",
+        "description": "Si us plau, proporciona les teves credencials de Bambu Lab:",
+        "data": {
+          "region": "Regió del compte:",
+          "email": "Direcció de Correu Electrònic o Número de Telèfon",
+          "password": "Contrasenya",
+          "newCode": "Sol·licita un codi nou",
+          "verifyCode": "Codi de verificació per correu electrònic o telèfon",
+          "tfaCode": "Codi d'autenticació de dos factors"
+        }
+      },
+      "Bambu_Choose_Device": {
+        "title": "Selecció d'Impresora",
+        "data": {
+          "serial": "Trieu la impressora per afegir:"
+        }
+      },
+      "Bambu_Lan": {
+        "title": "Configuració de Connexió Local",
+        "description": "Podeu triar connectar-vos directament a la impressora mqtt en lloc del núvol Bambu Lab. Això dóna resistència a les interrupcions del núvol de Bambu Lab, però Bambu Lab ha restringit el control de la impressora quan està en aquest mode híbrid, de manera que alguns controls no estaran disponibles.\n\rIndependentment d'aquesta elecció, la integració obtindrà l'adreça IP de la impressora del núvol Bambu Lab i confirmarà que es pot connectar a ella, ja que això és necessari per a la càmera, l'historial d'impressió i el suport de timelapse. Si la vostra impressora no és accessible al vostre Home Assistant, podeu desactivar aquesta comprovació, però perdràs aquestes funcions.",
+        "data": {
+          "local_mqtt": "Connecteu-vos directament a la impressora mqtt:",
+          "host": "Adreça IP Local de la Impressora:",
+          "access_code": "Codi d'accés:",
+          "usage_hours": "Quantitat d'hores d'ús (opcional):",
+          "print_cache_count": "Nombre de models a la memòria cau a l'assistent domèstic (-1 per a il·limitada):",
+          "timelapse_cache_count": "Nombre de vídeos de Timelapse a Cache to Home Assistant (-1 per a il·limitats):",
+          "skip_local_mqtt": "Omet la prova de connexió mqtt local (no recomanat):"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Opcions avançades",
+            "description": "Aquestes opcions només són necessàries si teniu una configuració no estàndard.",
+            "data": {
+              "disable_ssl_verify": "Desactiva la verificació SSL",
+              "enable_firmware_update": "Activa l'assistència d'actualització del firmware"
+            }
+          }
+        }
+      },
+      "Lan": {
+        "title": "Quantitat d'hores d'ús (opcional)",
+        "description": "Si us plau, proporciona l'adreça IP local de la impressora, el número de sèrie i el codi d'accés. El codi d'accés el pots trobar a la pantalla de la impressora, a la configuració de xarxa (WLAN). El número de sèrie (SN) el pots trobar a la configuració del dispositiu.",
+        "data": {
+          "serial": "Número de Serie:",
+          "host": "Adreça IP Local de la Impressora:",
+          "access_code": "Codi d'accés:",
+          "usage_hours": "Quantitat d'hores d'ús (opcional):",
+          "print_cache_count": "Nombre de models a la memòria cau a l'assistent domèstic (-1 per a il·limitada):",
+          "timelapse_cache_count": "Nombre de vídeos de Timelapse a Cache to Home Assistant (-1 per a il·limitats):"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Opcions avançades",
+            "description": "Aquestes opcions només són necessàries si teniu una configuració no estàndard.",
+            "data": {
+              "disable_ssl_verify": "Desactiva la verificació SSL",
+              "enable_firmware_update": "Activa l'assistència d'actualització del firmware"
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "cloudflare": "Cloudflare ha bloquejat l'intent de connexió.",
+      "curl_unavailable": "La llibreria curl_cffi no està disponible."
+    },
+    "error": {
+      "cannot_connect": "Error de connexió.",
+      "invalid_auth": "Autenticació invàlida.",
+      "unknown": "Error inesperat.",
+      "code_needed": "S'ha de proporcionar el codi de verificació.",
+      "verifyCode": "Cal un codi de verificació. Comproveu el vostre correu electrònic o telèfon.",
+      "code_expired": "El codi de verificació ha caducat. S'ha sol·licitat un codi nou. Comproveu el vostre correu electrònic o telèfon.",
+      "code_incorrect": "El codi de verificació era incorrecte. Si us plau, introdueix-lo de nou.",
+      "tfaCode": "Cal codi 2FA. Si us plau, introdueix-lo.",
+      "cannot_connect_local_timeout": "No s'ha pogut connectar. La connexió s'ha esgotat.",
+      "cannot_connect_local_access_denied": "No s'ha pogut connectar. Accés denegat: comproveu el codi d'accés.",
+      "cannot_connect_local_incorrect_serial": "No s'ha pogut connectar. La connexió va ser tancada per la impressora: comproveu el número de sèrie.",
+      "cannot_connect_local_incorrect_address": "No s'ha pogut connectar. Connexió rebutjada: comproveu l'adreça IP.",
+      "cannot_connect_local_address_unreachable": "No s'ha pogut connectar. Adreça inaccessible: comproveu la connexió de xarxa.",
+      "cannot_connect_cloud_timeout": "S'ha esgotat el temps d'intent de connectar-se al núvol de Bambu Lab.",
+      "cannot_connect_cloud_access_denied": "Accés denegat pel núvol de Bambu Lab.",
+      "cannot_connect_cloud_connection_refused": "Connexió rebutjada pel núvol de Bambu Lab.",
+      "cannot_connect_cloud_address_unreachable": "L'adreça del núvol de Bambu Lab no és accessible.",
+      "cannot_connect_cloud_unknown": "Error desconegut en connectar-se al núvol de Bambu Lab.",
+      "cannot_connect_local_unknown": "No s'ha pogut connectar. Comproveu la configuració proporcionada."
+    },
+    "step": {
+      "init": {
+        "title": "Ajusta la configuració de connexió",
+        "description": "La configuració a través del núvol Bambu Lab és la més senzilla i ràpida. Els comptes de xarxes socials sense contrasenya no són compatibles.\n\rTambé podeu reutilitzar les credencials d'autenticació que funcionen d'altres impressores. En cas de trobar-los, es mostraran a l'adreça de correu electrònic.\n\rO podeu connectar-vos proporcionant manualment els detalls de connexió local de la impressora. Això és necessari per a una impressora en mode Lan.",
+        "data": {
+          "printer_mode": "Mode de configuració de la impressora:"
+        }
+      },
+      "Bambu": {
+        "title": "Connexió al núvol de Bambu Lab",
+        "description": "Si us plau, proporciona les teves credencials de Bambu Lab:",
+        "data": {
+          "region": "Regió del compte:",
+          "email": "Adreça de Correu Electrònic o Número de Telèfon",
+          "password": "Contrasenya",
+          "newCode": "Sol·licita un codi nou",
+          "verifyCode": "Codi de verificació per correu electrònic o telèfon",
+          "tfaCode": "Codi d'autenticació de dos factors"
+        }
+      },
+      "Bambu_Lan": {
+        "title": "Ajusta la configuració de connexió",
+        "description": "Podeu triar connectar-vos directament a la impressora mqtt en lloc del núvol Bambu Lab. Això dóna resistència a les interrupcions del núvol de Bambu Lab, però Bambu Lab ha restringit el control de la impressora quan està en aquest mode híbrid, de manera que alguns controls no estaran disponibles.\n\rIndependentment d'aquesta elecció, la integració obtindrà l'adreça IP de la impressora del núvol Bambu Lab i confirmarà que es pot connectar a ella, ja que això és necessari per a la càmera, l'historial d'impressió i el suport de timelapse. Si la vostra impressora no és accessible al vostre Home Assistant, podeu desactivar aquesta comprovació, però perdràs aquestes funcions.",
+        "data": {
+          "serial": "Ajusteu la configuració per a:",
+          "host": "Adreça IP Local de la Impressora:",
+          "access_code": "Codi d'accés:",
+          "local_mqtt": "Connecteu-vos directament a la impressora mqtt:",
+          "usage_hours": "Quantitat d'hores d'ús (opcional):",
+          "print_cache_count": "Nombre de models a la memòria cau a l'assistent domèstic (-1 per a il·limitada):",
+          "timelapse_cache_count": "Nombre de vídeos de Timelapse a Cache to Home Assistant (-1 per a il·limitats):",
+          "skip_local_mqtt": "Omet la prova de connexió mqtt local (no recomanat):"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Opcions avançades",
+            "description": "Aquestes opcions avançades són una funcionalitat precoç o arriscada. Llegiu la documentació i utilitzeu -les pel vostre propi risc.",
+            "data": {
+              "disable_ssl_verify": "Desactiva la verificació SSL",
+              "enable_firmware_update": "Activa l'assistència d'actualització del firmware"
+            }
+          }
+        }
+      },
+      "Lan": {
+        "title": "Connexió a Mode LAN",
+        "description": "Introdueix l'adreça IP local de la impressora i el codi d'accés. El codi d'accés el podeu trobar a la pantalla de la impressora, a la configuració de xarxa (WLAN).",
+        "data": {
+          "host": "Adreça IP Local de la Impressora:",
+          "access_code": "Codi d'accés:",
+          "usage_hours": "Quantitat d'hores d'ús (opcional):",
+          "print_cache_count": "Nombre de models a la memòria cau a l'assistent domèstic (-1 per a il·limitada):",
+          "timelapse_cache_count": "Nombre de vídeos de Timelapse a Cache to Home Assistant (-1 per a il·limitats):"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Opcions avançades",
+            "description": "Aquestes opcions avançades són una funcionalitat precoç o arriscada. Llegiu la documentació i utilitzeu -les pel vostre propi risc.",
+            "data": {
+              "disable_ssl_verify": "Desactiva la verificació SSL",
+              "enable_firmware_update": "Activa l'assistència d'actualització del firmware"
+            }
+          }
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "door_open": {
+        "name": "Porta de la carcassa"
+      },
+      "timelapse": {
+        "name": "Gravant timelapse"
+      },
+      "hms_errors": {
+        "name": "Errors HMS"
+      },
+      "print_error": {
+        "name": "Error d'impressió"
+      },
+      "online": {
+        "name": "En línia"
+      },
+      "firmware_update": {
+        "name": "Actualització de Firmware"
+      },
+      "extruder_filament_state": {
+        "name": "Estat de filament d'extrús"
+      },
+      "developer_lan_mode": {
+        "name": "Mode LAN desenvolupador"
+      },
+      "mqtt_encryption": {
+        "name": "Firmware de xifrat MQTT"
+      },
+      "active_ams": {
+        "name": "Activa"
+      },
+      "drying": {
+        "name": "Assecatge"
+      },
+      "hybrid_mode_blocks_control": {
+        "name": "Control híbrid de blocs MQTT"
+      }
+    },
+    "button": {
+      "pause": {
+        "name": "Pausar la impressió"
+      },
+      "resume": {
+        "name": "Continuar la impressió"
+      },
+      "stop": {
+        "name": "Aturar la impressió"
+      },
+      "refresh": {
+        "name": "Força l'actualització de les dades"
+      },
+      "dev": {
+        "name": "Anterioritat"
+      },
+      "buzzer_silence": {
+        "name": "Buzzer - Silenci"
+      },
+      "buzzer_fire_alarm": {
+        "name": "Buzzer: alarma d'incendi"
+      },
+      "buzzer_beeping": {
+        "name": "Buzzer: beeping"
+      }
+    },
+    "fan": {
+      "cooling_fan": {
+        "name": "Ventilador de refrigeració"
+      },
+      "aux_fan": {
+        "name": "Ventilador auxiliar"
+      },
+      "chamber_fan": {
+        "name": "Ventilador de la carcassa"
+      },
+      "secondary_aux_fan": {
+        "name": "Ventilador auxiliar secundari"
+      }
+    },
+    "image": {
+      "p1p_camera": {
+        "name": "Cáàmara"
+      },
+      "cover_image": {
+        "name": "Imatge de portada"
+      },
+      "pick_image": {
+        "name": "Trieu la imatge"
+      }
+    },
+    "light": {
+      "chamber_light": {
+        "name": "Llum de la carcassa"
+      },
+      "camera_light": {
+        "name": "Llum de la càmera"
+      },
+      "heatbed_light": {
+        "name": "Llum de calor"
+      }
+    },
+    "number": {
+      "target_bed_temperature": {
+        "name": "Temperatura objectiu del llit"
+      },
+      "target_nozzle_temperature": {
+        "name": "Temperatura objectiu del broquet"
+      },
+      "target_chamber_temperature": {
+        "name": "Temperatura objectiu de la cambra"
+      }
+    },
+    "select": {
+      "printing_speed": {
+        "name": "Velocitat d'impressió",
+        "state": {
+          "silent": "silenciós",
+          "standard": "Estàndar",
+          "sport": "Sport",
+          "ludicrous": "Ludicrous"
+        }
+      },
+      "airduct_mode": {
+        "name": "Mode conducte d'aire",
+        "state": {
+          "cooling": "Refrigeració",
+          "heating": "Calefacció"
+        }
+      }
+    },
+    "sensor": {
+      "tool_module": {
+        "name": "Mòdul d'eines",
+        "state": {
+          "none": "No muntat",
+          "cutter": "Tallador",
+          "laser10": "Làser (10W)",
+          "laser40": "Làser (40W)"
+        }
+      },
+      "wifi_signal": {
+        "name": "Senyal Wi-Fi"
+      },
+      "bed_temp": {
+        "name": "Temperatura del llit"
+      },
+      "target_bed_temp": {
+        "name": "Temperatura objectiu del llit"
+      },
+      "chamber_temp": {
+        "name": "Temperatura de la carcassa"
+      },
+      "target_nozzle_temp": {
+        "name": "Temperatura objectiu del broquet"
+      },
+      "nozzle_temp": {
+        "name": "Temperatura del broquet"
+      },
+      "aux_fan_speed": {
+        "name": "Velocidad del ventilador auxiliar"
+      },
+      "cooling_fan_speed": {
+        "name": "Velocitat del ventilador de refredament"
+      },
+      "chamber_fan_speed": {
+        "name": "Velocitat del ventilador de la carcassa"
+      },
+      "heatbreak_fan_speed": {
+        "name": "Velocitat del ventilador del dissipador de calor"
+      },
+      "speed_profile": {
+        "name": "Perfil de velocitat",
+        "state": {
+          "silent": "silenciós",
+          "standard": "Estàndar",
+          "sport": "Sport",
+          "ludicrous": "Ludicrous"
+        },
+        "state_attributes": {
+          "modifier": {
+            "name": "Modificador"
+          }
+        }
+      },
+      "printer_name": {
+        "name": "Nom de la impressora"
+      },
+      "stage": {
+        "name": "Estat actual",
+        "state": {
+          "offline": "Fora de línia",
+          "printing": "Imprimint",
+          "auto_bed_leveling": "Anivellat de llit automàtic",
+          "heatbed_preheating": "Preescalfant del llit",
+          "sweeping_xy_mech_mode": "Mode mecànic d'escombrat XY",
+          "changing_filament": "Canvi de filament",
+          "m400_pause": "Pausa M400",
+          "paused_filament_runout": "Pausa a causa d'esgotament del filament",
+          "heating_hotend": "Escalfant el broquet",
+          "calibrating_extrusion": "Calibració de l'extrusió",
+          "scanning_bed_surface": "Escaneig de la superfície del llit",
+          "inspecting_first_layer": "Inspecció de la primera capa",
+          "identifying_build_plate_type": "Identificació del tipus de placa de construcció",
+          "calibrating_micro_lidar": "Calibrating micro lidar",
+          "homing_toolhead": "Retornant el capçal a l'origen",
+          "cleaning_nozzle_tip": "Netejant la punta del broquet",
+          "checking_extruder_temperature": "Comprovació de la temperatura de l'extrusora",
+          "paused_user": "Impressió pausada per l'usuari",
+          "paused_front_cover_falling": "Pausat deguta a la caiguda de la coberta frontal",
+          "calibrating_extrusion_flow": "Calibrar el flux d'extrusió",
+          "paused_nozzle_temperature_malfunction": "Pausat degut a una fallada amb la temperatura del broquet",
+          "paused_heat_bed_temperature_malfunction": "Pausat degut a una fallada amb la temperatura del llit",
+          "filament_unloading": "Descarregant el filament",
+          "paused_skipped_step": "Pausat degut a passos saltats",
+          "filament_loading": "Carregant el filament",
+          "calibrating_motor_noise": "Calibrant el soroll dels motors",
+          "paused_ams_lost": "Pausat degut a la desconnexió de l'AMS",
+          "paused_low_fan_speed_heat_break": "Pausat degut a la baixa velocitat del ventilador del bloc",
+          "paused_chamber_temperature_control_error": "Pausat degut a un error amb el control de temperatura de la carcassa",
+          "cooling_chamber": "Refredament de la carcassa",
+          "paused_user_gcode": "Pausat per una instrucció gcode agregada per l'usuari",
+          "motor_noise_showoff": "Desactivar el soroll del motor",
+          "paused_nozzle_filament_covered_detected": "Pausat degut a la detecció de filament cobrint el broquet",
+          "paused_cutter_error": "Pausat degut a un error amb el tallador de filament",
+          "paused_first_layer_error": "Pausat degut a un error amb la primera capa",
+          "paused_nozzle_clog": "Pausat degut a una obstrucció al broquet",
+          "idle": "Inactiu",
+          "check_absolute_accuracy_before_calibration": "Comproveu la precisió absoluta de la impressora abans de la calibració",
+          "absolute_accuracy_calibration": "Calibració de precisió absoluta",
+          "check_absolute_accuracy_after_calibration": "Comproveu la precisió absoluta de la impressora després de la calibració",
+          "calibrate_nozzle_offset": "Calibració de desplaçament de la boquilla",
+          "bed_level_high_temperature": "Anivellament de llit automàtic d'alta temperatura",
+          "check_quick_release": "Comprovació automàtica: palanca de llançament ràpid",
+          "check_door_and_cover": "Comprovació automàtica: porta i coberta superior",
+          "laser_calibration": "Calibració làser",
+          "check_plaform": "Comprovació automàtica: plataforma",
+          "check_birdeye_camera_position": "Comprovació automàtica: posició de la càmera d'ocell",
+          "calibrate_birdeye_camera": "Calibrar càmera d'ocells",
+          "bed_level_phase_1": "Anivellament del llit automàtic - Fase 1",
+          "bed_level_phase_2": "Anivellament del llit automàtic - Fase 2",
+          "heating_chamber": "Cambra de calefacció",
+          "heated_bedcooling": "Refrigeració del llit escalfat",
+          "print_calibration_lines": "Línies de calibració d'impressió",
+          "check_material": "Comprovació automàtica: material",
+          "calibrating_live_view_camera": "Calibració de la càmera de visualització en directe",
+          "waiting_for_heatbed_temperature": "Esperant que el llit calent arribi a la temperatura objectiu",
+          "check_material_position": "Comprovació automàtica: posició del material",
+          "calibrating_cutter_model_offset": "Calibració de l'offset del mòdul de tallador",
+          "measuring_surface": "Superfície de mesura",
+          "thermal_preconditioning": "Precondicionament tèrmic per a l'optimització de la primera capa",
+          "homing_blade_holder": "Porta fulles d'homing",
+          "calibrating_camera_offset": "Calibrant el desplaçament de la càmera",
+          "calibrating_blade_holder_position": "Calibració de la posició del suport de la fulla",
+          "hotend_pick_place_test": "Prova de selecció i lloc de hotend",
+          "waiting_chamber_temperature_equalize": "Esperant que la temperatura de la cambra s'iguali",
+          "preparing_hotend": "Preparant hotend",
+          "calibrating_detection_nozzle_clumping": "Calibració de la posició de detecció de l'aglomeració del broquet",
+          "purifying_chamber_air": "Purificant l'aire de la cambra",
+          "preparing_ams": "Preparant AMS"
+        }
+      },
+      "print_progress": {
+        "name": "Progrés de la impressió"
+      },
+      "print_status": {
+        "name": "Estat de la Impressió",
+        "state": {
+          "failed": "Fallida",
+          "finish": "Finalitzada",
+          "idle": "Inactiva",
+          "offline": "Fora de línia",
+          "prepare": "Preparant",
+          "running": "En curs",
+          "pause": "Pausa",
+          "slicing": "Laminant",
+          "init": "Inicialitzant"
+        }
+      },
+      "mqtt_mode": {
+        "name": "Mode de connexió MQTT",
+        "state": {
+          "local": "Local",
+          "bambu_cloud": "Núvol Bambu Lab"
+        }
+      },
+      "gcode_file": {
+        "name": "Nom del Gcode"
+      },
+      "print_bed_type": {
+        "name": "Tipus de llit",
+        "state": {
+          "textured_plate": "Placa Texturitzada",
+          "cool_plate": "Placa Freda / Placa PLA",
+          "hot_plate": "Placa PEI llisa / Placa d'alta temperatura",
+          "eng_plate": "Placa d'Enginyeria",
+          "supertack_plate": "Cool Plate Supertack"
+        }
+      },
+      "print_length": {
+        "name": "Grandària de la impressió"
+      },
+      "print_weight": {
+        "name": "Pes de la impressió"
+      },
+      "subtask_name": {
+        "name": "Nom de la tasca"
+      },
+      "print_type": {
+        "name": "Tipus d'impressió",
+        "state": {
+          "local": "Local",
+          "cloud": "Cloud",
+          "idle": "Inactiva",
+          "unknown": "Desconegut"
+        }
+      },
+      "start_time": {
+        "name": "Temps d'inici"
+      },
+      "remaining_time": {
+        "name": "Temps restant"
+      },
+      "end_time": {
+        "name": "Temps de finalització"
+      },
+      "total_usage_hours": {
+        "name": "Temps de finalització"
+      },
+      "current_layer": {
+        "name": "Capa actual"
+      },
+      "total_layers": {
+        "name": "Quantitat total de capes"
+      },
+      "active_tray": {
+        "name": "Safata activa",
+        "state": {
+          "none": "Cap"
+        }
+      },
+      "nozzle_diameter": {
+        "name": "Grandària del broquet"
+      },
+      "nozzle_type": {
+        "name": "Tipus de broquet",
+        "state": {
+          "hardened_steel": "Acer endurit",
+          "stainless_steel": "Acer inoxidable",
+          "tungsten_carbide": "Carbur de tungstè",
+          "high_flow_hardened_steel": "Acer endurit amb un gran flux",
+          "high_flow_stainless_steel": "Acer inoxidable amb un gran flux",
+          "high_flow_tungsten_carbide": "Carbur de tungstè amb gran flux",
+          "unknown": "Desconegut"
+        }
+      },
+      "humidity_index": {
+        "name": "Índex d'humitat"
+      },
+      "external_spool": {
+        "name": "Bobina externa",
+        "state_attributes": {
+          "active": {
+            "name": "Activa"
+          },
+          "color": {
+            "name": "Color"
+          },
+          "cols": {
+            "name": "Colors"
+          },
+          "empty": {
+            "name": "Buida"
+          },
+          "k_value": {
+            "name": "Valor K"
+          },
+          "name": {
+            "name": "Nom"
+          },
+          "nozzle_temp_min": {
+            "name": "Temperatura mínima del broquet"
+          },
+          "nozzle_temp_max": {
+            "name": "Temperatura màxima del broquet"
+          },
+          "type": {
+            "name": "Tipus"
+          },
+          "remain": {
+            "name": "Filament restant"
+          },
+          "remain_enabled": {
+            "name": "L'estimació del filament restant ha activat"
+          },
+          "tag_uid": {
+            "name": "Número de sèrie de la bobina"
+          },
+          "filament_id": {
+            "name": "Identificador de filament"
+          },
+          "tray_weight": {
+            "name": "Pes màxim de filament"
+          },
+          "bed_temp": {
+            "name": "Temperatura del llit"
+          },
+          "ctype": {
+            "name": "Tipus de color"
+          },
+          "dry_temp": {
+            "name": "Temperatura d'assecat"
+          },
+          "dry_time": {
+            "name": "Temps d'assecat"
+          }
+        }
+      },
+      "tray": {
+        "name": "Safata {tray_number}",
+        "state_attributes": {
+          "slot": {
+            "name": "Ranura"
+          },
+          "active": {
+            "name": "Activa"
+          },
+          "bed_temp": {
+            "name": "Temperatura del llit"
+          },
+          "color": {
+            "name": "Color"
+          },
+          "cols": {
+            "name": "Colors"
+          },
+          "ctype": {
+            "name": "Tipus de color"
+          },
+          "dry_temp": {
+            "name": "Temperatura d'assecat"
+          },
+          "dry_time": {
+            "name": "Temps d'assecat"
+          },
+          "empty": {
+            "name": "Buida"
+          },
+          "k_value": {
+            "name": "Valor K"
+          },
+          "name": {
+            "name": "Nom"
+          },
+          "nozzle_temp_min": {
+            "name": "Temperatura mínima del broquet"
+          },
+          "nozzle_temp_max": {
+            "name": "Temperatura màxima del broquet"
+          },
+          "remain": {
+            "name": "Filament restant"
+          },
+          "remain_enabled": {
+            "name": "Estimació del filament restant activada"
+          },
+          "tag_uid": {
+            "name": "Número de sèrie de la bobina"
+          },
+          "tray_uuid": {
+            "name": "Tray UUID"
+          },
+          "type": {
+            "name": "Tipus"
+          },
+          "filament_id": {
+            "name": "ID del filament"
+          },
+          "tray_weight": {
+            "name": "Pes màxim del filament"
+          }
+        }
+      },
+      "ip_address": {
+        "name": "Adreça IP"
+      },
+      "printable_objects": {
+        "name": "Objectes imprimibles"
+      },
+      "skipped_objects": {
+        "name": "Objectes saltats"
+      },
+      "gcode_file_downloaded": {
+        "name": "El fitxer GCode descarregat"
+      },
+      "remaining_drying_time": {
+        "name": "Temps d'assecat restant"
+      },
+      "ams_temp": {
+        "name": "Temperatura"
+      },
+      "humidity": {
+        "name": "Humitat"
+      },
+      "left_nozzle_temp": {
+        "name": "Temperatura de la boquilla esquerra"
+      },
+      "left_target_nozzle_temp": {
+        "name": "Temperatura objectiu de la boquilla esquerra"
+      },
+      "right_nozzle_temp": {
+        "name": "Temperatura de la boquilla dreta"
+      },
+      "right_target_nozzle_temp": {
+        "name": "Temperatura objectiu de la boquilla dreta"
+      },
+      "sdcard_status": {
+        "name": "Estat de la targeta SD",
+        "state": {
+          "missing": "Perduda",
+          "normal": "Normal",
+          "abnormal": "Anormal",
+          "readonly": "Llegiu només"
+        }
+      },
+      "left_nozzle_diameter": {
+        "name": "Mida de la boquilla esquerra"
+      },
+      "left_nozzle_type": {
+        "name": "Tipus de la boquilla esquerra",
+        "state": {
+          "hardened_steel": "Acer endurit",
+          "stainless_steel": "Acer inoxidable",
+          "tungsten_carbide": "Carbur de tungstè",
+          "high_flow_hardened_steel": "Acer endurit amb un gran flux",
+          "high_flow_stainless_steel": "Acer inoxidable amb un gran flux",
+          "high_flow_tungsten_carbide": "Carbur de tungstè amb gran flux"
+        }
+      },
+      "right_nozzle_diameter": {
+        "name": "Mida de la boquilla dreta"
+      },
+      "right_nozzle_type": {
+        "name": "Tipus de boquilla dreta",
+        "state": {
+          "hardened_steel": "Acer endurit",
+          "stainless_steel": "Acer inoxidable",
+          "tungsten_carbide": "Carbur de tungstè",
+          "high_flow_hardened_steel": "Acer endurit amb un gran flux",
+          "high_flow_stainless_steel": "Acer inoxidable amb un gran flux",
+          "high_flow_tungsten_carbide": "Carbur de tungstè amb gran flux"
+        }
+      },
+      "model_download_percentage": {
+        "name": "Descàrrega del model"
+      },
+      "serial": {
+        "name": "Número de sèrie"
+      },
+      "target_chamber_temp": {
+        "name": "Temperatura objectiu de la cambra"
+      },
+      "hotend_rack_holder_position": {
+        "name": "Posició del titular",
+        "state": {
+          "unknown": "Desconegut",
+          "a_top": "Posició A",
+          "b_top": "Posició B",
+          "centre": "Centre"
+        }
+      },
+      "hotend_rack_holder_state": {
+        "name": "Estat titular",
+        "state": {
+          "unknown": "Desconegut",
+          "idle": "Inactiu",
+          "hotend_centre": "Hotend centrat",
+          "toolhead_centre": "Cap d'eina de centratge",
+          "calibrate_hotend_rack": "Bastidor de calibratge",
+          "cut_material": "Material de tall",
+          "unlock_hotend": "S'està desbloquejant hotend",
+          "lift_hotend_rack": "Bastidor elevador",
+          "place_hotend": "Col·locació hotend",
+          "pick_hotend": "Escollint hotend",
+          "lock_hotend": "Hotend de bloqueig"
+        }
+      },
+      "hotend_rack_hotend": {
+        "name": "Hotend {hotend_id}",
+        "state": {
+          "mounted": "Muntat",
+          "docked": "Acoblat",
+          "empty": "Buit"
+        },
+        "state_attributes": {
+          "slot": {
+            "name": "Ranura"
+          },
+          "nozzle_type": {
+            "name": "Tipus de broquet",
+            "state": {
+              "hardened_steel": "Acer endurit",
+              "stainless_steel": "Acer inoxidable",
+              "tungsten_carbide": "Carbur de tungstè",
+              "high_flow_hardened_steel": "Acer endurit d'alt flux",
+              "high_flow_stainless_steel": "Acer inoxidable d'alt flux",
+              "high_flow_tungsten_carbide": "Carbur de tungstè d'alt flux",
+              "unknown": "Desconegut"
+            }
+          },
+          "nozzle_diameter": {
+            "name": "Diàmetre del broquet"
+          },
+          "serial": {
+            "name": "Número de sèrie"
+          },
+          "max_temp": {
+            "name": "Temperatura màxima"
+          },
+          "wear": {
+            "name": "Desgast"
+          },
+          "status": {
+            "name": "Estat",
+            "state": {
+              "normal": "Normal",
+              "abnormal": "Anormal",
+              "unknown": "Desconegut"
+            }
+          },
+          "color": {
+            "name": "Color"
+          },
+          "filament_id": {
+            "name": "ID del filament"
+          },
+          "filament_name": {
+            "name": "Nom del filament"
+          }
+        }
+      },
+      "airduct_mode": {
+        "name": "Mode conducte d'aire",
+        "state": {
+          "cooling": "Refrigeració",
+          "heating": "Calefacció",
+          "laser": "Làser"
+        }
+      }
+    },
+    "camera": {
+      "camera": {
+        "name": "Càmera"
+      }
+    },
+    "switch": {
+      "camera": {
+        "name": "Habilitar càmera"
+      },
+      "imagecamera": {
+        "name": "Usar càmera amb sensor d'imatge"
+      },
+      "prompt_sound": {
+        "name": "Permet el so ràpid"
+      },
+      "ftp": {
+        "name": "Carregueu les dades del model de la impressora"
+      }
+    },
+    "update": {
+      "firmware_update": {
+        "name": "Actualització del Firmware"
+      }
+    }
+  },
+  "selector": {
+    "configuration_type": {
+      "options": {
+        "bambu": "Núvol Bambu Lab",
+        "lan": "Mode LAN"
+      }
+    }
+  },
+  "issues": {
+    "authentication_failed": {
+      "title": "Ha fallat l'autenticació",
+      "description": "S'ha produït un error en intentar connectar-se a Bambu Lab per a {device}. Torneu a configurar la integració i proporcioneu credencials noves."
+    },
+    "no_external_storage": {
+      "title": "No s'ha detectat cap USB o targeta SD",
+      "description": "{device} no té una targeta USB o SD connectada. Això és necessari per a totes les funcions que depenen de l'ftp a la impressora, com ara la imatge de portada, ometre objectes i historial d'impressió."
+    },
+    "live_view_disabled": {
+      "title": "Visualització en directe desactivada",
+      "description": "{device} té la visualització en directe desactivada a la configuració de la impressora. Activeu-ho per utilitzar les funcions de la càmera."
+    },
+    "mqtt_encryption_enabled": {
+      "title": "Encriptació MQTT habilitat",
+      "description": "{device} està connectat al núvol amb el xifratge mqtt habilitat. Només la llum es pot controlar mitjançant aquesta integració. Tots els altres controls no estan disponibles. La impressora s'ha de configurar en mode LAN de desenvolupador per permetre el control des de l'assistent domèstic."
+    },
+    "hybrid_mode_blocking": {
+      "title": "Control de blocs de connexió híbrid",
+      "description": "{device} està connectat al núvol però amb connexió mqtt local per la integració. Això bloqueja la configuració de temperatures i la reimpressió de l'historial. Canvia la connexió al núvol pur per permetre el control total."
+    }
+  }
+}

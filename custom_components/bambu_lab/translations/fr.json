@@ -1,0 +1,911 @@
+{
+  "device_automation": {
+    "trigger_type": {
+      "event_print_canceled": "Impression annulée",
+      "event_print_failed": "Échec de l'impression",
+      "event_print_finished": "Impression terminée",
+      "event_print_started": "L'impression a commencé",
+      "event_print_error": "Erreur d'impression",
+      "event_print_error_cleared": "Erreur d'impression effacée",
+      "event_printer_error": "Erreur HMS",
+      "event_printer_error_cleared": "Erreur HMS effacée"
+    }
+  },
+  "config": {
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré",
+      "no_printers": "Aucune imprimante non configurée n’a été trouvée dans le compte.",
+      "cloudflare": "Cloudflare a bloqué la tentative de connexion.",
+      "curl_unavailable": "La bibliothèque curl_cffi n'est pas disponible."
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion. Vérifiez les identifiants.",
+      "invalid_auth": "Authentification invalide.",
+      "unknown": "Erreur inattendue.",
+      "code_needed": "Le code de vérification doit être fourni.",
+      "verifyCode": "Un code de vérification est requis. Vérifiez votre e-mail ou votre téléphone.",
+      "code_expired": "Le code de vérification a expiré. Nouveau code demandé. Vérifiez votre e-mail ou votre téléphone.",
+      "code_incorrect": "Le code de vérification était incorrect.",
+      "tfaCode": "Le code 2FA est requis.",
+      "cannot_connect_local_timeout": "Échec de la connexion. La connexion a expiré.",
+      "cannot_connect_local_access_denied": "Échec de la connexion. Accès refusé - vérifiez le code d’accès.",
+      "cannot_connect_local_incorrect_serial": "Échec de la connexion. La connexion a été fermée par l’imprimante - vérifiez le numéro de série.",
+      "cannot_connect_local_incorrect_address": "Échec de la connexion. Connexion refusée - vérifiez l’adresse IP.",
+      "cannot_connect_local_address_unreachable": "Échec de la connexion. Adresse inaccessible - vérifiez la connexion réseau.",
+      "cannot_connect_cloud_timeout": "Le délai a expiré lors de la tentative de connexion au cloud Bambu Lab.",
+      "cannot_connect_cloud_access_denied": "Accès refusé par le cloud Bambu Lab.",
+      "cannot_connect_cloud_connection_refused": "Connexion refusée par le cloud Bambu Lab.",
+      "cannot_connect_cloud_address_unreachable": "Adresse cloud de Bambu Lab inaccessible.",
+      "cannot_connect_cloud_unknown": "Erreur inconnue lors de la connexion au cloud Bambu Lab.",
+      "cannot_connect_local_unknown": "Échec de la connexion. Vérifiez les paramètres fournis."
+    },
+    "step": {
+      "user": {
+        "description": "La configuration via le cloud Bambu Lab est la plus simple et la plus rapide. Les comptes de réseaux sociaux sans mot de passe ne sont pas pris en charge.\n\rVous pouvez également réutiliser les informations d’authentification fonctionnelles d’autres imprimantes. S’ils sont trouvés, ils seront répertoriés par adresse e-mail.\n\rVous pouvez également vous connecter en fournissant manuellement les détails de connexion locale de l’imprimante. Ceci est requis pour une imprimante en mode Lan.",
+        "data": {
+          "printer_mode": "Mode de configuration de l’imprimante :"
+        }
+      },
+      "Bambu": {
+        "title": "Connexion au cloud du Bambu Lab",
+        "description": "Veuillez fournir vos identifiants Bambu Lab :",
+        "data": {
+          "region": "Région du compte :",
+          "email": "Adresse e-mail ou numéro de téléphone",
+          "password": "Mot de passe",
+          "newCode": "Demander un nouveau code",
+          "verifyCode": "Code de vérification par e-mail ou par téléphone",
+          "tfaCode": "Code d'authentification à deux facteurs"
+        }
+      },
+      "Bambu_Choose_Device": {
+        "title": "Sélection de l’imprimante",
+        "data": {
+          "serial": "Choisissez l'imprimante à ajouter :"
+        }
+      },
+      "Bambu_Lan": {
+        "title": "Configurer la connexion locale",
+        "description": "Vous pouvez choisir de vous connecter directement à l'imprimante mqtt au lieu du cloud Bambu Lab. Cela donne de la résilience aux pannes de cloud de Bambu Lab, mais Bambu Lab a restreint le contrôle de l'imprimante dans ce mode hybride, de sorte que certains contrôles seront indisponibles.\n\rQuel que soit ce choix, l'intégration obtiendra l'adresse IP de l'imprimante du cloud Bambu Lab et confirmera qu'elle peut s'y connecter car cela est requis pour la prise en charge de l'appareil photo, de l'historique d'impression et du timelapse. Si votre imprimante est inaccessible à votre Home Assistant, vous pouvez désactiver cette vérification mais vous perdrez ces fonctionnalités.",
+        "data": {
+          "local_mqtt": "Connectez-vous directement à l'imprimante mqtt :",
+          "host": "Adresse IP de l’imprimante locale :",
+          "access_code": "Code d'accès",
+          "usage_hours": "Heures d'utilisation actuelles (facultatif) :",
+          "print_cache_count": "Nombre de modèles à mettre en cache dans Home Assistant (-1 pour illimité) :",
+          "timelapse_cache_count": "Nombre de vidéos timelapse à mettre en cache dans Home Assistant (-1 pour illimité) :",
+          "skip_local_mqtt": "Ignorer le test de connexion mqtt local (non recommandé) :"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Options avancées",
+            "description": "Ces options ne sont nécessaires que si vous avez une configuration non standard.",
+            "data": {
+              "disable_ssl_verify": "Désactiver la vérification SSL",
+              "enable_firmware_update": "Activer la prise en charge de la mise à jour du micrologiciel"
+            }
+          }
+        }
+      },
+      "Lan": {
+        "title": "Connexion en mode LAN",
+        "description": "Veuillez fournir votre type d’imprimante locale, votre adresse IP, votre numéro de série et votre code d’accès. Le code d’accès se trouve sur l’écran de l’imprimante dans les paramètres réseau. Le numéro de série se trouve dans les paramètres de l’appareil.",
+        "data": {
+          "serial": "Numéro de série",
+          "host": "Adresse IP de l’imprimante locale :",
+          "access_code": "Code d'accès",
+          "usage_hours": "Heures d'utilisation actuelles (facultatif) :",
+          "print_cache_count": "Nombre de modèles à mettre en cache dans Home Assistant (-1 pour illimité) :",
+          "timelapse_cache_count": "Nombre de vidéos timelapse à mettre en cache dans Home Assistant (-1 pour illimité) :"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Options avancées",
+            "description": "Ces options ne sont nécessaires que si vous avez une configuration non standard.",
+            "data": {
+              "disable_ssl_verify": "Désactiver la vérification SSL",
+              "enable_firmware_update": "Activer la prise en charge de la mise à jour du micrologiciel"
+            }
+          }
+        }
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "cloudflare": "Cloudflare a bloqué la tentative de connexion.",
+      "curl_unavailable": "La bibliothèque curl_cffi n'est pas disponible."
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion. Vérifiez les identifiants.",
+      "invalid_auth": "Authentification invalide.",
+      "unknown": "Erreur inattendue.",
+      "code_needed": "Le code de vérification doit être fourni.",
+      "verifyCode": "Un code de vérification est requis. Vérifiez votre e-mail ou votre téléphone.",
+      "code_expired": "Le code de vérification a expiré. Nouveau code demandé. Vérifiez votre e-mail ou votre téléphone.",
+      "code_incorrect": "Le code de vérification était incorrect.",
+      "tfaCode": "Le code 2FA est requis.",
+      "cannot_connect_local_timeout": "Échec de la connexion. La connexion a expiré.",
+      "cannot_connect_local_access_denied": "Échec de la connexion. Accès refusé - vérifiez le code d’accès.",
+      "cannot_connect_local_incorrect_serial": "Échec de la connexion. La connexion a été fermée par l’imprimante - vérifiez le numéro de série.",
+      "cannot_connect_local_incorrect_address": "Échec de la connexion. Connexion refusée - vérifiez l’adresse IP.",
+      "cannot_connect_local_address_unreachable": "Échec de la connexion. Adresse inaccessible - vérifiez la connexion réseau.",
+      "cannot_connect_cloud_timeout": "Le délai a expiré lors de la tentative de connexion au cloud Bambu Lab.",
+      "cannot_connect_cloud_access_denied": "Accès refusé par le cloud Bambu Lab.",
+      "cannot_connect_cloud_connection_refused": "Connexion refusée par le cloud Bambu Lab.",
+      "cannot_connect_cloud_address_unreachable": "Adresse cloud de Bambu Lab inaccessible.",
+      "cannot_connect_cloud_unknown": "Erreur inconnue lors de la connexion au cloud Bambu Lab.",
+      "cannot_connect_local_unknown": "Échec de la connexion. Vérifiez les paramètres fournis."
+    },
+    "step": {
+      "init": {
+        "title": "Ajuster les paramètres de connexion",
+        "description": "La configuration via le cloud Bambu Lab est la plus simple et la plus rapide. Les comptes de réseaux sociaux sans mot de passe ne sont pas pris en charge.\n\rVous pouvez également réutiliser les informations d’authentification fonctionnelles d’autres imprimantes. S’ils sont trouvés, ils seront répertoriés par adresse e-mail.\n\rVous pouvez également vous connecter en fournissant manuellement les détails de connexion locale de l’imprimante. Ceci est requis pour une imprimante en mode Lan.",
+        "data": {
+          "printer_mode": "Mode de configuration de l’imprimante :"
+        }
+      },
+      "Bambu": {
+        "title": "Connexion au cloud du Bambu Lab",
+        "description": "Veuillez fournir vos identifiants Bambu Lab :",
+        "data": {
+          "region": "Région du compte :",
+          "email": "Adresse e-mail ou numéro de téléphone",
+          "password": "Mot de passe",
+          "newCode": "Demander un nouveau code",
+          "verifyCode": "Code de vérification par e-mail ou par téléphone",
+          "tfaCode": "Code d'authentification à deux facteurs"
+        }
+      },
+      "Bambu_Lan": {
+        "title": "Ajuster la configuration de l’imprimante",
+        "description": "Vous pouvez choisir de vous connecter directement à l'imprimante mqtt au lieu du cloud Bambu Lab. Cela donne de la résilience aux pannes de cloud de Bambu Lab, mais Bambu Lab a restreint le contrôle de l'imprimante dans ce mode hybride, de sorte que certains contrôles seront indisponibles.\n\rQuel que soit ce choix, l'intégration obtiendra l'adresse IP de l'imprimante du cloud Bambu Lab et confirmera qu'elle peut s'y connecter car cela est requis pour la prise en charge de l'appareil photo, de l'historique d'impression et du timelapse. Si votre imprimante est inaccessible à votre Home Assistant, vous pouvez désactiver cette vérification mais vous perdrez ces fonctionnalités.",
+        "data": {
+          "serial": "Ajustez les paramètres pour :",
+          "host": "Adresse IP de l’imprimante locale :",
+          "access_code": "Code d'accès :",
+          "local_mqtt": "Connectez-vous directement à l'imprimante mqtt :",
+          "usage_hours": "Heures d'utilisation actuelles (facultatif) :",
+          "print_cache_count": "Nombre de modèles à mettre en cache dans Home Assistant (-1 pour illimité) :",
+          "timelapse_cache_count": "Nombre de vidéos timelapse à mettre en cache dans Home Assistant (-1 pour illimité) :",
+          "skip_local_mqtt": "Ignorer le test de connexion mqtt local (non recommandé) :"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Options avancées",
+            "description": "Ces options avancées sont des fonctionnalités précoces ou risquées. Lisez la documentation et utilisez-les à vos propres risques.",
+            "data": {
+              "disable_ssl_verify": "Désactiver la vérification SSL",
+              "enable_firmware_update": "Activer la prise en charge de la mise à jour du micrologiciel"
+            }
+          }
+        }
+      },
+      "Lan": {
+        "title": "Connexion en mode LAN",
+        "description": "Veuillez fournir l’adresse IP et le code d’accès de votre imprimante locale. Le code d’accès se trouve sur l’écran de l’imprimante dans les paramètres réseau.",
+        "data": {
+          "host": "Adresse IP de l’imprimante locale :",
+          "access_code": "Code d'accès",
+          "usage_hours": "Heures d'utilisation actuelles (facultatif) :",
+          "print_cache_count": "Nombre de modèles à mettre en cache dans Home Assistant (-1 pour illimité) :",
+          "timelapse_cache_count": "Nombre de vidéos timelapse à mettre en cache dans Home Assistant (-1 pour illimité) :"
+        },
+        "sections": {
+          "advanced": {
+            "name": "Options avancées",
+            "description": "Ces options avancées sont des fonctionnalités précoces ou risquées. Lisez la documentation et utilisez-les à vos propres risques.",
+            "data": {
+              "disable_ssl_verify": "Désactiver la vérification SSL",
+              "enable_firmware_update": "Activer la prise en charge de la mise à jour du micrologiciel"
+            }
+          }
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "door_open": {
+        "name": "Porte"
+      },
+      "timelapse": {
+        "name": "Timelapse"
+      },
+      "hms_errors": {
+        "name": "Erreurs HMS"
+      },
+      "print_error": {
+        "name": "Erreur d'impression"
+      },
+      "online": {
+        "name": "En ligne"
+      },
+      "firmware_update": {
+        "name": "Micrologiciel"
+      },
+      "extruder_filament_state": {
+        "name": "Filament extrudeur"
+      },
+      "developer_lan_mode": {
+        "name": "Mode LAN développeur"
+      },
+      "mqtt_encryption": {
+        "name": "Chiffrement MQTT"
+      },
+      "active_ams": {
+        "name": "Actif"
+      },
+      "drying": {
+        "name": "Séchage"
+      },
+      "hybrid_mode_blocks_control": {
+        "name": "Contrôle MQTT hybride bloqué"
+      }
+    },
+    "button": {
+      "pause": {
+        "name": "Pause"
+      },
+      "resume": {
+        "name": "Reprise"
+      },
+      "stop": {
+        "name": "Arrêt"
+      },
+      "refresh": {
+        "name": "Forcer l'actualisation"
+      },
+      "dev": {
+        "name": "Déboguer"
+      },
+      "buzzer_silence": {
+        "name": "Buzzer - silence"
+      },
+      "buzzer_fire_alarm": {
+        "name": "Buzzer - Alarme incendie"
+      },
+      "buzzer_beeping": {
+        "name": "Buzzer - bip"
+      }
+    },
+    "fan": {
+      "cooling_fan": {
+        "name": "Ventilateur de refroidissement"
+      },
+      "aux_fan": {
+        "name": "Ventilateur auxiliaire"
+      },
+      "chamber_fan": {
+        "name": "Ventilateur de la chambre"
+      },
+      "secondary_aux_fan": {
+        "name": "Ventilateur auxiliaire secondaire"
+      }
+    },
+    "image": {
+      "p1p_camera": {
+        "name": "Caméra"
+      },
+      "cover_image": {
+        "name": "Image du modèle"
+      },
+      "pick_image": {
+        "name": "Image des pièces sélectionnées"
+      }
+    },
+    "light": {
+      "chamber_light": {
+        "name": "Lumière de la chambre"
+      },
+      "camera_light": {
+        "name": "Lumière de la caméra"
+      },
+      "heatbed_light": {
+        "name": "Lumière du lit chauffant"
+      }
+    },
+    "number": {
+      "target_bed_temperature": {
+        "name": "Température cible du lit"
+      },
+      "target_nozzle_temperature": {
+        "name": "Température cible de la buse"
+      },
+      "target_chamber_temperature": {
+        "name": "Température cible de la chambre"
+      }
+    },
+    "select": {
+      "printing_speed": {
+        "name": "Vitesse d'impression",
+        "state": {
+          "silent": "Silencieux",
+          "standard": "Standard",
+          "sport": "Sport",
+          "ludicrous": "Insensé"
+        }
+      },
+      "airduct_mode": {
+        "name": "Mode de ventilation",
+        "state": {
+          "cooling": "Refroidissement",
+          "heating": "Chauffage"
+        }
+      }
+    },
+    "sensor": {
+      "airduct_mode": {
+        "name": "Mode de ventilation",
+        "state": {
+          "cooling": "Refroidissement",
+          "heating": "Chauffage",
+          "laser": "Laser"
+        }
+      },
+      "tool_module": {
+        "name": "Module d’outil",
+        "state": {
+          "none": "Non monté",
+          "cutter": "Découpeur",
+          "laser10": "Laser (10W)",
+          "laser40": "Laser (40W)"
+        }
+      },
+      "wifi_signal": {
+        "name": "Signal Wi-Fi"
+      },
+      "bed_temp": {
+        "name": "Température du lit"
+      },
+      "target_bed_temp": {
+        "name": "Température cible du lit"
+      },
+      "chamber_temp": {
+        "name": "Température de la chambre"
+      },
+      "target_nozzle_temp": {
+        "name": "Température cible de la buse"
+      },
+      "nozzle_temp": {
+        "name": "Température de la buse"
+      },
+      "aux_fan_speed": {
+        "name": "Vitesse du ventilateur auxiliaire"
+      },
+      "cooling_fan_speed": {
+        "name": "Vitesse du ventilateur de refroidissement"
+      },
+      "chamber_fan_speed": {
+        "name": "Vitesse du ventilateur de la chambre"
+      },
+      "heatbreak_fan_speed": {
+        "name": "Vitesse du ventilateur de l'isolateur thermique"
+      },
+      "speed_profile": {
+        "name": "Profil de vitesse",
+        "state": {
+          "silent": "Silencieux",
+          "standard": "Standard",
+          "sport": "Sport",
+          "ludicrous": "Insensé"
+        },
+        "state_attributes": {
+          "modifier": {
+            "name": "Modificateur"
+          }
+        }
+      },
+      "printer_name": {
+        "name": "Nom de l’imprimante"
+      },
+      "stage": {
+        "name": "Étape actuelle",
+        "state": {
+          "offline": "Hors ligne",
+          "printing": "Impression",
+          "auto_bed_leveling": "Nivellement automatique du lit",
+          "heatbed_preheating": "Préchauffage du lit",
+          "sweeping_xy_mech_mode": "Mode balayage XY mécanique",
+          "changing_filament": "Changement de filament",
+          "m400_pause": "Pause M400",
+          "paused_filament_runout": "En pause : fin de filament",
+          "heating_hotend": "Préchauffage de l'extrudeur",
+          "calibrating_extrusion": "Calibration de l'extrusion",
+          "scanning_bed_surface": "Numérisation de la surface du lit",
+          "inspecting_first_layer": "Inspection de la première couche",
+          "identifying_build_plate_type": "Identification du type de plateau",
+          "calibrating_micro_lidar": "Calibration du lidar",
+          "homing_toolhead": "Recentrage de la tête d'impression",
+          "cleaning_nozzle_tip": "Nettoyage de la buse",
+          "checking_extruder_temperature": "Vérification de la température de l'extrudeur",
+          "paused_user": "En pause par l'utilisateur",
+          "paused_front_cover_falling": "En pause : couvercle avant",
+          "calibrating_extrusion_flow": "Calibration du débit de l'extrusion",
+          "paused_nozzle_temperature_malfunction": "En pause : dysfonctionnement temp. buse",
+          "paused_heat_bed_temperature_malfunction": "En pause : dysfonctionnement temp. plateau",
+          "filament_unloading": "Déchargement du filament",
+          "paused_skipped_step": "En pause : étapes sautées",
+          "filament_loading": "Chargement du filament",
+          "calibrating_motor_noise": "Calibration du bruit du moteur",
+          "paused_ams_lost": "En pause : AMS perdu",
+          "paused_low_fan_speed_heat_break": "En pause : ventilateur heatbreak faible",
+          "paused_chamber_temperature_control_error": "En pause : erreur temp. chambre",
+          "cooling_chamber": "Refroidissement de la chambre",
+          "paused_user_gcode": "En pause : instruction G-code",
+          "motor_noise_showoff": "Démonstration bruit moteur",
+          "paused_nozzle_filament_covered_detected": "En pause : buse recouverte",
+          "paused_cutter_error": "En pause : erreur de coupe",
+          "paused_first_layer_error": "En pause : erreur première couche",
+          "paused_nozzle_clog": "En pause : buse obstruée",
+          "idle": "Inactif",
+          "check_absolute_accuracy_before_calibration": "Vérification précision avant calibration",
+          "absolute_accuracy_calibration": "Calibration de précision absolue",
+          "check_absolute_accuracy_after_calibration": "Vérification précision après calibration",
+          "calibrate_nozzle_offset": "Calibration décalage de buse",
+          "bed_level_high_temperature": "Nivellement de lit automatique à haute température",
+          "check_quick_release": "Vérification automatique: levier de libération rapide",
+          "check_door_and_cover": "Vérification automatique: porte et couverture supérieure",
+          "laser_calibration": "Calibration laser",
+          "check_plaform": "Vérification automatique: plate-forme",
+          "check_birdeye_camera_position": "Vérification automatique: position de caméra Birdeye",
+          "calibrate_birdeye_camera": "Calibration caméra Birdeye",
+          "bed_level_phase_1": "Nivellement de lit automatique - Phase 1",
+          "bed_level_phase_2": "Nivellement de lit automatique - Phase 2",
+          "heating_chamber": "Chauffage de la chambre",
+          "heated_bedcooling": "Refroidissement du lit chauffant",
+          "print_calibration_lines": "Impression des lignes de calibration",
+          "check_material": "Vérification automatique : matériau",
+          "calibrating_live_view_camera": "Calibration caméra Live View",
+          "waiting_for_heatbed_temperature": "Attente température du plateau",
+          "check_material_position": "Vérification automatique : position du matériau",
+          "calibrating_cutter_model_offset": "Calibration décalage module de coupe",
+          "measuring_surface": "Mesure de la surface",
+          "thermal_preconditioning": "Préconditionnement thermique",
+          "homing_blade_holder": "Support de lame à tête chercheuse",
+          "calibrating_camera_offset": "Calibrage du décalage de la caméra",
+          "calibrating_blade_holder_position": "Calibrage de la position du porte-lame",
+          "hotend_pick_place_test": "Test de sélection et de placement Hotend",
+          "waiting_chamber_temperature_equalize": "En attente que la température de la chambre s'égalise",
+          "preparing_hotend": "Préparation du hotend",
+          "calibrating_detection_nozzle_clumping": "Calibrage de la position de détection de l'agglutination des buses",
+          "purifying_chamber_air": "Purifier l'air de la chambre",
+          "preparing_ams": "Préparation de l'AMS"
+        }
+      },
+      "print_progress": {
+        "name": "Progression de l'impression"
+      },
+      "print_status": {
+        "name": "État de l'impression",
+        "state": {
+          "failed": "Échoué",
+          "finish": "Terminé",
+          "idle": "Inactif",
+          "offline": "Hors ligne",
+          "prepare": "Préparation",
+          "running": "En cours",
+          "pause": "En pause",
+          "slicing": "Tranchage",
+          "init": "Initialisation"
+        }
+      },
+      "mqtt_mode": {
+        "name": "Mode de connexion MQTT",
+        "state": {
+          "local": "Réseau local",
+          "bambu_cloud": "Cloud Bambu Lab"
+        }
+      },
+      "gcode_file": {
+        "name": "Fichier G-code"
+      },
+      "print_bed_type": {
+        "name": "Type de plaque",
+        "state": {
+          "textured_plate": "Plaque PEI texturée",
+          "cool_plate": "Plaque froide",
+          "hot_plate": "Plaque PEI lisse",
+          "eng_plate": "Plaque d'ingénierie",
+          "supertack_plate": "Plaque froide SuperTack"
+        }
+      },
+      "print_length": {
+        "name": "Longueur de fil de l’impression"
+      },
+      "print_weight": {
+        "name": "Poids de l’impression"
+      },
+      "subtask_name": {
+        "name": "Nom de la tâche"
+      },
+      "print_type": {
+        "name": "Type d'impression",
+        "state": {
+          "local": "Locale",
+          "cloud": "Cloud",
+          "idle": "Inactive",
+          "unknown": "Inconnu"
+        }
+      },
+      "start_time": {
+        "name": "Heure de début"
+      },
+      "remaining_time": {
+        "name": "Temps restant"
+      },
+      "end_time": {
+        "name": "Heure de fin"
+      },
+      "total_usage_hours": {
+        "name": "Utilisation totale"
+      },
+      "current_layer": {
+        "name": "Couche actuelle"
+      },
+      "total_layers": {
+        "name": "Nombre total de couches"
+      },
+      "active_tray": {
+        "name": "Emplacement actif",
+        "state": {
+          "none": "Aucun"
+        }
+      },
+      "nozzle_diameter": {
+        "name": "Taille de la buse"
+      },
+      "nozzle_type": {
+        "name": "Type de buse",
+        "state": {
+          "hardened_steel": "Acier trempé",
+          "stainless_steel": "Acier inoxydable",
+          "tungsten_carbide": "Carbure de tungstène",
+          "high_flow_hardened_steel": "Haut débit acier trempé",
+          "high_flow_stainless_steel": "Haut débit acier inoxydable",
+          "high_flow_tungsten_carbide": "Haut débit carbure de tungstène",
+          "unknown": "Inconnu"
+        }
+      },
+      "humidity_index": {
+        "name": "Indice d'humidité"
+      },
+      "external_spool": {
+        "name": "Bobine externe",
+        "state_attributes": {
+          "active": {
+            "name": "Actif"
+          },
+          "color": {
+            "name": "Couleur"
+          },
+          "cols": {
+            "name": "Couleurs"
+          },
+          "empty": {
+            "name": "Vide"
+          },
+          "k_value": {
+            "name": "Valeur K"
+          },
+          "name": {
+            "name": "Nom"
+          },
+          "nozzle_temp_min": {
+            "name": "Température minimale de la buse"
+          },
+          "nozzle_temp_max": {
+            "name": "Température maximale de la buse"
+          },
+          "type": {
+            "name": "Type"
+          },
+          "remain": {
+            "name": "Filament restant"
+          },
+          "remain_enabled": {
+            "name": "Estimation du filament restant activée"
+          },
+          "tag_uid": {
+            "name": "Numéro de série Spool"
+          },
+          "filament_id": {
+            "name": "ID de filament"
+          },
+          "tray_weight": {
+            "name": "Poids maximum de filament"
+          },
+          "bed_temp": {
+            "name": "Température du lit"
+          },
+          "ctype": {
+            "name": "Type de couleur"
+          },
+          "dry_temp": {
+            "name": "Température de séchage"
+          },
+          "dry_time": {
+            "name": "Temps de séchage"
+          }
+        }
+      },
+      "tray": {
+        "name": "Emplacement {tray_number}",
+        "state_attributes": {
+          "slot": {
+            "name": "Emplacement"
+          },
+          "active": {
+            "name": "Actif"
+          },
+          "bed_temp": {
+            "name": "Température du lit"
+          },
+          "color": {
+            "name": "Couleur"
+          },
+          "cols": {
+            "name": "Couleurs"
+          },
+          "ctype": {
+            "name": "Type de couleur"
+          },
+          "dry_temp": {
+            "name": "Température de séchage"
+          },
+          "dry_time": {
+            "name": "Temps de séchage"
+          },
+          "empty": {
+            "name": "Vide"
+          },
+          "k_value": {
+            "name": "Valeur K"
+          },
+          "name": {
+            "name": "Nom"
+          },
+          "nozzle_temp_min": {
+            "name": "Température minimale de la buse"
+          },
+          "nozzle_temp_max": {
+            "name": "Température maximale de la buse"
+          },
+          "remain": {
+            "name": "Filament restant"
+          },
+          "remain_enabled": {
+            "name": "Estimation du filament restant activée"
+          },
+          "tag_uid": {
+            "name": "Numéro de série du filament"
+          },
+          "tray_uuid": {
+            "name": "Tray UUID"
+          },
+          "type": {
+            "name": "Type"
+          },
+          "filament_id": {
+            "name": "ID de filament"
+          },
+          "tray_weight": {
+            "name": "Poids maximum de filament"
+          }
+        }
+      },
+      "hotend_rack_holder_position": {
+        "name": "Position du support",
+        "state": {
+          "unknown": "Inconnu",
+          "a_top": "Position A",
+          "b_top": "Position B",
+          "centre": "Centre"
+        }
+      },
+      "hotend_rack_holder_state": {
+        "name": "État du support",
+        "state": {
+          "unknown": "Inconnu",
+          "idle": "Inactif",
+          "hotend_centre": "Centrage tête",
+          "toolhead_centre": "Centrage chariot",
+          "calibrate_hotend_rack": "Calibration du rack",
+          "cut_material": "Coupe du filament",
+          "unlock_hotend": "Déverrouillage tête",
+          "lift_hotend_rack": "Levage du rack",
+          "place_hotend": "Placement tête",
+          "pick_hotend": "Prise tête",
+          "lock_hotend": "Verrouillage tête"
+        }
+      },
+      "hotend_rack_hotend": {
+        "name": "Tête {hotend_id}",
+        "state": {
+          "mounted": "Monté",
+          "docked": "Rangé",
+          "empty": "Vide"
+        },
+        "state_attributes": {
+          "slot": {
+            "name": "Emplacement"
+          },
+          "nozzle_type": {
+            "name": "Type de buse",
+            "state": {
+              "hardened_steel": "Acier trempé",
+              "stainless_steel": "Acier inoxydable",
+              "tungsten_carbide": "Carbure de tungstène",
+              "high_flow_hardened_steel": "Haut débit acier trempé",
+              "high_flow_stainless_steel": "Haut débit acier inoxydable",
+              "high_flow_tungsten_carbide": "Haut débit carbure de tungstène",
+              "unknown": "Inconnu"
+            }
+          },
+          "nozzle_diameter": {
+            "name": "Diamètre de buse"
+          },
+          "serial": {
+            "name": "Numéro de série"
+          },
+          "max_temp": {
+            "name": "Température maximale"
+          },
+          "wear": {
+            "name": "Usure"
+          },
+          "status": {
+            "name": "Statut",
+            "state": {
+              "normal": "Normal",
+              "abnormal": "Anormal",
+              "unknown": "Inconnu"
+            }
+          },
+          "color": {
+            "name": "Couleur"
+          },
+          "filament_id": {
+            "name": "ID de filament"
+          },
+          "filament_name": {
+            "name": "Nom du filament"
+          }
+        }
+      },
+      "ip_address": {
+        "name": "Adresse IP"
+      },
+      "printable_objects": {
+        "name": "Objets imprimables"
+      },
+      "skipped_objects": {
+        "name": "Objets ignorés"
+      },
+      "gcode_file_downloaded": {
+        "name": "Fichier G-code téléchargé"
+      },
+      "remaining_drying_time": {
+        "name": "Temps de séchage restant"
+      },
+      "ams_temp": {
+        "name": "Température"
+      },
+      "humidity": {
+        "name": "Humidité"
+      },
+      "left_nozzle_temp": {
+        "name": "Température de la buse gauche"
+      },
+      "left_target_nozzle_temp": {
+        "name": "Température cible de la buse gauche"
+      },
+      "right_nozzle_temp": {
+        "name": "Température de la buse droite"
+      },
+      "right_target_nozzle_temp": {
+        "name": "Température cible de la buse droite"
+      },
+      "sdcard_status": {
+        "name": "Statut de carte SD",
+        "state": {
+          "missing": "Manquant",
+          "normal": "Normal",
+          "abnormal": "Anormal",
+          "readonly": "Lecture seule"
+        }
+      },
+      "left_nozzle_diameter": {
+        "name": "Taille de la buse gauche"
+      },
+      "left_nozzle_type": {
+        "name": "Type de buse gauche",
+        "state": {
+          "hardened_steel": "Acier trempé",
+          "stainless_steel": "Acier inoxydable",
+          "tungsten_carbide": "Carbure de tungstène",
+          "high_flow_hardened_steel": "Haut débit acier trempé",
+          "high_flow_stainless_steel": "Haut débit acier inoxydable",
+          "high_flow_tungsten_carbide": "Haut débit carbure de tungstène"
+        }
+      },
+      "right_nozzle_diameter": {
+        "name": "Taille de la buse droite"
+      },
+      "right_nozzle_type": {
+        "name": "Type de buse droite",
+        "state": {
+          "hardened_steel": "Acier trempé",
+          "stainless_steel": "Acier inoxydable",
+          "tungsten_carbide": "Carbure de tungstène",
+          "high_flow_hardened_steel": "Haut débit acier trempé",
+          "high_flow_stainless_steel": "Haut débit acier inoxydable",
+          "high_flow_tungsten_carbide": "Haut débit carbure de tungstène"
+        }
+      },
+      "model_download_percentage": {
+        "name": "Téléchargement du modèle"
+      },
+      "serial": {
+        "name": "Numéro de série"
+      },
+      "target_chamber_temp": {
+        "name": "Température cible de la chambre"
+      }
+    },
+    "camera": {
+      "camera": {
+        "name": "Caméra"
+      }
+    },
+    "switch": {
+      "camera": {
+        "name": "Caméra"
+      },
+      "imagecamera": {
+        "name": "Caméra image"
+      },
+      "prompt_sound": {
+        "name": "Son de notification"
+      },
+      "ftp": {
+        "name": "Chargement des modèles"
+      }
+    },
+    "update": {
+      "firmware_update": {
+        "name": "Mise à jour du micrologiciel"
+      }
+    }
+  },
+  "selector": {
+    "configuration_type": {
+      "options": {
+        "bambu": "Cloud Bambu Lab",
+        "lan": "Réseau local"
+      }
+    }
+  },
+  "issues": {
+    "authentication_failed": {
+      "title": "Échec de l'authentification",
+      "description": "La tentative de connexion à Bambu Lab a échoué pour {device}. Veuillez reconfigurer l'intégration et fournir de nouveaux identifiants."
+    },
+    "no_external_storage": {
+      "title": "Aucune carte USB ou SD détectée",
+      "description": "{device} n'a pas de carte USB ou SD connectée. Ceci est nécessaire pour toutes les fonctionnalités qui dépendent du FTP vers l'imprimante, telles que l'image de couverture, le saut d'objets et l'historique d'impression."
+    },
+    "live_view_disabled": {
+      "title": "Affichage en direct désactivé",
+      "description": "{device} a l'affichage en direct désactivé dans les paramètres de l'imprimante. Veuillez l'activer pour utiliser les fonctionnalités de l'appareil photo."
+    },
+    "mqtt_encryption_enabled": {
+      "title": "Chiffrement MQTT activé",
+      "description": "{device} est connecté au cloud avec le chiffrement MQTT activé. Seule la lumière peut être contrôlée par cette intégration. Tous les autres contrôles ne sont pas disponibles. L'imprimante doit être réglée en mode LAN développeur afin de permettre le contrôle depuis Home Assistant."
+    },
+    "hybrid_mode_blocking": {
+      "title": "La connexion hybride bloque le contrôle",
+      "description": "{device} est connecté au cloud mais avec une connexion mqtt locale par l'intégration. Cela bloque le réglage des températures et la réimpression de l'historique. Basculez la connexion vers le cloud pur pour permettre un contrôle total."
+    }
+  }
+}
