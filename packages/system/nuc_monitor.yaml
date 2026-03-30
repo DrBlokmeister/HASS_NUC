@@ -463,42 +463,6 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: "[System|NUC]Power state on HA start-up"
-    id: yaml_automation_system_nuc_power_state_on_ha_startup
-    trigger:
-      platform: homeassistant
-      event: start
-    action:
-      - service: mqtt.publish
-        data:
-          topic: "sonoffs/cmnd/state"
-          payload: ""
-
-# Example automations.yaml entry
-  - id: 'yaml_automation_system_nuc_sonoff_firmware_installed'
-    alias: "[System|NUC]Sonoff Firmware Installed"
-    trigger:
-    - event: start
-      platform: homeassistant
-    action:
-    - data:
-        payload: '2'
-        topic: sonoffs/cmnd/status
-      service: mqtt.publish
-    initial_state: 'true'
-
-# Example automations.yaml entry
-  - alias: "[System|NUC]Enable MQTT discovery for all devices"
-    id: yaml_automation_system_nuc_enable_mqtt_discovery_for_all_devices
-    trigger:
-      platform: homeassistant
-      event: start
-    action:
-      - service: mqtt.publish
-        data:
-          topic: "cmnd/sonoffs/SetOption19"
-          payload: "1"
-
   - alias: '[System|NUC] Hass Stopped'
     id: yaml_automation_system_nuc_hass_stopped
     initial_state: on
@@ -713,33 +677,6 @@ automation:
               "sensor.ping_shelly_washroom_round_trip_time_average": "ddab2d0aca5ca9adf7d5dde9abee5f3a"
             } %}
             {{ mapping[trigger.entity_id] }}
-
-  # - alias: "[system|nuc] Increment log counters on system_log_event"
-  #   id: yaml_automation_system_nuc_increment_log_counters_on_system_log_event
-  #   description: >
-  #     Increment Home Assistant log warning/error counters whenever a system_log_event is fired.
-  #   mode: queued
-  #   trigger:
-  #     - platform: event
-  #       event_type: system_log_event
-  #   condition: []
-  #   action:
-  #     - choose:
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.event.data.level == 'WARNING' }}"
-  #           sequence:
-  #             - service: counter.increment
-  #               target:
-  #                 entity_id: counter.home_assistant_log_warning_count
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.event.data.level == 'ERROR' }}"
-  #           sequence:
-  #             - service: counter.increment
-  #               target:
-  #                 entity_id: counter.home_assistant_log_error_count
-  #       default: []
 
 ################
 #    SCENES    #
