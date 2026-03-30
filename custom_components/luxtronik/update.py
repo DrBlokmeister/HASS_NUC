@@ -6,7 +6,7 @@ from __future__ import annotations
 import aiohttp
 import re
 
-from awesomeversion import AwesomeVersion
+from awesomeversion import AwesomeVersion, AwesomeVersionStrategy
 from datetime import datetime, timedelta, timezone
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -121,18 +121,21 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
         """Return True if latest_version is newer than installed_version."""
 
         def normalize(version: str) -> str:
-            # Remove any leading non-digit characters
-            return re.sub(r"^[^\d]+", "", version)
+            """Normalize Luxtronik firmware versions for comparison."""
+            version = re.sub(r"^[^\d]+", "", version)  # Strip leading V/B/etc.
+            version = version.split("-")[0]  # Ignore build suffix like -9086
+            return version
 
         latest = AwesomeVersion(
             normalize(latest_version),
             find_first_match=True,
+            ensure_strategy=[AwesomeVersionStrategy.SEMVER],
         )
         installed = AwesomeVersion(
             normalize(installed_version),
             find_first_match=True,
+            ensure_strategy=[AwesomeVersionStrategy.SEMVER],
         )
-
         return latest > installed
 
     @staticmethod
