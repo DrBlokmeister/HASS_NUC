@@ -81,13 +81,14 @@ sensor:
     unit_time: h
     unit: °C
 
-  - platform: statistics
-    name: "Water Usage 10 Minute Average"
-    entity_id: sensor.water_usage
-    state_characteristic: average_step
-    keep_last_sample: true
-    max_age:
-      minutes: 10
+  - platform: derivative
+    name: "Water Usage per Minute (10 Minute Average)"
+    unique_id: yaml_derivative_sensor_water_usage_per_minute_10_minute_average
+    source: sensor.total_water
+    unit_time: min
+    round: 2
+    time_window: "00:10:00"
+    max_sub_interval: "00:10:00"
 
 #######################
 #    INPUT NUMBERS    #
@@ -637,44 +638,70 @@ automation:
             The water heatup has not been performed since {{ strptime(states('input_datetime.last_heat_up'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
           notification_id: regular_heatup_overdue
 
-  - alias: "[home|water]Warn High Water Usage"
+  - alias: "[home|water] Warn High Water Usage"
     id: yaml_automation_home_water_warn_high_water_usage
+    description: >
+      Sends a sticky notification when high water usage persists for 60 minutes,
+      repeats the alert every 5 minutes while the condition continues, and updates
+      the notification once usage has stopped for 10 minutes.
+    mode: single
     trigger:
       - platform: numeric_state
-        entity_id: sensor.water_usage_10_minute_average
-        above: 0.3  # Adjust this threshold based on your needs
+        entity_id: sensor.water_usage_per_minute_10_minute_average
+        above: 0.1
         for:
           minutes: 60
-    condition:
+    condition: []
     action:
+      - variables:
+          water_alert_tag: water_usage
+          water_alert_group: water_usage_alert
+          alert_started: >-
+            {% set ts = this.attributes.last_triggered %}
+            {{ as_local(ts).strftime('%Y-%m-%d %H:%M:%S') if ts else now().strftime('%Y-%m-%d %H:%M:%S') }}
+      - repeat:
+          sequence:
+            - service: notify.sander_and_tamara_phones
+              data:
+                title: "Water Usage Alert"
+                message: >-
+                  Warning: High water usage detected since {{ alert_started }}.
+                  Current usage: {{ states('sensor.water_usage') }} L/min.
+                  10-minute average: {{ states('sensor.water_usage_per_minute_10_minute_average') }} L/min.
+                data:
+                  sticky: "true"
+                  clickAction: "/config/devices/device/fae46674914a1758df62ac0e0a23fdbe"
+                  ttl: 0
+                  priority: high
+                  tag: "{{ water_alert_tag }}"
+                  group: "{{ water_alert_group }}"
+                  notification_icon: "mdi:water-alert"
+            - delay:
+                minutes: 5
+          until:
+            - condition: template
+              value_template: >-
+                {{
+                  states('sensor.water_usage') | float(999) < 0.01
+                  and
+                  (as_timestamp(now()) - as_timestamp(states.sensor.water_usage.last_changed, 0)) >= 600
+                }}
+      - variables:
+          alert_stopped: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
       - service: notify.sander_and_tamara_phones
         data:
+          title: "Water Usage Alert Resolved"
           message: >-
-            Warning: High water usage detected! 
-            Current usage: {{ states('sensor.water_usage') }} L/min.
-            10-minute average: {{ states('sensor.water_usage_10_minute_average') }} L/min.
-          title: "Water Usage Alert"
+            High water usage was detected since {{ alert_started }}, but it has stopped since {{ alert_stopped }}.
+            Current usage: {{ states('sensor.water_usage') }} L/min and 10-minute average: {{ states('sensor.water_usage_per_minute_10_minute_average') }} L/min.
           data:
             sticky: "true"
             clickAction: "/config/devices/device/fae46674914a1758df62ac0e0a23fdbe"
             ttl: 0
             priority: high
-            tag: water_usage
-            group: "water_usage_alert"
-            notification_icon: "mdi:water-alert"
-      - wait_for_trigger:
-          - platform: numeric_state
-            entity_id: sensor.water_usage
-            below: 0.01  # Adjust if your sensor reports values slightly above 0
-            for:
-              minutes: 10
-      - service: notify.sander_and_tamara_phones
-        data:
-          message: "clear_notification"
-          data:
-            ttl: 0
-            priority: high
-            tag: water_usage
+            tag: "{{ water_alert_tag }}"
+            group: "{{ water_alert_group }}"
+            notification_icon: "mdi:water-check"
 
 ################
 #    SCENES    #
