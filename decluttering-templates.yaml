@@ -21,22 +21,35 @@ epaper_device_card:
             tap_action:
               action: navigate
               navigation_path: /config/devices/device/[[device_id]]
+          - type: conditional
+            conditions:
+              - entity: sensor.[[tag_mac]]_battery_percentage
+                state: unknown
+            card:
+              type: markdown
+              content: |
+                ### [[tag_mac]] Battery entity not available
           - type: entities
             entities:
-              - type: custom:multiple-entity-row
-                entity: sensor.[[tag_mac]]_battery_percentage   # big icon / main value
-                name: Battery
-                unit: "%"
-                styles:
-                  width: 70px
-                  text-align: right
-                entities:           # small inline values
-                  - entity: sensor.[[tag_mac]]_battery_voltage
-                    name: V
-                    unit: mV
-                    styles:
-                      width: 70px
-                      text-align: center
+              - type: conditional
+                conditions:
+                  - entity: sensor.[[tag_mac]]_battery_percentage
+                    state_not: unknown
+                row:
+                  type: custom:multiple-entity-row
+                  entity: sensor.[[tag_mac]]_battery_percentage
+                  name: Battery
+                  unit: "%"
+                  styles:
+                    width: 70px
+                    text-align: right
+                  entities:
+                    - entity: sensor.[[tag_mac]]_battery_voltage
+                      name: V
+                      unit: mV
+                      styles:
+                        width: 70px
+                        text-align: center
               - type: custom:multiple-entity-row
                 entity: sensor.[[tag_mac]]_lqi   # big icon / main value
                 name: Connection
@@ -45,6 +58,11 @@ epaper_device_card:
                   width: 70px
                   text-align: right
                 entities:           # small inline values
+                  - entity: sensor.[[tag_mac]]_connected_ap
+                    name: AP
+                    styles:
+                      width: 70px
+                      text-align: center
                   - entity: sensor.[[tag_mac]]_rssi
                     name: RSSI
                     unit: dB
