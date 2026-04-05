@@ -73,6 +73,64 @@ class OpenEPaperLinkAPEntity(Entity):
         self.async_write_ha_state()
 
 
+class OpenEPaperLinkDiscoveredAPEntity(Entity):
+    """Base entity for discovered secondary AP hubs."""
+
+    _attr_has_entity_name = True
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, hub: Hub, hub_id: str) -> None:
+        self._hub = hub
+        self._hub_id = hub_id
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for a discovered AP hub."""
+        discovered = self._hub.get_discovered_hub(self._hub_id)
+        metadata = discovered.get("metadata", {})
+        ip_address = discovered.get("ip", self._hub_id)
+        model = metadata.get("model") or metadata.get("ap_env") or "Discovered AP"
+
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"ap_{self._hub_id}")},
+            name=f"OpenEPaperLink AP ({ip_address})",
+            model=model,
+            manufacturer="OpenEPaperLink",
+            via_device=(DOMAIN, "ap"),
+            configuration_url=f"http://{self._hub.host}",
+        )
+
+    @property
+    def available(self) -> bool:
+        """Discovered AP entities are available when main hub is online."""
+        return self._hub.online
+
+    async def async_added_to_hass(self) -> None:
+        """Register update signals."""
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{DOMAIN}_connection_status",
+                self._handle_connection_status,
+            )
+        )
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{DOMAIN}_ap_update",
+                self._handle_update,
+            )
+        )
+
+    @callback
+    def _handle_connection_status(self, is_online: bool) -> None:
+        self.async_write_ha_state()
+
+    @callback
+    def _handle_update(self) -> None:
+        self.async_write_ha_state()
+
+
 class OpenEPaperLinkTagEntity(Entity):
     """
     Base entity for tag-level entities (sensors, buttons, text, image).

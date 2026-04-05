@@ -186,11 +186,15 @@ class UploadQueueHandler:
 
     async def _execute_upload(self, upload_func, args, kwargs, entity_id):
         """Execute a single upload task in the background."""
+        ap_ip = self._resolve_ap_ip_for_upload(args, entity_id)
         try:
             # TODO don't we need the incrementation logic here?
             _LOGGER.debug("Starting upload for %s", entity_id)
             await upload_func(*args, **kwargs)
-            _LOGGER.info("Successfully completed upload for %s", entity_id)
+            if ap_ip:
+                _LOGGER.info("Successfully completed upload for %s via AP %s", entity_id, ap_ip)
+            else:
+                _LOGGER.info("Successfully completed upload for %s", entity_id)
 
         except (ServiceValidationError, HomeAssistantError) as err:
             # Log and re-raise - let service handler collect errors
@@ -210,6 +214,28 @@ class UploadQueueHandler:
             # Mark task as done
             self._queue.task_done()
             _LOGGER.debug("Upload task for %s finished. %s", entity_id, self)
+
+    @staticmethod
+    def _resolve_ap_ip_for_upload(args, entity_id: str) -> str | None:
+        """Resolve AP IP for hub uploads if available."""
+        if not args or "." not in entity_id:
+            return None
+
+        hub = args[0]
+        if not hasattr(hub, "resolve_tag_target_host"):
+            return None
+
+        try:
+            mac = entity_id.split(".")[1].upper()
+            target_host, _ = hub.resolve_tag_target_host(
+                action="imgupload",
+                entity_id=entity_id,
+                tag_mac=mac,
+            )
+            return target_host
+        except Exception as err:  # Best effort only for logging context
+            _LOGGER.debug("Could not resolve AP host for %s: %s", entity_id, err)
+            return None
 
 
 async def upload_to_hub(hub, entity_id: str, img: bytes, dither: int, ttl: int,
@@ -234,12 +260,30 @@ async def upload_to_hub(hub, entity_id: str, img: bytes, dither: int, ttl: int,
     Raises:
         HomeAssistantError: If upload fails or times out
     """
-    url = f"http://{hub.host}/imgupload"
     mac = entity_id.split(".")[1].upper()
+    target_host, _ = hub.resolve_tag_target_host(
+        action="imgupload",
+        entity_id=entity_id,
+        tag_mac=mac,
+    )
+    url = f"http://{target_host}/imgupload"
 
-    _LOGGER.debug("Preparing upload for %s (MAC: %s)", entity_id, mac)
-    _LOGGER.debug("Upload parameters: dither=%d, ttl=%d, preload_type=%d, preload_lut=%d, lut=%d",
-                  dither, ttl, preload_type, preload_lut, lut)
+    _LOGGER.debug(
+        "Preparing upload for %s (MAC: %s) via AP %s",
+        entity_id,
+        mac,
+        target_host,
+    )
+    _LOGGER.debug(
+        "Upload parameters for %s via AP %s: dither=%d, ttl=%d, preload_type=%d, preload_lut=%d, lut=%d",
+        entity_id,
+        target_host,
+        dither,
+        ttl,
+        preload_type,
+        preload_lut,
+        lut,
+    )
 
     # Convert TTL fom seconds to minutes for the AP
     ttl_minutes = max(1, ttl // 60)
@@ -287,8 +331,12 @@ async def upload_to_hub(hub, entity_id: str, img: bytes, dither: int, ttl: int,
         except asyncio.TimeoutError:
             if attempt < MAX_RETRIES:
                 _LOGGER.warning(
-                    "Timeout uploading %s (attempt %d/%d), retrying in %ds…",
-                    entity_id, attempt, MAX_RETRIES, backoff_delay
+                    "Timeout uploading %s via AP %s (attempt %d/%d), retrying in %ds…",
+                    entity_id,
+                    target_host,
+                    attempt,
+                    MAX_RETRIES,
+                    backoff_delay,
                 )
                 await asyncio.sleep(backoff_delay)
                 backoff_delay *= 2

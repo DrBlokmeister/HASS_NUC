@@ -95,6 +95,7 @@ async def async_get_config_entry_diagnostics(
                 mac: hub.get_tag_data(mac) for mac in hub.tags
             }),
         }
+        diag["discovered_hubs"] = async_redact_data(hub.get_discovered_hubs(), TO_REDACT)
 
     elif isinstance(runtime_data, OpenEPaperLinkBLERuntimeData):
         # BLE device entry

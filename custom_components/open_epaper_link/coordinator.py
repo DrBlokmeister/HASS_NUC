@@ -19,7 +19,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 import logging
 
-from .const import DOMAIN, SIGNAL_AP_UPDATE, SIGNAL_TAG_UPDATE, SIGNAL_TAG_IMAGE_UPDATE
+from .const import DOMAIN, SIGNAL_AP_UPDATE, SIGNAL_TAG_UPDATE, SIGNAL_TAG_IMAGE_UPDATE, SIGNAL_REMOTE_AP_DISCOVERED
+from .hub_discovery import extract_remote_hub_evidence, normalize_ip, resolve_connected_ap
 from .tag_types import get_tag_types_manager, get_hw_string
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -83,6 +84,7 @@ class Hub:
         self.hass = hass
         self.entry = entry
         self.host = entry.data["host"]
+        self._main_hub_ip = normalize_ip(self.host)
         self._ws_task: asyncio.Task | None = None
         self._ws_client: websockets.WebSocketClientProtocol | None = None
         self._cleanup_task: asyncio.Task | None = None
@@ -114,6 +116,7 @@ class Hub:
         self._update_debounce_interval()
         self._ap_cmd_sem = asyncio.Semaphore(1)
         self._ap_cmd_cooldown = 0.5
+        self._discovered_hubs: dict[str, dict[str, Any]] = {}
 
     def _update_debounce_interval(self) -> None:
         """Update event debounce intervals from integration options.
@@ -165,7 +168,10 @@ class Hub:
         if stored:
             self._data = stored.get("tags", {})
             self._known_tags = set(self._data.keys())
+            self._discovered_hubs = stored.get("discovered_hubs", {})
             _LOGGER.debug("Restored %d tags from storage", len(self._known_tags))
+            if self._discovered_hubs:
+                _LOGGER.debug("Restored %d discovered remote AP hubs from storage", len(self._discovered_hubs))
 
         # Initialize tag manager
         self._tag_manager = await get_tag_types_manager(self.hass)
@@ -453,6 +459,9 @@ class Hub:
             else:
                 _LOGGER.debug("Unknown message type: %s", data)
 
+            if "tags" not in data:
+                self._discover_remote_hubs_from_payload(data, source="websocket")
+
         except json.JSONDecodeError:
             _LOGGER.error("Failed to decode message: %s", message)
         except Exception as err:
@@ -526,11 +535,11 @@ class Hub:
         is_new_tag = await self._process_tag_data(tag_mac, tag_data)
         # Save to storage if this was a new tag
         if is_new_tag:
-            await self._store.async_save({"tags": self._data})
+            await self._store.async_save(self._build_storage_payload())
         else:
             # Schedule a save with a delay to avoid constant writes
             # Will be implemented in the future
-            await self._store.async_save({"tags": self._data})
+            await self._store.async_save(self._build_storage_payload())
 
 
     async def _handle_log_message(self, log_msg: str) -> None:
@@ -616,6 +625,26 @@ class Hub:
         hashv = tag_data.get("hash")
         modecfgjson = tag_data.get("modecfgjson")
         is_external = tag_data.get("isexternal")
+        connected_ap, binding_source = resolve_connected_ap(
+            tag_data.get("apip"),
+            self._main_hub_ip,
+            self.host,
+        )
+        previous_connected_ap = existing_data.get("connected_ap")
+        previous_binding_source = existing_data.get("binding_source")
+        binding_last_updated = existing_data.get("binding_last_updated")
+        if connected_ap != previous_connected_ap or binding_source != previous_binding_source:
+            binding_last_updated = datetime.now(timezone.utc).isoformat()
+            if connected_ap and connected_ap != self._main_hub_ip:
+                self._upsert_discovered_hub(
+                    {
+                        "hub_id": connected_ap,
+                        "ip": connected_ap,
+                        "metadata": {"source": "tag_apip", "mac": tag_mac, "isexternal": is_external},
+                        "evidence_path": f"tag[{tag_mac}].apip",
+                    },
+                    source=binding_source or "tag.apip",
+                )
         rotate = tag_data.get("rotate")
         lut = tag_data.get("lut")
         channel = tag_data.get("ch")
@@ -680,6 +709,9 @@ class Hub:
             "hash": hashv,
             "modecfgjson": modecfgjson,
             "is_external": is_external,
+            "connected_ap": connected_ap,
+            "binding_source": binding_source,
+            "binding_last_updated": binding_last_updated,
             "rotate": rotate,
             "lut": lut,
             "channel": channel,
@@ -750,8 +782,56 @@ class Hub:
                 return await func()
             return await self.hass.async_add_executor_job(func)
 
-    async def _ap_request(self, method: str, path: str, *, data=None, timeout=10, action: str) -> requests.Response:
-        url = f"http://{self.host}/{path.lstrip('/')}"
+    def resolve_tag_target_host(
+        self,
+        *,
+        action: str,
+        entity_id: str | None = None,
+        tag_mac: str | None = None,
+    ) -> tuple[str, bool]:
+        """Resolve target AP host for a tag-scoped action.
+
+        Uses the tag's stored connected_ap value when valid, otherwise falls back
+        to the main hub host.
+        """
+        resolved_tag_mac = tag_mac or (
+            entity_id.split(".")[1].upper() if entity_id and "." in entity_id else None
+        )
+        tag_data = self._data.get(resolved_tag_mac, {}) if resolved_tag_mac else {}
+        raw_connected_ap = tag_data.get("connected_ap")
+        connected_ap = normalize_ip(raw_connected_ap)
+
+        fallback_used = connected_ap is None
+        target_host = connected_ap or self.host
+        fallback_reason = None
+        raw_value_for_log = None
+        if fallback_used:
+            fallback_reason = "missing" if raw_connected_ap in (None, "") else "invalid"
+            raw_value_for_log = raw_connected_ap
+        _LOGGER.debug(
+            "Tag HTTP routing action=%s entity_id=%s tag_mac=%s target_host=%s fallback=%s fallback_reason=%s raw_connected_ap=%s",
+            action,
+            entity_id,
+            resolved_tag_mac,
+            target_host,
+            fallback_used,
+            fallback_reason,
+            raw_value_for_log,
+        )
+        return target_host, fallback_used
+
+    async def _ap_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        data=None,
+        timeout=10,
+        action: str,
+        target_host: str | None = None,
+    ) -> requests.Response:
+        request_host = target_host or self.host
+        url = f"http://{request_host}/{path.lstrip('/')}"
         def call():
             return requests.request(method, url, data=data, timeout=timeout)
         try:
@@ -778,13 +858,34 @@ class Hub:
 
     async def set_led_pattern(self, entity_id: str, pattern: str) -> None:
         mac = entity_id.split(".")[1].upper()
-        await self._ap_request("get", f"led_flash?mac={mac}&pattern={pattern}", action=f"update LED for {entity_id}")
-        _LOGGER.info("Updated LED pattern for %s", entity_id)
+        target_host, _ = self.resolve_tag_target_host(
+            action="setled",
+            entity_id=entity_id,
+            tag_mac=mac,
+        )
+        await self._ap_request(
+            "get",
+            f"led_flash?mac={mac}&pattern={pattern}",
+            action=f"update LED for {entity_id}",
+            target_host=target_host,
+        )
+        _LOGGER.info("Updated LED pattern for %s via AP %s", entity_id, target_host)
 
     async def send_tag_cmd(self, entity_id: str, cmd: str) -> bool:
         mac = entity_id.split(".")[1].upper()
-        await self._ap_request("post", "tag_cmd", data={"mac": mac, "cmd": cmd}, action=f"send {cmd} to {entity_id}")
-        _LOGGER.info("Sent %s command to %s", cmd, entity_id)
+        target_host, _ = self.resolve_tag_target_host(
+            action=f"tag_cmd:{cmd}",
+            entity_id=entity_id,
+            tag_mac=mac,
+        )
+        await self._ap_request(
+            "post",
+            "tag_cmd",
+            data={"mac": mac, "cmd": cmd},
+            action=f"send {cmd} to {entity_id}",
+            target_host=target_host,
+        )
+        _LOGGER.info("Sent %s command to %s via AP %s", cmd, entity_id, target_host)
         return True
 
     async def reboot_ap(self) -> bool:
@@ -848,6 +949,7 @@ class Hub:
                     continue
 
                 data = response.json()
+                self._discover_remote_hubs_from_payload(data, source="http_get_db")
 
                 # Add tags to set
                 for tag in data.get("tags", []):
@@ -907,7 +1009,7 @@ class Hub:
                     updated_tags_count += 1
 
             # Save to persistent storage
-            await self._store.async_save({"tags": self._data})
+            await self._store.async_save(self._build_storage_payload())
 
             if new_tags_count > 0 or updated_tags_count > 0:
                 _LOGGER.info("Loaded %d new tags and updated %d existing tags from AP",
@@ -1029,7 +1131,7 @@ class Hub:
                 _LOGGER.debug(f"Removed device {device_id} for deleted tag {tag_mac}")
 
             # Update storage
-            await self._store.async_save({"tags": self._data})
+            await self._store.async_save(self._build_storage_payload())
 
     async def async_reload_blacklist(self) -> None:
         """Reload the tag blacklist from config entry options.
@@ -1069,7 +1171,8 @@ class Hub:
 
             # Save updated data to storage
             await self._store.async_save({
-                "tags": self._data
+                "tags": self._data,
+                "discovered_hubs": self._discovered_hubs,
             })
 
     async def _handle_ap_config_message(self,dict) -> None:
@@ -1314,6 +1417,14 @@ class Hub:
         """
         return self._blacklisted_tags
 
+    def get_discovered_hubs(self) -> dict[str, dict[str, Any]]:
+        """Return a copy of discovered remote hubs."""
+        return {hub_id: hub.copy() for hub_id, hub in self._discovered_hubs.items()}
+
+    def get_discovered_hub(self, hub_id: str) -> dict[str, Any]:
+        """Return one discovered remote hub."""
+        return self._discovered_hubs.get(hub_id, {}).copy()
+
     @property
     def ap_status(self) -> dict:
         """Get current AP status information.
@@ -1397,8 +1508,71 @@ class Hub:
                 response.raise_for_status()  # Raises ClientResponseError on non-2xx
 
                 data = await response.json()
+                self._discover_remote_hubs_from_payload(data, source="http_sysinfo")
                 self.ap_env = data.get("env")
                 self.ap_model = self._format_ap_model(self.ap_env)
+
+    def _build_storage_payload(self) -> dict[str, Any]:
+        """Build persisted storage payload."""
+        return {
+            "tags": self._data,
+            "discovered_hubs": self._discovered_hubs,
+        }
+
+    def _discover_remote_hubs_from_payload(self, payload: Any, source: str) -> None:
+        """Discover remote hubs from websocket/http payloads."""
+        if payload is None:
+            return
+        for evidence in self._extract_remote_hub_evidence(payload):
+            self._upsert_discovered_hub(evidence, source=source)
+
+    def _extract_remote_hub_evidence(self, payload: Any) -> list[dict[str, Any]]:
+        """Extract possible remote AP hub evidence from a nested payload."""
+        return extract_remote_hub_evidence(payload=payload, main_hub_ip=self._main_hub_ip)
+
+    def _upsert_discovered_hub(self, evidence: dict[str, Any], source: str) -> None:
+        """Create/update discovered remote hub records."""
+        hub_id = evidence.get("hub_id")
+        ip = evidence.get("ip")
+        if not hub_id or not ip:
+            return
+
+        now = datetime.now(timezone.utc).isoformat()
+        metadata = evidence.get("metadata", {})
+        evidence_path = evidence.get("evidence_path", "unknown")
+        existing = self._discovered_hubs.get(hub_id)
+
+        if existing is None:
+            self._discovered_hubs[hub_id] = {
+                "hub_id": hub_id,
+                "ip": ip,
+                "last_seen": now,
+                "discovery_sources": [source],
+                "metadata": metadata,
+                "evidence_path": evidence_path,
+            }
+            _LOGGER.info("Discovered remote AP hub %s via %s (evidence: %s)", hub_id, source, evidence_path)
+            async_dispatcher_send(self.hass, SIGNAL_REMOTE_AP_DISCOVERED, hub_id)
+            async_dispatcher_send(self.hass, SIGNAL_AP_UPDATE)
+            self.hass.async_create_task(self._store.async_save(self._build_storage_payload()))
+            return
+
+        updated = False
+        existing["last_seen"] = now
+        if source not in existing.get("discovery_sources", []):
+            existing.setdefault("discovery_sources", []).append(source)
+            updated = True
+        if metadata and metadata != existing.get("metadata"):
+            existing["metadata"] = metadata
+            updated = True
+        if evidence_path != existing.get("evidence_path"):
+            existing["evidence_path"] = evidence_path
+            updated = True
+
+        if updated:
+            _LOGGER.info("Updated remote AP hub metadata for %s via %s", hub_id, source)
+            async_dispatcher_send(self.hass, SIGNAL_AP_UPDATE)
+            self.hass.async_create_task(self._store.async_save(self._build_storage_payload()))
 
     @staticmethod
     def _format_ap_model(ap_env: str) -> str:
