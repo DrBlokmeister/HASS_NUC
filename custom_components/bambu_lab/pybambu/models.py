@@ -39,6 +39,7 @@ from .utils import (
     set_temperature_to_gcode,
     get_upgrade_url,
     upgrade_template,
+    get_wiki_url_for_hms_error,
 )
 from .const import (
     LOGGER,
@@ -265,6 +266,10 @@ class Device:
             if model in x1_printer:
                 return self.supports_sw_version("01.08.50.18")
             return True
+        elif feature == Features.AMS_DRYING_SETTINGS:
+            if model in p2_printers:
+                return self.supports_sw_version("01.01.50.40")
+            return False
         elif feature == Features.CHAMBER_LIGHT_2:
             return model in h2_printers
         elif feature == Features.DUAL_NOZZLES:
@@ -2551,6 +2556,9 @@ class AMSInstance:
     humidity: int = 0
     temperature: int = 0
     remaining_drying_time: int = 0
+    drying_temperature: int = 0
+    drying_duration: int = 0
+    drying_filament: str = ""
 
     def __init__(self, client, model, index):
         self.model = model
@@ -2802,6 +2810,20 @@ class AMSList:
 
                 if self.data[index].remaining_drying_time != int(ams.get('dry_time', 0)):
                     self.data[index].remaining_drying_time = int(ams.get('dry_time', 0))
+
+                dry_setting = ams.get('dry_setting', {})
+                if dry_setting:
+                    temp = dry_setting.get('dry_temperature', -1)
+                    if self.data[index].drying_temperature != max(temp, 0):
+                        self.data[index].drying_temperature = max(temp, 0)
+
+                    duration = dry_setting.get('dry_duration', -1)
+                    if self.data[index].drying_duration != max(duration, 0):
+                        self.data[index].drying_duration = max(duration, 0)
+
+                    filament = dry_setting.get('dry_filament', "")
+                    if self.data[index].drying_filament != filament:
+                        self.data[index].drying_filament = filament
 
                 tray_list = ams['tray']
                 for tray in tray_list:
@@ -3258,8 +3280,7 @@ class HMSNotification:
     @property
     def wiki_url(self):
         if self.attr > 0 and self.code > 0:
-            # Only English wiki content seems to exist
-            return f"https://wiki.bambulab.com/en/x1/troubleshooting/hmscode/{self.hms_code}"
+            return get_wiki_url_for_hms_error(self.hms_code, self._device_type)
         return ""
 
 
