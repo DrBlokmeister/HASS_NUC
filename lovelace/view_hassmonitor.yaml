@@ -1,27 +1,266 @@
 ##########################################  HERE BEGINS THE HASSIO TAB  ##########################################
 title: Hassio Monitor
-icon: 'mdi:home-assistant'
+icon: mdi:home-assistant
 panel: false
 badges: []
+
 cards:
-  - type: glance
-    title: Diagnostic Automations
+  ###########################################################################
+  # CRITICAL STATUS
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Critical status
+
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mushroom-template-card
+        entity: update.home_assistant_core_update
+        primary: Home Assistant Core
+        secondary: >-
+          {% if is_state('update.home_assistant_core_update', 'on') %}
+            Update available · {{ state_attr('update.home_assistant_core_update', 'installed_version') }} → {{ state_attr('update.home_assistant_core_update', 'latest_version') }}
+          {% else %}
+            Up to date · {{ state_attr('update.home_assistant_core_update', 'installed_version') }}
+          {% endif %}
+        icon: mdi:home-assistant
+        icon_color: >-
+          {% if is_state('update.home_assistant_core_update', 'on') %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.watchman_missing_entities
+        primary: Watchman missing entities
+        secondary: >-
+          {% set missing = states('sensor.watchman_missing_entities') | int(0) %}
+          {% if missing > 0 %}
+            {{ missing }} missing entities found
+          {% else %}
+            No missing entities found
+          {% endif %}
+        icon: mdi:shield-alert
+        icon_color: >-
+          {% set missing = states('sensor.watchman_missing_entities') | int(0) %}
+          {% if missing > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.backup_backup_manager_state
+        primary: Backup manager
+        secondary: >-
+          {% set state = states('sensor.backup_backup_manager_state') %}
+          {% if state == 'idle' %}
+            Idle · last success {{ states('sensor.backup_last_successful_automatic_backup') }}
+          {% elif state == 'create_backup' %}
+            Creating backup
+          {% elif state == 'receive_backup' %}
+            Receiving backup
+          {% elif state == 'restore_backup' %}
+            Restore in progress
+          {% elif state == 'blocked' %}
+            Blocked
+          {% else %}
+            {{ state }}
+          {% endif %}
+        icon: mdi:backup-restore
+        icon_color: >-
+          {% set state = states('sensor.backup_backup_manager_state') %}
+          {% if state == 'idle' %}
+            green
+          {% elif state in ['create_backup', 'receive_backup', 'restore_backup'] %}
+            amber
+          {% else %}
+            red
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.auto_backup
+        primary: Auto Backup
+        secondary: >-
+          {% set pending = states('sensor.auto_backup') | int(0) %}
+          {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+            Backup currently running
+          {% elif pending > 0 %}
+            {{ pending }} pending · {{ states('sensor.auto_backup_purgeable_backups') }} purgeable
+          {% else %}
+            No pending backups
+          {% endif %}
+        icon: mdi:package-variant-closed
+        icon_color: >-
+          {% set pending = states('sensor.auto_backup') | int(0) %}
+          {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+            amber
+          {% elif pending > 0 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.disk_use_percent
+        primary: Host disk usage
+        secondary: >-
+          {{ states('sensor.disk_use_percent') | float(0) | round(1) }}% used · {{ states('sensor.system_monitor_disk_free') }} GiB free
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set d = states('sensor.disk_use_percent') | float(0) %}
+          {% if d >= 90 %}
+            red
+          {% elif d >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: sensor.processor_temperature
+        primary: CPU temperature
+        secondary: >-
+          {{ states('sensor.processor_temperature') }} °C · CPU {{ states('sensor.processor_use') }}%
+        icon: mdi:thermometer
+        icon_color: >-
+          {% set t = states('sensor.processor_temperature') | float(0) %}
+          {% if t >= 75 %}
+            red
+          {% elif t >= 60 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: sensor.home_assistant_log_errors_per_hour_2
+        primary: Error rate
+        secondary: >-
+          {{ states('sensor.home_assistant_log_errors_per_hour_2') }} errors/h · {{ states('sensor.home_assistant_log_errors_utility_meter') }} total
+        icon: mdi:alert-circle-outline
+        icon_color: >-
+          {% set e = states('sensor.home_assistant_log_errors_per_hour_2') | float(0) %}
+          {% if e > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: sensor.home_assistant_log_warnings_per_hour_2
+        primary: Warning rate
+        secondary: >-
+          {{ states('sensor.home_assistant_log_warnings_per_hour_2') }} warnings/h · {{ states('sensor.home_assistant_log_warnings_utility_meter') }} total
+        icon: mdi:alert-outline
+        icon_color: >-
+          {% set w = states('sensor.home_assistant_log_warnings_per_hour_2') | float(0) %}
+          {% if w > 0 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.system_monitor_process_python3
+        primary: python3 process
+        secondary: >-
+          {% if is_state('binary_sensor.system_monitor_process_python3', 'on') %}
+            Running
+          {% else %}
+            Not running
+          {% endif %}
+        icon: mdi:language-python
+        icon_color: >-
+          {% if is_state('binary_sensor.system_monitor_process_python3', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.system_monitor_process_ssh
+        primary: SSH process
+        secondary: >-
+          {% if is_state('binary_sensor.system_monitor_process_ssh', 'on') %}
+            Running
+          {% else %}
+            Not running
+          {% endif %}
+        icon: mdi:ssh
+        icon_color: >-
+          {% if is_state('binary_sensor.system_monitor_process_ssh', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+
+  ###########################################################################
+  # TOOLS / ACTIONS
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Tools and actions
+
+  - type: grid
+    square: false
     columns: 3
-    show_state: false
-    entities:
-      - entity: automation.unavailable_entities_notify
+    cards:
+      - type: button
+        entity: automation.unavailable_entities_notify
         name: Unavailable Entities
         icon: mdi:alert-circle-outline
         tap_action:
           action: toggle
-      - entity: automation.system_nuc_periodic_profiler
+      - type: button
+        entity: automation.system_nuc_periodic_profiler
         name: Periodic Profiler
         icon: mdi:chart-line
         tap_action:
           action: toggle
-      - entity: script.update_esphome_devices_group
+      - type: button
+        entity: script.update_esphome_devices_group
         name: ESPHome Updater
         icon: mdi:script-text-play-outline
+        tap_action:
+          action: more-info
+      - type: button
+        entity: button.watchman_create_report_file
+        name: Watchman Report
+        icon: mdi:file-document-outline
+        tap_action:
+          action: toggle
+      - type: button
+        entity: button.auto_backup_purge_backups
+        name: Purge Backups
+        icon: mdi:close-circle
+        tap_action:
+          action: toggle
+
   - type: glance
     title: ESPHome Updates
     columns: 4
@@ -83,40 +322,168 @@ cards:
           service: script.update_esphome_group
           data:
             group_entity: group.shelly_dimmer_update_entities
+
+  ###########################################################################
+  # HOST OVERVIEW
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Host overview
+
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mushroom-template-card
+        entity: sensor.system_monitor_ipv4_address_eno1
+        primary: IP address
+        secondary: >-
+          {{ states('sensor.system_monitor_ipv4_address_eno1') }}
+        icon: mdi:ip-network
+        icon_color: blue
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.last_boot
+        primary: Last boot
+        secondary: >-
+          {{ states('sensor.last_boot') }}
+        icon: mdi:clock-start
+        icon_color: green
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.processor_use
+        primary: CPU usage
+        secondary: >-
+          {{ states('sensor.processor_use') }}% · load {{ states('sensor.load_1m') }} / {{ states('sensor.load_5m') }} / {{ states('sensor.load_15m') }}
+        icon: mdi:cpu-64-bit
+        icon_color: >-
+          {% set u = states('sensor.processor_use') | float(0) %}
+          {% if u >= 90 %}
+            red
+          {% elif u >= 60 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.system_monitor_memory_usage
+        primary: Memory usage
+        secondary: >-
+          {{ states('sensor.system_monitor_memory_usage') }}% · {{ states('sensor.memory_use') }} MiB used · {{ states('sensor.memory_free') }} MiB free
+        icon: mdi:memory
+        icon_color: >-
+          {% set u = states('sensor.system_monitor_memory_usage') | float(0) %}
+          {% if u >= 90 %}
+            red
+          {% elif u >= 75 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.disk_use_percent
+        primary: Disk usage
+        secondary: >-
+          {{ states('sensor.disk_use_percent') }}% · {{ states('sensor.system_monitor_disk_use') }} GiB used · {{ states('sensor.system_monitor_disk_free') }} GiB free
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set d = states('sensor.disk_use_percent') | float(0) %}
+          {% if d >= 90 %}
+            red
+          {% elif d >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.plug_nuc_power
+        primary: Power
+        secondary: >-
+          {{ states('sensor.plug_nuc_power') }} W · cabinet {{ states('sensor.temperature_utility_cabinet') }} °C
+        icon: mdi:flash
+        icon_color: blue
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.system_monitor_network_throughput_in_eno1
+        primary: Network in
+        secondary: >-
+          {{ states('sensor.system_monitor_network_throughput_in_eno1') }} MB/s · {{ states('sensor.system_monitor_network_in_eno1') }} MiB total
+        icon: mdi:download-network
+        icon_color: green
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.system_monitor_network_throughput_out_eno1
+        primary: Network out
+        secondary: >-
+          {{ states('sensor.system_monitor_network_throughput_out_eno1') }} MB/s · {{ states('sensor.system_monitor_network_out_eno1') }} MiB total
+        icon: mdi:upload-network
+        icon_color: blue
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.system_monitor_swap_usage
+        primary: Swap usage
+        secondary: >-
+          {{ states('sensor.system_monitor_swap_usage') }}% · {{ states('sensor.system_monitor_swap_use') }} MiB used · {{ states('sensor.system_monitor_swap_free') }} MiB free
+        icon: mdi:swap-horizontal
+        icon_color: >-
+          {% set s = states('sensor.system_monitor_swap_usage') | float(0) %}
+          {% if s >= 50 %}
+            red
+          {% elif s > 0 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.nuc_available_package_updates
+        primary: Package updates
+        secondary: >-
+          {{ states('sensor.nuc_available_package_updates') }} available
+        icon: mdi:package-up
+        icon_color: >-
+          {% if states('sensor.nuc_available_package_updates') | int(0) > 0 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.home_assistant_host_disk_used
+        primary: Host disk used
+        secondary: >-
+          {{ states('sensor.home_assistant_host_disk_used') }} GB / {{ states('sensor.home_assistant_host_disk_total') }} GB
+        icon: mdi:harddisk-plus
+        icon_color: blue
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.home_assistant_host_disk_free
+        primary: Host disk free
+        secondary: >-
+          {{ states('sensor.home_assistant_host_disk_free') }} GB free
+        icon: mdi:harddisk-remove
+        icon_color: green
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.uptime
+        primary: Uptime
+        secondary: >-
+          {{ states('sensor.uptime') }}
+        icon: mdi:timer-outline
+        icon_color: green
+        fill_container: true
+
+  ###########################################################################
+  # LIVE HEALTH CHARTS
+  ###########################################################################
   - type: vertical-stack
     cards:
-      - entities:
-          - entity: sensor.nuc_available_package_updates
-            name: Upgrades
-            icon: mdi:package-up
-          - entity: sensor.mariadb_database_size
-            name: DB Size
-            icon: mdi:database
-          - entity: sensor.memory_free
-            name: Memory Free
-            icon: mdi:memory
-          - entity: sensor.disk_use_percent
-            name: Disk Use
-            icon: mdi:harddisk
-          - entity: sensor.uptime
-            name: Uptime
-            icon: mdi:clock-start
-          - entity: sensor.plug_nuc_power
-            name: Power
-          - entity: sensor.temperature_utility_cabinet
-            name: Cabinet Temp
-          - entity: sensor.processor_temperature
-            name: CPU temp
-          - entity: sensor.processor_use
-            name: CPU use
-          - entity: sensor.home_assistant_log_errors_utility_meter
-            name: Errors
-          - entity: sensor.home_assistant_log_warnings_utility_meter
-            name: Warnings
-          - entity: sensor.home_assistant_log_errors_per_hour_2
-            name: Errors/h
-        columns: 4
-        type: glance
       - type: custom:apexcharts-card
         header:
           title: Error Rate (Last 4 Days)
@@ -198,7 +565,7 @@ cards:
                 position: front
                 yaxis:
                   - y: 25
-                    borderColor: '#FEB019'  # Greenish color for low intensity
+                    borderColor: '#FEB019'
                     label:
                       position: left
                       offsetX: 40
@@ -206,7 +573,7 @@ cards:
                       text: '25%'
                       style:
                         background: 'transparent'
-                        color: '#FEB019'  # Text color matches the line color
+                        color: '#FEB019'
                         fontSize: '10px'
                         fontFamily: 'Helvetica, Arial, sans-serif'
             yaxis:
@@ -245,7 +612,7 @@ cards:
                 position: front
                 yaxis:
                   - y: 60
-                    borderColor: '#FEB019'  # Greenish color for low intensity
+                    borderColor: '#FEB019'
                     label:
                       position: left
                       offsetX: 40
@@ -253,7 +620,7 @@ cards:
                       text: '60 °C'
                       style:
                         background: 'transparent'
-                        color: '#FEB019'  # Text color matches the line color
+                        color: '#FEB019'
                         fontSize: '10px'
                         fontFamily: 'Helvetica, Arial, sans-serif'
             yaxis:
@@ -269,15 +636,6 @@ cards:
                   func: median
                   duration: 5min
                 stroke_width: 3
-
-          # - type: sensor
-          #   entity: sensor.filtered_nuc_cpu_use
-          #   detail: 2
-          #   graph: line
-          # - type: sensor
-          #   entity: sensor.filtered_nuc_cpu_temperature
-          #   detail: 2
-          #   graph: line
       - type: custom:apexcharts-card
         header:
           title: Power
@@ -301,7 +659,7 @@ cards:
             position: front
             yaxis:
               - y: 20
-                borderColor: '#FEB019'  # Greenish color for low intensity
+                borderColor: '#FEB019'
                 label:
                   position: left
                   offsetX: 40
@@ -309,7 +667,7 @@ cards:
                   text: '20 W'
                   style:
                     background: 'transparent'
-                    color: '#FEB019'  # Text color matches the line color
+                    color: '#FEB019'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
         yaxis:
@@ -325,12 +683,315 @@ cards:
               func: avg
               duration: 5min
             stroke_width: 3
-      # - type: sensor
-      #   entity: sensor.filtered_nuc_power
-      #   name: NUC Power
-      #   detail: 2
-      #   graph: line
+      - type: custom:apexcharts-card
+        header:
+          title: Network Throughput
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 1min
+        graph_span: 24h
+        apex_config:
+          legend:
+            show: false
+          chart:
+            height: 180px
+        yaxis:
+          - min: 0
+            max: ~5
+            decimals: 2
+            apex_config:
+              forceNiceScale: true
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 5min
+          stroke_width: 3
+        series:
+          - entity: sensor.system_monitor_network_throughput_in_eno1
+            name: In
+            color: '#36A2EB'
+            type: line
+          - entity: sensor.system_monitor_network_throughput_out_eno1
+            name: Out
+            color: '#FF9F40'
+            type: line
 
+  ###########################################################################
+  # BACKUPS
+  ###########################################################################
+  - type: custom:collapsable-cards
+    title: Backups
+    cards:
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.backup_backup_manager_state
+            primary: Backup manager state
+            secondary: >-
+              {{ states('sensor.backup_backup_manager_state') }}
+            icon: mdi:backup-restore
+            icon_color: >-
+              {% if states('sensor.backup_backup_manager_state') == 'idle' %}
+                green
+              {% elif states('sensor.backup_backup_manager_state') in ['create_backup', 'receive_backup', 'restore_backup'] %}
+                amber
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: event.backup_automatic_backup
+            primary: Automatic backup event
+            secondary: >-
+              {{ state_attr('event.backup_automatic_backup', 'event_type') }} · {{ states('event.backup_automatic_backup') }}
+            icon: mdi:calendar-check
+            icon_color: >-
+              {% if state_attr('event.backup_automatic_backup', 'event_type') == 'completed' %}
+                green
+              {% elif state_attr('event.backup_automatic_backup', 'event_type') == 'in_progress' %}
+                amber
+              {% elif state_attr('event.backup_automatic_backup', 'event_type') == 'failed' %}
+                red
+              {% else %}
+                blue
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+          - type: custom:mushroom-template-card
+            entity: sensor.backup_last_attempted_automatic_backup
+            primary: Last attempted backup
+            secondary: >-
+              {{ states('sensor.backup_last_attempted_automatic_backup') }}
+            icon: mdi:clock-outline
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.backup_last_successful_automatic_backup
+            primary: Last successful backup
+            secondary: >-
+              {{ states('sensor.backup_last_successful_automatic_backup') }}
+            icon: mdi:check-decagram
+            icon_color: green
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.backup_next_scheduled_automatic_backup
+            primary: Next scheduled backup
+            secondary: >-
+              {% if states('sensor.backup_next_scheduled_automatic_backup') in ['unknown', 'unavailable'] %}
+                Not scheduled / unavailable
+              {% else %}
+                {{ states('sensor.backup_next_scheduled_automatic_backup') }}
+              {% endif %}
+            icon: mdi:calendar-clock
+            icon_color: >-
+              {% if states('sensor.backup_next_scheduled_automatic_backup') in ['unknown', 'unavailable'] %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.auto_backup_backup_status
+            primary: Auto Backup running
+            secondary: >-
+              {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+                Running
+              {% else %}
+                Idle
+              {% endif %}
+            icon: mdi:progress-clock
+            icon_color: >-
+              {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.auto_backup
+            primary: Pending backups
+            secondary: >-
+              {{ states('sensor.auto_backup') }} pending · {{ states('sensor.auto_backup_monitored_backups') }} monitored
+            icon: mdi:package-variant-closed
+            icon_color: >-
+              {% if states('sensor.auto_backup') | int(0) > 0 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.auto_backup_purgeable_backups
+            primary: Purgeable backups
+            secondary: >-
+              {{ states('sensor.auto_backup_purgeable_backups') }} purgeable
+            icon: mdi:package-variant-closed-remove
+            icon_color: >-
+              {% if states('sensor.auto_backup_purgeable_backups') | int(0) > 0 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.auto_backup_last_failure
+            primary: Last failure
+            secondary: >-
+              {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable'] %}
+                No recent failure recorded
+              {% else %}
+                {{ states('sensor.auto_backup_last_failure') }}
+              {% endif %}
+            icon: mdi:alert-circle
+            icon_color: >-
+              {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable'] %}
+                green
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+          - type: custom:mushroom-template-card
+            entity: sensor.auto_backup_last_success
+            primary: Last success
+            secondary: >-
+              {% if states('sensor.auto_backup_last_success') in ['unknown', 'unavailable'] %}
+                No success recorded
+              {% else %}
+                {{ states('sensor.auto_backup_last_success') }}
+              {% endif %}
+            icon: mdi:check-circle
+            icon_color: green
+            fill_container: true
+            multiline_secondary: true
+      - type: entities
+        title: Backup details
+        show_header_toggle: false
+        entities:
+          - entity: sensor.backup_backup_manager_state
+          - entity: event.backup_automatic_backup
+          - entity: sensor.backup_last_attempted_automatic_backup
+          - entity: sensor.backup_last_successful_automatic_backup
+          - entity: sensor.backup_next_scheduled_automatic_backup
+          - entity: binary_sensor.auto_backup_backup_status
+          - entity: sensor.auto_backup
+          - entity: sensor.auto_backup_monitored_backups
+          - entity: sensor.auto_backup_purgeable_backups
+          - entity: sensor.auto_backup_last_failure
+          - entity: sensor.auto_backup_last_success
+          - entity: button.auto_backup_purge_backups
+
+  ###########################################################################
+  # WATCHMAN
+  ###########################################################################
+  - type: custom:collapsable-cards
+    title: Watchman
+    cards:
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_status
+            primary: Watchman status
+            secondary: >-
+              {{ states('sensor.watchman_status') }}
+            icon: mdi:shield-search
+            icon_color: >-
+              {% if states('sensor.watchman_status') == 'idle' %}
+                green
+              {% elif states('sensor.watchman_status') in ['pending', 'parsing'] %}
+                amber
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_missing_entities
+            primary: Missing entities
+            secondary: >-
+              {{ states('sensor.watchman_missing_entities') }} items
+            icon: mdi:shield-alert
+            icon_color: >-
+              {% if states('sensor.watchman_missing_entities') | int(0) > 0 %}
+                red
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_missing_actions
+            primary: Missing actions
+            secondary: >-
+              {{ states('sensor.watchman_missing_actions') }} items
+            icon: mdi:shield-half-full
+            icon_color: >-
+              {% if states('sensor.watchman_missing_actions') | int(0) > 0 %}
+                red
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_processed_files
+            primary: Processed files
+            secondary: >-
+              {{ states('sensor.watchman_processed_files') }} files
+            icon: mdi:file-document-check
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_ignored_files
+            primary: Ignored files
+            secondary: >-
+              {{ states('sensor.watchman_ignored_files') }} files
+            icon: mdi:file-remove
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_parse_duration
+            primary: Parse duration
+            secondary: >-
+              {{ states('sensor.watchman_parse_duration') }} s
+            icon: mdi:timer-outline
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_last_parse
+            primary: Last parse
+            secondary: >-
+              {{ states('sensor.watchman_last_parse') }}
+            icon: mdi:calendar-clock
+            icon_color: green
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.watchman_last_update
+            primary: Last update
+            secondary: >-
+              {{ states('sensor.watchman_last_update') }}
+            icon: mdi:calendar-clock
+            icon_color: green
+            fill_container: true
+      - type: entities
+        title: Watchman details
+        show_header_toggle: false
+        entities:
+          - entity: sensor.watchman_status
+          - entity: sensor.watchman_missing_entities
+          - entity: sensor.watchman_missing_actions
+          - entity: sensor.watchman_processed_files
+          - entity: sensor.watchman_ignored_files
+          - entity: sensor.watchman_parse_duration
+          - entity: sensor.watchman_last_parse
+          - entity: sensor.watchman_last_update
+          - entity: button.watchman_create_report_file
+
+  ###########################################################################
+  # CONTAINER STATS (KEEP EXISTING ENTITIES)
+  ###########################################################################
   - type: custom:collapsable-cards
     title: Container Stats
     cards:
@@ -365,47 +1026,40 @@ cards:
             max: ~25
             align_to: 5
             apex_config:
-              #stepSize: 25
               tickAmount: 5
               forceNiceScale: true
               labels:
                 offsetX: -25
                 rotate: 0
-              # labels:
-              #   formatter: |
-              #     EVAL:function(value) {
-              #       return `${value} %`;
-              #     }
         series:
           - entity: sensor.home_assistant_core_cpu_percent
             name: HA Core
-            color: '#4BC0C0' # Middle Blue Green
+            color: '#4BC0C0'
           - entity: sensor.home_assistant_supervisor_cpu_percent
             name: Supervisor
-            color: '#2E8B57' # Middle Blue Green
+            color: '#2E8B57'
           - entity: sensor.chrony_cpu_percent
             name: Chrony
-            color: '#FF6384' # Radical Red
+            color: '#FF6384'
           - entity: sensor.deconz_cpu_percent
             name: deCONZ
-            color: '#36A2EB' # Picton Blue
+            color: '#36A2EB'
           - entity: sensor.esphome_cpu_percent
             name: ESPHome
-            color: '#FFCE56' # Yellow (Crayola)
+            color: '#FFCE56'
           - entity: sensor.grafana_cpu_percent
             name: Grafana
-            color: '#FF9F40' # Orange Peel
+            color: '#FF9F40'
           - entity: sensor.influxdb_cpu_percent
             name: InfluxDB
-            color: '#9966FF' # Amethyst
+            color: '#9966FF'
           - entity: sensor.mariadb_cpu_percent
             name: MariaDB
-            color: '#C9CBCF' # Silver Sand
+            color: '#C9CBCF'
           - entity: sensor.mosquitto_broker_cpu_percent
             name: Mosquitto
-            color: '#7E57C2' # Chetwode Blue
+            color: '#7E57C2'
 
-      # ApexCharts Graph for Memory Usage with Unique Colors
       - type: custom:apexcharts-card
         header:
           title: Container Max Memory Usage
@@ -437,9 +1091,7 @@ cards:
             max: ~25
             align_to: 5
             apex_config:
-              #stepSize: 25
               tickAmount: 5
-              #forceNiceScale: true
               labels:
                 offsetX: -25
                 rotate: 0
@@ -450,33 +1102,32 @@ cards:
         series:
           - entity: sensor.home_assistant_core_memory_percent
             name: HA Core
-            color: '#4BC0C0' # Middle Blue Green
+            color: '#4BC0C0'
           - entity: sensor.home_assistant_supervisor_memory_percent
             name: Supervisor
-            color: '#2E8B57' # Middle Blue Green
+            color: '#2E8B57'
           - entity: sensor.chrony_memory_percent
             name: Chrony
-            color: '#FF6384' # Radical Red
+            color: '#FF6384'
           - entity: sensor.deconz_memory_percent
             name: deCONZ
-            color: '#36A2EB' # Picton Blue
+            color: '#36A2EB'
           - entity: sensor.esphome_memory_percent
             name: ESPHome
-            color: '#FFCE56' # Yellow (Crayola)
+            color: '#FFCE56'
           - entity: sensor.grafana_memory_percent
             name: Grafana
-            color: '#FF9F40' # Orange Peel
+            color: '#FF9F40'
           - entity: sensor.influxdb_memory_percent
             name: InfluxDB
-            color: '#9966FF' # Amethyst
+            color: '#9966FF'
           - entity: sensor.mariadb_memory_percent
             name: MariaDB
-            color: '#C9CBCF' # Silver Sand
+            color: '#C9CBCF'
           - entity: sensor.mosquitto_broker_memory_percent
             name: Mosquitto
-            color: '#7E57C2' # Chetwode Blue
+            color: '#7E57C2'
 
-      # History Graph of Running State
       - type: history-graph
         title: Container Running State
         hours_to_show: 24
@@ -497,6 +1148,9 @@ cards:
           - entity: binary_sensor.mosquitto_broker_running
             name: Mosquitto
 
+  ###########################################################################
+  # HOST STATS (KEEP EXISTING ENTITIES, ADD NETWORK)
+  ###########################################################################
   - type: custom:collapsable-cards
     title: Host Stats
     cards:
@@ -538,25 +1192,16 @@ cards:
                 max: ~50
                 align_to: 10
                 show: false
-                # apex_config:
-                #   stepSize: 25
-                #   tickAmount: 4
-                #   forceNiceScale: false
-                #   labels:
-                #     formatter: |
-                #       EVAL:function(value) {
-                #         return `${value} %`;
-                #       }
             layout: minimal
             series:
               - entity: sensor.processor_use
-                color: '#4BC0C0'  # Middle Blue Green
+                color: '#4BC0C0'
                 name: CPU Use 10min avg
                 extend_to: now
                 show:
                   extremas: true
               - entity: sensor.processor_use
-                color: '#4BC0C0'  # Middle Blue Green
+                color: '#4BC0C0'
                 offset: '-1d'
                 name: 1 Day Ago
                 opacity: 0.4
@@ -565,7 +1210,6 @@ cards:
                   in_header: false
                   legend_value: false
               - entity: sensor.processor_use
-                #color: '#9966FF'  # Amethyst
                 name: CPU Use Max
                 extend_to: now
                 group_by:
@@ -573,6 +1217,7 @@ cards:
                   duration: 15min
                 opacity: 0
                 stroke_width: 1
+
           - type: custom:apexcharts-card
             header:
               title: Home Assistant Core Memory Free
@@ -611,10 +1256,10 @@ cards:
             layout: minimal
             series:
               - entity: sensor.memory_use
-                color: '#9966FF'  # Amethyst
+                color: '#9966FF'
                 extend_to: now
               - entity: sensor.memory_use
-                color: '#9966FF'  # Amethyst
+                color: '#9966FF'
                 offset: '-1d'
                 name: 1 Day Ago
                 type: line
@@ -623,65 +1268,12 @@ cards:
                   in_header: false
                   legend_value: false
               - entity: sensor.memory_use
-                #color: '#9966FF'  # Amethyst
                 group_by:
                   func: max
                   duration: 15min
                 opacity: 0
                 stroke_width: 1
 
-          # - type: custom:apexcharts-card
-          #   header:
-          #     title: NUC NVME Utilization
-          #     show: true
-          #     show_states: true
-          #     colorize_states: true
-          #   update_interval: 1min
-          #   graph_span: 24h
-          #   span:
-          #     start: day
-          #   now:
-          #     show: true
-          #   apex_config:
-          #     chart:
-          #       height: 200px
-          #     legend:
-          #       show: false
-          #     grid:
-          #       padding:
-          #         left: 0
-          #         right: 0
-          #         bottom: 0
-          #         top: -100
-          #   all_series_config:
-          #     group_by:
-          #       func: median
-          #       duration: 5min
-          #     stroke_width: 2
-          #     opacity: 0.5
-          #     type: area
-          #   yaxis:
-          #     - min: 0
-          #       max: 100
-          #       show: false
-          #   layout: minimal
-          #   series:
-          #     - entity: sensor.nuc_nvme_utilization
-          #       color: '#9966FF'  # Amethyst
-          #       extend_to: now
-          #     - entity: sensor.nuc_nvme_utilization
-          #       color: '#9966FF'  # Amethyst
-          #       offset: '-1d'
-          #       name: 1 Day Ago
-          #       type: line
-          #       opacity: 0.4
-          #       show:
-          #         in_header: false
-          #         legend_value: false
-          #     - entity: sensor.nuc_nvme_utilization
-          #       name: Queue Size
-          #       #color: '#9966FF'  # Amethyst
-          #       attribute: queue_size
           - type: custom:apexcharts-card
             header:
               title: Used Disk Space
@@ -709,7 +1301,7 @@ cards:
                 position: front
                 yaxis:
                   - y: 137
-                    borderColor: '#FF6384'  # Greenish color for low intensity
+                    borderColor: '#FF6384'
                     label:
                       position: left
                       offsetX: 70
@@ -717,7 +1309,7 @@ cards:
                       text: '30% Usage'
                       style:
                         background: 'transparent'
-                        color: '#FF6384'  # Text color matches the line color
+                        color: '#FF6384'
                         fontSize: '10px'
                         fontFamily: 'Helvetica, Arial, sans-serif'
             all_series_config:
@@ -739,14 +1331,13 @@ cards:
             series:
               - entity: sensor.system_monitor_disk_use
                 name: Today
-                color: '#FFCE56' # Bright color for today to stand out
+                color: '#FFCE56'
                 type: line
                 extend_to: now
                 opacity: 1
                 show:
                   in_header: true
                   legend_value: true
-              # Previous 14 days with fading colors and opacity
               - entity: sensor.system_monitor_disk_use
                 offset: '-1d'
                 name: Yesterday
@@ -817,14 +1408,56 @@ cards:
                 name: 14 Days Ago
                 color: '#511500'
                 opacity: 0.02
-              # - entity: sensor.home_assistant_host_disk_total
-              #   #color: '#9966FF'  # Amethyst
-              #   group_by:
-              #     func: max
-              #     duration: 15min
-              #   opacity: 0
-              #   stroke_width: 1
 
+          - type: custom:apexcharts-card
+            header:
+              title: Network Throughput History
+              show: true
+              show_states: true
+              colorize_states: true
+            update_interval: 1min
+            graph_span: 24h
+            span:
+              start: day
+            now:
+              show: true
+            apex_config:
+              chart:
+                height: 200px
+              legend:
+                show: false
+              grid:
+                padding:
+                  left: 0
+                  right: 0
+                  bottom: 0
+                  top: -100
+            all_series_config:
+              group_by:
+                func: avg
+                duration: 5min
+              stroke_width: 2
+              opacity: 0.5
+              type: area
+            yaxis:
+              - min: 0
+                max: ~5
+                decimals: 2
+                show: false
+            layout: minimal
+            series:
+              - entity: sensor.system_monitor_network_throughput_in_eno1
+                color: '#36A2EB'
+                name: In
+                extend_to: now
+              - entity: sensor.system_monitor_network_throughput_out_eno1
+                color: '#FF9F40'
+                name: Out
+                extend_to: now
+
+  ###########################################################################
+  # MARIADB (KEEP EXISTING ENTITIES)
+  ###########################################################################
   - type: custom:collapsable-cards
     title: MariaDB Stats
     cards:
@@ -944,14 +1577,13 @@ cards:
             apex_config:
               forceNiceScale: True
               title:
-                text: "MiB"
+                text: MiB
           - id: percent
             min: 0
             max: 100
             decimals: 0
             align_to: 25
             opposite: true
-            apex_config:
         series:
           - entity: sensor.mariadb_buffer_pool_fill
             name: Fill %
@@ -1001,6 +1633,9 @@ cards:
               func: avg
               duration: 1h
 
+  ###########################################################################
+  # PUPPETEER DASHBOARDS (KEEP EXISTING)
+  ###########################################################################
   - type: custom:collapsable-cards
     title: Puppeteer Dashboards
     cards:
@@ -1009,9 +1644,7 @@ cards:
           - type: markdown
             content: |
               ## Diagnostics – Puppeteer / Lovelace
-          # -------------------------
-          # lovelace-epaper
-          # -------------------------
+
           - type: markdown
             content: |
               ### lovelace-epaper
@@ -1024,22 +1657,20 @@ cards:
                 icon: mdi:camera-outline
                 tap_action:
                   action: url
-                  url_path: "http://10.0.0.252:10000/lovelace-epaper/0?viewport=800x480&colors=000000,FFFFFF&wait=2000&theme=graphite-eink-light"
+                  url_path: http://10.0.0.252:10000/lovelace-epaper/0?viewport=800x480&colors=000000,FFFFFF&wait=2000&theme=graphite-eink-light
               - type: button
                 name: Puppeteer (viewport only)
                 icon: mdi:crop
                 tap_action:
                   action: url
-                  url_path: "http://10.0.0.252:10000/lovelace-epaper/0?viewport=800x480"
+                  url_path: http://10.0.0.252:10000/lovelace-epaper/0?viewport=800x480
               - type: button
                 name: HA (original /0)
                 icon: mdi:home-assistant
                 tap_action:
                   action: url
-                  url_path: "http://10.0.0.252:8123/lovelace-epaper/0"
-          # -------------------------
-          # lovelace-separate-graphs
-          # -------------------------
+                  url_path: http://10.0.0.252:8123/lovelace-epaper/0
+
           - type: markdown
             content: |
               ### lovelace-separate-graphs
@@ -1052,16 +1683,16 @@ cards:
                 icon: mdi:camera-outline
                 tap_action:
                   action: url
-                  url_path: "http://10.0.0.252:10000/lovelace-separate-graphs/0?viewport=625x530&rotate=0&zoom=1.22&wait=7000&dark"
+                  url_path: http://10.0.0.252:10000/lovelace-separate-graphs/0?viewport=625x530&rotate=0&zoom=1.22&wait=7000&dark
               - type: button
                 name: Puppeteer (viewport only)
                 icon: mdi:crop
                 tap_action:
                   action: url
-                  url_path: "http://10.0.0.252:10000/lovelace-separate-graphs/0?viewport=625x530"
+                  url_path: http://10.0.0.252:10000/lovelace-separate-graphs/0?viewport=625x530
               - type: button
                 name: HA (original /0)
                 icon: mdi:home-assistant
                 tap_action:
                   action: url
-                  url_path: "http://10.0.0.252:8123/lovelace-separate-graphs/0"
+                  url_path: http://10.0.0.252:8123/lovelace-separate-graphs/0
