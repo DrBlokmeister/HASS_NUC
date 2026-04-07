@@ -1,140 +1,1281 @@
-title: "Media Control"
+title: Media Control
 path: media-control
 icon: mdi:television
+badges: []
+
 cards:
+  ###########################################################################
+  # CRITICAL STATUS / SIGNAL PATH
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Media path status
+      [HyperHDR Integration](/config/integrations/integration/hyperhdr)
+      [CoreELEC Device](/config/devices/device/bdcbe2052391644e09e7cc195ef78025)
+      [Plex Integration](/config/integrations/integration/plex)
+      [TV](/config/devices/device/0c0cf7a8857f8ea82060685b351e7d55)
+  - type: vertical-stack
+    cards:
+      - type: grid
+        square: false
+        columns: 4
+        cards:
+          - type: custom:button-card
+            entity: switch.amplifier_power
+            name: Amplifier
+            icon: mdi:audio-video
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on'
+                        ? 'rgba(46, 125, 50, 0.28)'
+                        : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+                - border: >
+                    [[[
+                      return entity.state === 'on'
+                        ? '1px solid rgba(46, 125, 50, 0.45)'
+                        : '1px solid rgba(158, 158, 158, 0.28)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+              state:
+                - font-size: 0.85em
+              name:
+                - font-weight: 600
+          - type: custom:button-card
+            entity: switch.ambilight_power
+            name: Ambilight
+            icon: mdi:television-ambient-light
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on'
+                        ? 'rgba(46, 125, 50, 0.28)'
+                        : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+                - border: >
+                    [[[
+                      return entity.state === 'on'
+                        ? '1px solid rgba(46, 125, 50, 0.45)'
+                        : '1px solid rgba(158, 158, 158, 0.28)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+              state:
+                - font-size: 0.85em
+              name:
+                - font-weight: 600
+          - type: custom:button-card
+            entity: switch.plug_tv_switch
+            name: TV Plug
+            icon: mdi:power-plug
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on'
+                        ? 'rgba(46, 125, 50, 0.28)'
+                        : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+                - border: >
+                    [[[
+                      return entity.state === 'on'
+                        ? '1px solid rgba(46, 125, 50, 0.45)'
+                        : '1px solid rgba(158, 158, 158, 0.28)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+              state:
+                - font-size: 0.85em
+              name:
+                - font-weight: 600
+          - type: custom:button-card
+            entity: switch.tv_json_cec
+            name: TV JSON CEC
+            icon: mdi:television
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on'
+                        ? 'rgba(46, 125, 50, 0.28)'
+                        : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+                - border: >
+                    [[[
+                      return entity.state === 'on'
+                        ? '1px solid rgba(46, 125, 50, 0.45)'
+                        : '1px solid rgba(158, 158, 158, 0.28)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+              state:
+                - font-size: 0.85em
+              name:
+                - font-weight: 600
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: media_player.coreelec
+            primary: CoreELEC
+            secondary: >-
+              {% set s = states('media_player.coreelec') %}
+              {% if s in ['playing', 'paused', 'idle', 'on'] %}
+                {{ s | replace('_', ' ') | title }} · {{ states('sensor.coreelec_resolution') }}
+              {% else %}
+                {{ s | replace('_', ' ') | title }}
+              {% endif %}
+            icon: mdi:kodi
+            icon_color: >-
+              {% set s = states('media_player.coreelec') %}
+              {% if s in ['playing', 'paused'] %}
+                green
+              {% elif s in ['idle', 'on'] %}
+                blue
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.coreelec_hdr_mode
+            primary: HDMI output
+            secondary: >-
+              {{ states('sensor.coreelec_resolution') }} · {{ states('sensor.coreelec_hdr_mode') }} · {{ states('sensor.coreelec_color_space') }} · {{ states('sensor.coreelec_colorimetry') }}
+            icon: mdi:television
+            icon_color: >-
+              {% if states('sensor.coreelec_hdr_mode') in ['HDR', 'HDR10', 'HLG', 'Dolby Vision'] %}
+                amber
+              {% else %}
+                blue
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+            tap_action:
+              action: more-info
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.coreelec_hdr_mode
+        primary: HDMI output
+        secondary: >-
+          {{ states('sensor.coreelec_resolution') }} · {{ states('sensor.coreelec_hdr_mode') }} · {{ states('sensor.coreelec_color_space') }} · {{ states('sensor.coreelec_colorimetry') }}
+        icon: mdi:television
+        icon_color: >-
+          {% if states('sensor.coreelec_hdr_mode') in ['HDR', 'HDR10', 'HLG', 'Dolby Vision'] %}
+            amber
+          {% else %}
+            blue
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: light.tv_ledstrip
+        primary: TV LEDstrip
+        secondary: >-
+          {% if is_state('light.tv_ledstrip', 'on') %}
+            On · {{ state_attr('light.tv_ledstrip', 'effect') or 'No effect' }}
+          {% else %}
+            Off
+          {% endif %}
+        icon: mdi:television-ambient-light
+        icon_color: >-
+          {% if is_state('light.tv_ledstrip', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: switch.tv_ledstrip_component_usb_capture
+        primary: TV USB capture
+        secondary: >-
+          {% if is_state('switch.tv_ledstrip_component_usb_capture', 'on') %}
+            Active · {{ states('sensor.tv_ledstrip_visible_priority') }}
+          {% else %}
+            Inactive
+          {% endif %}
+        icon: mdi:video-input-hdmi
+        icon_color: >-
+          {% if is_state('switch.tv_ledstrip_component_usb_capture', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: switch.ambilight_power
+        primary: Ambilight power
+        secondary: >-
+          {% if is_state('switch.ambilight_power', 'on') %}
+            Enabled
+          {% else %}
+            Disabled
+          {% endif %}
+        icon: mdi:television-ambient-light
+        icon_color: >-
+          {% if is_state('switch.ambilight_power', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: switch.amplifier_power
+        primary: Amplifier power
+        secondary: >-
+          {% if is_state('switch.amplifier_power', 'on') %}
+            On
+          {% else %}
+            Off
+          {% endif %}
+        icon: mdi:audio-video
+        icon_color: >-
+          {% if is_state('switch.amplifier_power', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: switch.plug_tv_switch
+        primary: TV plug
+        secondary: >-
+          {% if is_state('switch.plug_tv_switch', 'on') %}
+            Powered
+          {% else %}
+            Off
+          {% endif %}
+        icon: mdi:power-plug
+        icon_color: >-
+          {% if is_state('switch.plug_tv_switch', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+
+      - type: custom:mushroom-template-card
+        entity: switch.tv_json_cec
+        primary: TV JSON CEC
+        secondary: >-
+          {% if is_state('switch.tv_json_cec', 'on') %}
+            Enabled
+          {% else %}
+            Disabled
+          {% endif %}
+        icon: mdi:television
+        icon_color: >-
+          {% if is_state('switch.tv_json_cec', 'on') %}
+            green
+          {% else %}
+            amber
+          {% endif %}
+        fill_container: true
+
+  ###########################################################################
+  # QUICK ACTIONS
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Quick actions
+
   - type: grid
     columns: 4
+    square: false
     cards:
-      - type: button
+      - type: custom:button-card
+        name: Turn On Receiver
+        icon: mdi:power
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.turn_on_livingroom_receiver
-        icon: mdi:power
-        name: Turn On Receiver
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Turn Off Receiver
+        icon: mdi:power-off
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.turn_off_livingroom_receiver
-        icon: mdi:power-off
-        name: Turn Off Receiver
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Toggle Speakers
+        icon: mdi:speaker-wireless
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.turn_on_off_livingroom_speakers
-        icon: mdi:speaker-wireless
-        name: Toggle Speakers
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Volume Up
+        icon: mdi:volume-plus
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.livingroom_volume_up
-        icon: mdi:volume-plus
-        name: Volume Up
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Volume Down
+        icon: mdi:volume-minus
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.livingroom_volume_down
-        icon: mdi:volume-minus
-        name: Volume Down
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Set Channel to TV
+        icon: mdi:television-classic
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.set_livingroom_channel_to_tv
-        icon: mdi:television-classic
-        name: Set Channel to TV
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Set Channel to Phono
+        icon: mdi:record-player
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.set_livingroom_channel_to_phono
-        icon: mdi:record-player
-        name: Set Channel to Phono
-      - type: button
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
+      - type: custom:button-card
+        name: Mute Speakers
+        icon: mdi:volume-mute
         tap_action:
           action: call-service
           service: button.press
           service_data:
             entity_id: button.mute_livingroom_speakers
-        icon: mdi:volume-mute
-        name: Mute Speakers
+        styles:
+          card:
+            - padding: 12px
+            - border-radius: 16px
+            - background-color: rgba(255,255,255,0.06)
+          name:
+            - font-size: 0.85em
+            - font-weight: 600
 
+  ###########################################################################
+  # PLAYERS
+  ###########################################################################
   - type: vertical-stack
     cards:
       - type: media-control
         entity: media_player.plex_plexkodiconnect_kodi_coreelec
-        name: "Plex (Coreelec)"
+        name: Plex (Coreelec)
       - type: media-control
         entity: media_player.coreelec
-        name: "Kodi (Coreelec)"
+        name: Kodi (Coreelec)
       - type: media-control
         entity: media_player.65_oled
-        name: "TV (Smartthings)"
+        name: TV (Smartthings)
       - type: media-control
         entity: media_player.samsung_tv
-        name: "TV (Samsung)"
+        name: TV (Samsung)
 
-  - type: entities
-    title: Ambilight Controls
-    entities:
-      - entity: light.atmoorb_left
-        icon: mdi:television-ambient-light
-      - entity: light.atmoorb_right
-        icon: mdi:television-ambient-light
-      - entity: light.ledstrip_falcon
-        icon: mdi:television-ambient-light
-      - entity: switch.ambilight_power
-        name: Ambilight Power
-        icon: mdi:television-ambient-light
-      - entity: switch.amplifier_power
-        name: Amplifier Power
-        icon: mdi:audio-video
-      - entity: switch.tv_json_cec
-        name: TV json CEC
-        icon: mdi:television
-      - entity: switch.plug_tv_switch
-        name: TV Plug
-        icon: mdi:television
+  ###########################################################################
+  # COREELEC VIDEO OUTPUT
+  ###########################################################################
+  - type: custom:collapsable-cards
+    title: CoreELEC output details
+    cards:
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.coreelec_hdmi_info
+            primary: HDMI mode
+            secondary: >-
+              {{ state_attr('sensor.coreelec_hdmi_info', 'vic_desc') }} · {{ state_attr('sensor.coreelec_hdmi_info', 'eotf') }}
+            icon: mdi:video-high-definition
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.coreelec_hdr_mode
+            primary: HDR mode
+            secondary: >-
+              {{ states('sensor.coreelec_hdr_mode') }}
+            icon: mdi:brightness-6
+            icon_color: >-
+              {% if states('sensor.coreelec_hdr_mode') in ['HDR', 'HDR10', 'HLG', 'Dolby Vision'] %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.coreelec_color_space
+            primary: Color space
+            secondary: >-
+              {{ states('sensor.coreelec_color_space') }}
+            icon: mdi:palette-outline
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.coreelec_colorimetry
+            primary: Colorimetry
+            secondary: >-
+              {{ states('sensor.coreelec_colorimetry') }}
+            icon: mdi:palette-swatch-variant
+            icon_color: blue
+            fill_container: true
 
-  - type: entities
-    title: HyperHDR Controls
-    entities:
-      - entity: light.hyperhdr_atmoorb_left
-        icon: mdi:television-ambient-light
-      - entity: switch.hyperhdr_atmoorb_left_component_led_device
-      - entity: switch.hyperhdr_atmoorb_left_component_usb_capture
-      - entity: light.hyperhdr_atmoorb_right
-        icon: mdi:television-ambient-light
-      - entity: switch.hyperhdr_atmoorb_right_component_led_device
-      - entity: switch.hyperhdr_atmoorb_right_component_usb_capture
-      - entity: light.hyperhdr_falconlights
-        icon: mdi:television-ambient-light
-      - entity: switch.hyperhdr_falconlights_component_led_device
-      - entity: switch.hyperhdr_falconlights_component_usb_capture
+  ###########################################################################
+  # AMBILIGHT / HYPERHDR OVERVIEW
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Ambilight and HyperHDR
 
-  - type: entities
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mushroom-template-card
+        entity: light.hyperhdr_atmoorb_left
+        primary: AtmoOrb Left
+        secondary: >-
+          {% if is_state('light.hyperhdr_atmoorb_left', 'on') %}
+            {{ state_attr('light.hyperhdr_atmoorb_left', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_atmoorb_left_visible_priority') }}
+          {% else %}
+            Off · {{ states('sensor.hyperhdr_atmoorb_left_visible_priority') }}
+          {% endif %}
+        icon: mdi:lightbulb-on-outline
+        icon_color: >-
+          {% if is_state('light.hyperhdr_atmoorb_left', 'on') %}
+            green
+          {% else %}
+            grey
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: light.hyperhdr_atmoorb_right
+        primary: AtmoOrb Right
+        secondary: >-
+          {% if is_state('light.hyperhdr_atmoorb_right', 'on') %}
+            {{ state_attr('light.hyperhdr_atmoorb_right', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_atmoorb_right_visible_priority') }}
+          {% else %}
+            Off · {{ states('sensor.hyperhdr_atmoorb_right_visible_priority') }}
+          {% endif %}
+        icon: mdi:lightbulb-on-outline
+        icon_color: >-
+          {% if is_state('light.hyperhdr_atmoorb_right', 'on') %}
+            green
+          {% else %}
+            grey
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: light.hyperhdr_falconlights
+        primary: Falconlights
+        secondary: >-
+          {% if is_state('light.hyperhdr_falconlights', 'on') %}
+            {{ state_attr('light.hyperhdr_falconlights', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_falconlights_visible_priority') }}
+          {% else %}
+            Off · {{ states('sensor.hyperhdr_falconlights_visible_priority') }}
+          {% endif %}
+        icon: mdi:television-ambient-light
+        icon_color: >-
+          {% if is_state('light.hyperhdr_falconlights', 'on') %}
+            green
+          {% else %}
+            grey
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: light.tv_ledstrip
+        primary: TV LEDstrip
+        secondary: >-
+          {% if is_state('light.tv_ledstrip', 'on') %}
+            {{ state_attr('light.tv_ledstrip', 'effect') or 'On' }} · {{ states('sensor.tv_ledstrip_visible_priority') }}
+          {% else %}
+            Off · {{ states('sensor.tv_ledstrip_visible_priority') }}
+          {% endif %}
+        icon: mdi:television-ambient-light
+        icon_color: >-
+          {% if is_state('light.tv_ledstrip', 'on') %}
+            green
+          {% else %}
+            grey
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+
+  - type: custom:collapsable-cards
+    title: Legacy ambilight controls
+    cards:
+      - type: entities
+        title: Ambilight Controls
+        entities:
+          - entity: light.atmoorb_left
+            icon: mdi:television-ambient-light
+          - entity: light.atmoorb_right
+            icon: mdi:television-ambient-light
+          - entity: light.ledstrip_falcon
+            icon: mdi:television-ambient-light
+          - entity: switch.ambilight_power
+            name: Ambilight Power
+            icon: mdi:television-ambient-light
+          - entity: switch.amplifier_power
+            name: Amplifier Power
+            icon: mdi:audio-video
+          - entity: switch.tv_json_cec
+            name: TV json CEC
+            icon: mdi:television
+          - entity: switch.plug_tv_switch
+            name: TV Plug
+            icon: mdi:television
+
+  - type: custom:collapsable-cards
+    title: HyperHDR controls and details
+    cards:
+      - type: grid
+        square: false
+        columns: 4
+        cards:
+          - type: custom:button-card
+            entity: light.tv_ledstrip
+            name: TV LEDstrip
+            icon: mdi:television-ambient-light
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.tv_ledstrip_component_hdr_tone_mapping
+            name: TV HDR Tone
+            icon: mdi:brightness-6
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.tv_ledstrip_component_led_device
+            name: TV LED Device
+            icon: mdi:led-strip-variant
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.tv_ledstrip_component_usb_capture
+            name: TV USB Capture
+            icon: mdi:video-input-hdmi
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+
+          - type: custom:button-card
+            entity: light.hyperhdr_falconlights
+            name: Falconlights
+            icon: mdi:television-ambient-light
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_falconlights_component_hdr_tone_mapping
+            name: Falcon HDR Tone
+            icon: mdi:brightness-6
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_falconlights_component_led_device
+            name: Falcon LED
+            icon: mdi:led-strip-variant
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_falconlights_component_usb_capture
+            name: Falcon USB
+            icon: mdi:video-input-hdmi
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+
+          - type: custom:button-card
+            entity: light.hyperhdr_atmoorb_left
+            name: AtmoOrb Left
+            icon: mdi:lightbulb-on-outline
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_atmoorb_left_component_hdr_tone_mapping
+            name: Left HDR Tone
+            icon: mdi:brightness-6
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_atmoorb_left_component_led_device
+            name: Left LED
+            icon: mdi:led-strip-variant
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_atmoorb_left_component_usb_capture
+            name: Left USB
+            icon: mdi:video-input-hdmi
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+
+          - type: custom:button-card
+            entity: light.hyperhdr_atmoorb_right
+            name: AtmoOrb Right
+            icon: mdi:lightbulb-on-outline
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_atmoorb_right_component_hdr_tone_mapping
+            name: Right HDR Tone
+            icon: mdi:brightness-6
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_atmoorb_right_component_led_device
+            name: Right LED
+            icon: mdi:led-strip-variant
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.hyperhdr_atmoorb_right_component_usb_capture
+            name: Right USB
+            icon: mdi:video-input-hdmi
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+
+      - type: entities
+        title: HyperHDR platform details
+        entities:
+          - entity: sensor.tv_ledstrip
+            name: Device ID
+          - entity: sensor.tv_ledstrip_version
+            name: Version
+          - entity: sensor.tv_ledstrip_build
+            name: Build
+          - entity: sensor.tv_ledstrip_platform
+            name: Platform
+          - entity: sensor.tv_ledstrip_hostname
+            name: Hostname
+          - entity: sensor.tv_ledstrip_architecture
+            name: Architecture
+          - entity: sensor.tv_ledstrip_operating_system
+            name: OS
+          - entity: sensor.tv_ledstrip_kernel_version
+            name: Kernel Version
+
+      - type: entities
+        title: TV LEDstrip state
+        entities:
+          - entity: sensor.tv_ledstrip_visible_priority
+            name: Visible Priority
+          - entity: switch.tv_ledstrip_component_hdr_tone_mapping
+            name: HDR Tone Mapping
+          - entity: switch.tv_ledstrip_component_led_device
+            name: LED Device
+          - entity: switch.tv_ledstrip_component_usb_capture
+            name: USB Capture
+
+      - type: entities
+        title: Falconlights state
+        entities:
+          - entity: sensor.hyperhdr_falconlights_visible_priority
+            name: Visible Priority
+          - entity: switch.hyperhdr_falconlights_component_hdr_tone_mapping
+            name: HDR Tone Mapping
+          - entity: switch.hyperhdr_falconlights_component_led_device
+            name: LED Device
+          - entity: switch.hyperhdr_falconlights_component_usb_capture
+            name: USB Capture
+
+      - type: entities
+        title: AtmoOrb Left state
+        entities:
+          - entity: sensor.hyperhdr_atmoorb_left_visible_priority
+            name: Visible Priority
+          - entity: switch.hyperhdr_atmoorb_left_component_hdr_tone_mapping
+            name: HDR Tone Mapping
+          - entity: switch.hyperhdr_atmoorb_left_component_led_device
+            name: LED Device
+          - entity: switch.hyperhdr_atmoorb_left_component_usb_capture
+            name: USB Capture
+
+      - type: entities
+        title: AtmoOrb Right state
+        entities:
+          - entity: sensor.hyperhdr_atmoorb_right_visible_priority
+            name: Visible Priority
+          - entity: switch.hyperhdr_atmoorb_right_component_hdr_tone_mapping
+            name: HDR Tone Mapping
+          - entity: switch.hyperhdr_atmoorb_right_component_led_device
+            name: LED Device
+          - entity: switch.hyperhdr_atmoorb_right_component_usb_capture
+            name: USB Capture
+
+  ###########################################################################
+  # POWERSTRIP
+  ###########################################################################
+  - type: custom:collapsable-cards
     title: Powerstrip Controls
-    entities:
-      - entity: switch.powerstrip_mediacenter_socket_1
-        name: "AQM (Socket 1)"
-      - entity: switch.powerstrip_mediacenter_socket_2
-        name: "Epaper AP (Socket 2)"
-      - entity: switch.powerstrip_mediacenter_socket_3
-        name: "Odroid N2 (Socket 3)"
-      - entity: switch.powerstrip_mediacenter_socket_usb
-        name: "HDMI Splitter (USB Socket)"
+    cards:
+      - type: grid
+        square: false
+        columns: 4
+        cards:
+          - type: custom:button-card
+            entity: switch.powerstrip_mediacenter_socket_1
+            name: AQM
+            icon: mdi:air-filter
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.powerstrip_mediacenter_socket_2
+            name: Epaper AP
+            icon: mdi:access-point
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.powerstrip_mediacenter_socket_3
+            name: Odroid N2
+            icon: mdi:chip
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
+          - type: custom:button-card
+            entity: switch.powerstrip_mediacenter_socket_usb
+            name: HDMI Splitter
+            icon: mdi:usb-port
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles:
+              card:
+                - padding: 12px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgba(46, 125, 50, 0.28)' : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on' ? 'rgb(129, 199, 132)' : 'rgb(189, 189, 189)';
+                    ]]]
 
+  ###########################################################################
+  # GRAPHS (KEEP EXISTING)
+  ###########################################################################
   - type: custom:collapsable-cards
     title: Graphs
     cards:
@@ -172,7 +1313,7 @@ cards:
                   borderColor: '#32CD32'
                   text: '0W'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#32CD32'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -184,7 +1325,7 @@ cards:
                   borderColor: '#FFD700'
                   text: '100W'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FFD700'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -196,7 +1337,7 @@ cards:
                   borderColor: '#FF4500'
                   text: '200W'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FF4500'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -251,7 +1392,7 @@ cards:
                   borderColor: '#32CD32'
                   text: '25 °C'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#32CD32'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -263,7 +1404,7 @@ cards:
                   borderColor: '#FFD700'
                   text: '30 °C'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FFD700'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -275,7 +1416,7 @@ cards:
                   borderColor: '#FF4500'
                   text: '35 °C'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FF4500'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -329,7 +1470,7 @@ cards:
                   borderColor: '#32CD32'
                   text: '0%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#32CD32'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -341,7 +1482,7 @@ cards:
                   borderColor: '#FFD700'
                   text: '25%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FFD700'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -353,7 +1494,7 @@ cards:
                   borderColor: '#FF4500'
                   text: '50%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FF4500'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -402,7 +1543,7 @@ cards:
                   borderColor: '#32CD32'
                   text: '0%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#32CD32'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -414,7 +1555,7 @@ cards:
                   borderColor: '#FFD700'
                   text: '15%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FFD700'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -426,7 +1567,7 @@ cards:
                   borderColor: '#FF4500'
                   text: '25%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FF4500'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -475,7 +1616,7 @@ cards:
                   borderColor: '#32CD32'
                   text: '0%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#32CD32'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -487,7 +1628,7 @@ cards:
                   borderColor: '#FFD700'
                   text: '15%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FFD700'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -499,7 +1640,7 @@ cards:
                   borderColor: '#FF4500'
                   text: '25%'
                   style:
-                    background: '#1E1E1E'  # Dark background for dark theme
+                    background: '#1E1E1E'
                     color: '#FF4500'
                     fontSize: '10px'
                     fontFamily: 'Helvetica, Arial, sans-serif'
@@ -510,13 +1651,16 @@ cards:
         layout: minimal
         series:
           - entity: sensor.coreelec_disk_usage
-            name: Memory
+            name: Disk Usage
             type: area
             group_by:
               func: avg
               duration: 5min
             stroke_width: 3
 
+  ###########################################################################
+  # PLEX DIAGNOSTICS (KEEP EXISTING)
+  ###########################################################################
   - type: custom:collapsable-cards
     title: Plex Diagnostics
     cards:
@@ -538,4 +1682,3 @@ cards:
           - entity: sensor.plex_log_sqlite_errors
             name: SQLITE Errors
             icon: mdi:database-alert
-
