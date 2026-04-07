@@ -233,7 +233,8 @@ cards:
                 background: none !important;
                 border: none !important;
                 box-shadow: none !important;
-                --humidity-border-color: {% if states('sensor.blokmeisterams_humidity_index')  != 'unavailable' and states('sensor.blokmeisterams_humidity_index') | int > 3 %} rgba(194,74,72,1.0); {% elif states('sensor.blokmeisterams_humidity_index')  != 'unavailable' and states('sensor.blokmeisterams_humidity_index') | int > 2 %} rgba(228,127,97,1.0); {% elif states('sensor.blokmeisterams_humidity_index')  != 'unavailable' and states('sensor.blokmeisterams_humidity_index') | int > 1 %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,255,17,0.75); {% endif %}
+                {% set humidity_idx = states('sensor.blokmeisterams_humidity_index') | int(0) %}
+                --humidity-border-color: {% if humidity_idx > 3 %} rgba(194,74,72,1.0); {% elif humidity_idx > 2 %} rgba(228,127,97,1.0); {% elif humidity_idx > 1 %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,255,17,0.75); {% endif %}
                 --tray_1_color: {% if is_state_attr('sensor.blokmeisterams_tray_1', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_1', 'color') }}; {% endif %}
                 --tray_2_color: {% if is_state_attr('sensor.blokmeisterams_tray_2', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_2', 'color') }}; {% endif %}
                 --tray_3_color: {% if is_state_attr('sensor.blokmeisterams_tray_3', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_3', 'color') }}; {% endif %}
