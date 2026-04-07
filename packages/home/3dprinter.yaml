@@ -1,0 +1,182 @@
+homeassistant:
+  customize: {}
+
+#################
+#    SENSORS    #
+#################
+sensor:
+
+########################
+#    BINARY SENSORS    #
+########################
+binary_sensor:
+
+########################
+#    INPUT BOOLEANS    #
+########################
+input_boolean:
+
+##################
+#    SWITCHES    #
+##################
+switch:
+
+#####################
+#    AUTOMATIONS    #
+#####################
+automation:
+  - alias: "[3dprinter|bambu] Notify when Bambu print is finished"
+    id: yaml_automation_3dprinter_bambu_notify_when_bambu_print_is_finished
+    description: >
+      Sends a phone notification when the Bambu P1S print finishes, including
+      completion timestamp, print duration, and a snapshot/live image from the
+      printer camera.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.blokmeisterp1s_print_status
+        to: "finish"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.blokmeisterp1s_online
+        state: "on"
+    actions:
+      - variables:
+          completion_ts: >
+            {% set end_ts = states('sensor.blokmeisterp1s_end_time') %}
+            {% if end_ts not in ['unknown', 'unavailable', 'none', ''] %}
+              {{ as_timestamp(end_ts) }}
+            {% else %}
+              {{ as_timestamp(now()) }}
+            {% endif %}
+          completion_local: >
+            {% set end_ts = states('sensor.blokmeisterp1s_end_time') %}
+            {% if end_ts not in ['unknown', 'unavailable', 'none', ''] %}
+              {{ as_timestamp(end_ts) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+            {% else %}
+              {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+            {% endif %}
+          duration_seconds: >
+            {% set start_ts = states('sensor.blokmeisterp1s_start_time') %}
+            {% set end_ts = states('sensor.blokmeisterp1s_end_time') %}
+            {% if start_ts not in ['unknown', 'unavailable', 'none', '']
+                  and end_ts not in ['unknown', 'unavailable', 'none', ''] %}
+              {{ (as_timestamp(end_ts) - as_timestamp(start_ts)) | int(0) }}
+            {% else %}
+              0
+            {% endif %}
+          duration_human: >
+            {% set s = duration_seconds | int(0) %}
+            {% set h = s // 3600 %}
+            {% set m = (s % 3600) // 60 %}
+            {% if h > 0 %}
+              {{ h }}h {{ m }}m
+            {% else %}
+              {{ m }}m
+            {% endif %}
+          task_name: >
+            {% set name = states('sensor.blokmeisterp1s_task_name') %}
+            {% if name not in ['unknown', 'unavailable', 'none', ''] %}
+              {{ name }}
+            {% else %}
+              Bambu print
+            {% endif %}
+          completion_image: >
+            {{ state_attr('camera.blokmeisterp1s_camera', 'entity_picture') }}
+      - service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "3D printer: print finished"
+          message: >-
+            <b>{{ task_name }}</b> is done.
+            Completed at <b>{{ completion_local }}</b>.
+            Duration: <b>{{ duration_human }}</b>.
+          data:
+            ttl: 0
+            priority: high
+            sticky: "true"
+            group: bambu_printer
+            tag: bambu_print_finished
+            channel: status
+            ledColor: "green"
+            clickAction: "/lovelace-default"
+            image: "{{ completion_image }}"
+
+  - alias: "[3dprinter|bambu] Notify when Bambu printer reports an error"
+    id: yaml_automation_3dprinter_bambu_notify_when_bambu_printer_reports_an_error
+    description: >
+      Sends a phone notification when the Bambu P1S reports a printer error or
+      HMS error, including any useful detail that can be derived from exposed
+      entities.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.blokmeisterp1s_print_error
+        to: "on"
+      - trigger: state
+        entity_id: binary_sensor.blokmeisterp1s_hms_errors
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.blokmeisterp1s_online
+        state: "on"
+    actions:
+      - variables:
+          triggered_entity: "{{ trigger.entity_id }}"
+          error_count: "{{ state_attr('binary_sensor.blokmeisterp1s_hms_errors', 'Count') | int(0) }}"
+          task_name: >
+            {% set name = states('sensor.blokmeisterp1s_task_name') %}
+            {% if name not in ['unknown', 'unavailable', 'none', ''] %}
+              {{ name }}
+            {% else %}
+              No active task
+            {% endif %}
+          print_status: "{{ states('sensor.blokmeisterp1s_print_status') }}"
+          current_stage: "{{ states('sensor.blokmeisterp1s_current_stage') }}"
+          active_tray: "{{ states('sensor.blokmeisterp1s_active_tray') }}"
+          error_description: >-
+            {% if triggered_entity == 'binary_sensor.blokmeisterp1s_hms_errors' and error_count > 0 %}
+              HMS reported {{ error_count }} error{% if error_count != 1 %}s{% endif %}.
+              Current stage: {{ current_stage }}.
+              Print status: {{ print_status }}.
+            {% elif triggered_entity == 'binary_sensor.blokmeisterp1s_print_error' %}
+              Print error detected.
+              Current stage: {{ current_stage }}.
+              Print status: {{ print_status }}.
+            {% else %}
+              Printer error detected.
+              Current stage: {{ current_stage }}.
+              Print status: {{ print_status }}.
+            {% endif %}
+      - service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "3D printer: error detected"
+          message: >-
+            <b>{{ task_name }}</b>
+
+            {{ error_description }}
+
+            Active tray: <b>{{ active_tray }}</b>
+          data:
+            ttl: 0
+            priority: high
+            sticky: "true"
+            group: bambu_printer
+            tag: bambu_print_error
+            channel: warning
+            ledColor: "red"
+            clickAction: "/lovelace-default"
+
+################
+#    SCENES    #
+################
+scene:
+
+################
+#    GROUPS    #
+################
+group:
+
+#################
+#    SCRIPTS    #
+#################
+script:
