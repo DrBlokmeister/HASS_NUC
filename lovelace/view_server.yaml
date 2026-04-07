@@ -1,165 +1,1100 @@
 ##########################################  HERE BEGINS THE SERVER TAB  ##########################################
+# Reworked for stronger failure visibility, cleaner grouping, and better accessibility.
+# Notes:
+# - This keeps the existing remote backup / AirVPN / PiKVM / firewall / desk powerstrip sections.
+# - The monitor_docker CPU/memory ApexCharts are intentionally kept on their existing sensor IDs.
+# - The old Unraid switch entities are replaced by the newer tower_* entities from the current Unraid integration.
+# - Parity ETA uses graceful fallback text because no clear ETA entity is currently exposed.
+
 title: Server monitor
-icon: 'mdi:server-network'
+path: server-monitor
+icon: mdi:server-network
 panel: false
 badges: []
+
 cards:
-  - type: entities
-    title: Remote Backup Server Status
-    entities:
-      - entity: binary_sensor.rpi4_omv
-        name: OMV Server Reachable
-        icon: mdi:server
-      - entity: sensor.rpi4_omv_round_trip_time_average
-        name: OMV Server RTT
-        icon: mdi:lan-connect
-  - type: vertical-stack
+  ###########################################################################
+  # TOP PRIORITY / "OH SHIT" SECTION
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Critical status
+      [Unraid Device Page](/config/devices/device/db9950b8bef71e0918844cce1953eeb5)
+  - type: grid
+    square: false
+    columns: 2
     cards:
-      - type: entity
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_last_parity_check_errors
+        primary: Parity integrity
+        secondary: >-
+          {% set err = states('sensor.tower_last_parity_check_errors') | int(0) %}
+          {% set running = is_state('binary_sensor.tower_parity_check_running', 'on') %}
+          {% set parity_problem = is_state('binary_sensor.tower_parity_status', 'on') and not running %}
+          {% if err > 0 %}
+            {{ err }} parity error{{ 's' if err != 1 else '' }} detected
+          {% elif parity_problem %}
+            Parity status reports a problem
+          {% elif running %}
+            Check running · {{ states('sensor.tower_parity_check_progress') }}%
+          {% else %}
+            No parity errors reported
+          {% endif %}
+        icon: mdi:shield-alert
+        icon_color: >-
+          {% set err = states('sensor.tower_last_parity_check_errors') | int(0) %}
+          {% set running = is_state('binary_sensor.tower_parity_check_running', 'on') %}
+          {% set parity_problem = is_state('binary_sensor.tower_parity_status', 'on') and not running %}
+          {% if err > 0 or parity_problem %}
+            red
+          {% elif running %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_array_state
+        primary: Array state
+        secondary: >-
+          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+            Started · {{ states('sensor.tower_array_usage') | float(0) | round(1) }}% used
+          {% else %}
+            Array is stopped
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.rpi4_omv
+        primary: Remote backup server
+        secondary: >-
+          {% if is_state('binary_sensor.rpi4_omv', 'on') %}
+            Reachable · RTT {{ states('sensor.rpi4_omv_round_trip_time_average') }}
+          {% else %}
+            Remote backup server is unreachable
+          {% endif %}
+        icon: mdi:server-network
+        icon_color: >-
+          {% if is_state('binary_sensor.rpi4_omv', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
         entity: sensor.airvpn_connected_since
-        name: VPN Connected Since
-      - type: custom:collapsable-cards
-        title: AirVPN Status
+        primary: VPN status
+        secondary: >-
+          {% set s = states('sensor.airvpn_connected_since') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            VPN appears disconnected
+          {% else %}
+            Connected since {{ s }}
+          {% endif %}
+        icon: mdi:shield-lock
+        icon_color: >-
+          {% set s = states('sensor.airvpn_connected_since') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.pikvm_nas
+        primary: PiKVM NAS
+        secondary: >-
+          {% if is_state('binary_sensor.pikvm_nas', 'on') %}
+            Reachable · RTT {{ states('sensor.pikvm_nas_round_trip_time_average') }}
+          {% else %}
+            PiKVM is unreachable
+          {% endif %}
+        icon: mdi:kvm
+        icon_color: >-
+          {% if is_state('binary_sensor.pikvm_nas', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_cache_usage
+        primary: Cache usage
+        secondary: >-
+          {{ states('sensor.tower_disk_cache_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
+        icon: mdi:harddisk-plus
+        icon_color: >-
+          {% set u = states('sensor.tower_disk_cache_usage') | float(0) %}
+          {% if u >= 90 %}
+            red
+          {% elif u >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_parity_check_running
+        primary: Parity check
+        secondary: >-
+          {% if is_state('binary_sensor.tower_parity_check_running', 'on') %}
+            Running · {{ states('sensor.tower_parity_check_progress') }}% · {{ states('sensor.tower_parity_check_speed') }} MiB/s
+          {% else %}
+            Not running
+          {% endif %}
+        icon: mdi:shield-sync
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_parity_check_running', 'on') %}
+            amber
+          {% else %}
+            disabled
+          {% endif %}
+        fill_container: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disks_invalid
+        primary: Disk / FS issues
+        secondary: >-
+          {% set disabled = state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) %}
+          {% set invalid = state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) %}
+          {% set missing = state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) %}
+          {% set unmountable = state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) %}
+          {% if disabled + invalid + missing + unmountable > 0 %}
+            {{ disabled }} disabled · {{ invalid }} invalid · {{ missing }} missing · {{ unmountable }} unmountable
+          {% else %}
+            No disk or filesystem issues reported
+          {% endif %}
+        icon: mdi:harddisk-remove
+        icon_color: >-
+          {% set disabled = state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) %}
+          {% set invalid = state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) %}
+          {% set missing = state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) %}
+          {% set unmountable = state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) %}
+          {% if disabled + invalid + missing + unmountable > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+        fill_container: true
+        tap_action:
+          action: more-info
+
+  - type: conditional
+    conditions:
+      - entity: binary_sensor.tower_parity_check_running
+        state: 'on'
+    card:
+      type: vertical-stack
+      cards:
+        - type: custom:button-card
+          entity: sensor.tower_parity_check_progress
+          name: Parity Check Progress
+          show_icon: false
+          show_state: false
+          styles:
+            grid:
+              - grid-template-areas: '"n" "bar" "info"'
+              - grid-template-columns: 1fr
+              - grid-template-rows: min-content 18px min-content
+              - row-gap: 10px
+            card:
+              - padding: 14px
+            name:
+              - justify-self: start
+              - font-size: 1.0em
+              - font-weight: 600
+            custom_fields:
+              bar:
+                - position: relative
+                - height: 18px
+                - background: rgba(255,255,255,0.10)
+                - border-radius: 999px
+                - overflow: hidden
+              info:
+                - justify-self: stretch
+                - text-align: left
+                - font-size: 0.95em
+                - line-height: 1.45
+          custom_fields:
+            bar: |
+              [[[ 
+                const progress = Number(states['sensor.tower_parity_check_progress']?.state || 0);
+                const safeProgress = Math.max(0, Math.min(progress, 100));
+                return `
+                  <div style="position:absolute; inset:0; border-radius:999px; overflow:hidden;">
+                    <div style="width:${safeProgress}%; height:100%; background:linear-gradient(90deg, #1e88e5 0%, #42a5f5 100%);"></div>
+                  </div>
+                  <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:0.82em; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.6);">
+                    ${safeProgress.toFixed(0)}%
+                  </div>
+                `;
+              ]]]
+            info: |
+              [[[ 
+                const speed = states['sensor.tower_parity_check_speed']?.state ?? '-';
+                const eta = states['sensor.tower_parity_check_finish']?.state
+                  ?? states['sensor.tower_parity_estimated_finish']?.state
+                  ?? states['sensor.tower_parity_finish_time']?.state
+                  ?? 'ETA unavailable';
+                return `Speed ${speed} MiB/s · ETA ${eta}`;
+              ]]]
+        - type: horizontal-stack
+          cards:
+            - type: custom:button-card
+              entity: button.tower_resume_parity_check
+              name: Resume parity
+              icon: mdi:play
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                card:
+                  - padding: 6px 10px
+                  - height: 68px
+                  - min-height: 68px
+                  - border-radius: 14px
+                  - background-color: >
+                      [[[
+                        const status = states['switch.tower_parity_check']?.attributes?.status;
+                        return status === 'paused'
+                          ? 'rgba(255,255,255,0.92)'
+                          : 'rgba(120,120,120,0.22)';
+                      ]]]
+                  - border: >
+                      [[[
+                        const status = states['switch.tower_parity_check']?.attributes?.status;
+                        return status === 'paused'
+                          ? '1px solid rgba(255,255,255,0.95)'
+                          : '1px solid rgba(158,158,158,0.28)';
+                      ]]]
+                icon:
+                  - color: >
+                      [[[
+                        const status = states['switch.tower_parity_check']?.attributes?.status;
+                        return status === 'paused' ? 'rgb(20,20,20)' : 'rgb(189,189,189)';
+                      ]]]
+                  - width: 22px
+                name:
+                  - font-size: 0.9em
+                  - font-weight: 600
+                  - color: >
+                      [[[
+                        const status = states['switch.tower_parity_check']?.attributes?.status;
+                        return status === 'paused' ? 'rgb(20,20,20)' : 'rgb(189,189,189)';
+                      ]]]
+            - type: custom:mushroom-template-card
+              entity: switch.tower_parity_check
+              primary: Unraid parity check
+              secondary: >-
+                {% set status = state_attr('switch.tower_parity_check', 'status') | default('unknown', true) %}
+                {% set progress = state_attr('switch.tower_parity_check', 'progress') | default(states('sensor.tower_parity_check_progress'), true) %}
+                {% set speed = states('sensor.tower_parity_check_speed') %}
+                {% set errors = state_attr('switch.tower_parity_check', 'errors') %}
+                {% if status == 'running' %}
+                  Running · {{ progress }}% · {{ speed }} MiB/s
+                {% elif status == 'paused' %}
+                  Paused · {{ progress }}% · {{ speed }} MiB/s
+                {% elif status == 'stopped' %}
+                  Stopped
+                {% else %}
+                  {{ status | replace('_', ' ') | title }}{% if progress not in ['unknown', 'unavailable', '', none] %} · {{ progress }}%{% endif %}
+                {% endif %}
+                {% if errors not in [none, 'None', 'unknown', 'unavailable'] %}
+                  · Errors: {{ errors }}
+                {% endif %}
+              icon: mdi:shield-sync
+              icon_color: >-
+                {% set status = state_attr('switch.tower_parity_check', 'status') | default('unknown', true) %}
+                {% set errors = state_attr('switch.tower_parity_check', 'errors') %}
+                {% if errors not in [none, 'None', 'unknown', 'unavailable'] and errors | int(0) > 0 %}
+                  red
+                {% elif status == 'running' %}
+                  green
+                {% elif status == 'paused' %}
+                  amber
+                {% elif status == 'stopped' %}
+                  blue
+                {% else %}
+                  disabled
+                {% endif %}
+              multiline_secondary: true
+              tap_action:
+                action: more-info
+
+  ###########################################################################
+  # OVERVIEW
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Overview
+
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_unraid_version
+        primary: Unraid version
+        secondary: >-
+          {{ states('sensor.tower_unraid_version') }} · API {{ state_attr('sensor.tower_unraid_version', 'api_version') }}
+        icon: mdi:server
+        icon_color: blue
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_uptime_2
+        primary: Up since
+        secondary: >-
+          {{ states('sensor.tower_uptime_2') }}
+        icon: mdi:clock-start
+        icon_color: green
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_array_state
+        primary: Array state
+        secondary: >-
+          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+            Started
+          {% else %}
+            Stopped
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_array_usage
+        primary: Array usage
+        secondary: >-
+          {{ states('sensor.tower_array_usage') | float(0) | round(1) }}% · {{ state_attr('sensor.tower_array_usage', 'used') }} / {{ state_attr('sensor.tower_array_usage', 'total') }}
+        icon: mdi:harddisk-plus
+        icon_color: >-
+          {% set u = states('sensor.tower_array_usage') | float(0) %}
+          {% if u >= 90 %}
+            red
+          {% elif u >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_active_notifications
+        primary: Active notifications
+        secondary: >-
+          {{ states('sensor.tower_active_notifications') }} active
+        icon: mdi:bell-badge
+        icon_color: >-
+          {% if states('sensor.tower_active_notifications') | int(0) > 0 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_mover_active
+        primary: Mover
+        secondary: >-
+          {% if is_state('binary_sensor.tower_mover_active', 'on') %}
+            Running
+          {% else %}
+            Idle
+          {% endif %}
+        icon: mdi:swap-horizontal-bold
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_mover_active', 'on') %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_cloud_connected
+        primary: Cloud relay
+        secondary: >-
+          {% if is_state('binary_sensor.tower_cloud_connected', 'on') %}
+            Connected
+          {% else %}
+            Disconnected · {{ state_attr('binary_sensor.tower_cloud_connected', 'relay_status') or 'unknown' }}
+          {% endif %}
+        icon: mdi:cloud
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_cloud_connected', 'on') %}
+            green
+          {% else %}
+            red
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_config_valid
+        primary: Config validity
+        secondary: >-
+          {% if is_state('binary_sensor.tower_config_valid', 'on') %}
+            Configuration problem detected
+          {% else %}
+            Configuration looks valid
+          {% endif %}
+        icon: mdi:cog-check
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_config_valid', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_safe_mode
+        primary: Safe mode
+        secondary: >-
+          {% if is_state('binary_sensor.tower_safe_mode', 'on') %}
+            Enabled
+          {% else %}
+            Normal mode
+          {% endif %}
+        icon: mdi:shield-half-full
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_safe_mode', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_cpu_usage
+        primary: CPU
+        secondary: >-
+          {{ states('sensor.tower_cpu_usage') | float(0) | round(1) }}% · {{ states('sensor.tower_cpu_temperature') }} °C · {{ states('sensor.tower_cpu_power') }} W
+        icon: mdi:cpu-64-bit
+        icon_color: >-
+          {% set u = states('sensor.tower_cpu_usage') | float(0) %}
+          {% if u >= 90 %}
+            red
+          {% elif u >= 60 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_ram_usage
+        primary: Memory
+        secondary: >-
+          {{ states('sensor.tower_ram_usage') | float(0) | round(1) }}% · {{ states('sensor.tower_ram_used') }} GiB used
+        icon: mdi:memory
+        icon_color: >-
+          {% set u = states('sensor.tower_ram_usage') | float(0) %}
+          {% if u >= 90 %}
+            red
+          {% elif u >= 75 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_swap_usage
+        primary: Swap
+        secondary: >-
+          {{ states('sensor.tower_swap_usage') | float(0) | round(1) }}% · {{ states('sensor.tower_swap_used') }} GiB used
+        icon: mdi:swap-horizontal
+        icon_color: >-
+          {% set u = states('sensor.tower_swap_usage') | float(0) %}
+          {% if u > 0 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_flash_device_usage
+        primary: Flash usage
+        secondary: >-
+          {% set s = states('sensor.tower_flash_device_usage') %}
+          {% if s in ['unknown', 'unavailable'] %}
+            Unavailable
+          {% else %}
+            {{ s | float(0) | round(1) }}% used
+          {% endif %}
+        icon: mdi:usb-flash-drive
+        icon_color: >-
+          {% set s = states('sensor.tower_flash_device_usage') %}
+          {% if s in ['unknown', 'unavailable'] %}
+            red
+          {% elif s | float(0) >= 90 %}
+            red
+          {% elif s | float(0) >= 75 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+
+  ###########################################################################
+  # PARITY / ARRAY CONTROL
+  ###########################################################################
+  - type: custom:collapsable-cards
+    title: Parity and array
+    cards:
+      - type: gauge
+        entity: sensor.tower_parity_check_progress
+        name: Parity check progress
+        min: 0
+        max: 100
+        severity:
+          green: 0
+          yellow: 1
+          red: 95
+
+      - type: custom:mushroom-template-card
+        entity: switch.tower_parity_check
+        primary: Unraid parity check
+        secondary: >-
+          {% set status = state_attr('switch.tower_parity_check', 'status') | default('unknown', true) %}
+          {% set progress = state_attr('switch.tower_parity_check', 'progress') | default(states('sensor.tower_parity_check_progress'), true) %}
+          {% set speed = states('sensor.tower_parity_check_speed') %}
+          {% set errors = state_attr('switch.tower_parity_check', 'errors') %}
+          {% if status == 'running' %}
+            Running · {{ progress }}% · {{ speed }} MiB/s
+          {% elif status == 'paused' %}
+            Paused · {{ progress }}% · {{ speed }} MiB/s
+          {% elif status == 'stopped' %}
+            Stopped
+          {% else %}
+            {{ status | replace('_', ' ') | title }}{% if progress not in ['unknown', 'unavailable', '', none] %} · {{ progress }}%{% endif %}
+          {% endif %}
+          {% if errors not in [none, 'None', 'unknown', 'unavailable'] %}
+            · Errors: {{ errors }}
+          {% endif %}
+        icon: mdi:shield-sync
+        icon_color: >-
+          {% set status = state_attr('switch.tower_parity_check', 'status') | default('unknown', true) %}
+          {% set errors = state_attr('switch.tower_parity_check', 'errors') %}
+          {% if errors not in [none, 'None', 'unknown', 'unavailable'] and errors | int(0) > 0 %}
+            red
+          {% elif status == 'running' %}
+            green
+          {% elif status == 'paused' %}
+            amber
+          {% elif status == 'stopped' %}
+            blue
+          {% else %}
+            disabled
+          {% endif %}
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: entities
+        title: Parity status
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.tower_parity_check_running
+            name: Running
+          - entity: sensor.tower_parity_check_progress
+            name: Progress
+          - entity: sensor.tower_parity_check_speed
+            name: Speed
+          - entity: binary_sensor.tower_parity_status
+            name: Status
+          - entity: binary_sensor.tower_parity_valid
+            name: Valid
+          - entity: sensor.tower_last_parity_check_errors
+            name: Last parity check errors
+
+      - type: grid
+        square: false
+        columns: 3
         cards:
-          - type: horizontal-stack
-            cards:
-              - type: entity
-                entity: sensor.airvpn_server_name
-                name: Server Name
-              - type: entity
-                entity: sensor.airvpn_server_country
-                name: Server Country
-          - type: horizontal-stack
-            cards:
-              - type: entity
-                entity: sensor.airvpn_exit_ip
-                name: Exit IP
-              - type: entity
-                entity: sensor.airvpn_vpn_ip
-                name: VPN IP
-          - type: custom:apexcharts-card
-            header:
-              title: AirVPN Total Down/Up
-              show: True
-              show_states: true
-              colorize_states: true
-            update_interval: 5min
-            apex_config:
-              legend:
-                show: false
-              chart:
-                height: 250px
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            yaxis:
-              - min: 0
-                max: ~50
-                decimals: 0
-                align_to: 10
-                apex_config:
-                  tickAmount: 4
-                  forceNiceScale: True
-            all_series_config:
-              group_by:
-                func: avg
-                duration: 10min
-              show:
-                in_header: false
-                legend_value: false
-            series:
-              - entity: sensor.airvpn_data_uploaded
-                name: Data Uploaded
-                color: "#FFA500"  # Nice orange for upload
-                stroke_width: 3
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-              - entity: sensor.airvpn_data_downloaded
-                name: Data Downloaded
-                color: "#008FFB"  # ApexCharts default blue for download
-                stroke_width: 3
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-              # Yesterday's data
-              - entity: sensor.airvpn_data_uploaded
-                name: Data Uploaded (Yesterday)
-                color: "#FFCC99"  # Less saturated orange for yesterday
-                stroke_width: 2
-                opacity: 0.5
-                offset: -1d
-              - entity: sensor.airvpn_data_downloaded
-                name: Data Downloaded (Yesterday)
-                color: "#99CCFF"  # Less saturated blue for yesterday
-                stroke_width: 2
-                opacity: 0.5
-                offset: -1d
-          - type: custom:apexcharts-card
-            header:
-              title: AirVPN Current Down/Up Speed
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 5min
-            apex_config:
-              legend:
-                show: false
-              chart:
-                height: 250px
-            graph_span: 24h
-            span:
-              start: day
-            yaxis:
-              - min: 0
-                max: ~10
-                decimals: 0
-                align_to: 10
-                apex_config:
-                  tickAmount: 5
-                  forceNiceScale: True
-            all_series_config:
-              group_by:
-                func: avg
-                duration: 10min
-              show:
-                in_header: false
-                legend_value: false
-              stroke_width: 3
-            series:
-              - entity: sensor.airvpn_upload_speed
-                name: Upload Speed
-                color: "#FFA500"  # Orange for upload
-                stroke_width: 3
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-              - entity: sensor.airvpn_download_speed
-                name: Download Speed
-                color: "#008FFB"  # Blue for download
-                stroke_width: 3
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-              # Yesterday's data
-              - entity: sensor.airvpn_upload_speed
-                name: Upload Speed (Yesterday)
-                color: "#FFCC99"  # Less saturated orange for yesterday
-                stroke_width: 2
-                opacity: 0.5
-                offset: -1d
-              - entity: sensor.airvpn_download_speed
-                name: Download Speed (Yesterday)
-                color: "#99CCFF"  # Less saturated blue for yesterday
-                stroke_width: 2
-                opacity: 0.5
-                offset: -1d
+          - type: button
+            entity: button.tower_start_parity_check
+            name: Start parity
+            tap_action:
+              action: toggle
+          - type: button
+            entity: button.tower_stop_parity_check
+            name: Stop parity
+            tap_action:
+              action: toggle
+          - type: button
+            entity: button.tower_resume_parity_check
+            name: Resume parity
+            tap_action:
+              action: toggle
+          - type: button
+            entity: button.tower_start_array
+            name: Start array
+            tap_action:
+              action: toggle
+          - type: button
+            entity: button.tower_stop_array
+            name: Stop array
+            tap_action:
+              action: toggle
+
+  ###########################################################################
+  # STORAGE
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Storage
+
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_cache_usage
+        primary: Cache
+        secondary: >-
+          {{ states('sensor.tower_disk_cache_temperature') }} °C ·
+          {{ states('sensor.tower_disk_cache_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
+        icon: mdi:harddisk-plus
+        icon_color: >-
+          {% set health = is_state('binary_sensor.tower_disk_cache_health', 'on') %}
+          {% set usage = states('sensor.tower_disk_cache_usage') | float(0) %}
+          {% if health or usage >= 90 %}
+            red
+          {% elif usage >= 80 %}
+            amber
+          {% else %}
+            blue
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_parity_temperature
+        primary: Parity disk
+        secondary: >-
+          {{ states('sensor.tower_disk_parity_temperature') }} °C ·
+          {{ state_attr('binary_sensor.tower_disk_parity_health', 'status') }} ·
+          {{ 'spinning' if state_attr('binary_sensor.tower_disk_parity_health', 'spinning') else 'standby' }}
+        icon: mdi:shield-harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_parity_health', 'on') %}
+            red
+          {% else %}
+            teal
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_disk1_usage
+        primary: Disk 1
+        secondary: >-
+          {{ states('sensor.tower_disk_disk1_temperature') }} °C ·
+          {{ states('sensor.tower_disk_disk1_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_disk1_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk1_usage', 'total') }}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set usage = states('sensor.tower_disk_disk1_usage') | float(0) %}
+          {% if is_state('binary_sensor.tower_disk_disk1_health', 'on') or usage >= 90 %}
+            red
+          {% elif usage >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_disk2_usage
+        primary: Disk 2
+        secondary: >-
+          {{ states('sensor.tower_disk_disk2_temperature') }} °C ·
+          {{ states('sensor.tower_disk_disk2_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_disk2_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk2_usage', 'total') }}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set usage = states('sensor.tower_disk_disk2_usage') | float(0) %}
+          {% if is_state('binary_sensor.tower_disk_disk2_health', 'on') or usage >= 90 %}
+            red
+          {% elif usage >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_disk3_usage
+        primary: Disk 3
+        secondary: >-
+          {{ states('sensor.tower_disk_disk3_temperature') }} °C ·
+          {{ states('sensor.tower_disk_disk3_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_disk3_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk3_usage', 'total') }}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set usage = states('sensor.tower_disk_disk3_usage') | float(0) %}
+          {% if is_state('binary_sensor.tower_disk_disk3_health', 'on') or usage >= 90 %}
+            red
+          {% elif usage >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_disk4_usage
+        primary: Disk 4
+        secondary: >-
+          {{ states('sensor.tower_disk_disk4_temperature') }} °C ·
+          {{ states('sensor.tower_disk_disk4_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_disk4_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk4_usage', 'total') }}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set usage = states('sensor.tower_disk_disk4_usage') | float(0) %}
+          {% if is_state('binary_sensor.tower_disk_disk4_health', 'on') or usage >= 90 %}
+            red
+          {% elif usage >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: sensor.tower_disk_disk5_usage
+        primary: Disk 5
+        secondary: >-
+          {{ states('sensor.tower_disk_disk5_temperature') }} °C ·
+          {{ states('sensor.tower_disk_disk5_usage') | float(0) | round(1) }}% used ·
+          {{ state_attr('sensor.tower_disk_disk5_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk5_usage', 'total') }}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% set usage = states('sensor.tower_disk_disk5_usage') | float(0) %}
+          {% if is_state('binary_sensor.tower_disk_disk5_health', 'on') or usage >= 90 %}
+            red
+          {% elif usage >= 80 %}
+            amber
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_cache_health
+        primary: Cache health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_cache_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_cache_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_cache_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_cache_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_cache_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:harddisk-plus
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_cache_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_parity_health
+        primary: Parity health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_parity_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_parity_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_parity_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_parity_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_parity_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:shield-harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_parity_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_disk1_health
+        primary: Disk 1 health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_disk1_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_disk1_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk1_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_disk1_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk1_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_disk1_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_disk2_health
+        primary: Disk 2 health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_disk2_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_disk2_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk2_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_disk2_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk2_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_disk2_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_disk3_health
+        primary: Disk 3 health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_disk3_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_disk3_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk3_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_disk3_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk3_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_disk3_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_disk4_health
+        primary: Disk 4 health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_disk4_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_disk4_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk4_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_disk4_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk4_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_disk4_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disk_disk5_health
+        primary: Disk 5 health
+        secondary: >-
+          {% if is_state('binary_sensor.tower_disk_disk5_health', 'on') %}
+            Problem · {{ state_attr('binary_sensor.tower_disk_disk5_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk5_health', 'spinning') else 'standby' }}
+          {% else %}
+            OK · {{ state_attr('binary_sensor.tower_disk_disk5_health', 'temperature') }} °C · {{ 'spinning' if state_attr('binary_sensor.tower_disk_disk5_health', 'spinning') else 'standby' }}
+          {% endif %}
+        icon: mdi:harddisk
+        icon_color: >-
+          {% if is_state('binary_sensor.tower_disk_disk5_health', 'on') %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disks_disabled
+        primary: Disks disabled
+        secondary: >-
+          {{ state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) }} affected
+        icon: mdi:harddisk-off
+        icon_color: >-
+          {% if state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disks_invalid
+        primary: Disks invalid
+        secondary: >-
+          {{ state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) }} affected
+        icon: mdi:alert-circle
+        icon_color: >-
+          {% if state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_disks_missing
+        primary: Disks missing
+        secondary: >-
+          {{ state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) }} affected
+        icon: mdi:harddisk-remove
+        icon_color: >-
+          {% if state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+      - type: custom:mushroom-template-card
+        entity: binary_sensor.tower_filesystems_unmountable
+        primary: Filesystems unmountable
+        secondary: >-
+          {{ state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) }} affected
+        icon: mdi:folder-remove
+        icon_color: >-
+          {% if state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) > 0 %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        fill_container: true
+
+  - type: custom:collapsable-cards
+    title: Shares
+    cards:
+      - type: entities
+        title: Share usage
+        show_header_toggle: false
+        entities:
+          - entity: sensor.tower_share_appdata_usage
+            name: appdata
+          - entity: sensor.tower_share_domains_usage
+            name: domains
+          - entity: sensor.tower_share_isos_usage
+            name: isos
+          - entity: sensor.tower_share_rpi4omv_usage
+            name: RPI4OMV
+          - entity: sensor.tower_share_storage_usage
+            name: Storage
+          - entity: sensor.tower_share_storage2_usage
+            name: Storage2
+          - entity: sensor.tower_share_syslog_usage
+            name: syslog
+          - entity: sensor.tower_share_system_usage
+            name: system
+          - entity: sensor.tower_share_t_media_usage
+            name: T_Media
+          - entity: sensor.tower_share_unrarred_usage
+            name: unrarred
+
+  - type: custom:collapsable-cards
+    title: Spin up / spin down controls
+    cards:
+      - type: grid
+        square: false
+        columns: 3
+        cards:
+          - type: button
+            entity: button.tower_spin_up_disk1
+            name: Spin up disk1
+          - type: button
+            entity: button.tower_spin_down_disk1
+            name: Spin down disk1
+          - type: button
+            entity: button.tower_spin_up_disk2
+            name: Spin up disk2
+          - type: button
+            entity: button.tower_spin_down_disk2
+            name: Spin down disk2
+          - type: button
+            entity: button.tower_spin_up_disk3
+            name: Spin up disk3
+          - type: button
+            entity: button.tower_spin_down_disk3
+            name: Spin down disk3
+          - type: button
+            entity: button.tower_spin_up_disk4
+            name: Spin up disk4
+          - type: button
+            entity: button.tower_spin_down_disk4
+            name: Spin down disk4
+          - type: button
+            entity: button.tower_spin_up_disk5
+            name: Spin up disk5
+          - type: button
+            entity: button.tower_spin_down_disk5
+            name: Spin down disk5
+          - type: button
+            entity: button.tower_spin_up_parity
+            name: Spin up parity
+          - type: button
+            entity: button.tower_spin_down_parity
+            name: Spin down parity
+
+  ###########################################################################
+  # SYSTEM CHARTS
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## System charts
 
   - type: custom:apexcharts-card
     header:
@@ -180,27 +1115,42 @@ cards:
         duration: 10min
       stroke_width: 3
     yaxis:
-      - min: 0
+      - id: percent
+        min: 0
         max: 100
         decimals: 0
         align_to: 10
         apex_config:
-          forceNiceScale: True
-          #tickAmount: 5
+          forceNiceScale: true
           labels:
             formatter: |
               EVAL:function(value) {
                 return `${value} %`;
               }
+      - id: temp
+        min: 20
+        max: 80
+        decimals: 0
+        opposite: true
+        apex_config:
+          forceNiceScale: true
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return `${value} °C`;
+              }
     series:
-      - entity: sensor.tower_cpu_temperature
-        name: CPU Temperature
-        color: '#FFCE56'
       - entity: sensor.tower_cpu_usage
         name: CPU Usage
+        yaxis_id: percent
         color: '#36A2EB'
+      - entity: sensor.tower_cpu_temperature
+        name: CPU Temperature
+        yaxis_id: temp
+        color: '#FFCE56'
       - entity: sensor.nas_exhaust_multi_sensor_temperature
         name: Exhaust Temperature
+        yaxis_id: temp
         color: '#FF6384'
 
   - type: custom:apexcharts-card
@@ -221,13 +1171,12 @@ cards:
         func: median
         duration: 10min
       stroke_width: 3
-      # transform: "return (x / 1024).toFixed(2);"
     yaxis:
       - min: 0
         max: 100
         decimals: 0
         apex_config:
-          forceNiceScale: True
+          forceNiceScale: true
           tickAmount: 4
           labels:
             formatter: |
@@ -264,56 +1213,37 @@ cards:
         decimals: 0
         align_to: 10
         apex_config:
-          forceNiceScale: True
-          #tickAmount: 4
+          forceNiceScale: true
           labels:
             formatter: |
               EVAL:function(value) {
-                return `${(value)} °C`;
+                return `${value} °C`;
               }
     series:
-      - entity: sensor.unraid_parity_temperature
+      - entity: sensor.tower_disk_parity_temperature
         name: Parity Disk Temperature
         color: '#4BC0C0'
-      - entity: sensor.unraid_disk_1_temperature
+      - entity: sensor.tower_disk_disk1_temperature
         name: Disk 1 Temperature
         color: '#9966FF'
-      - entity: sensor.unraid_disk_2_temperature
+      - entity: sensor.tower_disk_disk2_temperature
         name: Disk 2 Temperature
         color: '#C9CBCF'
-      - entity: sensor.unraid_disk_3_temperature
+      - entity: sensor.tower_disk_disk3_temperature
         name: Disk 3 Temperature
         color: '#7E57C2'
-      - entity: sensor.unraid_disk_4_temperature
+      - entity: sensor.tower_disk_disk4_temperature
         name: Disk 4 Temperature
         color: '#FFCE56'
-      - entity: sensor.unraid_disk_5_temperature
+      - entity: sensor.tower_disk_disk5_temperature
         name: Disk 5 Temperature
         color: '#FF9F40'
-      - entity: sensor.unraid_cache_pool_temperature
-        name: NVMe Composite Temperature
+      - entity: sensor.tower_disk_cache_temperature
+        name: Cache Temperature
         color: '#36A2EB'
-        transform: "return x == 83.8 ? null : x;"
       - entity: sensor.nas_exhaust_multi_sensor_temperature
         name: Exhaust Temperature
         color: '#FF6384'
-
-  - type: history-graph
-    title: Disk Status
-    hours_to_show: 24
-    entities:
-      - entity: binary_sensor.parity_disk_spun_up
-        name: Parity
-      - entity: binary_sensor.disk_1_spun_up
-        name: Disk 1
-      - entity: binary_sensor.disk_2_spun_up
-        name: Disk 2
-      - entity: binary_sensor.disk_3_spun_up
-        name: Disk 3
-      - entity: binary_sensor.disk_4_spun_up
-        name: Disk 4
-      - entity: binary_sensor.disk_5_spun_up
-        name: Disk 5
 
   - type: custom:apexcharts-card
     header:
@@ -347,8 +1277,7 @@ cards:
         decimals: 0
         align_to: 20
         apex_config:
-          forceNiceScale: True
-          #tickAmount: 5
+          forceNiceScale: true
     series:
       - entity: sensor.plug_nas_power
         offset: '-6d'
@@ -382,497 +1311,300 @@ cards:
         opacity: 0.45
       - entity: sensor.plug_nas_power
         name: Power
-        color: '#FFCE56' # Bright color for today to stand out
+        color: '#FFCE56'
         type: line
         extend_to: now
-        opacity: 1 # Full opacity for today
+        opacity: 1
         show:
           in_header: true
           legend_value: true
 
-  - cards:
-      - type: entities
-        entities:
-          - entity: sensor.nas_link_speed
-            name: Link Speed
-          - entity: sensor.plug_nas_power
-            name: Power
-    type: vertical-stack
-
-  - type: grid
-    title: Firewall Rules
-    cards:
-      - type: button
-        entity: switch.unifi_network_forward_plex_to_nas
-        name: Plex to NAS
-      - type: button
-        entity: switch.unifi_network_guac_http
-        name: Guac HTTP
-      - type: button
-        entity: switch.unifi_network_guac_https
-        name: Guac HTTPS
-      - type: button
-        entity: switch.unifi_network_swag_http_https
-        name: Swag HTTP
-      - type: button
-        entity: switch.unifi_network_swag_https
-        name: Swag HTTPS
-      - type: button
-        entity: switch.unifi_network_transmission_data
-        name: Transmission Data
-    columns: 4
-
-  - type: glance
-    title: Study Desk Powerstrip
-    columns: 5
-    show_state: false
-    entities:
-    - entity: switch.powerstrip_study_desk_socket_1
-      name: PC
-      icon: mdi:desktop-tower
-      tap_action:
-        action: toggle
-        confirmation:
-          text: Are you sure you want to power on/off?
-    - entity: switch.powerstrip_study_desk_socket_2
-      name: Laptop Dock
-      icon: mdi:laptop
-      tap_action:
-        action: toggle
-    - entity: switch.powerstrip_study_desk_socket_3
-      name: Peripherals
-      icon: mdi:audio-video
-      tap_action:
-        action: toggle
-    - entity: switch.powerstrip_study_desk_socket_4
-      name: Monitors
-      icon: mdi:monitor-multiple
-      tap_action:
-        action: toggle
-    - entity: switch.powerstrip_study_desk_socket_usb
-      name: USB
-      icon: mdi:usb
-      tap_action:
-        action: toggle
-    - entity: script.turn_off_all_study_desk_devices
-      name: ALL
-      icon: mdi:desktop-tower-monitor
-      tap_action:
-        action: call-service
-        service: script.turn_off_all_study_desk_devices
-        confirmation:
-          text: Are you sure you want to power off?
-
+  ###########################################################################
+  # UPS
+  ###########################################################################
   - type: custom:collapsable-cards
-    title: Docker Stats
+    title: UPS
     cards:
       - type: grid
-        title: Container Switches
-        square: true
-        columns: 5
+        square: false
+        columns: 2
         cards:
-          - type: button
-            entity: switch.docker_tower_authelia
-            name: Authelia
-            icon: mdi:shield-account
-          - type: button
-            entity: switch.docker_tower_thelounge
-            name: TheLounge
-            icon: mdi:chat
-          - type: button
-            entity: switch.docker_tower_stash
-            name: Stash
-            icon: mdi:archive
-          - type: button
-            entity: switch.docker_tower_binhex_krusader
-            name: Krusader
-            icon: mdi:file-cabinet
-          - type: button
-            entity: switch.docker_tower_plex
-            name: Plex
-            icon: mdi:play-network
-          - type: button
-            entity: switch.docker_tower_frigate
-            name: Frigate
-            icon: mdi:cctv
-          - type: button
-            entity: switch.docker_tower_postgresql_immich
-            name: PostgreSQL (Immich)
-            icon: mdi:database
-          - type: button
-            entity: switch.docker_tower_audiobookshelf
-            name: Audiobookshelf
-            icon: mdi:bookshelf
-          - type: button
-            entity: switch.docker_tower_qdirstat
-            name: QDirStat
-            icon: mdi:chart-donut
-          - type: button
-            entity: switch.docker_tower_firefox
-            name: Firefox
-            icon: mdi:web
-          - type: button
-            entity: switch.docker_tower_photoprism
-            name: PhotoPrism
-            icon: mdi:image-multiple
-          - type: button
-            entity: switch.docker_tower_onedrive
-            name: OneDrive
-            icon: mdi:cloud
-          - type: button
-            entity: switch.docker_tower_diskspeed
-            name: DiskSpeed
-            icon: mdi:speedometer
-          - type: button
-            entity: switch.docker_tower_musicbrainz_picard
-            name: MusicBrainz Picard
-            icon: mdi:music
-          - type: button
-            entity: switch.docker_tower_dupeguru
-            name: dupeGuru
-            icon: mdi:content-duplicate
-          - type: button
-            entity: switch.docker_tower_transmission
-            name: Transmission
-            icon: mdi:download-network
-          - type: button
-            entity: switch.docker_tower_transmission_1
-            name: Transmission (1)
-            icon: mdi:download-network-outline
-          - type: button
-            entity: switch.docker_tower_ntp
-            name: NTP
-            icon: mdi:clock-outline
-          - type: button
-            entity: switch.docker_tower_apacheguacamole
-            name: Apache Guacamole
-            icon: mdi:remote-desktop
-          - type: button
-            entity: switch.docker_tower_iperf3
-            name: iPerf3
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.tower_ups_connected
+            primary: UPS connection
+            secondary: >-
+              {% if is_state('binary_sensor.tower_ups_connected', 'on') %}
+                Connected · {{ state_attr('binary_sensor.tower_ups_connected', 'status') }}
+              {% else %}
+                Disconnected
+              {% endif %}
+            icon: mdi:battery-charging
+            icon_color: >-
+              {% if is_state('binary_sensor.tower_ups_connected', 'on') %}
+                green
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_battery
+            primary: Battery
+            secondary: >-
+              {{ states('sensor.tower_ups_battery') }}% · {{ state_attr('sensor.tower_ups_battery', 'health') }}
+            icon: mdi:battery-high
+            icon_color: >-
+              {% set b = states('sensor.tower_ups_battery') | int(0) %}
+              {% if b <= 25 %}
+                red
+              {% elif b <= 50 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_load
+            primary: Load
+            secondary: >-
+              {{ states('sensor.tower_ups_load') }}%
+            icon: mdi:gauge
+            icon_color: >-
+              {% set l = states('sensor.tower_ups_load') | float(0) %}
+              {% if l >= 80 %}
+                red
+              {% elif l >= 50 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_power
+            primary: Output power
+            secondary: >-
+              {% if states('sensor.tower_ups_power') in ['unknown', 'unavailable'] %}
+                Unavailable
+              {% else %}
+                {{ states('sensor.tower_ups_power') }} W
+              {% endif %}
+            icon: mdi:flash
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_runtime
+            primary: Runtime
+            secondary: >-
+              {{ states('sensor.tower_ups_runtime') }}
+            icon: mdi:timer-outline
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_ut850eg_battery_health
+            primary: Battery health
+            secondary: >-
+              {{ states('sensor.tower_ups_ut850eg_battery_health') }}
+            icon: mdi:heart-pulse
+            icon_color: >-
+              {% if states('sensor.tower_ups_ut850eg_battery_health') | lower == 'good' %}
+                green
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_ut850eg_input_voltage
+            primary: Input voltage
+            secondary: >-
+              {{ states('sensor.tower_ups_ut850eg_input_voltage') }} V
+            icon: mdi:transmission-tower
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.tower_ups_ut850eg_output_voltage
+            primary: Output voltage
+            secondary: >-
+              {{ states('sensor.tower_ups_ut850eg_output_voltage') }} V
+            icon: mdi:power-plug
+            icon_color: blue
+            fill_container: true
+
+  ###########################################################################
+  # REMOTE BACKUP / VPN / PIKVM
+  ###########################################################################
+  - type: custom:collapsable-cards
+    title: Remote backup server
+    cards:
+      - type: entities
+        title: Remote backup server status
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.rpi4_omv
+            name: OMV server reachable
+            icon: mdi:server
+          - entity: sensor.rpi4_omv_round_trip_time_average
+            name: OMV server RTT
             icon: mdi:lan-connect
-          - type: button
-            entity: switch.docker_tower_watchtower
-            name: Watchtower
-            icon: mdi:watch
-          - type: button
-            entity: switch.docker_tower_hddtemp
-            name: HDDTemp
-            icon: mdi:thermometer
-          - type: button
-            entity: switch.docker_tower_nginx_proxy_manager_official
-            name: Nginx Proxy Manager
-            icon: mdi:reverse-proxy
-          - type: button
-            entity: switch.docker_tower_immich
-            name: Immich
-            icon: mdi:image
-    
-      - type: vertical-stack
+      - type: custom:mini-graph-card
+        name: OMV Round Trip Time
+        icon: mdi:lan-connect
+        entities:
+          - sensor.rpi4_omv_round_trip_time_average
+        line_width: 2
+        hours_to_show: 24
+        points_per_hour: 4
+        show:
+          labels: true
+          legend: false
+
+  - type: custom:collapsable-cards
+    title: AirVPN status
+    cards:
+      - type: entity
+        entity: sensor.airvpn_connected_since
+        name: VPN Connected Since
+      - type: horizontal-stack
         cards:
-          - type: custom:apexcharts-card
-            header:
-              title: Containers CPU Usage
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 5min
-            graph_span: 24h
+          - type: entity
+            entity: sensor.airvpn_server_name
+            name: Server Name
+          - type: entity
+            entity: sensor.airvpn_server_country
+            name: Server Country
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.airvpn_exit_ip
+            name: Exit IP
+          - type: entity
+            entity: sensor.airvpn_vpn_ip
+            name: VPN IP
+      - type: custom:apexcharts-card
+        header:
+          title: AirVPN Total Down/Up
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 5min
+        apex_config:
+          legend:
+            show: false
+          chart:
+            height: 250px
+        graph_span: 24h
+        span:
+          start: day
+        now:
+          show: true
+        yaxis:
+          - min: 0
+            max: ~50
+            decimals: 0
+            align_to: 10
             apex_config:
-              chart:
-                height: 350px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: avg
-                duration: 10min
-              stroke_width: 3
-              transform: | #EVAL:return (parseFloat(x) === -1.0 ? null : x);
-                EVAL:return (isNaN(x) ? 0 : x);
-            yaxis:
-              - min: 0
-                max: ~100
-                align_to: 25
-                decimals: 0
-                apex_config:
-                  forceNiceScale: False
-                  tickAmount: 5
-                  labels:
-                    formatter: |
-                      EVAL:function(value) {
-                        return `${value} %`;
-                      }
-            series:
-              - entity: sensor.docker_tower_apacheguacamole_cpu
-                name: Apache Guacamole
-                color: '#4E79A7'
-              - entity: sensor.docker_tower_audiobookshelf_cpu
-                name: Audiobookshelf
-                color: '#A0CBE8'
-              - entity: sensor.docker_tower_diskspeed_cpu
-                name: Disk Speed
-                color: '#F28E2B'
-              - entity: sensor.docker_tower_dupeguru_cpu
-                name: DupeGuru
-                color: '#FFBE7D'
-              - entity: sensor.docker_tower_firefox_cpu
-                name: Firefox
-                color: '#59A14F'
-              - entity: sensor.docker_tower_frigate_cpu
-                name: Frigate
-                color: '#8CD17D'
-              - entity: sensor.docker_tower_hddtemp_cpu
-                name: HDD Temp
-                color: '#B6992D'
-              - entity: sensor.docker_tower_immich_cpu
-                name: Immich
-                color: '#F1CE63'
-              - entity: sensor.docker_tower_iperf3_cpu
-                name: iPerf3
-                color: '#499894'
-              - entity: sensor.docker_tower_ntp_cpu
-                name: NTP
-                color: '#86BCB6'
-              - entity: sensor.docker_tower_onedrive_cpu
-                name: OneDrive
-                color: '#E15759'
-              - entity: sensor.docker_tower_photoprism_cpu
-                name: PhotoPrism
-                color: '#FF9D9A'
-              - entity: sensor.docker_tower_plex_cpu
-                name: Plex
-                color: '#79706E'
-              - entity: sensor.docker_tower_qdirstat_cpu
-                name: QDirStat
-                color: '#BAB0AC'
-              - entity: sensor.docker_tower_thelounge_cpu
-                name: The Lounge
-                color: '#B07AA1'
-              - entity: sensor.docker_tower_transmission_cpu
-                name: Transmission
-                color: '#D4A6C8'
-              - entity: sensor.docker_tower_watchtower_cpu
-                name: Watchtower
-                color: '#9D7660'
-
-          - type: custom:apexcharts-card
-            header:
-              title: Containers Memory Usage
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 5min
-            graph_span: 24h
+              tickAmount: 4
+              forceNiceScale: true
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 10min
+          show:
+            in_header: false
+            legend_value: false
+        series:
+          - entity: sensor.airvpn_data_uploaded
+            name: Data Uploaded
+            color: '#FFA500'
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
+          - entity: sensor.airvpn_data_downloaded
+            name: Data Downloaded
+            color: '#008FFB'
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
+          - entity: sensor.airvpn_data_uploaded
+            name: Data Uploaded (Yesterday)
+            color: '#FFCC99'
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
+          - entity: sensor.airvpn_data_downloaded
+            name: Data Downloaded (Yesterday)
+            color: '#99CCFF'
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
+      - type: custom:apexcharts-card
+        header:
+          title: AirVPN Current Down/Up Speed
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 5min
+        apex_config:
+          legend:
+            show: false
+          chart:
+            height: 250px
+        graph_span: 24h
+        span:
+          start: day
+        yaxis:
+          - min: 0
+            max: ~10
+            decimals: 0
+            align_to: 10
             apex_config:
-              chart:
-                height: 350px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: avg
-                duration: 10min
-              stroke_width: 3
-              transform: |
-                EVAL:return (parseFloat(x) === -1.0 ? null : x/1024);
-            yaxis:
-              - min: 0
-                max: ~16
-                align_to: 2
-                decimals: 0
-                apex_config:
-                  forceNiceScale: False
-                  tickAmount: 4
-                  labels:
-                    formatter: |
-                      EVAL:function(value) {
-                        return `${value} GB`;
-                      }
-            series:
-              - entity: sensor.docker_tower_apacheguacamole_memory
-                name: Apache Guacamole
-                color: '#4E79A7'
-                unit: GiB
-              - entity: sensor.docker_tower_audiobookshelf_memory
-                name: Audiobookshelf
-                color: '#A0CBE8'
-                unit: GiB
-              - entity: sensor.docker_tower_diskspeed_memory
-                name: Disk Speed
-                color: '#F28E2B'
-                unit: GiB
-              - entity: sensor.docker_tower_dupeguru_memory
-                name: DupeGuru
-                color: '#FFBE7D'
-                unit: GiB
-              - entity: sensor.docker_tower_firefox_memory
-                name: Firefox
-                color: '#59A14F'
-                unit: GiB
-              - entity: sensor.docker_tower_frigate_memory
-                name: Frigate
-                color: '#8CD17D'
-                unit: GiB
-              - entity: sensor.docker_tower_hddtemp_memory
-                name: HDD Temp
-                color: '#B6992D'
-                unit: GiB
-              - entity: sensor.docker_tower_immich_memory
-                name: Immich
-                color: '#F1CE63'
-                unit: GiB
-              - entity: sensor.docker_tower_iperf3_memory
-                name: iPerf3
-                color: '#499894'
-                unit: GiB
-              - entity: sensor.docker_tower_ntp_memory
-                name: NTP
-                color: '#86BCB6'
-                unit: GiB
-              - entity: sensor.docker_tower_onedrive_memory
-                name: OneDrive
-                color: '#E15759'
-                unit: GiB
-              - entity: sensor.docker_tower_photoprism_memory
-                name: PhotoPrism
-                color: '#FF9D9A'
-                unit: GiB
-              - entity: sensor.docker_tower_plex_memory
-                name: Plex
-                color: '#79706E'
-                unit: GiB
-              - entity: sensor.docker_tower_qdirstat_memory
-                name: QDirStat
-                color: '#BAB0AC'
-                unit: GiB
-              - entity: sensor.docker_tower_thelounge_memory
-                name: The Lounge
-                color: '#B07AA1'
-                unit: GiB
-              - entity: sensor.docker_tower_transmission_memory
-                name: Transmission
-                color: '#D4A6C8'
-                unit: GiB
-              - entity: sensor.docker_tower_watchtower_memory
-                name: Watchtower
-                color: '#9D7660'
-                unit: GiB
-
-      - type: history-graph
-        title: Important Docker Containers History
-        hours_to_show: 24  # Adjust based on how much history you want to display
-        refresh_interval: 60  # Refresh every minute
-        entities:
-          - entity: switch.docker_tower_authelia
-            name: Authelia
-          - entity: switch.docker_tower_thelounge
-            name: thelounge
-          - entity: switch.docker_tower_stash
-            name: stash
-          - entity: switch.docker_tower_binhex_krusader
-            name: binhex-krusader
-          - entity: switch.docker_tower_plex
-            name: plex
-          - entity: switch.docker_tower_frigate
-            name: frigate
-          - entity: switch.docker_tower_postgresql_immich
-            name: PostgreSQL_Immich
-          - entity: switch.docker_tower_audiobookshelf
-            name: audiobookshelf
-          - entity: switch.docker_tower_qdirstat
-            name: QDirStat
-          - entity: switch.docker_tower_firefox
-            name: Firefox
-          - entity: switch.docker_tower_photoprism
-            name: PhotoPrism
-          - entity: switch.docker_tower_onedrive
-            name: Onedrive
-          - entity: switch.docker_tower_diskspeed
-            name: DiskSpeed
-          - entity: switch.docker_tower_musicbrainz_picard
-            name: MusicBrainz-Picard
-          - entity: switch.docker_tower_dupeguru
-            name: dupeGuru
-          - entity: switch.docker_tower_transmission
-            name: transmission
-          - entity: switch.docker_tower_transmission_1
-            name: transmission-1
-          - entity: switch.docker_tower_ntp
-            name: ntp
-          - entity: switch.docker_tower_apacheguacamole
-            name: ApacheGuacamole
-          - entity: switch.docker_tower_iperf3
-            name: iperf3
-          - entity: switch.docker_tower_watchtower
-            name: watchtower
-          - entity: switch.docker_tower_hddtemp
-            name: HDDTemp
-          - entity: switch.docker_tower_nginx_proxy_manager_official
-            name: Nginx-Proxy-Manager-Official
-          - entity: switch.docker_tower_immich
-            name: immich
-      - type: entity-filter
-        entities:
-          - entity: switch.docker_tower_authelia
-            name: Authelia
-          - entity: switch.docker_tower_thelounge
-            name: thelounge
-          - entity: switch.docker_tower_stash
-            name: stash
-          - entity: switch.docker_tower_binhex_krusader
-            name: binhex-krusader
-          - entity: switch.docker_tower_plex
-            name: plex
-          - entity: switch.docker_tower_frigate
-            name: frigate
-          - entity: switch.docker_tower_postgresql_immich
-            name: PostgreSQL_Immich
-          - entity: switch.docker_tower_audiobookshelf
-            name: audiobookshelf
-          - entity: switch.docker_tower_qdirstat
-            name: QDirStat
-          - entity: switch.docker_tower_firefox
-            name: Firefox
-          - entity: switch.docker_tower_photoprism
-            name: PhotoPrism
-          - entity: switch.docker_tower_onedrive
-            name: Onedrive
-          - entity: switch.docker_tower_diskspeed
-            name: DiskSpeed
-          - entity: switch.docker_tower_musicbrainz_picard
-            name: MusicBrainz-Picard
-          - entity: switch.docker_tower_dupeguru
-            name: dupeGuru
-          - entity: switch.docker_tower_transmission
-            name: transmission
-          - entity: switch.docker_tower_transmission_1
-            name: transmission-1
-          - entity: switch.docker_tower_ntp
-            name: ntp
-          - entity: switch.docker_tower_apacheguacamole
-            name: ApacheGuacamole
-          - entity: switch.docker_tower_iperf3
-            name: iperf3
-          - entity: switch.docker_tower_watchtower
-            name: watchtower
-          - entity: switch.docker_tower_hddtemp
-            name: HDDTemp
-          - entity: switch.docker_tower_nginx_proxy_manager_official
-            name: Nginx-Proxy-Manager-Official
-          - entity: switch.docker_tower_immich
-            name: immich
-        state_filter:
-          - "on"
-        card:
-          type: entities
-          title: Running Docker Containers
+              tickAmount: 5
+              forceNiceScale: true
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 10min
+          show:
+            in_header: false
+            legend_value: false
+          stroke_width: 3
+        series:
+          - entity: sensor.airvpn_upload_speed
+            name: Upload Speed
+            color: '#FFA500'
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
+          - entity: sensor.airvpn_download_speed
+            name: Download Speed
+            color: '#008FFB'
+            stroke_width: 3
+            extend_to: now
+            show:
+              in_header: true
+              legend_value: true
+          - entity: sensor.airvpn_upload_speed
+            name: Upload Speed (Yesterday)
+            color: '#FFCC99'
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
+          - entity: sensor.airvpn_download_speed
+            name: Download Speed (Yesterday)
+            color: '#99CCFF'
+            stroke_width: 2
+            opacity: 0.5
+            offset: -1d
 
   - type: custom:collapsable-cards
     title: PiKVM NAS
     cards:
       - type: entities
-        title: PiKVM System Status
+        title: PiKVM system status
         show_header_toggle: false
         entities:
           - entity: binary_sensor.pikvm_nas
@@ -887,14 +1619,12 @@ cards:
             name: Link Quality
           - entity: sensor.pikvm_missed_beacon
             name: Missed Beacons
-
       - type: history-graph
         title: Connected
         hours_to_show: 48
         entities:
           - entity: binary_sensor.pikvm_nas
             name: Ping
-
       - type: custom:mini-graph-card
         name: PiKVM Round Trip Time
         icon: mdi:lan-connect
@@ -906,7 +1636,6 @@ cards:
         show:
           labels: true
           legend: false
-
       - type: custom:mini-graph-card
         name: PiKVM CPU Temperature
         icon: mdi:thermometer
@@ -918,7 +1647,6 @@ cards:
         show:
           labels: true
           legend: false
-
       - type: custom:mini-graph-card
         name: PiKVM Wi-Fi Stats
         icon: mdi:wifi
@@ -936,55 +1664,1944 @@ cards:
           legend: true
           labels: true
 
+  ###########################################################################
+  # NETWORK / POWERSTRIP
+  ###########################################################################
+  - type: custom:collapsable-cards
+    title: Firewall rules
+    cards:
+      - type: grid
+        square: false
+        columns: 3
+        cards:
+          - type: button
+            entity: switch.unifi_network_forward_plex_to_nas
+            name: Plex to NAS
+          - type: button
+            entity: switch.unifi_network_guac_http
+            name: Guac HTTP
+          - type: button
+            entity: switch.unifi_network_guac_https
+            name: Guac HTTPS
+          - type: button
+            entity: switch.unifi_network_swag_http_https
+            name: Swag HTTP/HTTPS
+          - type: button
+            entity: switch.unifi_network_swag_https
+            name: Swag HTTPS
+          - type: button
+            entity: switch.unifi_network_transmission_data
+            name: Transmission Data
 
+  - type: custom:collapsable-cards
+    title: Study desk powerstrip
+    cards:
+      - type: glance
+        columns: 5
+        show_state: false
+        entities:
+          - entity: switch.powerstrip_study_desk_socket_1
+            name: PC
+            icon: mdi:desktop-tower
+            tap_action:
+              action: toggle
+              confirmation:
+                text: Are you sure you want to power on/off?
+          - entity: switch.powerstrip_study_desk_socket_2
+            name: Laptop Dock
+            icon: mdi:laptop
+            tap_action:
+              action: toggle
+          - entity: switch.powerstrip_study_desk_socket_3
+            name: Peripherals
+            icon: mdi:audio-video
+            tap_action:
+              action: toggle
+          - entity: switch.powerstrip_study_desk_socket_4
+            name: Monitors
+            icon: mdi:monitor-multiple
+            tap_action:
+              action: toggle
+          - entity: switch.powerstrip_study_desk_socket_usb
+            name: USB
+            icon: mdi:usb
+            tap_action:
+              action: toggle
+          - entity: script.turn_off_all_study_desk_devices
+            name: ALL
+            icon: mdi:desktop-tower-monitor
+            tap_action:
+              action: call-service
+              service: script.turn_off_all_study_desk_devices
+              confirmation:
+                text: Are you sure you want to power off?
 
-      # - type: grid
-      #   columns: 3
-      #   square: true
-      #   title: Running Containers (Compact View)
-      #   cards:
-      #     - type: custom:button-card
-      #       entity: sensor.docker_tower_plex_cpu
-      #       name: Plex
-      #       show_icon: false
-      #       show_name: true
-      #       show_state: false
-      #       show_entity_picture: true
-      #       aspect_ratio: 1/1
-      #       entity_picture: /local/icons/docker_containers/plex.png
-      #       layout: vertical
-      #       styles:
-      #         card:
-      #           - border-radius: 10px
-      #           - padding: 8px
-      #           - height: 120px
-      #           - background-color: 'rgba(0,0,0,0.3)'
-      #         grid:
-      #           - grid-template-areas: '"i i i" "i i i" "n n n" "mem cpu"'
-      #           #- grid-template-columns: 1fr 1fr
-      #           #- grid-template-rows: 1fr min-content min-content min-content min-content
-      #         name:
-      #           - justify-self: center
-      #           - font-size: 14px
-      #           - font-weight: bold
-      #           - color: white
-      #         custom_fields:
-      #           cpu:
-      #             - justify-self: start
-      #             - align_self: start
-      #             - font-size: 12px
-      #             - color: white
-      #           mem:
-      #             - justify-self: end
-      #             - align_self: end
-      #             - font-size: 12px
-      #             - color: #cccccc
-      #       custom_fields:
-      #         cpu: |
-      #           [[[
-      #             return "CPU: " + states['sensor.docker_tower_plex_cpu'].state + "%";
-      #           ]]]
-      #         mem: |
-      #           [[[
-      #             return "MEM: " + states['sensor.docker_tower_plex_memory'].state + "%";
-      #           ]]]
+  ###########################################################################
+  # CONTAINERS
+  ###########################################################################
+  - type: markdown
+    content: |
+      ## Containers
+
+  - type: custom:collapsable-cards
+    title: Containers
+    cards:
+
+      - type: grid
+        square: false
+        columns: 5
+        cards:
+          - type: custom:button-card
+            entity: switch.tower_container_apacheguacamole
+            name: ApacheGuacamole
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url
+                    ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">`
+                    : `<ha-icon icon="mdi:remote-desktop" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_audiobookshelf
+            name: audiobookshelf
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:bookshelf" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_authelia
+            name: Authelia
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:shield-lock" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_bambuddy
+            name: Bambuddy
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:printer-3d" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_binhex_krusader
+            name: binhex-krusader
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:folder-multiple" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_code_server
+            name: code-server
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:microsoft-visual-studio-code" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_diskspeed
+            name: DiskSpeed
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:speedometer" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_dupeguru
+            name: dupeGuru
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:content-duplicate" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_duplicati
+            name: duplicati
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:backup-restore" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_firefox
+            name: Firefox
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:firefox" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_frigate
+            name: frigate
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:cctv" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_hddtemp
+            name: HDDTemp
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:thermometer" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_immich
+            name: immich
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:image-multiple" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_immich_power_tools
+            name: Immich-Power-Tools
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:tools" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_iperf3
+            name: iperf3
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:speedometer-medium" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_musicbrainz_picard
+            name: MusicBrainz-Picard
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:music-note" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_navidrome
+            name: navidrome
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:music-box-multiple" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_nginx_proxy_manager_official
+            name: NPM Official
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:server-security" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_ntp
+            name: ntp
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:clock-check" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_onedrive
+            name: Onedrive
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:microsoft-onedrive" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_photoprism
+            name: PhotoPrism
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:image-album" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_plex
+            name: plex
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:plex" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_postgresql_immich
+            name: PostgreSQL_Immich
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:database" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_qdirstat
+            name: QDirStat
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:chart-treemap" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_stash
+            name: stash
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:archive" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_tautulli
+            name: tautulli
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:chart-line" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_thelounge
+            name: thelounge
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:chat-processing" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_transmission
+            name: transmission
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:download-network" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_transmission_1
+            name: transmission-1
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:download-network" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_uptimekuma
+            name: UptimeKuma
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:monitor-dashboard" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_watchtower
+            name: watchtower
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:watchtower" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+          - type: custom:button-card
+            entity: switch.tower_container_ws_logger
+            name: ws-logger
+            show_icon: false
+            show_state: true
+            state_display: >
+              [[[
+                return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+              ]]]
+            custom_fields:
+              logo: >
+                [[[
+                  const url = entity?.attributes?.icon_url;
+                  return url ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">` : `<ha-icon icon="mdi:docker" style="width:28px;height:28px;"></ha-icon>`;
+                ]]]
+            styles:
+              grid:
+                - grid-template-areas: '"logo" "n" "s"'
+                - grid-template-columns: 1fr
+                - grid-template-rows: 36px min-content min-content
+              card:
+                - padding: 10px
+                - background-color: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+                      if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+                      if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+                      return 'rgba(120, 120, 120, 0.18)';
+                    ]]]
+                - border: >
+                    [[[
+                      const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+                      if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+                      if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+                      if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+                      if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+                      return '1px solid rgba(158, 158, 158, 0.25)';
+                    ]]]
+              name:
+                - font-size: 0.85em
+              state:
+                - font-size: 0.75em
+              custom_fields:
+                logo:
+                  - justify-self: center
+                  - align-self: center
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+      - type: custom:apexcharts-card
+        header:
+          title: Containers CPU Usage
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 5min
+        graph_span: 24h
+        apex_config:
+          chart:
+            height: 350px
+          legend:
+            show: false
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 10min
+          stroke_width: 3
+          transform: |
+            EVAL:return (isNaN(x) ? 0 : x);
+        yaxis:
+          - min: 0
+            max: ~100
+            align_to: 25
+            decimals: 0
+            apex_config:
+              forceNiceScale: false
+              tickAmount: 5
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return `${value} %`;
+                  }
+        series:
+          - entity: sensor.docker_tower_apacheguacamole_cpu
+            name: Apache Guacamole
+            color: '#4E79A7'
+          - entity: sensor.docker_tower_audiobookshelf_cpu
+            name: Audiobookshelf
+            color: '#A0CBE8'
+          - entity: sensor.docker_tower_diskspeed_cpu
+            name: Disk Speed
+            color: '#F28E2B'
+          - entity: sensor.docker_tower_dupeguru_cpu
+            name: DupeGuru
+            color: '#FFBE7D'
+          - entity: sensor.docker_tower_firefox_cpu
+            name: Firefox
+            color: '#59A14F'
+          - entity: sensor.docker_tower_frigate_cpu
+            name: Frigate
+            color: '#8CD17D'
+          - entity: sensor.docker_tower_hddtemp_cpu
+            name: HDD Temp
+            color: '#B6992D'
+          - entity: sensor.docker_tower_immich_cpu
+            name: Immich
+            color: '#F1CE63'
+          - entity: sensor.docker_tower_iperf3_cpu
+            name: iPerf3
+            color: '#499894'
+          - entity: sensor.docker_tower_ntp_cpu
+            name: NTP
+            color: '#86BCB6'
+          - entity: sensor.docker_tower_onedrive_cpu
+            name: OneDrive
+            color: '#E15759'
+          - entity: sensor.docker_tower_photoprism_cpu
+            name: PhotoPrism
+            color: '#FF9D9A'
+          - entity: sensor.docker_tower_plex_cpu
+            name: Plex
+            color: '#79706E'
+          - entity: sensor.docker_tower_qdirstat_cpu
+            name: QDirStat
+            color: '#BAB0AC'
+          - entity: sensor.docker_tower_thelounge_cpu
+            name: The Lounge
+            color: '#B07AA1'
+          - entity: sensor.docker_tower_transmission_cpu
+            name: Transmission
+            color: '#D4A6C8'
+          - entity: sensor.docker_tower_watchtower_cpu
+            name: Watchtower
+            color: '#9D7660'
+
+      - type: custom:apexcharts-card
+        header:
+          title: Containers Memory Usage
+          show: true
+          show_states: true
+          colorize_states: true
+        update_interval: 5min
+        graph_span: 24h
+        apex_config:
+          chart:
+            height: 350px
+          legend:
+            show: false
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 10min
+          stroke_width: 3
+          transform: |
+            EVAL:return (parseFloat(x) === -1.0 ? null : x/1024);
+        yaxis:
+          - min: 0
+            max: ~16
+            align_to: 2
+            decimals: 0
+            apex_config:
+              forceNiceScale: false
+              tickAmount: 4
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return `${value} GB`;
+                  }
+        series:
+          - entity: sensor.docker_tower_apacheguacamole_memory
+            name: Apache Guacamole
+            color: '#4E79A7'
+            unit: GiB
+          - entity: sensor.docker_tower_audiobookshelf_memory
+            name: Audiobookshelf
+            color: '#A0CBE8'
+            unit: GiB
+          - entity: sensor.docker_tower_diskspeed_memory
+            name: Disk Speed
+            color: '#F28E2B'
+            unit: GiB
+          - entity: sensor.docker_tower_dupeguru_memory
+            name: DupeGuru
+            color: '#FFBE7D'
+            unit: GiB
+          - entity: sensor.docker_tower_firefox_memory
+            name: Firefox
+            color: '#59A14F'
+            unit: GiB
+          - entity: sensor.docker_tower_frigate_memory
+            name: Frigate
+            color: '#8CD17D'
+            unit: GiB
+          - entity: sensor.docker_tower_hddtemp_memory
+            name: HDD Temp
+            color: '#B6992D'
+            unit: GiB
+          - entity: sensor.docker_tower_immich_memory
+            name: Immich
+            color: '#F1CE63'
+            unit: GiB
+          - entity: sensor.docker_tower_iperf3_memory
+            name: iPerf3
+            color: '#499894'
+            unit: GiB
+          - entity: sensor.docker_tower_ntp_memory
+            name: NTP
+            color: '#86BCB6'
+            unit: GiB
+          - entity: sensor.docker_tower_onedrive_memory
+            name: OneDrive
+            color: '#E15759'
+            unit: GiB
+          - entity: sensor.docker_tower_photoprism_memory
+            name: PhotoPrism
+            color: '#FF9D9A'
+            unit: GiB
+          - entity: sensor.docker_tower_plex_memory
+            name: Plex
+            color: '#79706E'
+            unit: GiB
+          - entity: sensor.docker_tower_qdirstat_memory
+            name: QDirStat
+            color: '#BAB0AC'
+            unit: GiB
+          - entity: sensor.docker_tower_thelounge_memory
+            name: The Lounge
+            color: '#B07AA1'
+            unit: GiB
+          - entity: sensor.docker_tower_transmission_memory
+            name: Transmission
+            color: '#D4A6C8'
+            unit: GiB
+          - entity: sensor.docker_tower_watchtower_memory
+            name: Watchtower
+            color: '#9D7660'
+            unit: GiB
