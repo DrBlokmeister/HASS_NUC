@@ -669,3 +669,93 @@ last_7_days_apexcharts_card:
         show:
           in_header: true
           legend_value: true
+
+###############################
+## DISK HEALTH TEMPLATE CARD ##
+###############################
+tower_disk_health_card:
+  default:
+    - icon: mdi:harddisk
+  card:
+    type: custom:mushroom-template-card
+    entity: binary_sensor.tower_disk_[[disk_key]]_health
+    primary: '[[disk_title]] health'
+    secondary: >-
+      {% set entity_id = 'binary_sensor.tower_disk_[[disk_key]]_health' %}
+      {% set temp = state_attr(entity_id, 'temperature') %}
+      {% set spinning = state_attr(entity_id, 'spinning') %}
+      {% if is_state(entity_id, 'on') %}
+        Problem · {{ temp }} °C · {{ 'spinning' if spinning else 'standby' }}
+      {% else %}
+        OK · {{ temp }} °C · {{ 'spinning' if spinning else 'standby' }}
+      {% endif %}
+    icon: '[[icon]]'
+    icon_color: >-
+      {% set entity_id = 'binary_sensor.tower_disk_[[disk_key]]_health' %}
+      {% if is_state(entity_id, 'on') %}
+        red
+      {% else %}
+        green
+      {% endif %}
+    fill_container: true
+    multiline_secondary: true
+
+##################################
+## CONTAINER STATUS BUTTON CARD ##
+##################################
+container_status_button:
+  card:
+    type: custom:button-card
+    entity: '[[entity]]'
+    name: '[[name]]'
+    show_icon: false
+    show_state: true
+    state_display: >
+      [[[
+        return entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED');
+      ]]]
+    custom_fields:
+      logo: >
+        [[[
+          const url = entity?.attributes?.icon_url;
+          return url
+            ? `<img src="${url}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">`
+            : `<ha-icon icon="[[fallback_icon]]" style="width:28px;height:28px;"></ha-icon>`;
+        ]]]
+    styles:
+      grid:
+        - grid-template-areas: '"logo" "n" "s"'
+        - grid-template-columns: 1fr
+        - grid-template-rows: 36px min-content min-content
+      card:
+        - padding: 10px
+        - background-color: >
+            [[[
+              const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+              if (status === 'RUNNING') return 'rgba(46, 125, 50, 0.28)';
+              if (status === 'EXITED') return 'rgba(120, 120, 120, 0.22)';
+              if (status === 'PAUSED') return 'rgba(251, 192, 45, 0.28)';
+              if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return 'rgba(211, 47, 47, 0.28)';
+              return 'rgba(120, 120, 120, 0.18)';
+            ]]]
+        - border: >
+            [[[
+              const status = String(entity?.attributes?.status || (entity?.state === 'on' ? 'RUNNING' : 'EXITED')).toUpperCase();
+              if (status === 'RUNNING') return '1px solid rgba(46, 125, 50, 0.45)';
+              if (status === 'EXITED') return '1px solid rgba(158, 158, 158, 0.35)';
+              if (status === 'PAUSED') return '1px solid rgba(251, 192, 45, 0.45)';
+              if (['ERROR', 'FAILED', 'DEAD'].includes(status)) return '1px solid rgba(211, 47, 47, 0.45)';
+              return '1px solid rgba(158, 158, 158, 0.25)';
+            ]]]
+      name:
+        - font-size: 0.85em
+      state:
+        - font-size: 0.75em
+      custom_fields:
+        logo:
+          - justify-self: center
+          - align-self: center
+    tap_action:
+      action: toggle
+    hold_action:
+      action: more-info
