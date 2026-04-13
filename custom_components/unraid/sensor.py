@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
     from unraid_api.models import (
         ArrayDisk,
-        DockerContainer,
         ParityHistoryEntry,
         Share,
         UPSDevice,
@@ -48,6 +47,7 @@ if TYPE_CHECKING:
         UnraidSystemCoordinator,
         UnraidSystemData,
     )
+    from .websocket import UnraidWebSocketManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -423,6 +423,36 @@ class UnraidVersionSensor(UnraidSensorEntity):
         return attrs
 
 
+class ApiVersionSensor(UnraidSensorEntity):
+    """Sensor showing the Unraid GraphQL API version."""
+
+    _attr_translation_key = "api_version"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize API version sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="api_version",
+            name="API Version",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the GraphQL API version string."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None or data.info is None:
+            return None
+        return data.info.api_version
+
+
 class UptimeSensor(UnraidSensorEntity):
     """
     System uptime sensor using timestamp device class.
@@ -641,6 +671,53 @@ class NotificationArchivedTotalSensor(UnraidSensorEntity):
 
 
 # =============================================================================
+# Container Updates Count Sensor
+# =============================================================================
+
+
+class ContainerUpdatesCountSensor(UnraidSensorEntity):
+    """Sensor showing count of Docker containers with available updates."""
+
+    _attr_translation_key = "container_updates_count"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "containers"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize container updates count sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="container_updates_count",
+            name="Container Updates Available",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return count of containers with updates available."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+        return sum(1 for c in data.containers if c.isUpdateAvailable is True)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return list of containers with updates available."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return {}
+        updatable = [
+            c.name.lstrip("/") for c in data.containers if c.isUpdateAvailable is True
+        ]
+        return {"containers": updatable} if updatable else {}
+
+
+# =============================================================================
 # Registration / License Sensors
 # =============================================================================
 
@@ -721,6 +798,48 @@ class RegistrationStateSensor(UnraidSensorEntity):
         if data is None or data.registration is None:
             return None
         return data.registration.state
+
+
+class RegistrationExpirationSensor(UnraidSensorEntity):
+    """Registration license expiration and update expiration sensor."""
+
+    _attr_translation_key = "registration_expiration"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidInfraCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize registration expiration sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="registration_expiration",
+            name="License Expiration",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return license expiration date string."""
+        data: UnraidInfraData | None = self.coordinator.data
+        if data is None or data.registration is None:
+            return None
+        return data.registration.expiration
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return update expiration as an attribute."""
+        data: UnraidInfraData | None = self.coordinator.data
+        if data is None or data.registration is None:
+            return {}
+        attrs: dict[str, Any] = {}
+        if data.registration.updateExpiration is not None:
+            attrs["update_expiration"] = data.registration.updateExpiration
+        return attrs
 
 
 # =============================================================================
@@ -1033,12 +1152,66 @@ class DiskTemperatureSensor(UnraidSensorEntity):
         disk = self._get_disk()
         if disk is None:
             return {}
-        return {
+        attrs: dict[str, Any] = {
             "spinning": disk.isSpinning,
             "status": disk.status,
             "device": disk.device,
             "type": disk.type,
         }
+        # Temperature thresholds (v1.7.0+)
+        if disk.warning is not None:
+            attrs["warning_temp"] = disk.warning
+        if disk.critical is not None:
+            attrs["critical_temp"] = disk.critical
+        return attrs
+
+
+class DiskErrorCountSensor(UnraidSensorEntity):
+    """Disk error count sensor (numErrors from SMART/array)."""
+
+    _attr_translation_key = "disk_error_count"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = "errors"
+    _attr_entity_registry_enabled_default = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: UnraidStorageCoordinator,
+        server_uuid: str,
+        server_name: str,
+        disk: ArrayDisk,
+    ) -> None:
+        """Initialize disk error count sensor."""
+        self._disk_id = disk.id
+        self._disk_name = disk.name
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"disk_{self._disk_id}_errors",
+            name=f"Disk {self._disk_name} Errors",
+        )
+        self._attr_translation_placeholders = {"name": self._disk_name}
+
+    def _get_disk(self) -> ArrayDisk | None:
+        """Get current disk from coordinator data."""
+        data: UnraidStorageData | None = self.coordinator.data
+        if data is None:
+            return None
+        all_disks = (data.disks or []) + (data.parities or []) + (data.caches or [])
+        for disk in all_disks:
+            if disk.id == self._disk_id:
+                return disk
+        return None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return disk error count."""
+        disk = self._get_disk()
+        if disk is None:
+            return None
+        return disk.numErrors
 
 
 def _compute_disk_usage_percent(disk: ArrayDisk) -> float | None:
@@ -1163,6 +1336,19 @@ class DiskUsageSensor(UnraidSensorEntity):
         # Add SMART status if available
         if disk.smartStatus:
             attrs["smart_status"] = disk.smartStatus
+        # Extended disk fields (v1.7.0+)
+        extended = {
+            "rotational": disk.rotational,
+            "transport": disk.transport,
+            "format": disk.format,
+            "num_reads": disk.numReads,
+            "num_writes": disk.numWrites,
+            "num_errors": disk.numErrors,
+            "color": disk.color,
+            "warning_temp": disk.warning,
+            "critical_temp": disk.critical,
+        }
+        attrs.update({k: v for k, v in extended.items() if v is not None})
         return attrs
 
 
@@ -1353,14 +1539,12 @@ class UPSPowerSensor(UnraidSensorEntity):
     """
     UPS power consumption sensor for Energy Dashboard.
 
-    Calculates power consumption from load percentage and UPS nominal power.
+    Prefers the direct currentPower value from the API (unraid-api v1.7.0+).
+    Falls back to calculating from load percentage and nominal power.
     Formula: Power (W) = Load% / 100 * Nominal Power (W)
 
-    Example: 12% load on UPS with 800W nominal power = 96W
-
-    The UPS nominal power must be configured in the integration options.
-    This value is shown in the Unraid UI under Power > Nominal power.
-    If not configured (0), this sensor will be unavailable.
+    The UPS nominal power can be configured in the integration options
+    as a fallback when the API does not report currentPower.
     """
 
     _attr_translation_key = "ups_power"
@@ -1387,7 +1571,7 @@ class UPSPowerSensor(UnraidSensorEntity):
             server_name: Server friendly name
             ups: UPS device data
             ups_capacity_va: UPS capacity in VA (informational)
-            ups_nominal_power: UPS nominal power in watts (used for calculation)
+            ups_nominal_power: UPS nominal power in watts (fallback calculation)
 
         """
         self._ups_id = ups.id
@@ -1418,8 +1602,11 @@ class UPSPowerSensor(UnraidSensorEntity):
         """
         Return if entity is available.
 
-        Only available if UPS nominal power is configured (> 0).
+        Available if the API reports currentPower or nominal power is configured.
         """
+        ups = self._get_ups()
+        if ups is not None and ups.power.currentPower is not None:
+            return super().available
         if self._ups_nominal_power <= 0:
             return False
         return super().available
@@ -1427,30 +1614,43 @@ class UPSPowerSensor(UnraidSensorEntity):
     @property
     def native_value(self) -> float | None:
         """
-        Return calculated UPS power consumption in watts.
+        Return UPS power consumption in watts.
 
-        Uses the library's calculate_power_watts helper.
+        Prefers API-reported currentPower (v1.7.0+), falls back to
+        calculation from load percentage x nominal power.
         """
-        if self._ups_nominal_power <= 0:
-            return None
         ups = self._get_ups()
         if ups is None:
+            return None
+        # Prefer direct API value (unraid-api v1.7.0+)
+        if ups.power.currentPower is not None:
+            return round(ups.power.currentPower, 1)
+        # Fallback to calculated value from load% x nominal power
+        if self._ups_nominal_power <= 0:
             return None
         return ups.calculate_power_watts(self._ups_nominal_power)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return UPS power calculation details as attributes."""
+        """Return UPS power details as attributes."""
         ups = self._get_ups()
         attrs: dict[str, Any] = {
             "model": self._ups_name,
-            "nominal_power_watts": self._ups_nominal_power,
         }
+        # Include nominal power from API if available, else user config
+        if ups is not None and ups.power.nominalPower is not None:
+            attrs["nominal_power_watts"] = ups.power.nominalPower
+        elif self._ups_nominal_power > 0:
+            attrs["nominal_power_watts"] = self._ups_nominal_power
         # Include VA rating if configured (informational)
         if self._ups_capacity_va > 0:
             attrs["ups_capacity_va"] = self._ups_capacity_va
         if ups is not None:
             attrs["status"] = ups.status
+            if ups.power.currentPower is not None:
+                attrs["power_source"] = "api"
+            elif self._ups_nominal_power > 0:
+                attrs["power_source"] = "calculated"
             if ups.power.loadPercentage is not None:
                 attrs["load_percentage"] = ups.power.loadPercentage
             if ups.power.inputVoltage is not None:
@@ -1549,14 +1749,26 @@ class UPSEnergySensor(UnraidSensorEntity, RestoreEntity):
                 return ups
         return None
 
+    def _get_effective_nominal_power(self) -> int | float:
+        """Return nominal power: prefer API value, fall back to user config."""
+        ups = self._get_ups()
+        if ups is not None and ups.power.nominalPower is not None:
+            return ups.power.nominalPower
+        return self._ups_nominal_power
+
     def _calculate_current_power(self) -> float | None:
         """Calculate current power consumption in watts."""
-        if self._ups_nominal_power <= 0:
-            return None
         ups = self._get_ups()
         if ups is None:
             return None
-        return ups.calculate_power_watts(self._ups_nominal_power)
+        # Prefer direct API power reading (v1.7.0+)
+        if ups.power.currentPower is not None:
+            return round(ups.power.currentPower, 1)
+        # Fall back to load% x nominal power
+        nominal = self._get_effective_nominal_power()
+        if nominal <= 0:
+            return None
+        return ups.calculate_power_watts(nominal)
 
     def _update_energy(self) -> None:
         """Update cumulative energy using trapezoidal integration."""
@@ -1590,23 +1802,26 @@ class UPSEnergySensor(UnraidSensorEntity, RestoreEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if self._ups_nominal_power <= 0:
+        nominal = self._get_effective_nominal_power()
+        if nominal <= 0:
             return False
         return super().available
 
     @property
     def native_value(self) -> float | None:
         """Return cumulative energy consumption in kWh."""
-        if self._ups_nominal_power <= 0:
+        nominal = self._get_effective_nominal_power()
+        if nominal <= 0:
             return None
         return round(self._total_energy_kwh, 3)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return energy tracking details as attributes."""
+        nominal = self._get_effective_nominal_power()
         attrs: dict[str, Any] = {
             "model": self._ups_name,
-            "nominal_power_watts": self._ups_nominal_power,
+            "nominal_power_watts": nominal,
         }
         if self._last_power_watts is not None:
             attrs["current_power_watts"] = round(self._last_power_watts, 1)
@@ -1669,11 +1884,23 @@ class ShareUsageSensor(UnraidSensorEntity):
         share = self._get_share()
         if share is None:
             return {}
-        return {
+        attrs: dict[str, Any] = {
             "total": format_bytes(share.size_bytes),
             "used": format_bytes(share.used_bytes),
             "free": format_bytes(share.free_bytes),
         }
+        # Extended share fields (v1.7.0+)
+        extended = {
+            "cache": share.cache,
+            "allocator": share.allocator,
+            "split_level": share.splitLevel,
+            "floor": share.floor,
+            "cow": share.cow,
+            "color": share.color,
+            "luks_status": share.luksStatus,
+        }
+        attrs.update({k: v for k, v in extended.items() if v is not None})
+        return attrs
 
 
 # Flash Device Sensor
@@ -1727,64 +1954,72 @@ class FlashUsageSensor(UnraidSensorEntity):
 
 
 # =============================================================================
-# Container Resource Sensors (disabled by default)
+# Container Resource Sensors — WebSocket-powered (v1.7.0+)
 # =============================================================================
+# Container stats (CPU, memory) are available via WebSocket subscriptions
+# (subscribe_container_stats()). The WebSocket manager feeds real-time stats
+# to these sensor entities.
 
 
-class ContainerCpuSensor(UnraidSensorEntity):
-    """Container CPU usage percentage sensor."""
+class ContainerCpuSensor(UnraidBaseEntity, SensorEntity):
+    """Container CPU usage sensor (WebSocket-powered)."""
 
     _attr_translation_key = "container_cpu"
     _attr_native_unit_of_measurement = "%"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_suggested_display_precision = 1
     _attr_entity_registry_enabled_default = False
+    _attr_suggested_display_precision = 1
 
     def __init__(
         self,
         coordinator: UnraidSystemCoordinator,
         server_uuid: str,
         server_name: str,
-        container: DockerContainer,
+        container_name: str,
+        container_id: str,
+        ws_manager: UnraidWebSocketManager,
     ) -> None:
         """Initialize container CPU sensor."""
-        self._container_name = container.name.lstrip("/")
+        self._container_name = container_name
+        self._container_id = container_id
+        self._ws_manager = ws_manager
         super().__init__(
             coordinator=coordinator,
             server_uuid=server_uuid,
             server_name=server_name,
-            resource_id=f"container_{self._container_name}_cpu",
-            name=f"Container {self._container_name} CPU",
+            resource_id=f"container_{container_name}_cpu",
+            name=f"Container {container_name} CPU",
         )
-        self._attr_translation_placeholders = {"name": self._container_name}
-
-    def _get_container(self) -> DockerContainer | None:
-        """Get current container from coordinator data."""
-        data: UnraidSystemData | None = self.coordinator.data
-        if data is None:
-            return None
-        for c in data.containers:
-            if c.name.lstrip("/") == self._container_name:
-                return c
-        return None
+        self._attr_translation_placeholders = {
+            "name": container_name,
+        }
 
     @property
     def native_value(self) -> float | None:
-        """Return container CPU usage percentage."""
-        container = self._get_container()
-        if container is None or container.stats is None:
+        """Return container CPU usage from WebSocket stats."""
+        stats = self._ws_manager.container_stats.stats.get(self._container_id)
+        if stats is None:
             return None
-        return container.stats.cpuPercent
+        return stats.cpuPercent
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return container stats attributes."""
+        stats = self._ws_manager.container_stats.stats.get(self._container_id)
+        if stats is None:
+            return {}
+        attrs: dict[str, Any] = {}
+        if stats.blockIO is not None:
+            attrs["block_io"] = stats.blockIO
+        if stats.netIO is not None:
+            attrs["net_io"] = stats.netIO
+        return attrs
 
 
-class ContainerMemoryUsageSensor(UnraidSensorEntity):
-    """Container memory usage sensor in bytes."""
+class ContainerMemoryUsageSensor(UnraidBaseEntity, SensorEntity):
+    """Container memory usage sensor (WebSocket-powered)."""
 
     _attr_translation_key = "container_memory_usage"
-    _attr_device_class = SensorDeviceClass.DATA_SIZE
-    _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "MiB"
-    _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
 
     def __init__(
@@ -1792,82 +2027,74 @@ class ContainerMemoryUsageSensor(UnraidSensorEntity):
         coordinator: UnraidSystemCoordinator,
         server_uuid: str,
         server_name: str,
-        container: DockerContainer,
+        container_name: str,
+        container_id: str,
+        ws_manager: UnraidWebSocketManager,
     ) -> None:
         """Initialize container memory usage sensor."""
-        self._container_name = container.name.lstrip("/")
+        self._container_name = container_name
+        self._container_id = container_id
+        self._ws_manager = ws_manager
         super().__init__(
             coordinator=coordinator,
             server_uuid=server_uuid,
             server_name=server_name,
-            resource_id=f"container_{self._container_name}_memory",
-            name=f"Container {self._container_name} Memory",
+            resource_id=f"container_{container_name}_memory",
+            name=f"Container {container_name} Memory",
         )
-        self._attr_translation_placeholders = {"name": self._container_name}
-
-    def _get_container(self) -> DockerContainer | None:
-        """Get current container from coordinator data."""
-        data: UnraidSystemData | None = self.coordinator.data
-        if data is None:
-            return None
-        for c in data.containers:
-            if c.name.lstrip("/") == self._container_name:
-                return c
-        return None
+        self._attr_translation_placeholders = {
+            "name": container_name,
+        }
 
     @property
-    def native_value(self) -> int | None:
-        """Return container memory usage in bytes."""
-        container = self._get_container()
-        if container is None or container.stats is None:
+    def native_value(self) -> str | None:
+        """Return container memory usage string."""
+        stats = self._ws_manager.container_stats.stats.get(self._container_id)
+        if stats is None:
             return None
-        return container.stats.memoryUsage
+        return stats.memUsage
 
 
-class ContainerMemoryPercentSensor(UnraidSensorEntity):
-    """Container memory usage percentage sensor."""
+class ContainerMemoryPercentSensor(UnraidBaseEntity, SensorEntity):
+    """Container memory percentage sensor (WebSocket-powered)."""
 
     _attr_translation_key = "container_memory_percent"
     _attr_native_unit_of_measurement = "%"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_suggested_display_precision = 1
     _attr_entity_registry_enabled_default = False
+    _attr_suggested_display_precision = 1
 
     def __init__(
         self,
         coordinator: UnraidSystemCoordinator,
         server_uuid: str,
         server_name: str,
-        container: DockerContainer,
+        container_name: str,
+        container_id: str,
+        ws_manager: UnraidWebSocketManager,
     ) -> None:
         """Initialize container memory percent sensor."""
-        self._container_name = container.name.lstrip("/")
+        self._container_name = container_name
+        self._container_id = container_id
+        self._ws_manager = ws_manager
         super().__init__(
             coordinator=coordinator,
             server_uuid=server_uuid,
             server_name=server_name,
-            resource_id=f"container_{self._container_name}_memory_pct",
-            name=f"Container {self._container_name} Memory %",
+            resource_id=f"container_{container_name}_memory_pct",
+            name=f"Container {container_name} Memory %",
         )
-        self._attr_translation_placeholders = {"name": self._container_name}
-
-    def _get_container(self) -> DockerContainer | None:
-        """Get current container from coordinator data."""
-        data: UnraidSystemData | None = self.coordinator.data
-        if data is None:
-            return None
-        for c in data.containers:
-            if c.name.lstrip("/") == self._container_name:
-                return c
-        return None
+        self._attr_translation_placeholders = {
+            "name": container_name,
+        }
 
     @property
     def native_value(self) -> float | None:
-        """Return container memory usage percentage."""
-        container = self._get_container()
-        if container is None or container.stats is None:
+        """Return container memory percentage."""
+        stats = self._ws_manager.container_stats.stats.get(self._container_id)
+        if stats is None:
             return None
-        return container.stats.memoryPercent
+        return stats.memPercent
 
 
 # =============================================================================
@@ -1926,6 +2153,76 @@ class ParitySpeedSensor(UnraidSensorEntity):
         if parity.progress is not None:
             attrs["progress"] = parity.progress
         return attrs
+
+
+class ParityElapsedSensor(UnraidSensorEntity):
+    """Parity check elapsed time sensor (seconds)."""
+
+    _attr_translation_key = "parity_elapsed"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = "s"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_registry_enabled_default = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: UnraidStorageCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize parity elapsed sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="parity_elapsed",
+            name="Parity Check Elapsed",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return parity check elapsed time in seconds."""
+        data: UnraidStorageData | None = self.coordinator.data
+        if data is None or data.parity_status is None:
+            return None
+        # Return 0 when no check is running (elapsed is None)
+        return data.parity_status.elapsed or 0
+
+
+class ParityEstimatedSensor(UnraidSensorEntity):
+    """Parity check estimated remaining time sensor (seconds)."""
+
+    _attr_translation_key = "parity_estimated"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = "s"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_registry_enabled_default = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: UnraidStorageCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize parity estimated sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="parity_estimated",
+            name="Parity Check Estimated",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return parity check estimated remaining time in seconds."""
+        data: UnraidStorageData | None = self.coordinator.data
+        if data is None or data.parity_status is None:
+            return None
+        # Return 0 when no check is running (estimated is None)
+        return data.parity_status.estimated or 0
 
 
 # =============================================================================
@@ -2073,6 +2370,49 @@ class UPSBatteryHealthSensor(UnraidSensorEntity):
         return ups.battery.health
 
 
+class UPSStatusSensor(UnraidSensorEntity):
+    """UPS status sensor (OL, OB, OB LB, OL CHRG, etc.)."""
+
+    _attr_translation_key = "ups_status"
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        ups: UPSDevice,
+    ) -> None:
+        """Initialize UPS status sensor."""
+        self._ups_id = ups.id
+        self._ups_name = ups.name
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"ups_{self._ups_id}_status",
+            name="UPS Status",
+        )
+        self._attr_translation_placeholders = {"name": self._ups_name}
+
+    def _get_ups(self) -> UPSDevice | None:
+        """Get current UPS from coordinator data."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+        for ups in data.ups_devices:
+            if ups.id == self._ups_id:
+                return ups
+        return None
+
+    @property
+    def native_value(self) -> str | None:
+        """Return UPS status string."""
+        ups = self._get_ups()
+        if ups is None:
+            return None
+        return ups.status
+
+
 def _create_ups_sensors(
     system_coordinator: UnraidSystemCoordinator,
     server_uuid: str,
@@ -2102,6 +2442,7 @@ def _create_ups_sensors(
                 UPSBatterySensor(system_coordinator, server_uuid, server_name, ups),
                 UPSLoadSensor(system_coordinator, server_uuid, server_name, ups),
                 UPSRuntimeSensor(system_coordinator, server_uuid, server_name, ups),
+                UPSStatusSensor(system_coordinator, server_uuid, server_name, ups),
                 UPSInputVoltageSensor(
                     system_coordinator, server_uuid, server_name, ups
                 ),
@@ -2121,8 +2462,13 @@ def _create_ups_sensors(
                 ),
             ]
         )
-        # Add UPS Energy sensor (kWh) - only if nominal power is configured
-        if ups_nominal_power > 0:
+        # Add UPS Energy sensor (kWh) - created if nominal power is
+        # configured by user OR available from the API (v1.7.0+).
+        api_nominal = (
+            ups.power.nominalPower if ups.power.nominalPower is not None else 0
+        )
+        effective_nominal = ups_nominal_power if ups_nominal_power > 0 else api_nominal
+        if effective_nominal > 0:
             entities.append(
                 UPSEnergySensor(
                     system_coordinator,
@@ -2133,37 +2479,12 @@ def _create_ups_sensors(
                 )
             )
             _LOGGER.debug(
-                "Created UPS Energy sensor for UPS %s (nominal power: %dW)",
+                "Created UPS Energy sensor for UPS %s "
+                "(user nominal: %dW, api nominal: %sW)",
                 ups.name,
                 ups_nominal_power,
+                api_nominal or "N/A",
             )
-    return entities
-
-
-def _create_container_sensors(
-    system_coordinator: UnraidSystemCoordinator,
-    server_uuid: str,
-    server_name: str,
-) -> list[SensorEntity]:
-    """Create container resource sensor entities if containers exist."""
-    if not system_coordinator.data or not system_coordinator.data.containers:
-        return []
-
-    entities: list[SensorEntity] = []
-    for container in system_coordinator.data.containers:
-        entities.extend(
-            [
-                ContainerCpuSensor(
-                    system_coordinator, server_uuid, server_name, container
-                ),
-                ContainerMemoryUsageSensor(
-                    system_coordinator, server_uuid, server_name, container
-                ),
-                ContainerMemoryPercentSensor(
-                    system_coordinator, server_uuid, server_name, container
-                ),
-            ]
-        )
     return entities
 
 
@@ -2179,7 +2500,7 @@ def _create_disk_sensors(
     entities: list[SensorEntity] = []
     data = storage_coordinator.data
 
-    # Data disks - usage and temperature sensors
+    # Data disks - usage, temperature, and error count sensors
     for disk in data.disks or []:
         entities.append(
             DiskUsageSensor(storage_coordinator, server_uuid, server_name, disk)
@@ -2187,20 +2508,29 @@ def _create_disk_sensors(
         entities.append(
             DiskTemperatureSensor(storage_coordinator, server_uuid, server_name, disk)
         )
+        entities.append(
+            DiskErrorCountSensor(storage_coordinator, server_uuid, server_name, disk)
+        )
 
-    # Parity disks - temperature sensors only
+    # Parity disks - temperature and error count sensors
     for disk in data.parities or []:
         entities.append(
             DiskTemperatureSensor(storage_coordinator, server_uuid, server_name, disk)
         )
+        entities.append(
+            DiskErrorCountSensor(storage_coordinator, server_uuid, server_name, disk)
+        )
 
-    # Cache disks - usage and temperature sensors
+    # Cache disks - usage, temperature, and error count sensors
     for disk in data.caches or []:
         entities.append(
             DiskUsageSensor(storage_coordinator, server_uuid, server_name, disk)
         )
         entities.append(
             DiskTemperatureSensor(storage_coordinator, server_uuid, server_name, disk)
+        )
+        entities.append(
+            DiskErrorCountSensor(storage_coordinator, server_uuid, server_name, disk)
         )
 
     # Share sensors
@@ -2247,6 +2577,7 @@ async def async_setup_entry(
             SwapUsedSensor(system_coordinator, server_uuid, server_name),
             TemperatureSensor(system_coordinator, server_uuid, server_name),
             UnraidVersionSensor(system_coordinator, server_uuid, server_name),
+            ApiVersionSensor(system_coordinator, server_uuid, server_name),
             UptimeSensor(system_coordinator, server_uuid, server_name),
             ActiveNotificationsSensor(system_coordinator, server_uuid, server_name),
             NotificationUnreadInfoSensor(system_coordinator, server_uuid, server_name),
@@ -2257,17 +2588,13 @@ async def async_setup_entry(
             NotificationArchivedTotalSensor(
                 system_coordinator, server_uuid, server_name
             ),
+            ContainerUpdatesCountSensor(system_coordinator, server_uuid, server_name),
         ]
     )
 
     # UPS sensors
     entities.extend(
         _create_ups_sensors(system_coordinator, server_uuid, server_name, entry)
-    )
-
-    # Container resource sensors (disabled by default)
-    entities.extend(
-        _create_container_sensors(system_coordinator, server_uuid, server_name)
     )
 
     # Storage sensors
@@ -2277,6 +2604,8 @@ async def async_setup_entry(
             ArrayUsageSensor(storage_coordinator, server_uuid, server_name),
             ParityProgressSensor(storage_coordinator, server_uuid, server_name),
             ParitySpeedSensor(storage_coordinator, server_uuid, server_name),
+            ParityElapsedSensor(storage_coordinator, server_uuid, server_name),
+            ParityEstimatedSensor(storage_coordinator, server_uuid, server_name),
             LastParityCheckDateSensor(storage_coordinator, server_uuid, server_name),
             LastParityCheckErrorsSensor(storage_coordinator, server_uuid, server_name),
         ]
@@ -2291,9 +2620,45 @@ async def async_setup_entry(
         [
             RegistrationTypeSensor(infra_coordinator, server_uuid, server_name),
             RegistrationStateSensor(infra_coordinator, server_uuid, server_name),
+            RegistrationExpirationSensor(infra_coordinator, server_uuid, server_name),
             InstalledPluginsSensor(infra_coordinator, server_uuid, server_name),
         ]
     )
+
+    # Container stats sensors (WebSocket-powered)
+    ws_manager = runtime_data.websocket_manager
+    if system_coordinator.data:
+        for container in system_coordinator.data.containers:
+            c_name = container.name.lstrip("/")
+            c_id = container.id or c_name
+            entities.extend(
+                [
+                    ContainerCpuSensor(
+                        system_coordinator,
+                        server_uuid,
+                        server_name,
+                        c_name,
+                        c_id,
+                        ws_manager,
+                    ),
+                    ContainerMemoryUsageSensor(
+                        system_coordinator,
+                        server_uuid,
+                        server_name,
+                        c_name,
+                        c_id,
+                        ws_manager,
+                    ),
+                    ContainerMemoryPercentSensor(
+                        system_coordinator,
+                        server_uuid,
+                        server_name,
+                        c_name,
+                        c_id,
+                        ws_manager,
+                    ),
+                ]
+            )
 
     _LOGGER.debug("Adding %d sensor entities", len(entities))
     async_add_entities(entities)

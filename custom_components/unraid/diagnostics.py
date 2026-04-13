@@ -25,6 +25,26 @@ async def async_get_config_entry_diagnostics(
     server_info = runtime_data.server_info
     system_coordinator = runtime_data.system_coordinator
     storage_coordinator = runtime_data.storage_coordinator
+    infra_coordinator = runtime_data.infra_coordinator
+
+    # Gather entity counts from coordinator data for troubleshooting
+    system_data = system_coordinator.data
+    storage_data = storage_coordinator.data
+    infra_data = infra_coordinator.data
+
+    entity_counts: dict[str, int | bool] = {}
+    if system_data:
+        entity_counts["containers"] = len(system_data.containers)
+        entity_counts["vms"] = len(system_data.vms)
+        entity_counts["ups_devices"] = len(system_data.ups_devices)
+    if storage_data:
+        entity_counts["disks"] = len(storage_data.disks)
+        entity_counts["parities"] = len(storage_data.parities)
+        entity_counts["caches"] = len(storage_data.caches)
+        entity_counts["shares"] = len(storage_data.shares)
+        entity_counts["has_boot"] = storage_data.boot is not None
+    if infra_data:
+        entity_counts["plugins"] = len(infra_data.plugins) if infra_data.plugins else 0
 
     # Build diagnostics with redaction of sensitive identifiers
     diag_data = {
@@ -40,6 +60,7 @@ async def async_get_config_entry_diagnostics(
             "api_version": server_info.get("api_version"),
             "license_type": server_info.get("license_type"),
         },
+        "entity_counts": entity_counts,
         "system_coordinator": {
             "last_update_success": system_coordinator.last_update_success,
             "last_update_time": str(system_coordinator.last_update_success_time),
@@ -47,6 +68,10 @@ async def async_get_config_entry_diagnostics(
         "storage_coordinator": {
             "last_update_success": storage_coordinator.last_update_success,
             "last_update_time": str(storage_coordinator.last_update_success_time),
+        },
+        "infra_coordinator": {
+            "last_update_success": infra_coordinator.last_update_success,
+            "last_update_time": str(infra_coordinator.last_update_success_time),
         },
     }
 

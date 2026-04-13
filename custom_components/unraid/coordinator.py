@@ -89,8 +89,12 @@ class UnraidStorageData:
 
     @property
     def boot(self) -> ArrayDisk | None:
-        """Return boot/flash device."""
-        return self.array.boot
+        """Return boot/flash device, falling back to bootDevices[0]."""
+        if self.array.boot is not None:
+            return self.array.boot
+        if self.array.bootDevices:
+            return self.array.bootDevices[0]
+        return None
 
     @property
     def disks(self) -> list[ArrayDisk]:
@@ -215,7 +219,7 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
         await self.api_client.archive_all_notifications()
 
     async def async_delete_all_notifications(self) -> None:
-        """Delete all notifications."""
+        """Delete all archived notifications."""
         await self.api_client.delete_all_notifications()
 
     async def _async_update_data(self) -> UnraidSystemData:
@@ -267,7 +271,8 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
             msg = f"Authentication failed: {err}"
             _LOGGER.error("System data update failed: %s", msg)
             raise ConfigEntryAuthFailed(msg) from err
-        except (UnraidConnectionError, UnraidTimeoutError) as err:
+        # RuntimeError: catch aiohttp session-closed errors during HA shutdown
+        except (UnraidConnectionError, UnraidTimeoutError, RuntimeError) as err:
             self._previously_unavailable = True
             msg = f"Connection error: {err}"
             _LOGGER.exception("System data update failed: %s", msg)
@@ -411,7 +416,8 @@ class UnraidStorageCoordinator(DataUpdateCoordinator[UnraidStorageData]):
             self._previously_unavailable = True
             _LOGGER.error("Storage data update failed: Authentication failed: %s", err)
             raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
-        except (UnraidConnectionError, UnraidTimeoutError) as err:
+        # RuntimeError: catch aiohttp session-closed errors during HA shutdown
+        except (UnraidConnectionError, UnraidTimeoutError, RuntimeError) as err:
             self._previously_unavailable = True
             raise UpdateFailed(f"Connection error: {err}") from err
         except UnraidAPIError as err:
@@ -589,7 +595,8 @@ class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
             msg = f"Authentication failed: {err}"
             _LOGGER.error("Infrastructure data update failed: %s", msg)
             raise ConfigEntryAuthFailed(msg) from err
-        except (UnraidConnectionError, UnraidTimeoutError) as err:
+        # RuntimeError: catch aiohttp session-closed errors during HA shutdown
+        except (UnraidConnectionError, UnraidTimeoutError, RuntimeError) as err:
             self._previously_unavailable = True
             raise UpdateFailed(f"Connection error: {err}") from err
         except UnraidAPIError as err:

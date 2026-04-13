@@ -23,7 +23,6 @@ from unraid_api.exceptions import (
 )
 
 from .const import (
-    CONF_IGNORE_SSL,
     CONF_UPS_CAPACITY_VA,
     CONF_UPS_NOMINAL_POWER,
     DEFAULT_PORT,
@@ -42,36 +41,6 @@ _LOGGER = logging.getLogger(__name__)
 MAX_HOSTNAME_LEN = 253
 MIN_PORT = 1
 MAX_PORT = 65535
-MIN_UNRAID_VERSION = (7, 2, 0)
-MIN_API_VERSION = (4, 21, 0)
-
-
-def _parse_version(version: str | None) -> tuple[int, ...] | None:
-    """Parse dotted semantic-ish version strings into integer tuples."""
-    if not version:
-        return None
-
-    parts: list[int] = []
-    for segment in version.split("."):
-        digits = "".join(char for char in segment if char.isdigit())
-        if not digits:
-            break
-        parts.append(int(digits))
-
-    return tuple(parts) if parts else None
-
-
-def _is_compatible_version(
-    unraid_version: str | None, api_version: str | None
-) -> bool:
-    """Return whether the supplied versions meet minimum requirements."""
-    parsed_unraid = _parse_version(unraid_version)
-    parsed_api = _parse_version(api_version)
-
-    if parsed_unraid is None or parsed_api is None:
-        return False
-
-    return parsed_unraid >= MIN_UNRAID_VERSION and parsed_api >= MIN_API_VERSION
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -83,8 +52,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._server_uuid: str | None = None
         self._server_hostname: str | None = None
-        self._use_ssl: bool = True  # Track whether HTTPS is used
-        self._ignore_ssl: bool = False  # Track whether TLS verification is disabled
+        self._use_ssl: bool = True  # Track whether SSL connection succeeded
 
     @staticmethod
     def async_get_options_flow(
@@ -157,7 +125,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_PORT: user_input.get(CONF_PORT, DEFAULT_PORT),
                         CONF_API_KEY: user_input[CONF_API_KEY],
                         CONF_SSL: self._use_ssl,
-                        CONF_IGNORE_SSL: self._ignore_ssl,
                     },
                     options={
                         CONF_UPS_CAPACITY_VA: DEFAULT_UPS_CAPACITY_VA,
@@ -173,7 +140,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Coerce(int), vol.Range(min=MIN_PORT, max=MAX_PORT)
                 ),
                 vol.Required(CONF_API_KEY): str,
-                vol.Optional(CONF_IGNORE_SSL, default=False): bool,
             }
         )
 
@@ -220,20 +186,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         api_key = user_input[CONF_API_KEY].strip()
         port = user_input.get(CONF_PORT, DEFAULT_PORT)
 
-        ignore_ssl = bool(user_input.get(CONF_IGNORE_SSL, False))
-
-        # Reset state to defaults for this connection attempt
+        # Reset SSL state to default
         self._use_ssl = True
-        self._ignore_ssl = ignore_ssl
 
-        _LOGGER.debug(
-            "Connection test config for %s: http_port=%s ignore_ssl=%s",
-            host,
-            port,
-            ignore_ssl,
-        )
-
-        session = async_get_clientsession(self.hass, verify_ssl=not ignore_ssl)
+        session = async_get_clientsession(self.hass, verify_ssl=True)
 
         # Let the library's HTTP probe discover the SSL/TLS mode.
         # Pass the user's port as http_port; library defaults https_port=443.
@@ -241,21 +197,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host=host,
             api_key=api_key,
             http_port=port,
-            verify_ssl=not ignore_ssl,
+            verify_ssl=True,
             session=session,
         )
 
         try:
             await self._validate_connection(api_client, host)
-        except SSLCertificateError:
-            await api_client.close()
-            if ignore_ssl:
-                raise
-
-            _LOGGER.info(
-                "TLS verification failed for %s; retrying with ignore_ssl enabled",
+        except SSLCertificateError as err:
+            _LOGGER.debug(
+                "SSL verification failed for %s, retrying with verify_ssl=False: %s",
                 host,
+                err,
             )
+            await api_client.close()
             session = async_get_clientsession(self.hass, verify_ssl=False)
             fallback_client = UnraidClient(
                 host=host,
@@ -266,12 +220,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             try:
                 await self._validate_connection(fallback_client, host)
-                self._ignore_ssl = True
-                _LOGGER.warning(
-                    "Connected to %s with TLS verification disabled "
-                    "(self-signed certificate accepted)",
+                # Success with SSL verification disabled
+                self._use_ssl = False
+                _LOGGER.info(
+                    "Connected to %s with self-signed cert (SSL verify disabled)",
                     host,
                 )
+            except CannotConnectError as fallback_err:
+                # Keep original failure reason if fallback also fails
+                raise err from fallback_err
             finally:
                 await fallback_client.close()
         except Exception:
@@ -296,38 +253,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except (InvalidAuthError, CannotConnectError, UnsupportedVersionError):
             raise
         except UnraidVersionError as err:
-            _LOGGER.warning("Compatibility check failed for %s: %s", host, err)
-            server_info = await api_client.get_server_info()
-
-            if _is_compatible_version(server_info.sw_version, server_info.api_version):
-                _LOGGER.warning(
-                    "Proceeding with %s despite compatibility check failure; "
-                    "server reports Unraid=%s API=%s",
-                    host,
-                    server_info.sw_version,
-                    server_info.api_version,
-                )
-                await self._fetch_server_info(api_client, host)
-                return
-
-            _LOGGER.warning(
-                "Unraid/API versions for %s are below minimum or unreadable "
-                "(Unraid=%s API=%s)",
-                host,
-                server_info.sw_version,
-                server_info.api_version,
-            )
-            raise UnsupportedVersionError(str(err)) from err
+            msg = str(err)
+            raise UnsupportedVersionError(msg) from err
         except UnraidAuthenticationError as err:
-            _LOGGER.warning("Authentication failed while validating %s: %s", host, err)
             msg = "Invalid API key or insufficient permissions"
             raise InvalidAuthError(msg) from err
         except UnraidSSLError as err:
-            _LOGGER.warning("TLS verification failed for %s: %s", host, err)
             msg = f"SSL certificate error for {host}: {err}"
             raise SSLCertificateError(msg) from err
         except (UnraidConnectionError, UnraidTimeoutError) as err:
-            _LOGGER.warning("Network connectivity test failed for %s: %s", host, err)
             msg = f"Cannot connect to {host} - {err}"
             raise CannotConnectError(msg) from err
         except aiohttp.ClientResponseError as err:
@@ -381,8 +315,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _handle_generic_error(self, err: Exception) -> None:
         """Handle generic errors, mapping to appropriate exception types."""
-        error_str = str(err).lower()
-        if "401" in error_str or "unauthorized" in error_str:
+        if isinstance(err, aiohttp.ClientResponseError) and err.status in (401, 403):
             msg = "Invalid API key or insufficient permissions"
             raise InvalidAuthError(msg) from err
         _LOGGER.exception("Unexpected error during connection test")
@@ -408,7 +341,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_HOST: reauth_entry.data[CONF_HOST],
                 CONF_PORT: reauth_entry.data.get(CONF_PORT, DEFAULT_PORT),
                 CONF_API_KEY: user_input[CONF_API_KEY],
-                CONF_IGNORE_SSL: reauth_entry.data.get(CONF_IGNORE_SSL, False),
             }
 
             try:
@@ -419,11 +351,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 return self.async_update_reload_and_abort(
                     reauth_entry,
-                    data_updates={
-                        **user_input,
-                        CONF_SSL: self._use_ssl,
-                        CONF_IGNORE_SSL: self._ignore_ssl,
-                    },
+                    data_updates={**user_input, CONF_SSL: self._use_ssl},
                     reason="reauth_successful",
                 )
 
@@ -462,11 +390,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                     return self.async_update_reload_and_abort(
                         reconfigure_entry,
-                        data_updates={
-                            **user_input,
-                            CONF_SSL: self._use_ssl,
-                            CONF_IGNORE_SSL: self._ignore_ssl,
-                        },
+                        data_updates={**user_input, CONF_SSL: self._use_ssl},
                     )
 
                 except InvalidAuthError:
@@ -492,10 +416,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         default=reconfigure_entry.data.get(CONF_PORT, DEFAULT_PORT),
                     ): vol.All(vol.Coerce(int), vol.Range(min=MIN_PORT, max=MAX_PORT)),
                     vol.Required(CONF_API_KEY): str,
-                    vol.Optional(
-                        CONF_IGNORE_SSL,
-                        default=reconfigure_entry.data.get(CONF_IGNORE_SSL, False),
-                    ): bool,
                 }
             ),
             errors=errors,

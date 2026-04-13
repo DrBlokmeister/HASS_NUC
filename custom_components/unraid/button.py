@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
 
 
-class UnraidButtonEntity(ButtonEntity, UnraidBaseEntity):
+class UnraidButtonEntity(UnraidBaseEntity, ButtonEntity):
     """
     Base class for Unraid button entities.
 

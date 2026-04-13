@@ -305,6 +305,38 @@ class ParityCheckRunningBinarySensor(UnraidBinarySensorEntity):
         }
 
 
+class ParityCheckPausedBinarySensor(UnraidBinarySensorEntity):
+    """Binary sensor indicating if a parity check is currently paused."""
+
+    _attr_translation_key = "parity_check_paused"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidStorageCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize parity check paused binary sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="parity_check_paused",
+            name="Parity Check Paused",
+        )
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if parity check is paused."""
+        data: UnraidStorageData | None = self.coordinator.data
+        if data is None or data.parity_status is None:
+            return None
+        # Return False when no check is running (paused is None)
+        return data.parity_status.paused or False
+
+
 class ParityValidBinarySensor(UnraidBinarySensorEntity):
     """
     Binary sensor indicating if parity is valid.
@@ -1014,6 +1046,9 @@ async def async_setup_entry(
     )
     entities.append(
         ParityValidBinarySensor(storage_coordinator, server_uuid, server_name)
+    )
+    entities.append(
+        ParityCheckPausedBinarySensor(storage_coordinator, server_uuid, server_name)
     )
 
     # Legacy parity status binary sensor (for backwards compatibility)
