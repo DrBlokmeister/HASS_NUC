@@ -166,6 +166,63 @@ automation:
             ledColor: "red"
             clickAction: "/lovelace-default"
 
+
+  - alias: "[home|3d_printer] Control printer plug with printer button"
+    id: yaml_automation_home_3d_printer_control_printer_plug_with_printer_button
+    description: >
+      Controls switch.plug_3d_printer_switch from the deCONZ 3D printer button.
+      Short press toggles only when the printer status is offline, idle, or finished.
+      Long press toggles only if the button is held for at least 5 seconds without a release event.
+    mode: queued
+    max: 10
+    triggers:
+      - trigger: event
+        event_type: deconz_event
+        event_data:
+          id: 3d_printer_button
+          event: 1002
+        id: short_press
+      - trigger: event
+        event_type: deconz_event
+        event_data:
+          id: 3d_printer_button
+          event: 1001
+        id: long_press_start
+    conditions: []
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: short_press
+              - condition: template
+                value_template: >
+                  {{ states('sensor.blokmeisterp1s_print_status') | lower
+                      in ['offline', 'idle', 'finish'] }}
+            sequence:
+              - action: switch.toggle
+                target:
+                  entity_id: switch.plug_3d_printer_switch
+          - conditions:
+              - condition: trigger
+                id: long_press_start
+            sequence:
+              - wait_for_trigger:
+                  - trigger: event
+                    event_type: deconz_event
+                    event_data:
+                      id: 3d_printer_button
+                      unique_id: "00:15:8d:00:0a:b5:98:84"
+                      device_id: e0ba0392c50412882d0240a51fbb0fda
+                      event: 1003
+                timeout: "00:00:05"
+                continue_on_timeout: true
+              - if:
+                  - condition: template
+                    value_template: "{{ wait.trigger is none }}"
+                then:
+                  - action: switch.toggle
+                    target:
+                      entity_id: switch.plug_3d_printer_switch
 ################
 #    SCENES    #
 ################
