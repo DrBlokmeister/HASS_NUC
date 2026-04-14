@@ -20,6 +20,41 @@ cards:
     content: |
       ## Critical status
       [Unraid Device Page](/config/devices/device/db9950b8bef71e0918844cce1953eeb5)
+
+  - type: conditional
+    conditions:
+      - condition: or
+        conditions:
+          - condition: and
+            conditions:
+              - entity: sensor.tower_unraid_version
+                state: unavailable
+              - entity: sensor.tower_array_state
+                state: unavailable
+              - entity: sensor.tower_cpu_usage
+                state: unavailable
+          - condition: and
+            conditions:
+              - entity: sensor.tower_unraid_version
+                state: unknown
+              - entity: sensor.tower_array_state
+                state: unknown
+              - entity: sensor.tower_cpu_usage
+                state: unknown
+    card:
+      type: custom:mushroom-template-card
+      primary: Unraid integration unavailable
+      secondary: >-
+        Most Unraid data on this page is currently unavailable. Check the integration or device page.
+      icon: mdi:lan-disconnect
+      icon_color: red
+      multiline_secondary: true
+      tap_action:
+        action: navigate
+        navigation_path: /config/integrations/integration/unraid#config_entry=01KE9FC8WHW9JCTV72W3CXQQDC
+      hold_action:
+        action: navigate
+        navigation_path: /config/devices/device/db9950b8bef71e0918844cce1953eeb5
   - type: grid
     square: false
     columns: 2
@@ -28,11 +63,13 @@ cards:
         entity: sensor.tower_last_parity_check_errors
         primary: Parity integrity
         secondary: >-
-          {% set err = states('sensor.tower_last_parity_check_errors') | int(0) %}
+          {% set s = states('sensor.tower_last_parity_check_errors') %}
           {% set running = is_state('binary_sensor.tower_parity_check_running', 'on') %}
           {% set parity_problem = is_state('binary_sensor.tower_parity_status', 'on') and not running %}
-          {% if err > 0 %}
-            {{ err }} parity error{{ 's' if err != 1 else '' }} detected
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif s | int(0) > 0 %}
+            {{ s | int(0) }} parity error{{ 's' if s | int(0) != 1 else '' }} detected
           {% elif parity_problem %}
             Parity status reports a problem
           {% elif running %}
@@ -42,10 +79,12 @@ cards:
           {% endif %}
         icon: mdi:shield-alert
         icon_color: >-
-          {% set err = states('sensor.tower_last_parity_check_errors') | int(0) %}
+          {% set s = states('sensor.tower_last_parity_check_errors') %}
           {% set running = is_state('binary_sensor.tower_parity_check_running', 'on') %}
           {% set parity_problem = is_state('binary_sensor.tower_parity_status', 'on') and not running %}
-          {% if err > 0 or parity_problem %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | int(0) > 0 or parity_problem %}
             red
           {% elif running %}
             amber
@@ -61,14 +100,20 @@ cards:
         entity: sensor.tower_array_state
         primary: Array state
         secondary: >-
-          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+          {% set s = states('sensor.tower_array_state') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif is_state('binary_sensor.tower_array_started', 'on') %}
             Started · {{ states('sensor.tower_array_usage') | float(0) | round(1) }}% used
           {% else %}
             Array is stopped
           {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+          {% set s = states('sensor.tower_array_state') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_array_started', 'on') %}
             green
           {% else %}
             red
@@ -145,14 +190,21 @@ cards:
         entity: sensor.tower_disk_cache_usage
         primary: Cache usage
         secondary: >-
-          {{ states('sensor.tower_disk_cache_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_cache_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk-plus
         icon_color: >-
-          {% set u = states('sensor.tower_disk_cache_usage') | float(0) %}
-          {% if u >= 90 %}
+          {% set s = states('sensor.tower_disk_cache_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | float(0) >= 90 %}
             red
-          {% elif u >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
@@ -166,14 +218,20 @@ cards:
         entity: binary_sensor.tower_parity_check_running
         primary: Parity check
         secondary: >-
-          {% if is_state('binary_sensor.tower_parity_check_running', 'on') %}
+          {% set s = states('binary_sensor.tower_parity_check_running') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif s == 'on' %}
             Running · {{ states('sensor.tower_parity_check_progress') }}% · {{ states('sensor.tower_parity_check_speed') }} MiB/s
           {% else %}
             Not running
           {% endif %}
         icon: mdi:shield-sync
         icon_color: >-
-          {% if is_state('binary_sensor.tower_parity_check_running', 'on') %}
+          {% set s = states('binary_sensor.tower_parity_check_running') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s == 'on' %}
             amber
           {% else %}
             disabled
@@ -186,22 +244,28 @@ cards:
         entity: binary_sensor.tower_disks_invalid
         primary: Disk / FS issues
         secondary: >-
+          {% set s = states('binary_sensor.tower_disks_invalid') %}
           {% set disabled = state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) %}
           {% set invalid = state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) %}
           {% set missing = state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) %}
           {% set unmountable = state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) %}
-          {% if disabled + invalid + missing + unmountable > 0 %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif disabled + invalid + missing + unmountable > 0 %}
             {{ disabled }} disabled · {{ invalid }} invalid · {{ missing }} missing · {{ unmountable }} unmountable
           {% else %}
             No disk or filesystem issues reported
           {% endif %}
         icon: mdi:harddisk-remove
         icon_color: >-
+          {% set s = states('binary_sensor.tower_disks_invalid') %}
           {% set disabled = state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) %}
           {% set invalid = state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) %}
           {% set missing = state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) %}
           {% set unmountable = state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) %}
-          {% if disabled + invalid + missing + unmountable > 0 %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif disabled + invalid + missing + unmountable > 0 %}
             red
           {% else %}
             green
@@ -370,187 +434,285 @@ cards:
         entity: sensor.tower_unraid_version
         primary: Unraid version
         secondary: >-
-          {{ states('sensor.tower_unraid_version') }} · API {{ state_attr('sensor.tower_unraid_version', 'api_version') }}
+          {% set s = states('sensor.tower_unraid_version') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s }} · API {{ state_attr('sensor.tower_unraid_version', 'api_version') }}
+          {% endif %}
         icon: mdi:server
-        icon_color: blue
+        icon_color: >-
+          {% if states('sensor.tower_unraid_version') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% else %}
+            blue
+          {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_uptime_2
         primary: Up since
         secondary: >-
-          {{ states('sensor.tower_uptime_2') }}
+          {% set s = states('sensor.tower_uptime_2') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s }}
+          {% endif %}
         icon: mdi:clock-start
-        icon_color: green
+        icon_color: >-
+          {% if states('sensor.tower_uptime_2') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% else %}
+            green
+          {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_array_state
         primary: Array state
         secondary: >-
-          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+          {% set s = states('sensor.tower_array_state') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif is_state('binary_sensor.tower_array_started', 'on') %}
             Started
           {% else %}
             Stopped
           {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% if is_state('binary_sensor.tower_array_started', 'on') %}
+          {% set s = states('sensor.tower_array_state') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_array_started', 'on') %}
             green
           {% else %}
             red
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_array_usage
         primary: Array usage
         secondary: >-
-          {{ states('sensor.tower_array_usage') | float(0) | round(1) }}% · {{ state_attr('sensor.tower_array_usage', 'used') }} / {{ state_attr('sensor.tower_array_usage', 'total') }}
+          {% set s = states('sensor.tower_array_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s | float(0) | round(1) }}% · {{ state_attr('sensor.tower_array_usage', 'used') }} / {{ state_attr('sensor.tower_array_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk-plus
         icon_color: >-
-          {% set u = states('sensor.tower_array_usage') | float(0) %}
-          {% if u >= 90 %}
+          {% set s = states('sensor.tower_array_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | float(0) >= 90 %}
             red
-          {% elif u >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
           {% endif %}
         fill_container: true
         multiline_secondary: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_active_notifications
         primary: Active notifications
         secondary: >-
-          {{ states('sensor.tower_active_notifications') }} active
+          {% set s = states('sensor.tower_active_notifications') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s }} active
+          {% endif %}
         icon: mdi:bell-badge
         icon_color: >-
-          {% if states('sensor.tower_active_notifications') | int(0) > 0 %}
+          {% set s = states('sensor.tower_active_notifications') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | int(0) > 0 %}
             amber
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_mover_active
         primary: Mover
         secondary: >-
-          {% if is_state('binary_sensor.tower_mover_active', 'on') %}
+          {% set s = states('binary_sensor.tower_mover_active') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif s == 'on' %}
             Running
           {% else %}
             Idle
           {% endif %}
         icon: mdi:swap-horizontal-bold
         icon_color: >-
-          {% if is_state('binary_sensor.tower_mover_active', 'on') %}
+          {% set s = states('binary_sensor.tower_mover_active') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s == 'on' %}
             amber
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_cloud_connected
         primary: Cloud relay
         secondary: >-
-          {% if is_state('binary_sensor.tower_cloud_connected', 'on') %}
+          {% set s = states('binary_sensor.tower_cloud_connected') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif s == 'on' %}
             Connected
           {% else %}
             Disconnected · {{ state_attr('binary_sensor.tower_cloud_connected', 'relay_status') or 'unknown' }}
           {% endif %}
         icon: mdi:cloud
         icon_color: >-
-          {% if is_state('binary_sensor.tower_cloud_connected', 'on') %}
+          {% set s = states('binary_sensor.tower_cloud_connected') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s == 'on' %}
             green
           {% else %}
             red
           {% endif %}
         fill_container: true
         multiline_secondary: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_config_valid
         primary: Config validity
         secondary: >-
-          {% if is_state('binary_sensor.tower_config_valid', 'on') %}
+          {% set s = states('binary_sensor.tower_config_valid') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif s == 'on' %}
             Configuration problem detected
           {% else %}
             Configuration looks valid
           {% endif %}
         icon: mdi:cog-check
         icon_color: >-
-          {% if is_state('binary_sensor.tower_config_valid', 'on') %}
+          {% set s = states('binary_sensor.tower_config_valid') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s == 'on' %}
             red
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_safe_mode
         primary: Safe mode
         secondary: >-
-          {% if is_state('binary_sensor.tower_safe_mode', 'on') %}
+          {% set s = states('binary_sensor.tower_safe_mode') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% elif s == 'on' %}
             Enabled
           {% else %}
             Normal mode
           {% endif %}
         icon: mdi:shield-half-full
         icon_color: >-
-          {% if is_state('binary_sensor.tower_safe_mode', 'on') %}
+          {% set s = states('binary_sensor.tower_safe_mode') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s == 'on' %}
             red
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_cpu_usage
         primary: CPU
         secondary: >-
-          {{ states('sensor.tower_cpu_usage') | float(0) | round(1) }}% · {{ states('sensor.tower_cpu_temperature') }} °C · {{ states('sensor.tower_cpu_power') }} W
+          {% set s = states('sensor.tower_cpu_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s | float(0) | round(1) }}% · {{ states('sensor.tower_cpu_temperature') }} °C · {{ states('sensor.tower_cpu_power') }} W
+          {% endif %}
         icon: mdi:cpu-64-bit
         icon_color: >-
-          {% set u = states('sensor.tower_cpu_usage') | float(0) %}
-          {% if u >= 90 %}
+          {% set s = states('sensor.tower_cpu_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | float(0) >= 90 %}
             red
-          {% elif u >= 60 %}
+          {% elif s | float(0) >= 60 %}
             amber
           {% else %}
             green
           {% endif %}
         fill_container: true
         multiline_secondary: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_ram_usage
         primary: Memory
         secondary: >-
-          {{ states('sensor.tower_ram_usage') | float(0) | round(1) }}% · {{ states('sensor.tower_ram_used') }} GiB used
+          {% set s = states('sensor.tower_ram_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s | float(0) | round(1) }}% · {{ states('sensor.tower_ram_used') }} GiB used
+          {% endif %}
         icon: mdi:memory
         icon_color: >-
-          {% set u = states('sensor.tower_ram_usage') | float(0) %}
-          {% if u >= 90 %}
+          {% set s = states('sensor.tower_ram_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | float(0) >= 90 %}
             red
-          {% elif u >= 75 %}
+          {% elif s | float(0) >= 75 %}
             amber
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_swap_usage
         primary: Swap
         secondary: >-
-          {{ states('sensor.tower_swap_usage') | float(0) | round(1) }}% · {{ states('sensor.tower_swap_used') }} GiB used
+          {% set s = states('sensor.tower_swap_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s | float(0) | round(1) }}% · {{ states('sensor.tower_swap_used') }} GiB used
+          {% endif %}
         icon: mdi:swap-horizontal
         icon_color: >-
-          {% set u = states('sensor.tower_swap_usage') | float(0) %}
-          {% if u > 0 %}
+          {% set s = states('sensor.tower_swap_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif s | float(0) > 0 %}
             amber
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: sensor.tower_flash_device_usage
         primary: Flash usage
         secondary: >-
           {% set s = states('sensor.tower_flash_device_usage') %}
-          {% if s in ['unknown', 'unavailable'] %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
             Unavailable
           {% else %}
             {{ s | float(0) | round(1) }}% used
@@ -558,8 +720,8 @@ cards:
         icon: mdi:usb-flash-drive
         icon_color: >-
           {% set s = states('sensor.tower_flash_device_usage') %}
-          {% if s in ['unknown', 'unavailable'] %}
-            red
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
           {% elif s | float(0) >= 90 %}
             red
           {% elif s | float(0) >= 75 %}
@@ -686,16 +848,23 @@ cards:
         entity: sensor.tower_disk_cache_usage
         primary: Cache
         secondary: >-
-          {{ states('sensor.tower_disk_cache_temperature') }} °C ·
-          {{ states('sensor.tower_disk_cache_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_cache_usage') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ states('sensor.tower_disk_cache_temperature') }} °C ·
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk-plus
         icon_color: >-
-          {% set health = is_state('binary_sensor.tower_disk_cache_health', 'on') %}
-          {% set usage = states('sensor.tower_disk_cache_usage') | float(0) %}
-          {% if health or usage >= 90 %}
+          {% set s = states('sensor.tower_disk_cache_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_cache_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_cache_health', 'on') or s | float(0) >= 90 %}
             red
-          {% elif usage >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             blue
@@ -709,12 +878,22 @@ cards:
         entity: sensor.tower_disk_parity_temperature
         primary: Parity disk
         secondary: >-
-          {{ states('sensor.tower_disk_parity_temperature') }} °C ·
-          {{ state_attr('binary_sensor.tower_disk_parity_health', 'status') }} ·
-          {{ 'spinning' if state_attr('binary_sensor.tower_disk_parity_health', 'spinning') else 'standby' }}
+          {% set s = states('sensor.tower_disk_parity_temperature') %}
+          {% set health_state = states('binary_sensor.tower_disk_parity_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ s }} °C ·
+            {{ state_attr('binary_sensor.tower_disk_parity_health', 'status') }} ·
+            {{ 'spinning' if state_attr('binary_sensor.tower_disk_parity_health', 'spinning') else 'standby' }}
+          {% endif %}
         icon: mdi:shield-harddisk
         icon_color: >-
-          {% if is_state('binary_sensor.tower_disk_parity_health', 'on') %}
+          {% set s = states('sensor.tower_disk_parity_temperature') %}
+          {% set health_state = states('binary_sensor.tower_disk_parity_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_parity_health', 'on') %}
             red
           {% else %}
             teal
@@ -728,15 +907,24 @@ cards:
         entity: sensor.tower_disk_disk1_usage
         primary: Disk 1
         secondary: >-
-          {{ states('sensor.tower_disk_disk1_temperature') }} °C ·
-          {{ states('sensor.tower_disk_disk1_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_disk1_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk1_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_disk1_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk1_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ states('sensor.tower_disk_disk1_temperature') }} °C ·
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_disk1_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk1_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% set usage = states('sensor.tower_disk_disk1_usage') | float(0) %}
-          {% if is_state('binary_sensor.tower_disk_disk1_health', 'on') or usage >= 90 %}
+          {% set s = states('sensor.tower_disk_disk1_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk1_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_disk1_health', 'on') or s | float(0) >= 90 %}
             red
-          {% elif usage >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
@@ -750,15 +938,24 @@ cards:
         entity: sensor.tower_disk_disk2_usage
         primary: Disk 2
         secondary: >-
-          {{ states('sensor.tower_disk_disk2_temperature') }} °C ·
-          {{ states('sensor.tower_disk_disk2_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_disk2_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk2_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_disk2_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk2_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ states('sensor.tower_disk_disk2_temperature') }} °C ·
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_disk2_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk2_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% set usage = states('sensor.tower_disk_disk2_usage') | float(0) %}
-          {% if is_state('binary_sensor.tower_disk_disk2_health', 'on') or usage >= 90 %}
+          {% set s = states('sensor.tower_disk_disk2_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk2_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_disk2_health', 'on') or s | float(0) >= 90 %}
             red
-          {% elif usage >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
@@ -772,15 +969,24 @@ cards:
         entity: sensor.tower_disk_disk3_usage
         primary: Disk 3
         secondary: >-
-          {{ states('sensor.tower_disk_disk3_temperature') }} °C ·
-          {{ states('sensor.tower_disk_disk3_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_disk3_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk3_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_disk3_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk3_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ states('sensor.tower_disk_disk3_temperature') }} °C ·
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_disk3_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk3_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% set usage = states('sensor.tower_disk_disk3_usage') | float(0) %}
-          {% if is_state('binary_sensor.tower_disk_disk3_health', 'on') or usage >= 90 %}
+          {% set s = states('sensor.tower_disk_disk3_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk3_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_disk3_health', 'on') or s | float(0) >= 90 %}
             red
-          {% elif usage >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
@@ -794,15 +1000,24 @@ cards:
         entity: sensor.tower_disk_disk4_usage
         primary: Disk 4
         secondary: >-
-          {{ states('sensor.tower_disk_disk4_temperature') }} °C ·
-          {{ states('sensor.tower_disk_disk4_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_disk4_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk4_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_disk4_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk4_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ states('sensor.tower_disk_disk4_temperature') }} °C ·
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_disk4_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk4_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% set usage = states('sensor.tower_disk_disk4_usage') | float(0) %}
-          {% if is_state('binary_sensor.tower_disk_disk4_health', 'on') or usage >= 90 %}
+          {% set s = states('sensor.tower_disk_disk4_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk4_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_disk4_health', 'on') or s | float(0) >= 90 %}
             red
-          {% elif usage >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
@@ -816,15 +1031,24 @@ cards:
         entity: sensor.tower_disk_disk5_usage
         primary: Disk 5
         secondary: >-
-          {{ states('sensor.tower_disk_disk5_temperature') }} °C ·
-          {{ states('sensor.tower_disk_disk5_usage') | float(0) | round(1) }}% used ·
-          {{ state_attr('sensor.tower_disk_disk5_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk5_usage', 'total') }}
+          {% set s = states('sensor.tower_disk_disk5_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk5_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ states('sensor.tower_disk_disk5_temperature') }} °C ·
+            {{ s | float(0) | round(1) }}% used ·
+            {{ state_attr('sensor.tower_disk_disk5_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk5_usage', 'total') }}
+          {% endif %}
         icon: mdi:harddisk
         icon_color: >-
-          {% set usage = states('sensor.tower_disk_disk5_usage') | float(0) %}
-          {% if is_state('binary_sensor.tower_disk_disk5_health', 'on') or usage >= 90 %}
+          {% set s = states('sensor.tower_disk_disk5_usage') %}
+          {% set health_state = states('binary_sensor.tower_disk_disk5_health') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif is_state('binary_sensor.tower_disk_disk5_health', 'on') or s | float(0) >= 90 %}
             red
-          {% elif usage >= 80 %}
+          {% elif s | float(0) >= 80 %}
             amber
           {% else %}
             green
@@ -849,7 +1073,6 @@ cards:
         variables:
           - disk_key: parity
           - disk_title: Parity
-          - icon: mdi:shield-harddisk
       - type: custom:decluttering-card
         template: tower_disk_health_card
         variables:
@@ -879,49 +1102,84 @@ cards:
         entity: binary_sensor.tower_disks_disabled
         primary: Disks disabled
         secondary: >-
-          {{ state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) }} affected
+          {% set s = states('binary_sensor.tower_disks_disabled') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) }} affected
+          {% endif %}
         icon: mdi:harddisk-off
         icon_color: >-
-          {% if state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) > 0 %}
+          {% set s = states('binary_sensor.tower_disks_disabled') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) > 0 %}
             red
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_disks_invalid
         primary: Disks invalid
         secondary: >-
-          {{ state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) }} affected
+          {% set s = states('binary_sensor.tower_disks_invalid') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) }} affected
+          {% endif %}
         icon: mdi:alert-circle
         icon_color: >-
-          {% if state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) > 0 %}
+          {% set s = states('binary_sensor.tower_disks_invalid') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) > 0 %}
             red
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_disks_missing
         primary: Disks missing
         secondary: >-
-          {{ state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) }} affected
+          {% set s = states('binary_sensor.tower_disks_missing') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) }} affected
+          {% endif %}
         icon: mdi:harddisk-remove
         icon_color: >-
-          {% if state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) > 0 %}
+          {% set s = states('binary_sensor.tower_disks_missing') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) > 0 %}
             red
           {% else %}
             green
           {% endif %}
         fill_container: true
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_filesystems_unmountable
         primary: Filesystems unmountable
         secondary: >-
-          {{ state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) }} affected
+          {% set s = states('binary_sensor.tower_filesystems_unmountable') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {{ state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) }} affected
+          {% endif %}
         icon: mdi:folder-remove
         icon_color: >-
-          {% if state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) > 0 %}
+          {% set s = states('binary_sensor.tower_filesystems_unmountable') %}
+          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            disabled
+          {% elif state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) > 0 %}
             red
           {% else %}
             green
@@ -1244,99 +1502,169 @@ cards:
             entity: binary_sensor.tower_ups_connected
             primary: UPS connection
             secondary: >-
-              {% if is_state('binary_sensor.tower_ups_connected', 'on') %}
+              {% set s = states('binary_sensor.tower_ups_connected') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% elif s == 'on' %}
                 Connected · {{ state_attr('binary_sensor.tower_ups_connected', 'status') }}
               {% else %}
                 Disconnected
               {% endif %}
             icon: mdi:battery-charging
             icon_color: >-
-              {% if is_state('binary_sensor.tower_ups_connected', 'on') %}
+              {% set s = states('binary_sensor.tower_ups_connected') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% elif s == 'on' %}
                 green
               {% else %}
                 red
               {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_battery
             primary: Battery
             secondary: >-
-              {{ states('sensor.tower_ups_battery') }}% · {{ state_attr('sensor.tower_ups_battery', 'health') }}
+              {% set s = states('sensor.tower_ups_battery') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ s }}% · {{ state_attr('sensor.tower_ups_battery', 'health') }}
+              {% endif %}
             icon: mdi:battery-high
             icon_color: >-
-              {% set b = states('sensor.tower_ups_battery') | int(0) %}
-              {% if b <= 25 %}
+              {% set s = states('sensor.tower_ups_battery') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% elif s | int(0) <= 25 %}
                 red
-              {% elif b <= 50 %}
+              {% elif s | int(0) <= 50 %}
                 amber
               {% else %}
                 green
               {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_load
             primary: Load
             secondary: >-
-              {{ states('sensor.tower_ups_load') }}%
+              {% set s = states('sensor.tower_ups_load') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ s }}%
+              {% endif %}
             icon: mdi:gauge
             icon_color: >-
-              {% set l = states('sensor.tower_ups_load') | float(0) %}
-              {% if l >= 80 %}
+              {% set s = states('sensor.tower_ups_load') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% elif s | float(0) >= 80 %}
                 red
-              {% elif l >= 50 %}
+              {% elif s | float(0) >= 50 %}
                 amber
               {% else %}
                 green
               {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_power
             primary: Output power
             secondary: >-
-              {% if states('sensor.tower_ups_power') in ['unknown', 'unavailable'] %}
+              {% if states('sensor.tower_ups_power') in ['unknown', 'unavailable', 'none', 'None', ''] %}
                 Unavailable
               {% else %}
                 {{ states('sensor.tower_ups_power') }} W
               {% endif %}
             icon: mdi:flash
-            icon_color: blue
+            icon_color: >-
+              {% if states('sensor.tower_ups_power') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% else %}
+                blue
+              {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_runtime
             primary: Runtime
             secondary: >-
-              {{ states('sensor.tower_ups_runtime') }}
+              {% set s = states('sensor.tower_ups_runtime') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ s }}
+              {% endif %}
             icon: mdi:timer-outline
-            icon_color: blue
+            icon_color: >-
+              {% if states('sensor.tower_ups_runtime') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% else %}
+                blue
+              {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_ut850eg_battery_health
             primary: Battery health
             secondary: >-
-              {{ states('sensor.tower_ups_ut850eg_battery_health') }}
+              {% set s = states('sensor.tower_ups_ut850eg_battery_health') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ s }}
+              {% endif %}
             icon: mdi:heart-pulse
             icon_color: >-
-              {% if states('sensor.tower_ups_ut850eg_battery_health') | lower == 'good' %}
+              {% set s = states('sensor.tower_ups_ut850eg_battery_health') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% elif s | lower == 'good' %}
                 green
               {% else %}
                 red
               {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_ut850eg_input_voltage
             primary: Input voltage
             secondary: >-
-              {{ states('sensor.tower_ups_ut850eg_input_voltage') }} V
+              {% set s = states('sensor.tower_ups_ut850eg_input_voltage') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ s }} V
+              {% endif %}
             icon: mdi:transmission-tower
-            icon_color: blue
+            icon_color: >-
+              {% if states('sensor.tower_ups_ut850eg_input_voltage') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% else %}
+                blue
+              {% endif %}
             fill_container: true
+
           - type: custom:mushroom-template-card
             entity: sensor.tower_ups_ut850eg_output_voltage
             primary: Output voltage
             secondary: >-
-              {{ states('sensor.tower_ups_ut850eg_output_voltage') }} V
+              {% set s = states('sensor.tower_ups_ut850eg_output_voltage') %}
+              {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ s }} V
+              {% endif %}
             icon: mdi:power-plug
-            icon_color: blue
+            icon_color: >-
+              {% if states('sensor.tower_ups_ut850eg_output_voltage') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                disabled
+              {% else %}
+                blue
+              {% endif %}
             fill_container: true
 
   ###########################################################################
@@ -1353,692 +1681,615 @@ cards:
             name: OMV server reachable
             icon: mdi:server
           - entity: sensor.rpi4_omv_round_trip_time_average
-            name: OMV server RTT
-            icon: mdi:lan-connect
-      - type: custom:mini-graph-card
-        name: OMV Round Trip Time
-        icon: mdi:lan-connect
-        entities:
-          - sensor.rpi4_omv_round_trip_time_average
-        line_width: 2
-        hours_to_show: 24
-        points_per_hour: 4
-        show:
-          labels: true
-          legend: false
+            name: Avg RTT
+            icon: mdi:speedometer
+          - entity: sensor.rpi4_omv_round_trip_time_max
+            name: Max RTT
+            icon: mdi:speedometer-slow
+          - entity: sensor.rpi4_omv_round_trip_time_mdev
+            name: RTT mdev
+            icon: mdi:chart-bell-curve
+          - entity: sensor.rpi4_omv_packets_received
+            name: Packets received
+            icon: mdi:download
+          - entity: sensor.rpi4_omv_packets_transmitted
+            name: Packets transmitted
+            icon: mdi:upload
+          - entity: sensor.rpi4_omv_percent_packet_loss
+            name: Packet loss
+            icon: mdi:packet
 
   - type: custom:collapsable-cards
-    title: AirVPN status
+    title: AirVPN
     cards:
-      - type: entity
-        entity: sensor.airvpn_connected_since
-        name: VPN Connected Since
-      - type: horizontal-stack
+      - type: grid
+        square: false
+        columns: 2
         cards:
-          - type: entity
+          - type: custom:mushroom-template-card
+            entity: sensor.airvpn_connected_since
+            primary: Connected since
+            secondary: >-
+              {{ states('sensor.airvpn_connected_since') }}
+            icon: mdi:clock-outline
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
             entity: sensor.airvpn_server_name
-            name: Server Name
-          - type: entity
-            entity: sensor.airvpn_server_country
-            name: Server Country
-      - type: horizontal-stack
-        cards:
-          - type: entity
+            primary: Server
+            secondary: >-
+              {{ states('sensor.airvpn_server_name') }} · {{ states('sensor.airvpn_server_country') }}
+            icon: mdi:earth
+            icon_color: teal
+            fill_container: true
+          - type: custom:mushroom-template-card
             entity: sensor.airvpn_exit_ip
-            name: Exit IP
-          - type: entity
-            entity: sensor.airvpn_vpn_ip
-            name: VPN IP
+            primary: Exit / VPN IP
+            secondary: >-
+              {{ states('sensor.airvpn_exit_ip') }} · {{ states('sensor.airvpn_vpn_ip') }}
+            icon: mdi:ip-network-outline
+            icon_color: cyan
+            multiline_secondary: true
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.airvpn_total_download
+            primary: Total transfer
+            secondary: >-
+              ↓ {{ states('sensor.airvpn_total_download') }} · ↑ {{ states('sensor.airvpn_total_upload') }}
+            icon: mdi:swap-vertical
+            icon_color: green
+            fill_container: true
+
       - type: custom:apexcharts-card
         header:
-          title: AirVPN Total Down/Up
+          title: AirVPN bandwidth
           show: true
           show_states: true
           colorize_states: true
         update_interval: 5min
+        graph_span: 24h
         apex_config:
-          legend:
-            show: false
           chart:
             height: 250px
-        graph_span: 24h
-        span:
-          start: day
-        now:
-          show: true
-        yaxis:
-          - min: 0
-            max: ~50
-            decimals: 0
-            align_to: 10
-            apex_config:
-              tickAmount: 4
-              forceNiceScale: true
-        all_series_config:
-          group_by:
-            func: avg
-            duration: 10min
-          show:
-            in_header: false
-            legend_value: false
-        series:
-          - entity: sensor.airvpn_data_uploaded
-            name: Data Uploaded
-            color: '#FFA500'
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
-          - entity: sensor.airvpn_data_downloaded
-            name: Data Downloaded
-            color: '#008FFB'
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
-          - entity: sensor.airvpn_data_uploaded
-            name: Data Uploaded (Yesterday)
-            color: '#FFCC99'
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
-          - entity: sensor.airvpn_data_downloaded
-            name: Data Downloaded (Yesterday)
-            color: '#99CCFF'
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
-      - type: custom:apexcharts-card
-        header:
-          title: AirVPN Current Down/Up Speed
-          show: true
-          show_states: true
-          colorize_states: true
-        update_interval: 5min
-        apex_config:
           legend:
             show: false
-          chart:
-            height: 250px
-        graph_span: 24h
-        span:
-          start: day
-        yaxis:
-          - min: 0
-            max: ~10
-            decimals: 0
-            align_to: 10
-            apex_config:
-              tickAmount: 5
-              forceNiceScale: true
         all_series_config:
           group_by:
-            func: avg
+            func: max
             duration: 10min
-          show:
-            in_header: false
-            legend_value: false
           stroke_width: 3
+        yaxis:
+          - min: 0
+            max: auto
+            decimals: 0
+            apex_config:
+              forceNiceScale: true
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return `${value} MiB/s`;
+                  }
         series:
-          - entity: sensor.airvpn_upload_speed
-            name: Upload Speed
-            color: '#FFA500'
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
           - entity: sensor.airvpn_download_speed
-            name: Download Speed
-            color: '#008FFB'
-            stroke_width: 3
-            extend_to: now
-            show:
-              in_header: true
-              legend_value: true
+            name: Download
+            color: '#1E88E5'
+            transform: 'return x / 1048576;'
           - entity: sensor.airvpn_upload_speed
-            name: Upload Speed (Yesterday)
-            color: '#FFCC99'
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
-          - entity: sensor.airvpn_download_speed
-            name: Download Speed (Yesterday)
-            color: '#99CCFF'
-            stroke_width: 2
-            opacity: 0.5
-            offset: -1d
+            name: Upload
+            color: '#43A047'
+            transform: 'return x / 1048576;'
 
   - type: custom:collapsable-cards
     title: PiKVM NAS
     cards:
-      - type: entities
-        title: PiKVM system status
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.pikvm_nas
-            name: PiKVM Reachable
-          - entity: sensor.pikvm_nas_round_trip_time_average
-            name: PiKVM RTT
-          - entity: sensor.pikvm_cpu_temp
-            name: CPU Temperature
-          - entity: sensor.pikvm_signal_level
-            name: Signal Strength
-          - entity: sensor.pikvm_link_quality
-            name: Link Quality
-          - entity: sensor.pikvm_missed_beacon
-            name: Missed Beacons
-      - type: history-graph
-        title: Connected
-        hours_to_show: 48
-        entities:
-          - entity: binary_sensor.pikvm_nas
-            name: Ping
-      - type: custom:mini-graph-card
-        name: PiKVM Round Trip Time
-        icon: mdi:lan-connect
-        entities:
-          - sensor.pikvm_nas_round_trip_time_average
-        line_width: 2
-        hours_to_show: 24
-        points_per_hour: 4
-        show:
-          labels: true
-          legend: false
-      - type: custom:mini-graph-card
-        name: PiKVM CPU Temperature
-        icon: mdi:thermometer
-        entities:
-          - sensor.pikvm_cpu_temp
-        line_width: 2
-        hours_to_show: 24
-        points_per_hour: 4
-        show:
-          labels: true
-          legend: false
-      - type: custom:mini-graph-card
-        name: PiKVM Wi-Fi Stats
-        icon: mdi:wifi
-        entities:
-          - entity: sensor.pikvm_signal_level
-            name: Signal
-          - entity: sensor.pikvm_link_quality
-            name: Link Quality
-          - entity: sensor.pikvm_missed_beacon
-            name: Missed Beacons
-        line_width: 2
-        hours_to_show: 24
-        points_per_hour: 2
-        show:
-          legend: true
-          labels: true
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.pikvm_nas
+            primary: PiKVM status
+            secondary: >-
+              {% if is_state('binary_sensor.pikvm_nas', 'on') %}
+                Reachable
+              {% else %}
+                Unreachable
+              {% endif %}
+            icon: mdi:kvm
+            icon_color: >-
+              {% if is_state('binary_sensor.pikvm_nas', 'on') %}
+                green
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_round_trip_time_average
+            primary: Latency
+            secondary: >-
+              Avg {{ states('sensor.pikvm_nas_round_trip_time_average') }} · Max {{ states('sensor.pikvm_nas_round_trip_time_max') }}
+            icon: mdi:speedometer
+            icon_color: blue
+            fill_container: true
+            multiline_secondary: true
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_packets_received
+            primary: Packets received
+            secondary: >-
+              {{ states('sensor.pikvm_nas_packets_received') }}
+            icon: mdi:download
+            icon_color: teal
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_packets_transmitted
+            primary: Packets transmitted
+            secondary: >-
+              {{ states('sensor.pikvm_nas_packets_transmitted') }}
+            icon: mdi:upload
+            icon_color: cyan
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_percent_packet_loss
+            primary: Packet loss
+            secondary: >-
+              {{ states('sensor.pikvm_nas_percent_packet_loss') }}%
+            icon: mdi:packet
+            icon_color: >-
+              {% set loss = states('sensor.pikvm_nas_percent_packet_loss') | float(0) %}
+              {% if loss > 0 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
 
   ###########################################################################
-  # NETWORK / POWERSTRIP
+  # FIREWALL
   ###########################################################################
   - type: custom:collapsable-cards
-    title: Firewall rules
+    title: Firewall
     cards:
       - type: grid
         square: false
-        columns: 3
+        columns: 2
         cards:
-          - type: button
-            entity: switch.unifi_network_forward_plex_to_nas
-            name: Plex to NAS
-          - type: button
-            entity: switch.unifi_network_guac_http
-            name: Guac HTTP
-          - type: button
-            entity: switch.unifi_network_guac_https
-            name: Guac HTTPS
-          - type: button
-            entity: switch.unifi_network_swag_http_https
-            name: Swag HTTP/HTTPS
-          - type: button
-            entity: switch.unifi_network_swag_https
-            name: Swag HTTPS
-          - type: button
-            entity: switch.unifi_network_transmission_data
-            name: Transmission Data
+          - type: custom:mushroom-template-card
+            entity: sensor.asus_rt_ax86u_pro_cpu_utilization
+            primary: CPU
+            secondary: >-
+              {{ states('sensor.asus_rt_ax86u_pro_cpu_utilization') }}%
+            icon: mdi:cpu-64-bit
+            icon_color: >-
+              {% set u = states('sensor.asus_rt_ax86u_pro_cpu_utilization') | float(0) %}
+              {% if u >= 90 %}
+                red
+              {% elif u >= 60 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.asus_rt_ax86u_pro_memory_utilization
+            primary: Memory
+            secondary: >-
+              {{ states('sensor.asus_rt_ax86u_pro_memory_utilization') }}%
+            icon: mdi:memory
+            icon_color: >-
+              {% set u = states('sensor.asus_rt_ax86u_pro_memory_utilization') | float(0) %}
+              {% if u >= 90 %}
+                red
+              {% elif u >= 75 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.asus_rt_ax86u_pro_connected_devices
+            primary: Connected clients
+            secondary: >-
+              {{ states('sensor.asus_rt_ax86u_pro_connected_devices') }}
+            icon: mdi:access-point-network
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.asus_rt_ax86u_pro_rx
+            primary: Download
+            secondary: >-
+              {{ states('sensor.asus_rt_ax86u_pro_rx') }}
+            icon: mdi:download-network
+            icon_color: teal
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.asus_rt_ax86u_pro_tx
+            primary: Upload
+            secondary: >-
+              {{ states('sensor.asus_rt_ax86u_pro_tx') }}
+            icon: mdi:upload-network
+            icon_color: cyan
+            fill_container: true
 
+  ###########################################################################
+  # DESK POWERSTRIP / DEVICES
+  ###########################################################################
   - type: custom:collapsable-cards
-    title: Study desk powerstrip
+    title: Desk powerstrip
     cards:
-      - type: glance
-        columns: 5
-        show_state: false
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.power_strip_1_power
+            primary: Total power
+            secondary: >-
+              {{ states('sensor.power_strip_1_power') }} W
+            icon: mdi:flash
+            icon_color: >-
+              {% set p = states('sensor.power_strip_1_power') | float(0) %}
+              {% if p >= 2000 %}
+                red
+              {% elif p >= 800 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.power_strip_1_current
+            primary: Current
+            secondary: >-
+              {{ states('sensor.power_strip_1_current') }} A
+            icon: mdi:current-ac
+            icon_color: blue
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: sensor.power_strip_1_voltage
+            primary: Voltage
+            secondary: >-
+              {{ states('sensor.power_strip_1_voltage') }} V
+            icon: mdi:sine-wave
+            icon_color: teal
+            fill_container: true
+
+      - type: entities
+        title: Individual sockets
+        show_header_toggle: false
         entities:
-          - entity: switch.powerstrip_study_desk_socket_1
-            name: PC
-            icon: mdi:desktop-tower
-            tap_action:
-              action: toggle
-              confirmation:
-                text: Are you sure you want to power on/off?
-          - entity: switch.powerstrip_study_desk_socket_2
-            name: Laptop Dock
-            icon: mdi:laptop
-            tap_action:
-              action: toggle
-          - entity: switch.powerstrip_study_desk_socket_3
-            name: Peripherals
-            icon: mdi:audio-video
-            tap_action:
-              action: toggle
-          - entity: switch.powerstrip_study_desk_socket_4
-            name: Monitors
-            icon: mdi:monitor-multiple
-            tap_action:
-              action: toggle
-          - entity: switch.powerstrip_study_desk_socket_usb
-            name: USB
-            icon: mdi:usb
-            tap_action:
-              action: toggle
-          - entity: script.turn_off_all_study_desk_devices
-            name: ALL
-            icon: mdi:desktop-tower-monitor
-            tap_action:
-              action: call-service
-              service: script.turn_off_all_study_desk_devices
-              confirmation:
-                text: Are you sure you want to power off?
+          - entity: switch.power_strip_1_socket_1
+            name: 3D printer
+          - entity: switch.power_strip_1_socket_2
+            name: 65 W USB-C charger
+          - entity: switch.power_strip_1_socket_3
+            name: Workbench
+          - entity: switch.power_strip_1_socket_4
+            name: Desk motor
 
   ###########################################################################
   # CONTAINERS
   ###########################################################################
-  - type: markdown
-    content: |
-      ## Containers
-
-  - type: custom:collapsable-cards
-    title: Containers
+  - type: vertical-stack
     cards:
-      - type: grid
-        square: false
-        columns: 5
+      - type: custom:collapsable-cards
+        title: Containers overview
         cards:
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_apacheguacamole
-              - name: ApacheGuacamole
-              - fallback_icon: mdi:remote-desktop
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_audiobookshelf
-              - name: audiobookshelf
-              - fallback_icon: mdi:bookshelf
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_authelia
-              - name: Authelia
-              - fallback_icon: mdi:shield-lock
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_bambuddy
-              - name: Bambuddy
-              - fallback_icon: mdi:printer-3d
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_binhex_krusader
-              - name: binhex-krusader
-              - fallback_icon: mdi:folder-multiple
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_code_server
-              - name: code-server
-              - fallback_icon: mdi:microsoft-visual-studio-code
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_diskspeed
-              - name: DiskSpeed
-              - fallback_icon: mdi:speedometer
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_dupeguru
-              - name: dupeGuru
-              - fallback_icon: mdi:content-duplicate
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_duplicati
-              - name: duplicati
-              - fallback_icon: mdi:backup-restore
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_firefox
-              - name: Firefox
-              - fallback_icon: mdi:firefox
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_frigate
-              - name: frigate
-              - fallback_icon: mdi:cctv
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_hddtemp
-              - name: HDDTemp
-              - fallback_icon: mdi:thermometer
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_immich
-              - name: immich
-              - fallback_icon: mdi:image-multiple
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_immich_power_tools
-              - name: Immich-Power-Tools
-              - fallback_icon: mdi:tools
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_iperf3
-              - name: iperf3
-              - fallback_icon: mdi:speedometer-medium
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_musicbrainz_picard
-              - name: MusicBrainz-Picard
-              - fallback_icon: mdi:music-note
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_navidrome
-              - name: navidrome
-              - fallback_icon: mdi:music-box-multiple
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_nginx_proxy_manager_official
-              - name: NPM Official
-              - fallback_icon: mdi:server-security
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_ntp
-              - name: ntp
-              - fallback_icon: mdi:clock-check
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_onedrive
-              - name: Onedrive
-              - fallback_icon: mdi:microsoft-onedrive
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_photoprism
-              - name: PhotoPrism
-              - fallback_icon: mdi:image-album
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_plex
-              - name: plex
-              - fallback_icon: mdi:plex
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_postgresql_immich
-              - name: PostgreSQL_Immich
-              - fallback_icon: mdi:database
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_qdirstat
-              - name: QDirStat
-              - fallback_icon: mdi:chart-treemap
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_stash
-              - name: stash
-              - fallback_icon: mdi:archive
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_tautulli
-              - name: tautulli
-              - fallback_icon: mdi:chart-line
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_thelounge
-              - name: thelounge
-              - fallback_icon: mdi:chat-processing
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_transmission
-              - name: transmission
-              - fallback_icon: mdi:download-network
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_transmission_1
-              - name: transmission-1
-              - fallback_icon: mdi:download-network
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_uptimekuma
-              - name: UptimeKuma
-              - fallback_icon: mdi:monitor-dashboard
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_watchtower
-              - name: watchtower
-              - fallback_icon: mdi:watchtower
-          - type: custom:decluttering-card
-            template: container_status_button
-            variables:
-              - entity: switch.tower_container_ws_logger
-              - name: ws-logger
-              - fallback_icon: mdi:docker
+          - type: grid
+            square: false
+            columns: 2
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.monitor_docker_unraid_cpu_percentage
+                primary: Docker CPU
+                secondary: >-
+                  {{ states('sensor.monitor_docker_unraid_cpu_percentage') | float(0) | round(1) }}%
+                icon: mdi:docker
+                icon_color: >-
+                  {% set u = states('sensor.monitor_docker_unraid_cpu_percentage') | float(0) %}
+                  {% if u >= 90 %}
+                    red
+                  {% elif u >= 60 %}
+                    amber
+                  {% else %}
+                    blue
+                  {% endif %}
+                fill_container: true
+              - type: custom:mushroom-template-card
+                entity: sensor.monitor_docker_unraid_1_memory_usage
+                primary: Docker memory
+                secondary: >-
+                  {{ states('sensor.monitor_docker_unraid_1_memory_usage') | float(0) | round(1) }} MiB
+                icon: mdi:memory
+                icon_color: purple
+                fill_container: true
+              - type: custom:mushroom-template-card
+                entity: sensor.monitor_docker_unraid_network_speed_up
+                primary: Network up
+                secondary: >-
+                  {{ states('sensor.monitor_docker_unraid_network_speed_up') | float(0) | round(1) }} MiB/s
+                icon: mdi:upload-network
+                icon_color: teal
+                fill_container: true
+              - type: custom:mushroom-template-card
+                entity: sensor.monitor_docker_unraid_network_speed_down
+                primary: Network down
+                secondary: >-
+                  {{ states('sensor.monitor_docker_unraid_network_speed_down') | float(0) | round(1) }} MiB/s
+                icon: mdi:download-network
+                icon_color: cyan
+                fill_container: true
 
-      - type: custom:apexcharts-card
-        header:
-          title: Containers CPU Usage
-          show: true
-          show_states: true
-          colorize_states: true
-        update_interval: 5min
-        graph_span: 24h
-        apex_config:
-          chart:
-            height: 350px
-          legend:
-            show: false
-        all_series_config:
-          group_by:
-            func: avg
-            duration: 10min
-          stroke_width: 3
-          transform: |
-            EVAL:return (isNaN(x) ? 0 : x);
-        yaxis:
-          - min: 0
-            max: ~100
-            align_to: 25
-            decimals: 0
+          - type: custom:apexcharts-card
+            header:
+              title: Container CPU
+              show: true
+              show_states: true
+              colorize_states: true
+            update_interval: 5min
+            graph_span: 24h
             apex_config:
-              forceNiceScale: false
-              tickAmount: 5
-              labels:
-                formatter: |
-                  EVAL:function(value) {
-                    return `${value} %`;
-                  }
-        series:
-          - entity: sensor.docker_tower_apacheguacamole_cpu
-            name: Apache Guacamole
-            color: '#4E79A7'
-          - entity: sensor.docker_tower_audiobookshelf_cpu
-            name: Audiobookshelf
-            color: '#A0CBE8'
-          - entity: sensor.docker_tower_diskspeed_cpu
-            name: Disk Speed
-            color: '#F28E2B'
-          - entity: sensor.docker_tower_dupeguru_cpu
-            name: DupeGuru
-            color: '#FFBE7D'
-          - entity: sensor.docker_tower_firefox_cpu
-            name: Firefox
-            color: '#59A14F'
-          - entity: sensor.docker_tower_frigate_cpu
-            name: Frigate
-            color: '#8CD17D'
-          - entity: sensor.docker_tower_hddtemp_cpu
-            name: HDD Temp
-            color: '#B6992D'
-          - entity: sensor.docker_tower_immich_cpu
-            name: Immich
-            color: '#F1CE63'
-          - entity: sensor.docker_tower_iperf3_cpu
-            name: iPerf3
-            color: '#499894'
-          - entity: sensor.docker_tower_ntp_cpu
-            name: NTP
-            color: '#86BCB6'
-          - entity: sensor.docker_tower_onedrive_cpu
-            name: OneDrive
-            color: '#E15759'
-          - entity: sensor.docker_tower_photoprism_cpu
-            name: PhotoPrism
-            color: '#FF9D9A'
-          - entity: sensor.docker_tower_plex_cpu
-            name: Plex
-            color: '#79706E'
-          - entity: sensor.docker_tower_qdirstat_cpu
-            name: QDirStat
-            color: '#BAB0AC'
-          - entity: sensor.docker_tower_thelounge_cpu
-            name: The Lounge
-            color: '#B07AA1'
-          - entity: sensor.docker_tower_transmission_cpu
-            name: Transmission
-            color: '#D4A6C8'
-          - entity: sensor.docker_tower_watchtower_cpu
-            name: Watchtower
-            color: '#9D7660'
+              chart:
+                height: 250px
+              legend:
+                show: false
+            all_series_config:
+              group_by:
+                func: median
+                duration: 10min
+              stroke_width: 3
+            yaxis:
+              - min: 0
+                max: auto
+                decimals: 0
+                align_to: 10
+                apex_config:
+                  forceNiceScale: true
+                  labels:
+                    formatter: |
+                      EVAL:function(value) {
+                        return `${value} %`;
+                      }
+            series:
+              - entity: sensor.docker_tower_1cpu #used to be sensor.monitor_docker_unraid_cpu_percentage. I don't know if docker_tower_1cpu is the correct entity. TODO: find out if this is correct entity.
+                name: Total Docker CPU
+                color: '#36A2EB'
 
-      - type: custom:apexcharts-card
-        header:
-          title: Containers Memory Usage
-          show: true
-          show_states: true
-          colorize_states: true
-        update_interval: 5min
-        graph_span: 24h
-        apex_config:
-          chart:
-            height: 350px
-          legend:
-            show: false
-        all_series_config:
-          group_by:
-            func: avg
-            duration: 10min
-          stroke_width: 3
-          transform: |
-            EVAL:return (parseFloat(x) === -1.0 ? null : x/1024);
-        yaxis:
-          - min: 0
-            max: ~16
-            align_to: 2
-            decimals: 0
+          - type: custom:apexcharts-card
+            header:
+              title: Container memory
+              show: true
+              show_states: true
+              colorize_states: true
+            update_interval: 5min
+            graph_span: 24h
             apex_config:
-              forceNiceScale: false
-              tickAmount: 4
-              labels:
-                formatter: |
-                  EVAL:function(value) {
-                    return `${value} GB`;
-                  }
-        series:
-          - entity: sensor.docker_tower_apacheguacamole_memory
-            name: Apache Guacamole
-            color: '#4E79A7'
-            unit: GiB
-          - entity: sensor.docker_tower_audiobookshelf_memory
-            name: Audiobookshelf
-            color: '#A0CBE8'
-            unit: GiB
-          - entity: sensor.docker_tower_diskspeed_memory
-            name: Disk Speed
-            color: '#F28E2B'
-            unit: GiB
-          - entity: sensor.docker_tower_dupeguru_memory
-            name: DupeGuru
-            color: '#FFBE7D'
-            unit: GiB
-          - entity: sensor.docker_tower_firefox_memory
-            name: Firefox
-            color: '#59A14F'
-            unit: GiB
-          - entity: sensor.docker_tower_frigate_memory
-            name: Frigate
-            color: '#8CD17D'
-            unit: GiB
-          - entity: sensor.docker_tower_hddtemp_memory
-            name: HDD Temp
-            color: '#B6992D'
-            unit: GiB
-          - entity: sensor.docker_tower_immich_memory
-            name: Immich
-            color: '#F1CE63'
-            unit: GiB
-          - entity: sensor.docker_tower_iperf3_memory
-            name: iPerf3
-            color: '#499894'
-            unit: GiB
-          - entity: sensor.docker_tower_ntp_memory
-            name: NTP
-            color: '#86BCB6'
-            unit: GiB
-          - entity: sensor.docker_tower_onedrive_memory
-            name: OneDrive
-            color: '#E15759'
-            unit: GiB
-          - entity: sensor.docker_tower_photoprism_memory
-            name: PhotoPrism
-            color: '#FF9D9A'
-            unit: GiB
-          - entity: sensor.docker_tower_plex_memory
-            name: Plex
-            color: '#79706E'
-            unit: GiB
-          - entity: sensor.docker_tower_qdirstat_memory
-            name: QDirStat
-            color: '#BAB0AC'
-            unit: GiB
-          - entity: sensor.docker_tower_thelounge_memory
-            name: The Lounge
-            color: '#B07AA1'
-            unit: GiB
-          - entity: sensor.docker_tower_transmission_memory
-            name: Transmission
-            color: '#D4A6C8'
-            unit: GiB
-          - entity: sensor.docker_tower_watchtower_memory
-            name: Watchtower
-            color: '#9D7660'
-            unit: GiB
+              chart:
+                height: 250px
+              legend:
+                show: false
+            all_series_config:
+              group_by:
+                func: median
+                duration: 10min
+              stroke_width: 3
+            yaxis:
+              - min: 0
+                max: auto
+                decimals: 0
+                align_to: 250
+                apex_config:
+                  forceNiceScale: true
+                  labels:
+                    formatter: |
+                      EVAL:function(value) {
+                        return `${value} MiB`;
+                      }
+            series:
+              - entity: sensor.monitor_docker_unraid_1_memory_usage #TODO: This entity does not exist. Likely I need to refer to another entity to get the docker memory usage from Unraid. Similar to CPU usage above.
+                name: Total Docker memory
+                color: '#9C27B0'
+
+      - type: custom:collapsable-cards
+        title: Container controls
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: markdown
+                content: |
+                  Hold a container button for details. Tap to toggle.
+              - type: grid
+                square: false
+                columns: 4
+                cards:
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_apacheguacamole
+                      - name: ApacheGuacamole
+                      - fallback_icon: mdi:remote-desktop
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_audiobookshelf
+                      - name: audiobookshelf
+                      - fallback_icon: mdi:bookshelf
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_authelia
+                      - name: Authelia
+                      - fallback_icon: mdi:shield-lock
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_bambuddy
+                      - name: Bambuddy
+                      - fallback_icon: mdi:printer-3d
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_binhex_krusader
+                      - name: binhex-krusader
+                      - fallback_icon: mdi:folder-multiple
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_code_server
+                      - name: code-server
+                      - fallback_icon: mdi:microsoft-visual-studio-code
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_diskspeed
+                      - name: DiskSpeed
+                      - fallback_icon: mdi:speedometer
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_dupeguru
+                      - name: dupeGuru
+                      - fallback_icon: mdi:content-duplicate
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_duplicati
+                      - name: duplicati
+                      - fallback_icon: mdi:backup-restore
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_firefox
+                      - name: Firefox
+                      - fallback_icon: mdi:firefox
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_frigate
+                      - name: frigate
+                      - fallback_icon: mdi:cctv
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_hddtemp
+                      - name: HDDTemp
+                      - fallback_icon: mdi:thermometer
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_immich
+                      - name: immich
+                      - fallback_icon: mdi:image-multiple
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_postgresql_immich
+                      - name: PostgreSQL_Immich
+                      - fallback_icon: mdi:database
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_immich_power_tools
+                      - name: Immich-Power-Tools
+                      - fallback_icon: mdi:tools
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_iperf3
+                      - name: iperf3
+                      - fallback_icon: mdi:speedometer-medium
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_musicbrainz_picard
+                      - name: MusicBrainz-Picard
+                      - fallback_icon: mdi:music-note
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_navidrome
+                      - name: navidrome
+                      - fallback_icon: mdi:music-box-multiple
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_nginx_proxy_manager_official
+                      - name: NPM Official
+                      - fallback_icon: mdi:server-security
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_ntp
+                      - name: ntp
+                      - fallback_icon: mdi:clock-check
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_onedrive
+                      - name: Onedrive
+                      - fallback_icon: mdi:microsoft-onedrive
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_photoprism
+                      - name: PhotoPrism
+                      - fallback_icon: mdi:image-album
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_plex
+                      - name: plex
+                      - fallback_icon: mdi:plex
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_qdirstat
+                      - name: QDirStat
+                      - fallback_icon: mdi:chart-treemap
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_stash
+                      - name: stash
+                      - fallback_icon: mdi:archive
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_tautulli
+                      - name: tautulli
+                      - fallback_icon: mdi:chart-line
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_thelounge
+                      - name: thelounge
+                      - fallback_icon: mdi:chat-processing
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_transmission
+                      - name: transmission
+                      - fallback_icon: mdi:download-network
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_transmission_1
+                      - name: transmission-1
+                      - fallback_icon: mdi:download-network
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_uptimekuma
+                      - name: UptimeKuma
+                      - fallback_icon: mdi:monitor-dashboard
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_watchtower
+                      - name: watchtower
+                      - fallback_icon: mdi:watchtower
+                  - type: custom:decluttering-card
+                    template: container_status_button
+                    variables:
+                      - entity: switch.tower_container_ws_logger
+                      - name: ws-logger
+                      - fallback_icon: mdi:docker

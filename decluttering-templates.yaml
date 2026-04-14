@@ -686,6 +686,8 @@ tower_disk_health_card:
       {% set spinning = state_attr(entity_id, 'spinning') %}
       {% if is_state(entity_id, 'on') %}
         Problem · {{ temp }} °C · {{ 'spinning' if spinning else 'standby' }}
+      {% elif is_state(entity_id, 'unavailable') %}
+        Unavailable
       {% else %}
         OK · {{ temp }} °C · {{ 'spinning' if spinning else 'standby' }}
       {% endif %}
@@ -694,6 +696,8 @@ tower_disk_health_card:
       {% set entity_id = 'binary_sensor.tower_disk_[[disk_key]]_health' %}
       {% if is_state(entity_id, 'on') %}
         red
+      {% elif is_state(entity_id, 'unavailable') %}
+        gray
       {% else %}
         green
       {% endif %}
