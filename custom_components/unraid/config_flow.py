@@ -53,8 +53,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._server_uuid: str | None = None
         self._server_hostname: str | None = None
-        self._use_ssl: bool = True
-        self._ignore_ssl: bool = False
+        self._use_ssl: bool = True  # HTTPS transport usage
+        self._ignore_ssl: bool = False  # TLS certificate verification disabled
 
     @staticmethod
     def async_get_options_flow(
@@ -114,7 +114,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title = self._server_hostname or user_input[CONF_HOST]
 
                 _LOGGER.info(
-                    "Creating config entry for %s (UUID: %s) port=%s ssl=%s ignore_ssl=%s",
+                    "Creating config entry for %s (UUID: %s) port=%s ssl=%s "
+                    "ignore_ssl=%s",
                     title,
                     unique_id,
                     user_input.get(CONF_PORT, DEFAULT_PORT),
@@ -190,12 +191,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         api_key = user_input[CONF_API_KEY].strip()
         port = user_input.get(CONF_PORT, DEFAULT_PORT)
 
-        # Reset SSL state to defaults for each test
+        # Reset SSL state to default
         self._use_ssl = True
         self._ignore_ssl = False
-
         _LOGGER.debug(
-            "Starting connectivity test for %s:%s ssl=%s ignore_ssl=%s",
+            "Starting connectivity test for %s:%s (ssl=%s, ignore_ssl=%s)",
             host,
             port,
             self._use_ssl,
@@ -216,14 +216,16 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             await self._validate_connection(api_client, host)
-            _LOGGER.info(
-                "Initial connectivity test succeeded for %s:%s with TLS verification enabled",
+            _LOGGER.debug(
+                "Initial connectivity test succeeded for %s:%s "
+                "with TLS verification enabled",
                 host,
                 port,
             )
         except SSLCertificateError as err:
             _LOGGER.debug(
-                "TLS certificate verification failed for %s:%s, retrying with verification disabled: %s",
+                "Expected certificate verification failure for %s:%s; "
+                "retrying with verify_ssl=False: %s",
                 host,
                 port,
                 err,
@@ -239,23 +241,39 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             try:
                 await self._validate_connection(fallback_client, host)
-                # Keep SSL transport enabled, disable verification for this host.
+                # Success with SSL verification disabled
                 self._use_ssl = True
                 self._ignore_ssl = True
                 _LOGGER.info(
-                    "Connected to %s:%s with TLS verification disabled due to self-signed certificate",
+                    "Connected to %s with TLS verification disabled "
+                    "due to self-signed certificate",
                     host,
-                    port,
                 )
-            except CannotConnectError as fallback_err:
-                # Keep original failure reason if fallback also fails
+            except SSLCertificateError as fallback_err:
                 _LOGGER.debug(
-                    "Fallback connection attempt failed for %s:%s after TLS verification error: %s",
+                    "Fallback retry with verify_ssl=False still failed certificate "
+                    "validation for %s:%s: %s",
                     host,
                     port,
                     fallback_err,
                 )
-                raise err from fallback_err
+                msg = (
+                    f"Cannot connect to {host} - TLS certificate validation failed "
+                    "after fallback retry"
+                )
+                raise CannotConnectError(msg) from fallback_err
+            except (
+                InvalidAuthError,
+                CannotConnectError,
+                UnsupportedVersionError,
+            ) as fallback_err:
+                _LOGGER.debug(
+                    "Fallback retry with verify_ssl=False failed for %s:%s: %s",
+                    host,
+                    port,
+                    fallback_err,
+                )
+                raise fallback_err
             finally:
                 await fallback_client.close()
         except Exception:

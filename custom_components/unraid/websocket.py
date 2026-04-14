@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -15,7 +16,13 @@ from unraid_api.exceptions import (
 )
 from unraid_api.models import DockerContainerStats
 
-from .const import WS_INITIAL_RETRY_DELAY, WS_MAX_RETRY_DELAY, WS_RETRY_BACKOFF_FACTOR
+from .const import (
+    WS_ARRAY_UPDATE_MIN_INTERVAL,
+    WS_INITIAL_RETRY_DELAY,
+    WS_MAX_RETRY_DELAY,
+    WS_REFRESH_DEBOUNCE_SECONDS,
+    WS_RETRY_BACKOFF_FACTOR,
+)
 
 if TYPE_CHECKING:
     from unraid_api import UnraidClient
@@ -56,6 +63,13 @@ class UnraidWebSocketManager:
         self._tasks: list[asyncio.Task[None]] = []
         self._running = False
         self.container_stats: ContainerStatsSnapshot = ContainerStatsSnapshot()
+        # Debounce timestamps for WebSocket-triggered coordinator refreshes
+        # (leading-edge: first event refreshes immediately, subsequent events
+        # within the cooldown window are suppressed)
+        self._last_array_refresh: float = 0.0
+        self._last_ups_refresh: float = 0.0
+        self._last_notification_refresh: float = 0.0
+        self._last_parity_refresh: float = 0.0
 
     async def async_start(self) -> None:
         """Start all WebSocket subscriptions as background tasks."""
@@ -76,6 +90,20 @@ class UnraidWebSocketManager:
             asyncio.create_task(
                 self._run_subscription("ups_updates", self._handle_ups_updates),
                 name=f"unraid_ws_ups_updates_{self._server_name}",
+            ),
+            asyncio.create_task(
+                self._run_subscription(
+                    "notification_added",
+                    self._handle_notification_added,
+                ),
+                name=f"unraid_ws_notification_added_{self._server_name}",
+            ),
+            asyncio.create_task(
+                self._run_subscription(
+                    "parity_history",
+                    self._handle_parity_history,
+                ),
+                name=f"unraid_ws_parity_history_{self._server_name}",
             ),
         ]
 
@@ -153,6 +181,10 @@ class UnraidWebSocketManager:
                 return
             retry_delay = min(retry_delay * WS_RETRY_BACKOFF_FACTOR, WS_MAX_RETRY_DELAY)
 
+    def _should_trigger_refresh(self, last_refresh_time: float) -> bool:
+        """Return True if enough time has elapsed since the last refresh."""
+        return time.monotonic() - last_refresh_time >= WS_REFRESH_DEBOUNCE_SECONDS
+
     async def _handle_container_stats(self) -> None:
         """Process container stats subscription and update coordinator."""
         async for stats in self._api_client.subscribe_container_stats():
@@ -167,13 +199,33 @@ class UnraidWebSocketManager:
         async for update in self._api_client.subscribe_array_updates():
             if not self._running:
                 break
+            # Skip events with no state — these are periodic heartbeats that
+            # carry no meaningful change and would otherwise wake spun-down
+            # disks by triggering a storage coordinator refresh (#211).
+            if update.state is None:
+                _LOGGER.debug(
+                    "Skipping array update with state=None for %s",
+                    self._server_name,
+                )
+                continue
             _LOGGER.debug(
                 "Array update received for %s: state=%s",
                 self._server_name,
                 update.state,
             )
-            # Trigger an immediate storage coordinator refresh to get full data
-            await self._storage_coordinator.async_request_refresh()
+            now = time.monotonic()
+            elapsed = now - self._last_array_refresh
+            if elapsed >= WS_ARRAY_UPDATE_MIN_INTERVAL:
+                self._last_array_refresh = now
+                await self._storage_coordinator.async_request_refresh()
+            else:
+                _LOGGER.debug(
+                    "Array update for %s suppressed (last refresh %.0fs ago, "
+                    "min interval %ss)",
+                    self._server_name,
+                    elapsed,
+                    WS_ARRAY_UPDATE_MIN_INTERVAL,
+                )
 
     async def _handle_ups_updates(self) -> None:
         """Process UPS state subscription and trigger system refresh."""
@@ -185,5 +237,51 @@ class UnraidWebSocketManager:
                 self._server_name,
                 update,
             )
-            # Trigger an immediate system coordinator refresh to get full data
-            await self._system_coordinator.async_request_refresh()
+            if self._should_trigger_refresh(self._last_ups_refresh):
+                self._last_ups_refresh = time.monotonic()
+                await self._system_coordinator.async_request_refresh()
+            else:
+                _LOGGER.debug(
+                    "UPS update for %s suppressed (debounce cooldown active)",
+                    self._server_name,
+                )
+
+    async def _handle_notification_added(self) -> None:
+        """Process notification subscription and trigger system refresh."""
+        async for notification in self._api_client.subscribe_notification_added():
+            if not self._running:
+                break
+            _LOGGER.debug(
+                "Notification received for %s: %s — %s",
+                self._server_name,
+                notification.importance,
+                notification.title,
+            )
+            if self._should_trigger_refresh(self._last_notification_refresh):
+                self._last_notification_refresh = time.monotonic()
+                await self._system_coordinator.async_request_refresh()
+            else:
+                _LOGGER.debug(
+                    "Notification refresh for %s suppressed (debounce cooldown active)",
+                    self._server_name,
+                )
+
+    async def _handle_parity_history(self) -> None:
+        """Process parity history subscription and trigger storage refresh."""
+        async for update in self._api_client.subscribe_parity_history():
+            if not self._running:
+                break
+            _LOGGER.debug(
+                "Parity history update for %s: progress=%s, running=%s",
+                self._server_name,
+                update.progress,
+                update.running,
+            )
+            if self._should_trigger_refresh(self._last_parity_refresh):
+                self._last_parity_refresh = time.monotonic()
+                await self._storage_coordinator.async_request_refresh()
+            else:
+                _LOGGER.debug(
+                    "Parity history refresh for %s suppressed (debounce cooldown)",
+                    self._server_name,
+                )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -28,6 +29,7 @@ from unraid_api.models import (
     Cloud,
     Connect,
     DockerContainer,
+    Network,
     NotificationOverview,
     ParityCheck,
     ParityHistoryEntry,
@@ -186,6 +188,10 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
         """Restart a Docker container."""
         await self.api_client.restart_container(container_id)
 
+    async def async_update_container(self, container_id: str) -> None:
+        """Update a Docker container to its latest image."""
+        await self.api_client.update_container(container_id)
+
     async def async_start_vm(self, vm_id: str) -> None:
         """Start a virtual machine."""
         await self.api_client.start_vm(vm_id)
@@ -235,15 +241,19 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
         """
         _LOGGER.debug("Starting system data update")
         try:
-            # Query core system data (must succeed) using library typed methods
-            info = await self.api_client.get_server_info()
-            metrics = await self.api_client.get_system_metrics()
-            notifications = await self.api_client.get_notification_overview()
+            # Phase 1: Required calls — run concurrently; any failure raises immediately
+            info, metrics, notifications = await asyncio.gather(
+                self.api_client.get_server_info(),
+                self.api_client.get_system_metrics(),
+                self.api_client.get_notification_overview(),
+            )
 
-            # Query optional services separately (fail gracefully if not enabled)
-            containers = await self._query_optional_docker()
-            vms = await self._query_optional_vms()
-            ups_devices = await self._query_optional_ups()
+            # Phase 2: Optional services — run concurrently; each fails gracefully
+            containers, vms, ups_devices = await asyncio.gather(
+                self._query_optional_docker(),
+                self._query_optional_vms(),
+                self._query_optional_ups(),
+            )
 
             # Log recovery if previously unavailable
             if self._previously_unavailable:
@@ -390,15 +400,14 @@ class UnraidStorageCoordinator(DataUpdateCoordinator[UnraidStorageData]):
 
         """
         try:
-            # Get array data using typed library method
-            # The library handles the GraphQL query internally
+            # Phase 1: Required array data
             array = await self.api_client.typed_get_array()
 
-            # Query shares separately (gracefully handles failure)
-            shares = await self._query_optional_shares()
-
-            # Query parity history (gracefully handles failure)
-            parity_history = await self._query_optional_parity_history()
+            # Phase 2: Optional queries — run concurrently; each fails gracefully
+            shares, parity_history = await asyncio.gather(
+                self._query_optional_shares(),
+                self._query_optional_parity_history(),
+            )
 
             # Log recovery if previously unavailable
             if self._previously_unavailable:
@@ -436,6 +445,7 @@ class UnraidInfraData:
     remote_access: RemoteAccess | None = None
     vars: Vars | None = None
     plugins: list[Plugin] = field(default_factory=list)
+    network: Network | None = None
 
 
 class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
@@ -544,6 +554,16 @@ class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
             _LOGGER.debug("Plugins data not available: %s", err)
             return []
 
+    async def _query_optional_network(self) -> Network | None:
+        """Query network info (fails gracefully)."""
+        try:
+            return await self.api_client.typed_get_network()
+        except UnraidAuthenticationError:
+            raise
+        except (UnraidAPIError, UnraidConnectionError, UnraidTimeoutError) as err:
+            _LOGGER.debug("Network data not available: %s", err)
+            return None
+
     async def _async_update_data(self) -> UnraidInfraData:
         """
         Fetch infrastructure data from Unraid server.
@@ -557,14 +577,26 @@ class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
         """
         _LOGGER.debug("Starting infrastructure data update")
         try:
-            # All sub-queries are optional and fail gracefully
-            services = await self._query_optional_services()
-            registration = await self._query_optional_registration()
-            cloud = await self._query_optional_cloud()
-            connect = await self._query_optional_connect()
-            remote_access = await self._query_optional_remote_access()
-            vars_data = await self._query_optional_vars()
-            plugins = await self._query_optional_plugins()
+            # All sub-queries are optional — run all concurrently
+            (
+                services,
+                registration,
+                cloud,
+                connect,
+                remote_access,
+                vars_data,
+                plugins,
+                network,
+            ) = await asyncio.gather(
+                self._query_optional_services(),
+                self._query_optional_registration(),
+                self._query_optional_cloud(),
+                self._query_optional_connect(),
+                self._query_optional_remote_access(),
+                self._query_optional_vars(),
+                self._query_optional_plugins(),
+                self._query_optional_network(),
+            )
 
             # Log recovery if previously unavailable
             if self._previously_unavailable:
@@ -588,6 +620,7 @@ class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
                 remote_access=remote_access,
                 vars=vars_data,
                 plugins=plugins,
+                network=network,
             )
 
         except UnraidAuthenticationError as err:

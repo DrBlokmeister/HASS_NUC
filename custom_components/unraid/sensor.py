@@ -37,6 +37,9 @@ if TYPE_CHECKING:
         Share,
         UPSDevice,
     )
+    from unraid_api.models import (
+        TemperatureSensor as TemperatureSensorModel,
+    )
 
     from . import UnraidConfigEntry
     from .coordinator import (
@@ -316,6 +319,108 @@ class SwapUsedSensor(UnraidSensorEntity):
         return data.metrics.swap_used
 
 
+class RAMBuffCacheSensor(UnraidSensorEntity):
+    """RAM buffer/cache sensor showing reclaimable memory in bytes."""
+
+    _attr_translation_key = "ram_buffcache"
+    _attr_device_class = SensorDeviceClass.DATA_SIZE
+    _attr_native_unit_of_measurement = "B"
+    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize RAM buffer/cache sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="ram_buffcache",
+            name="RAM Buffer/Cache",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return buffer/cache memory in bytes."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+        return data.metrics.memory_buffcache
+
+
+class RAMActiveSensor(UnraidSensorEntity):
+    """RAM active memory sensor showing actively used memory in bytes."""
+
+    _attr_translation_key = "ram_active"
+    _attr_device_class = SensorDeviceClass.DATA_SIZE
+    _attr_native_unit_of_measurement = "B"
+    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize RAM active sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="ram_active",
+            name="RAM Active",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return active memory in bytes."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+        return data.metrics.memory_active
+
+
+class SwapFreeSensor(UnraidSensorEntity):
+    """Swap free sensor showing available swap space in bytes."""
+
+    _attr_translation_key = "swap_free"
+    _attr_device_class = SensorDeviceClass.DATA_SIZE
+    _attr_native_unit_of_measurement = "B"
+    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize swap free sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="swap_free",
+            name="Swap Free",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """Return free swap memory in bytes."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+        return data.metrics.swap_free
+
+
 class TemperatureSensor(UnraidSensorEntity):
     """CPU temperature sensor."""
 
@@ -346,6 +451,145 @@ class TemperatureSensor(UnraidSensorEntity):
         if data is None:
             return None
         return data.metrics.average_cpu_temperature
+
+
+class SystemTemperatureSensor(UnraidSensorEntity):
+    """Dynamic temperature sensor for system hardware (motherboard, chipset, etc.)."""
+
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        sensor: TemperatureSensorModel,
+    ) -> None:
+        """Initialize system temperature sensor."""
+        self._sensor_id = sensor.id
+        sensor_name = sensor.name or sensor.id
+        # Map sensor types to translation keys
+        type_key = str(sensor.type).lower() if sensor.type else "custom"
+        self._attr_translation_key = f"temperature_{type_key}"
+        self._attr_translation_placeholders = {"name": sensor_name}
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id=f"temp_{sensor.id}",
+            name=f"Temperature {sensor_name}",
+        )
+
+    def _get_sensor(self) -> TemperatureSensorModel | None:
+        """Find this sensor in coordinator data."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None or data.metrics.temperature is None:
+            return None
+        for sensor in data.metrics.temperature.sensors:
+            if sensor.id == self._sensor_id:
+                return sensor
+        return None
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current temperature value."""
+        sensor = self._get_sensor()
+        if sensor is None or not _is_valid_system_temp_sensor(sensor):
+            return None
+        return sensor.temperature
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return sensor metadata as attributes."""
+        sensor = self._get_sensor()
+        if sensor is None:
+            return {}
+        attrs: dict[str, Any] = {}
+        if sensor.type:
+            attrs["sensor_type"] = str(sensor.type)
+        if sensor.location:
+            attrs["location"] = sensor.location
+        if sensor.warning is not None:
+            attrs["warning_threshold"] = sensor.warning
+        if sensor.critical is not None:
+            attrs["critical_threshold"] = sensor.critical
+        if sensor.current and sensor.current.status:
+            attrs["status"] = str(sensor.current.status)
+        if sensor.min and sensor.min.value is not None:
+            attrs["min_recorded"] = sensor.min.value
+        if sensor.max and sensor.max.value is not None:
+            attrs["max_recorded"] = sensor.max.value
+        return attrs
+
+
+class TemperatureAverageSensor(UnraidSensorEntity):
+    """Average temperature across all sensors."""
+
+    _attr_translation_key = "temperature_average"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize temperature average sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="temperature_average",
+            name="Temperature Average",
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the average temperature across all sensors."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None:
+            return None
+        valid_sensors = _get_valid_temperature_sensors(data)
+        if not valid_sensors:
+            return None
+        total_temperature = sum(
+            sensor.temperature
+            for sensor in valid_sensors
+            if sensor.temperature is not None
+        )
+        return round(
+            total_temperature / len(valid_sensors),
+            1,
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return summary details as attributes."""
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None or data.metrics.temperature is None:
+            return {}
+        valid_sensors = _get_valid_temperature_sensors(data)
+        summary = data.metrics.temperature.summary
+        attrs: dict[str, Any] = {
+            "sensor_count": len(valid_sensors),
+            "raw_sensor_count": len(data.metrics.temperature.sensors),
+        }
+        if summary is None:
+            return attrs
+        if summary.warningCount is not None:
+            attrs["warning_count"] = summary.warningCount
+        if summary.criticalCount is not None:
+            attrs["critical_count"] = summary.criticalCount
+        if summary.hottest and summary.hottest.name:
+            attrs["hottest_sensor"] = summary.hottest.name
+        if summary.coolest and summary.coolest.name:
+            attrs["coolest_sensor"] = summary.coolest.name
+        return attrs
 
 
 class CpuPowerSensor(UnraidSensorEntity):
@@ -886,6 +1130,65 @@ class InstalledPluginsSensor(UnraidSensorEntity):
             return {}
         plugins_list = [{"name": p.name, "version": p.version} for p in data.plugins]
         return {"plugins": plugins_list}
+
+
+class NetworkAccessSensor(UnraidSensorEntity):
+    """Sensor showing primary LAN access URL with all access URLs as attributes."""
+
+    _attr_translation_key = "network_access"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: UnraidInfraCoordinator,
+        server_uuid: str,
+        server_name: str,
+    ) -> None:
+        """Initialize network access sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="network_access",
+            name="Network Access",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return primary LAN IPv4 URL."""
+        data: UnraidInfraData | None = self.coordinator.data
+        if data is None or data.network is None:
+            return None
+        urls = data.network.accessUrls
+        if not urls:
+            return None
+        # Return the first LAN IPv4 URL as the primary value
+        for url in urls:
+            if url.type and url.type.upper() == "LAN" and url.ipv4:
+                return url.ipv4
+        # Fallback: first URL with an IPv4 value
+        for url in urls:
+            if url.ipv4:
+                return url.ipv4
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return all access URLs as extra attributes."""
+        data: UnraidInfraData | None = self.coordinator.data
+        if data is None or data.network is None:
+            return {}
+        urls = data.network.accessUrls
+        if not urls:
+            return {}
+        attrs: dict[str, Any] = {}
+        for url in urls:
+            name = url.name or url.type or "unknown"
+            if url.ipv4:
+                attrs[f"{name}_ipv4"] = url.ipv4
+            if url.ipv6:
+                attrs[f"{name}_ipv6"] = url.ipv6
+        return attrs
 
 
 class ArrayStateSensor(UnraidSensorEntity):
@@ -1903,56 +2206,6 @@ class ShareUsageSensor(UnraidSensorEntity):
         return attrs
 
 
-# Flash Device Sensor
-
-
-class FlashUsageSensor(UnraidSensorEntity):
-    """Flash/boot device usage percentage sensor with human-readable attributes."""
-
-    _attr_translation_key = "flash_usage"
-    _attr_native_unit_of_measurement = "%"
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_suggested_display_precision = 1
-
-    def __init__(
-        self,
-        coordinator: UnraidStorageCoordinator,
-        server_uuid: str,
-        server_name: str,
-    ) -> None:
-        """Initialize flash usage sensor."""
-        super().__init__(
-            coordinator=coordinator,
-            server_uuid=server_uuid,
-            server_name=server_name,
-            resource_id="flash_usage",
-            name="Flash Device Usage",
-        )
-
-    @property
-    def native_value(self) -> float | None:
-        """Return flash device usage percentage."""
-        data: UnraidStorageData | None = self.coordinator.data
-        if data is None or data.boot is None:
-            return None
-        return data.boot.usage_percent
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return flash details as human-readable attributes."""
-        data: UnraidStorageData | None = self.coordinator.data
-        if data is None or data.boot is None:
-            return {}
-        boot = data.boot
-        return {
-            "total": format_bytes(boot.fs_size_bytes),
-            "used": format_bytes(boot.fs_used_bytes),
-            "free": format_bytes(boot.fs_free_bytes),
-            "device": boot.device,
-            "status": boot.status,
-        }
-
-
 # =============================================================================
 # Container Resource Sensors — WebSocket-powered (v1.7.0+)
 # =============================================================================
@@ -2098,6 +2351,149 @@ class ContainerMemoryPercentSensor(UnraidBaseEntity, SensorEntity):
 
 
 # =============================================================================
+# Docker Aggregate Sensors
+# =============================================================================
+
+
+class DockerTotalCpuSensor(UnraidBaseEntity, SensorEntity):
+    """Total Docker CPU usage sensor (sum of all containers, WebSocket-powered)."""
+
+    _attr_translation_key = "docker_total_cpu"
+    _attr_native_unit_of_measurement = "%"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        ws_manager: UnraidWebSocketManager,
+    ) -> None:
+        """Initialize Docker total CPU sensor."""
+        self._ws_manager = ws_manager
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="docker_total_cpu",
+            name="Docker Total CPU",
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sum of CPU usage across all containers."""
+        all_stats = self._ws_manager.container_stats.stats
+        if not all_stats:
+            return None
+        total = sum(
+            s.cpuPercent for s in all_stats.values() if s.cpuPercent is not None
+        )
+        return round(total, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return container count as attribute."""
+        all_stats = self._ws_manager.container_stats.stats
+        return {"container_count": len(all_stats)}
+
+
+class DockerTotalMemoryPercentSensor(UnraidBaseEntity, SensorEntity):
+    """Total Docker memory usage sensor (sum of all containers, WebSocket-powered)."""
+
+    _attr_translation_key = "docker_total_memory_percent"
+    _attr_native_unit_of_measurement = "%"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        ws_manager: UnraidWebSocketManager,
+    ) -> None:
+        """Initialize Docker total memory percent sensor."""
+        self._ws_manager = ws_manager
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="docker_total_memory_pct",
+            name="Docker Total Memory %",
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sum of memory percentage across all containers."""
+        all_stats = self._ws_manager.container_stats.stats
+        if not all_stats:
+            return None
+        total = sum(
+            s.memPercent for s in all_stats.values() if s.memPercent is not None
+        )
+        return round(total, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return container count as attribute."""
+        all_stats = self._ws_manager.container_stats.stats
+        return {"container_count": len(all_stats)}
+
+
+class DockerTotalMemoryBytesSensor(UnraidBaseEntity, SensorEntity):
+    """Total Docker memory used in bytes (derived from memory % x system RAM)."""
+
+    _attr_translation_key = "docker_total_memory_bytes"
+    _attr_device_class = SensorDeviceClass.DATA_SIZE
+    _attr_native_unit_of_measurement = "B"
+    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
+
+    def __init__(
+        self,
+        coordinator: UnraidSystemCoordinator,
+        server_uuid: str,
+        server_name: str,
+        ws_manager: UnraidWebSocketManager,
+    ) -> None:
+        """Initialize Docker total memory bytes sensor."""
+        self._ws_manager = ws_manager
+        super().__init__(
+            coordinator=coordinator,
+            server_uuid=server_uuid,
+            server_name=server_name,
+            resource_id="docker_total_memory_bytes",
+            name="Docker Total Memory Used",
+        )
+
+    @property
+    def native_value(self) -> int | None:
+        """
+        Return total Docker memory used in bytes.
+
+        Computed as sum(container memPercent) x system_memory_total / 100.
+        """
+        all_stats = self._ws_manager.container_stats.stats
+        if not all_stats:
+            return None
+        data: UnraidSystemData | None = self.coordinator.data
+        if data is None or data.metrics.memory_total is None:
+            return None
+        total_pct = sum(
+            s.memPercent for s in all_stats.values() if s.memPercent is not None
+        )
+        return int(total_pct * data.metrics.memory_total / 100)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return container count as attribute."""
+        all_stats = self._ws_manager.container_stats.stats
+        return {"container_count": len(all_stats)}
+
+
+# =============================================================================
 # Parity Speed Sensor
 # =============================================================================
 
@@ -2135,8 +2531,13 @@ class ParitySpeedSensor(UnraidSensorEntity):
         speed = data.parity_status.speed
         if speed is None:
             return None
+        # speed is str | None since unraid-api v1.9.0
+        try:
+            speed_val = float(speed)
+        except (TypeError, ValueError):
+            return None
         # Convert from bytes/s to MiB/s
-        return round(speed / (1024 * 1024), 1)
+        return round(speed_val / (1024 * 1024), 1)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -2539,11 +2940,64 @@ def _create_disk_sensors(
             ShareUsageSensor(storage_coordinator, server_uuid, server_name, share)
         )
 
-    # Flash device sensor (if boot device exists)
-    if data.boot:
-        entities.append(FlashUsageSensor(storage_coordinator, server_uuid, server_name))
-
     return entities
+
+
+# Sensor types that are either already represented elsewhere (DISK/NVME have their
+# own per-disk temperature entities) or are too noisy to display individually.
+_TEMP_SKIP_TYPES: frozenset[str] = frozenset({"DISK", "NVME", "CPU_CORE"})
+# Temperatures above this value are usually bogus board sensors (AUXTIN/SYSTIN).
+_TEMP_MAX_VALID: float = 100.0  # °C
+# Ignore near-zero readings from voltage rails incorrectly exposed as temperatures.
+_TEMP_MIN_VALID: float = 10.0  # °C
+_TEMP_SKIP_NAME_PARTS: tuple[str, ...] = ("auxtin", " in")
+
+
+def _looks_like_voltage_channel_sensor(name: str) -> bool:
+    """Return True for Nuvoton-style voltage channels (e.g. in0, in12)."""
+    lowered = name.lower()
+    return any(f" in{index}" in lowered for index in range(16))
+
+
+def _is_valid_system_temp_sensor(sensor: TemperatureSensorModel) -> bool:
+    """
+    Return True if this hardware sensor should be exposed as a HA entity.
+
+    Filters out sensors that are:
+    - Already shown via per-disk entities (DISK / NVME)
+    - Too noisy to be useful individually (CPU_CORE — use CPU package instead)
+    - Reporting obviously invalid values (0 °C disconnected thermistors, >120 °C
+      bogus readings from unconnected pads, -999 °C placeholder values)
+    """
+    if str(sensor.type) in _TEMP_SKIP_TYPES:
+        return False
+    sensor_name = (sensor.name or "").strip()
+    lowered_name = sensor_name.lower()
+    if any(part in lowered_name for part in _TEMP_SKIP_NAME_PARTS):
+        return False
+    if _looks_like_voltage_channel_sensor(sensor_name):
+        return False
+    if sensor.current is not None and sensor.current.unit != "CELSIUS":
+        return False
+    temp = sensor.temperature
+    # Disconnected thermistors and mis-reported rails read near 0 °C.
+    if temp is None or temp < _TEMP_MIN_VALID:
+        return False
+    # Values above 100 °C are usually bogus board readings in practice.
+    return not temp > _TEMP_MAX_VALID
+
+
+def _get_valid_temperature_sensors(
+    data: UnraidSystemData,
+) -> list[TemperatureSensorModel]:
+    """Return only valid system temperature sensors for entity creation/averages."""
+    if data.metrics.temperature is None:
+        return []
+    return [
+        sensor
+        for sensor in data.metrics.temperature.sensors
+        if _is_valid_system_temp_sensor(sensor)
+    ]
 
 
 async def async_setup_entry(
@@ -2575,6 +3029,9 @@ async def async_setup_entry(
             RAMUsedSensor(system_coordinator, server_uuid, server_name),
             SwapUsageSensor(system_coordinator, server_uuid, server_name),
             SwapUsedSensor(system_coordinator, server_uuid, server_name),
+            RAMBuffCacheSensor(system_coordinator, server_uuid, server_name),
+            RAMActiveSensor(system_coordinator, server_uuid, server_name),
+            SwapFreeSensor(system_coordinator, server_uuid, server_name),
             TemperatureSensor(system_coordinator, server_uuid, server_name),
             UnraidVersionSensor(system_coordinator, server_uuid, server_name),
             ApiVersionSensor(system_coordinator, server_uuid, server_name),
@@ -2597,6 +3054,23 @@ async def async_setup_entry(
         _create_ups_sensors(system_coordinator, server_uuid, server_name, entry)
     )
 
+    # System temperature sensors (dynamic, per hardware sensor)
+    if (
+        system_coordinator.data
+        and system_coordinator.data.metrics.temperature is not None
+    ):
+        valid_temp_sensors = _get_valid_temperature_sensors(system_coordinator.data)
+        if valid_temp_sensors:
+            entities.append(
+                TemperatureAverageSensor(system_coordinator, server_uuid, server_name)
+            )
+            for sensor in valid_temp_sensors:
+                entities.append(
+                    SystemTemperatureSensor(
+                        system_coordinator, server_uuid, server_name, sensor
+                    )
+                )
+
     # Storage sensors
     entities.extend(
         [
@@ -2614,7 +3088,7 @@ async def async_setup_entry(
     # Disk, share, and flash sensors
     entities.extend(_create_disk_sensors(storage_coordinator, server_uuid, server_name))
 
-    # Infrastructure sensors (registration/license, plugins)
+    # Infrastructure sensors (registration/license, plugins, network)
     infra_coordinator = runtime_data.infra_coordinator
     entities.extend(
         [
@@ -2622,6 +3096,7 @@ async def async_setup_entry(
             RegistrationStateSensor(infra_coordinator, server_uuid, server_name),
             RegistrationExpirationSensor(infra_coordinator, server_uuid, server_name),
             InstalledPluginsSensor(infra_coordinator, server_uuid, server_name),
+            NetworkAccessSensor(infra_coordinator, server_uuid, server_name),
         ]
     )
 
@@ -2659,6 +3134,21 @@ async def async_setup_entry(
                     ),
                 ]
             )
+
+    # Docker aggregate sensors (total CPU/memory across all containers)
+    entities.extend(
+        [
+            DockerTotalCpuSensor(
+                system_coordinator, server_uuid, server_name, ws_manager
+            ),
+            DockerTotalMemoryPercentSensor(
+                system_coordinator, server_uuid, server_name, ws_manager
+            ),
+            DockerTotalMemoryBytesSensor(
+                system_coordinator, server_uuid, server_name, ws_manager
+            ),
+        ]
+    )
 
     _LOGGER.debug("Adding %d sensor entities", len(entities))
     async_add_entities(entities)

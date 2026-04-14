@@ -296,14 +296,16 @@ class VirtualMachineSwitch(UnraidSwitchEntity):
         attrs: dict[str, Any] = {
             "state": vm.state,
         }
-        if vm.memory is not None:
-            attrs["memory"] = vm.memory
-        if vm.vcpu is not None:
-            attrs["vcpu"] = vm.vcpu
-        if vm.autostart is not None:
-            attrs["auto_start"] = vm.autostart
-        if vm.primaryGpu is not None:
-            attrs["primary_gpu"] = vm.primaryGpu
+        # Safely access optional attributes that may vary across unraid-api versions
+        for attr, key in (
+            ("memory", "memory"),
+            ("vcpu", "vcpu"),
+            ("autostart", "auto_start"),
+            ("primaryGpu", "primary_gpu"),
+        ):
+            value = getattr(vm, attr, None)
+            if value is not None:
+                attrs[key] = value
         return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:
