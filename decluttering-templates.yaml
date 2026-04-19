@@ -763,3 +763,126 @@ container_status_button:
       action: toggle
     hold_action:
       action: more-info
+
+###############################
+## ESPHOME UPDATE GROUP CARD ##
+###############################
+esphome_update_group_card:
+  default:
+    - icon: mdi:chip
+
+  card:
+    type: custom:mushroom-template-card
+    entity: '[[group_entity]]'
+    primary: '[[primary]]'
+    multiline_secondary: true
+    vertical: true
+    icon: '[[icon]]'
+
+    secondary: >-
+      {% set ents = expand('[[group_entity]]') | list %}
+      {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
+      {% set unavailable = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list %}
+      {% set pending = available | selectattr('state', 'eq', 'on') | list %}
+      {% set flashing = available | selectattr('attributes.in_progress', 'eq', true) | list %}
+
+      {% set total = ents | count %}
+      {% set available_count = available | count %}
+      {% set unavailable_count = unavailable | count %}
+      {% set pending_count = pending | count %}
+      {% set flashing_count = flashing | count %}
+      {% set done_count = available_count - pending_count %}
+
+      {% if total == 0 %}
+        No entities
+      {% elif flashing_count > 0 %}
+        Updating {{ flashing[0].name }}
+        {{ done_count }}/{{ available_count }} done · {{ pending_count }} pending
+        {%- if unavailable_count > 0 %} · {{ unavailable_count }} unavailable{%- endif %}
+      {% elif pending_count > 0 %}
+        {{ pending_count }} pending · {{ done_count }}/{{ available_count }} up-to-date
+        {%- if unavailable_count > 0 %} · {{ unavailable_count }} unavailable{%- endif %}
+      {% elif unavailable_count == total %}
+        All {{ total }} unavailable
+      {% elif unavailable_count > 0 %}
+        {{ available_count }} up-to-date · {{ unavailable_count }} unavailable
+      {% else %}
+        All {{ total }} up-to-date
+      {% endif %}
+
+    color: >-
+      {% set ents = expand('[[group_entity]]') | list %}
+      {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
+      {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
+      {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
+      {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
+
+      {% if flashing_count > 0 %}
+        blue
+      {% elif pending_count > 0 %}
+        amber
+      {% elif unavailable_count > 0 %}
+        red
+      {% else %}
+        green
+      {% endif %}
+
+    badge_icon: >-
+      {% set ents = expand('[[group_entity]]') | list %}
+      {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
+      {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
+      {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
+      {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
+
+      {% if flashing_count > 0 %}
+        mdi:progress-download
+      {% elif pending_count > 0 %}
+        mdi:package-up
+      {% elif unavailable_count > 0 %}
+        mdi:alert-circle
+      {% else %}
+        mdi:check-bold
+      {% endif %}
+
+    badge_color: >-
+      {% set ents = expand('[[group_entity]]') | list %}
+      {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
+      {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
+      {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
+      {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
+
+      {% if flashing_count > 0 %}
+        blue
+      {% elif pending_count > 0 %}
+        amber
+      {% elif unavailable_count > 0 %}
+        red
+      {% else %}
+        green
+      {% endif %}
+
+    badge_text: >-
+      {% set ents = expand('[[group_entity]]') | list %}
+      {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
+      {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
+      {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
+      {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
+
+      {% if flashing_count > 0 %}
+        {{ flashing_count }}
+      {% elif pending_count > 0 %}
+        {{ pending_count }}
+      {% elif unavailable_count > 0 %}
+        {{ unavailable_count }}
+      {% else %}
+        {{ available | count }}
+      {% endif %}
+
+    tap_action:
+      action: call-service
+      service: script.update_esphome_group
+      data:
+        group_entity: '[[group_entity]]'
+
+    hold_action:
+      action: more-info

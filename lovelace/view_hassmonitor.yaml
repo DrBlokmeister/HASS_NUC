@@ -261,67 +261,58 @@ cards:
         tap_action:
           action: toggle
 
-  - type: glance
-    title: ESPHome Updates
-    columns: 4
-    show_state: false
-    entities:
-      - entity: group.ledstrip_update_entities
-        name: Led Strips
-        icon: mdi:led-strip-variant
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.ledstrip_update_entities
-      - entity: group.aqm_update_entities
-        name: AQMs
-        icon: mdi:air-filter
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.aqm_update_entities
-      - entity: group.plug_update_entities
-        name: Plugs
-        icon: mdi:power-plug
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.plug_update_entities
-      - entity: group.shelly_1_plus_mini_update_entities
-        name: Shelly 1 Plus Mini
-        icon: mdi:chip
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.shelly_1_plus_mini_update_entities
-      - entity: group.shelly_1_plus_update_entities
-        name: Shelly 1 Plus
-        icon: mdi:chip
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.shelly_1_plus_update_entities
-      - entity: group.shelly_1_update_entities
-        name: Shelly 1
-        icon: mdi:chip
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.shelly_1_update_entities
-      - entity: group.shelly_dimmer_update_entities
-        name: Shelly Dimmer
-        icon: mdi:chip
-        tap_action:
-          action: call-service
-          service: script.update_esphome_group
-          data:
-            group_entity: group.shelly_dimmer_update_entities
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-title-card
+        title: ESPHome Updates
+
+      - type: grid
+        columns: 4
+        square: false
+        cards:
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.ledstrip_update_entities
+              - primary: Led Strips
+              - icon: mdi:led-strip-variant
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.aqm_update_entities
+              - primary: AQMs
+              - icon: mdi:air-filter
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.plug_update_entities
+              - primary: Plugs
+              - icon: mdi:power-plug
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.shelly_1_plus_mini_update_entities
+              - primary: Shelly 1 Plus Mini
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.shelly_1_plus_update_entities
+              - primary: Shelly 1 Plus
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.shelly_1_update_entities
+              - primary: Shelly 1
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.shelly_dimmer_update_entities
+              - primary: Shelly Dimmer
+          - type: custom:decluttering-card
+            template: esphome_update_group_card
+            variables:
+              - group_entity: group.misc_update_entities
+              - primary: Miscellaneous
 
   ###########################################################################
   # HOST OVERVIEW
@@ -441,19 +432,6 @@ cards:
           {% endif %}
         fill_container: true
         multiline_secondary: true
-      - type: custom:mushroom-template-card
-        entity: sensor.nuc_available_package_updates
-        primary: Package updates
-        secondary: >-
-          {{ states('sensor.nuc_available_package_updates') }} available
-        icon: mdi:package-up
-        icon_color: >-
-          {% if states('sensor.nuc_available_package_updates') | int(0) > 0 %}
-            amber
-          {% else %}
-            green
-          {% endif %}
-        fill_container: true
       - type: custom:mushroom-template-card
         entity: sensor.home_assistant_host_disk_used
         primary: Host disk used
