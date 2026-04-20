@@ -4,6 +4,27 @@ title: 3D printer
 badges: []
 icon: mdi:printer-3d
 cards:
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: switch.plug_3d_printer_switch
+        state: 'off'
+    card:
+      type: custom:mushroom-template-card
+      entity: switch.plug_3d_printer_switch
+      primary: Printer turned off
+      secondary: Tap to turn on printer power
+      icon: mdi:power-plug-off-outline
+      icon_color: red
+      fill_container: true
+      multiline_secondary: true
+      tap_action:
+        action: call-service
+        service: switch.turn_on
+        target:
+          entity_id: switch.plug_3d_printer_switch
+      hold_action:
+        action: more-info
   # - type: custom:layout-card
   #   layout_type: custom:masonry-layout
   #   layout:
@@ -11,946 +32,1006 @@ cards:
   #     max_cols: 3
   #   cards:
       ##############################  AMS  ##############################
-      - type: picture-elements
-        elements:
-          - type: conditional
-            conditions:
-              - condition: state
-                state_not: unavailable
-                entity: sensor.blokmeisterams_id
-              - condition: state
-                state_not: unknown
-                entity: sensor.blokmeisterams_id
-            elements:
-              - type: state-label
-                entity: sensor.blokmeisterams_id
-                tap_action:
-                  action: none
-                style:
-                  top: 77%
-                  left: 9.6%
-                  text-align: center
-                  font-size: 0.8em
-                  background-color: rgba(0,0,0,0)
-                  box-shadow: 0 0 3px 3px rgba(0, 0, 0, 0)
-                  border-radius: 10px
-                  pointer-events: none
-                  color: '#FFFFFF'
-          - type: custom:config-template-card
-            entities:
-              - sensor.blokmeisterams_tray_1
-            element:
-              type: state-icon
-              entity: sensor.blokmeisterams_tray_1
-              icon: >-
-                ${states['sensor.blokmeisterams_tray_1'].state.toLowerCase() != 'empty' ?
-                'local:filament-1' : 'mdi:tray' }
-            style:
-              top: 28%
-              left: 21.4%
-              '--paper-item-icon-color': var(--tray_1_color)
-              '--icon-primary-color': var(--tray_1_color)
-              '--state-icon-color': var(--tray_1_color)
-              background-color: rgba(0,0,0,0.5)
-              box-shadow: 0 0 5px 5px var(--tray_1_bg)
-              border-radius: 50px
-              '--mdc-icon-size': 2.4em
-          - type: state-label
-            entity: sensor.blokmeisterams_tray_1
-            attribute: type
-            tap_action:
-              action: none
-            style:
-              top: 77%
-              left: 21%
-              text-align: center
-              font-size: 1em
-              background-color: rgba(0,0,0,0.4)
-              box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
-              border-radius: 50px
-              pointer-events: none
-              color: '#FFFFFF'
-          - type: custom:config-template-card
-            entities:
-              - sensor.blokmeisterams_tray_2
-            element:
-              type: state-icon
-              entity: sensor.blokmeisterams_tray_2
-              icon: >-
-                ${states['sensor.blokmeisterams_tray_2'].state.toLowerCase() != 'empty' ?
-                'local:filament-1' : 'mdi:tray' }
-            style:
-              top: 28%
-              left: 39.7%
-              '--paper-item-icon-color': var(--tray_2_color)
-              '--icon-primary-color': var(--tray_2_color)
-              '--state-icon-color': var(--tray_2_color)
-              background-color: rgba(0,0,0,0.5)
-              box-shadow: 0 0 5px 5px var(--tray_2_bg)
-              border-radius: 50px
-              '--mdc-icon-size': 2.4em
-          - type: state-label
-            entity: sensor.blokmeisterams_tray_2
-            attribute: type
-            tap_action:
-              action: none
-            style:
-              top: 77%
-              left: 40%
-              text-align: center
-              font-size: 1em
-              background-color: rgba(0,0,0,0.4)
-              box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
-              border-radius: 50px
-              pointer-events: none
-              color: '#FFFFFF'
-          - type: custom:config-template-card
-            entities:
-              - sensor.blokmeisterams_tray_3
-            element:
-              type: state-icon
-              entity: sensor.blokmeisterams_tray_3
-              icon: >-
-                ${states['sensor.blokmeisterams_tray_3'].state.toLowerCase() != 'empty' ?
-                'local:filament-1' : 'mdi:tray' }
-            style:
-              top: 28%
-              left: 59.7%
-              '--paper-item-icon-color': var(--tray_3_color)
-              '--icon-primary-color': var(--tray_3_color)
-              '--state-icon-color': var(--tray_3_color)
-              background-color: rgba(0,0,0,0.5)
-              box-shadow: 0 0 5px 5px var(--tray_3_bg)
-              border-radius: 50px
-              '--mdc-icon-size': 2.4em
-          - type: state-label
-            entity: sensor.blokmeisterams_tray_3
-            attribute: type
-            tap_action:
-              action: none
-            style:
-              top: 77%
-              left: 60%
-              text-align: center
-              font-size: 1em
-              background-color: rgba(0,0,0,0.4)
-              box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
-              border-radius: 50px
-              pointer-events: none
-              color: '#FFFFFF'
-          - type: custom:config-template-card
-            entities:
-              - sensor.blokmeisterams_tray_4
-            element:
-              type: state-icon
-              entity: sensor.blokmeisterams_tray_4
-              icon: >-
-                ${states['sensor.blokmeisterams_tray_4'].state.toLowerCase() != 'empty' ?
-                'local:filament-1' : 'mdi:tray' }
-            style:
-              top: 28%
-              left: 79.6%
-              '--paper-item-icon-color': var(--tray_4_color)
-              '--icon-primary-color': var(--tray_4_color)
-              '--state-icon-color': var(--tray_4_color)
-              background-color: rgba(0,0,0,0.5)
-              box-shadow: 0 0 5px 5px var(--tray_4_bg)
-              border-radius: 50px
-              '--mdc-icon-size': 2.4em
-          - type: state-label
-            entity: sensor.blokmeisterams_tray_4
-            attribute: type
-            tap_action:
-              action: none
-            style:
-              top: 77%
-              left: 79.6%
-              text-align: center
-              font-size: 1em
-              background-color: rgba(0,0,0,0.4)
-              box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
-              border-radius: 50px
-              pointer-events: none
-              color: '#FFFFFF'
-          - type: conditional
-            conditions:
-              - entity: sensor.blokmeisterp1s_print_status
-                state_not: offline
-            elements:
-              - type: conditional
-                conditions:
-                  - entity: sensor.blokmeisterams_temperature
-                    state_not:
-                        - "unavailable"
-                        - "unknown"
-                elements:
-                  - entity: sensor.blokmeisterams_temperature
-                    type: state-badge
-                    style:
-                      top: 50.75%
-                      left: 8%
-                      font-size: 0.75em
-                      color: rgba(0,0,0,0)
-              - type: custom:config-template-card
-                entities:
-                  - sensor.blokmeisterams_humidity
-                  - sensor.blokmeisterams_humidity_index
-                element:
-                  type: state-icon
-                  entity: sensor.blokmeisterams_humidity
-                  icon: >-
-                    ${(() => {
-                      const idx = parseInt(states['sensor.blokmeisterams_humidity_index']?.state, 10);
-                      return Number.isFinite(idx) && idx >= 1 && idx <= 5
-                        ? 'local:humidity-level-dark-' + idx + '#fullcolor'
-                        : 'mdi:water-percent';
-                    })()}
-                style:
-                  top: 38.5%
-                  left: 92.5%
-                  background-color: '#1c1c1c'
-                  border-radius: 50px
-                  border: 0.12em solid var(--humidity-border-color)
-                  '--mdc-icon-size': 2.05em
-              - type: state-label
-                entity: sensor.blokmeisterams_humidity
-                tap_action:
-                  action: none
-                style:
-                  top: 50.5%
-                  left: 92.5%
-                  text-align: center
-                  font-size: 0.72em
-                  background-color: rgba(0,0,0,0.45)
-                  box-shadow: 0 0 4px 4px rgba(0, 0, 0, 0.35)
-                  border-radius: 50px
-                  pointer-events: none
-                  color: '#FFFFFF'
-        image: /local/media/bambuprinter/AMS_2.png
-        card_mod:
-          style: |
-              ha-card {
-                background: none !important;
-                border: none !important;
-                box-shadow: none !important;
-                {% set humidity_idx = states('sensor.blokmeisterams_humidity_index') | int(0) %}
-                --humidity-border-color: {% if humidity_idx > 3 %} rgba(194,74,72,1.0); {% elif humidity_idx > 2 %} rgba(228,127,97,1.0); {% elif humidity_idx > 1 %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,255,17,0.75); {% endif %}
-                --tray_1_color: {% if is_state_attr('sensor.blokmeisterams_tray_1', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_1', 'color') }}; {% endif %}
-                --tray_2_color: {% if is_state_attr('sensor.blokmeisterams_tray_2', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_2', 'color') }}; {% endif %}
-                --tray_3_color: {% if is_state_attr('sensor.blokmeisterams_tray_3', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_3', 'color') }}; {% endif %}
-                --tray_4_color: {% if is_state_attr('sensor.blokmeisterams_tray_4', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_4', 'color') }}; {% endif %}
-                --tray_1_bg: {% if is_state_attr('sensor.blokmeisterams_tray_1', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
-                --tray_2_bg: {% if is_state_attr('sensor.blokmeisterams_tray_2', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
-                --tray_3_bg: {% if is_state_attr('sensor.blokmeisterams_tray_3', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
-                --tray_4_bg: {% if is_state_attr('sensor.blokmeisterams_tray_4', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
-              }
-      ##############################  P1S  ##############################
-      - type: picture-elements
-        elements:
-          - type: conditional
-            conditions:
-              - entity: sensor.blokmeisterp1s_print_status
-                state_not: offline
-            elements:
-              - type: custom:config-template-card
-                entities:
-                  - sensor.blokmeisterp1s_wi_fi_signal
-                element:
-                  type: state-icon
-                  entity: sensor.blokmeisterp1s_wi_fi_signal
-                  icon: >-
-                    ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
-                    'mdi:wifi-strength-4' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
-                    'mdi:wifi-strength-3' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
-                    'mdi:wifi-strength-2' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
-                    'mdi:wifi-strength-1-alert' : 'mdi:wifi-strength-outline'}
-                style:
-                  left: 67%
-                  top: 13.2%
-                  font-size: 0.8em
-                  color: rgba(0,0,0,0)
-                  "--paper-item-icon-color": >-
-                    ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
-                    'green' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
-                    'yellow' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
-                    'orange' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
-                    'red' : 'red'}
-                  "--icon-primary-color": >-
-                    ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
-                    'green' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
-                    'yellow' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
-                    'orange' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
-                    'red' : 'red'}
-                  "--state-icon-color": >-
-                    ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
-                    'green' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
-                    'yellow' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
-                    'orange' :
-                      states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
-                    'red' : 'red'}
-              - entity: light.blokmeisterp1s_chamber_light
-                type: state-icon
-                style:
-                  top: 46%
-                  left: 18%
-                  '--mdc-icon-size': 2.6em
-                tap_action:
-                  action: toggle
-              - entity: sensor.blokmeisterp1s_print_status
-                type: state-label
-                style:
-                  top: 6.5%
-                  left: 23.69%
-                  font-size: 1em
-                  color: '#FFFFFF'
-              - type: conditional
-                conditions:
-                  - entity: sensor.blokmeisterp1s_print_status
-                    state:
-                    - running
-                    - pause
-                elements:
-                  - type: conditional
-                    conditions:
-                      - entity: image.blokmeisterp1s_cover_image
-                        state_not: unavailable
-                    elements:
-                      - type: custom:hui-element
-                        card_type: picture-entity
-                        show_name: false
-                        show_state: false
-                        entity: image.blokmeisterp1s_cover_image
-                        style:
-                          top: 50%
-                          left: 50%
-                          transform: translate(-45%, -40%) scale(75%, 75%)
-                          '--ha-card-border-width': 0px
-                          '--ha-card-background': none
-                  - entity: sensor.blokmeisterp1s_print_progress
-                    type: state-badge
-                    tap_action:
-                      action: none
-                    style:
-                      top: 18.5%
-                      left: 81%
-                      font-size: 1em
-                      color: rgba(0,0,0,0)
-                      '--label-badge-red': '#11739D'
-              - entity: sensor.blokmeisterp1s_nozzle_temperature
-                type: state-badge
-                style:
-                  top: 31%
-                  left: 51%
-                  font-size: 0.8em
-                  color: rgba(0,0,0,0)
-              - entity: sensor.blokmeisterp1s_bed_temperature
-                type: state-badge
-                style:
-                  top: 78%
-                  left: 51%
-                  font-size: 0.8em
-                  color: rgba(0,0,0,0)
-        card_mod:
-          style: |
-              ha-card {
-                box-shadow: none !important;
-                background: none !important;
-                border: none !important;
-              }
-        image: /local/media/bambuprinter/on_p1s.png
-        entity: light.blokmeisterp1s_chamber_light
-        state_image:
-          unavailable: /local/media/bambuprinter/off_p1s.png
-          'on': /local/media/bambuprinter/on_p1s.png
-          'off': /local/media/bambuprinter/off_p1s.png
-
+  - type: picture-elements
+    elements:
       - type: conditional
         conditions:
           - condition: state
-            entity: binary_sensor.blokmeisterp1s_online
-            state: 'on'
-          - condition: state
-            entity: camera.blokmeisterp1s_camera
             state_not: unavailable
-        card:
-          type: picture-glance
-          title: Printer Camera
-          camera_image: camera.blokmeisterp1s_camera
-          camera_view: live
-          entities:
-            - entity: switch.blokmeisterp1s_camera
-              name: Camera
-            - entity: light.blokmeisterp1s_chamber_light
-              name: Light
-          aspect_ratio: '16:9'
-
-      ##############################  EXTERNAL SPOOL  ##############################
-      - type: picture-elements
+            entity: sensor.blokmeisterams_id
+          - condition: state
+            state_not: unknown
+            entity: sensor.blokmeisterams_id
         elements:
-          - type: custom:config-template-card
-            entities:
-              - sensor.blokmeisterp1s_external_spool_external_spool
-            element:
-              type: state-icon
-              entity: sensor.blokmeisterp1s_external_spool_external_spool
-              icon: >-
-                ${states['sensor.blokmeisterp1s_external_spool_external_spool'].state.toLowerCase() != 'empty' ?
-                'local:filament-1' : 'mdi:tray' }
-            style:
-              top: 50%
-              left: 42%
-              transform: translate(-50%, -50%) scale(150%)
-              '--paper-item-icon-color': var(--tray_vt_color)
-              '--icon-primary-color': var(--tray_vt_color)
-              '--state-icon-color': var(--tray_vt_color)
-              background-color: rgba(0,0,0,0.5)
-              box-shadow: 0 0 5px 5px var(--tray_vt_bg)
-              border-radius: 50px
-              '--mdc-icon-size': 1.6em
           - type: state-label
-            entity: sensor.blokmeisterp1s_external_spool_external_spool
-            attribute: type
+            entity: sensor.blokmeisterams_id
             tap_action:
               action: none
             style:
-              top: 50%
-              left: 73%
+              top: 77%
+              left: 9.6%
               text-align: center
-              font-size: 0.9em
-              background-color: rgba(0,0,0,0.4)
-              box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
+              font-size: 0.8em
+              background-color: rgba(0,0,0,0)
+              box-shadow: 0 0 3px 3px rgba(0, 0, 0, 0)
+              border-radius: 10px
+              pointer-events: none
+              color: '#FFFFFF'
+      - type: custom:config-template-card
+        entities:
+          - sensor.blokmeisterams_tray_1
+        element:
+          type: state-icon
+          entity: sensor.blokmeisterams_tray_1
+          icon: >-
+            ${states['sensor.blokmeisterams_tray_1'].state.toLowerCase() != 'empty' ?
+            'local:filament-1' : 'mdi:tray' }
+        style:
+          top: 28%
+          left: 21.4%
+          '--paper-item-icon-color': var(--tray_1_color)
+          '--icon-primary-color': var(--tray_1_color)
+          '--state-icon-color': var(--tray_1_color)
+          background-color: rgba(0,0,0,0.5)
+          box-shadow: 0 0 5px 5px var(--tray_1_bg)
+          border-radius: 50px
+          '--mdc-icon-size': 2.4em
+      - type: state-label
+        entity: sensor.blokmeisterams_tray_1
+        attribute: type
+        tap_action:
+          action: none
+        style:
+          top: 77%
+          left: 21%
+          text-align: center
+          font-size: 1em
+          background-color: rgba(0,0,0,0.4)
+          box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
+          border-radius: 50px
+          pointer-events: none
+          color: '#FFFFFF'
+      - type: custom:config-template-card
+        entities:
+          - sensor.blokmeisterams_tray_2
+        element:
+          type: state-icon
+          entity: sensor.blokmeisterams_tray_2
+          icon: >-
+            ${states['sensor.blokmeisterams_tray_2'].state.toLowerCase() != 'empty' ?
+            'local:filament-1' : 'mdi:tray' }
+        style:
+          top: 28%
+          left: 39.7%
+          '--paper-item-icon-color': var(--tray_2_color)
+          '--icon-primary-color': var(--tray_2_color)
+          '--state-icon-color': var(--tray_2_color)
+          background-color: rgba(0,0,0,0.5)
+          box-shadow: 0 0 5px 5px var(--tray_2_bg)
+          border-radius: 50px
+          '--mdc-icon-size': 2.4em
+      - type: state-label
+        entity: sensor.blokmeisterams_tray_2
+        attribute: type
+        tap_action:
+          action: none
+        style:
+          top: 77%
+          left: 40%
+          text-align: center
+          font-size: 1em
+          background-color: rgba(0,0,0,0.4)
+          box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
+          border-radius: 50px
+          pointer-events: none
+          color: '#FFFFFF'
+      - type: custom:config-template-card
+        entities:
+          - sensor.blokmeisterams_tray_3
+        element:
+          type: state-icon
+          entity: sensor.blokmeisterams_tray_3
+          icon: >-
+            ${states['sensor.blokmeisterams_tray_3'].state.toLowerCase() != 'empty' ?
+            'local:filament-1' : 'mdi:tray' }
+        style:
+          top: 28%
+          left: 59.7%
+          '--paper-item-icon-color': var(--tray_3_color)
+          '--icon-primary-color': var(--tray_3_color)
+          '--state-icon-color': var(--tray_3_color)
+          background-color: rgba(0,0,0,0.5)
+          box-shadow: 0 0 5px 5px var(--tray_3_bg)
+          border-radius: 50px
+          '--mdc-icon-size': 2.4em
+      - type: state-label
+        entity: sensor.blokmeisterams_tray_3
+        attribute: type
+        tap_action:
+          action: none
+        style:
+          top: 77%
+          left: 60%
+          text-align: center
+          font-size: 1em
+          background-color: rgba(0,0,0,0.4)
+          box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
+          border-radius: 50px
+          pointer-events: none
+          color: '#FFFFFF'
+      - type: custom:config-template-card
+        entities:
+          - sensor.blokmeisterams_tray_4
+        element:
+          type: state-icon
+          entity: sensor.blokmeisterams_tray_4
+          icon: >-
+            ${states['sensor.blokmeisterams_tray_4'].state.toLowerCase() != 'empty' ?
+            'local:filament-1' : 'mdi:tray' }
+        style:
+          top: 28%
+          left: 79.6%
+          '--paper-item-icon-color': var(--tray_4_color)
+          '--icon-primary-color': var(--tray_4_color)
+          '--state-icon-color': var(--tray_4_color)
+          background-color: rgba(0,0,0,0.5)
+          box-shadow: 0 0 5px 5px var(--tray_4_bg)
+          border-radius: 50px
+          '--mdc-icon-size': 2.4em
+      - type: state-label
+        entity: sensor.blokmeisterams_tray_4
+        attribute: type
+        tap_action:
+          action: none
+        style:
+          top: 77%
+          left: 79.6%
+          text-align: center
+          font-size: 1em
+          background-color: rgba(0,0,0,0.4)
+          box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
+          border-radius: 50px
+          pointer-events: none
+          color: '#FFFFFF'
+      - type: conditional
+        conditions:
+          - entity: sensor.blokmeisterp1s_print_status
+            state_not: offline
+        elements:
+          - type: conditional
+            conditions:
+              - entity: sensor.blokmeisterams_temperature
+                state_not:
+                    - "unavailable"
+                    - "unknown"
+            elements:
+              - entity: sensor.blokmeisterams_temperature
+                type: state-badge
+                style:
+                  top: 50.75%
+                  left: 8%
+                  font-size: 0.75em
+                  color: rgba(0,0,0,0)
+          - type: custom:config-template-card
+            entities:
+              - sensor.blokmeisterams_humidity
+              - sensor.blokmeisterams_humidity_index
+            element:
+              type: state-icon
+              entity: sensor.blokmeisterams_humidity
+              icon: >-
+                ${(() => {
+                  const idx = parseInt(states['sensor.blokmeisterams_humidity_index']?.state, 10);
+                  return Number.isFinite(idx) && idx >= 1 && idx <= 5
+                    ? 'local:humidity-level-dark-' + idx + '#fullcolor'
+                    : 'mdi:water-percent';
+                })()}
+            style:
+              top: 38.5%
+              left: 92.5%
+              background-color: '#1c1c1c'
+              border-radius: 50px
+              border: 0.12em solid var(--humidity-border-color)
+              '--mdc-icon-size': 2.05em
+          - type: state-label
+            entity: sensor.blokmeisterams_humidity
+            tap_action:
+              action: none
+            style:
+              top: 50.5%
+              left: 92.5%
+              text-align: center
+              font-size: 0.72em
+              background-color: rgba(0,0,0,0.45)
+              box-shadow: 0 0 4px 4px rgba(0, 0, 0, 0.35)
               border-radius: 50px
               pointer-events: none
               color: '#FFFFFF'
-        image: /local/media/bambuprinter/spool.png
-        card_mod:
-          style: |
-              ha-card {
-                margin-left: auto;
-                margin-right: auto;
-                width: 42%;
-                height: 42%;
-                background: none !important;
-                border: none !important;
-                box-shadow: none !important;
-                --tray_vt_color: {{ state_attr('sensor.blokmeisterp1s_external_spool_external_spool', 'color') if state_attr('sensor.blokmeisterp1s_external_spool_external_spool', 'color') else 'rgb(255, 255, 255)' }};
-                --tray_vt_bg: {% if is_state_attr('sensor.blokmeisterp1s_external_spool_external_spool', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
-              }
+    image: /local/media/bambuprinter/AMS_2.png
+    card_mod:
+      style: |
+          ha-card {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            {% set humidity_idx = states('sensor.blokmeisterams_humidity_index') | int(0) %}
+            --humidity-border-color: {% if humidity_idx > 3 %} rgba(194,74,72,1.0); {% elif humidity_idx > 2 %} rgba(228,127,97,1.0); {% elif humidity_idx > 1 %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,255,17,0.75); {% endif %}
+            --tray_1_color: {% if is_state_attr('sensor.blokmeisterams_tray_1', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_1', 'color') }}; {% endif %}
+            --tray_2_color: {% if is_state_attr('sensor.blokmeisterams_tray_2', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_2', 'color') }}; {% endif %}
+            --tray_3_color: {% if is_state_attr('sensor.blokmeisterams_tray_3', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_3', 'color') }}; {% endif %}
+            --tray_4_color: {% if is_state_attr('sensor.blokmeisterams_tray_4', 'color', '#00000000') %} rgb(255, 255, 255); {% else %} {{state_attr('sensor.blokmeisterams_tray_4', 'color') }}; {% endif %}
+            --tray_1_bg: {% if is_state_attr('sensor.blokmeisterams_tray_1', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
+            --tray_2_bg: {% if is_state_attr('sensor.blokmeisterams_tray_2', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
+            --tray_3_bg: {% if is_state_attr('sensor.blokmeisterams_tray_3', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
+            --tray_4_bg: {% if is_state_attr('sensor.blokmeisterams_tray_4', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
+          }
+  ##############################  P1S  ##############################
+  - type: picture-elements
+    elements:
+      - type: conditional
+        conditions:
+          - entity: sensor.blokmeisterp1s_print_status
+            state_not: offline
+        elements:
+          - type: custom:config-template-card
+            entities:
+              - sensor.blokmeisterp1s_wi_fi_signal
+            element:
+              type: state-icon
+              entity: sensor.blokmeisterp1s_wi_fi_signal
+              icon: >-
+                ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
+                'mdi:wifi-strength-4' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
+                'mdi:wifi-strength-3' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
+                'mdi:wifi-strength-2' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
+                'mdi:wifi-strength-1-alert' : 'mdi:wifi-strength-outline'}
+            style:
+              left: 67%
+              top: 13.2%
+              font-size: 0.8em
+              color: rgba(0,0,0,0)
+              "--paper-item-icon-color": >-
+                ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
+                'green' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
+                'yellow' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
+                'orange' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
+                'red' : 'red'}
+              "--icon-primary-color": >-
+                ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
+                'green' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
+                'yellow' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
+                'orange' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
+                'red' : 'red'}
+              "--state-icon-color": >-
+                ${states['sensor.blokmeisterp1s_wi_fi_signal'].state > -50 ?
+                'green' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -60 ?
+                'yellow' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -67 ?
+                'orange' :
+                  states['sensor.blokmeisterp1s_wi_fi_signal'].state > -70 ?
+                'red' : 'red'}
+          - entity: light.blokmeisterp1s_chamber_light
+            type: state-icon
+            style:
+              top: 46%
+              left: 18%
+              '--mdc-icon-size': 2.6em
+            tap_action:
+              action: toggle
+          - entity: sensor.blokmeisterp1s_print_status
+            type: state-label
+            style:
+              top: 6.5%
+              left: 23.69%
+              font-size: 1em
+              color: '#FFFFFF'
+          - type: conditional
+            conditions:
+              - entity: sensor.blokmeisterp1s_print_status
+                state:
+                - running
+                - pause
+            elements:
+              - type: conditional
+                conditions:
+                  - entity: image.blokmeisterp1s_cover_image
+                    state_not: unavailable
+                elements:
+                  - type: custom:hui-element
+                    card_type: picture-entity
+                    show_name: false
+                    show_state: false
+                    entity: image.blokmeisterp1s_cover_image
+                    style:
+                      top: 50%
+                      left: 50%
+                      transform: translate(-45%, -40%) scale(75%, 75%)
+                      '--ha-card-border-width': 0px
+                      '--ha-card-background': none
+              - entity: sensor.blokmeisterp1s_print_progress
+                type: state-badge
+                tap_action:
+                  action: none
+                style:
+                  top: 18.5%
+                  left: 81%
+                  font-size: 1em
+                  color: rgba(0,0,0,0)
+                  '--label-badge-red': '#11739D'
+          - entity: sensor.blokmeisterp1s_nozzle_temperature
+            type: state-badge
+            style:
+              top: 31%
+              left: 51%
+              font-size: 0.8em
+              color: rgba(0,0,0,0)
+          - entity: sensor.blokmeisterp1s_bed_temperature
+            type: state-badge
+            style:
+              top: 78%
+              left: 51%
+              font-size: 0.8em
+              color: rgba(0,0,0,0)
+    card_mod:
+      style: |
+          ha-card {
+            box-shadow: none !important;
+            background: none !important;
+            border: none !important;
+          }
+    image: /local/media/bambuprinter/on_p1s.png
+    entity: light.blokmeisterp1s_chamber_light
+    state_image:
+      unavailable: /local/media/bambuprinter/off_p1s.png
+      'on': /local/media/bambuprinter/on_p1s.png
+      'off': /local/media/bambuprinter/off_p1s.png
 
-      - type: vertical-stack
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: binary_sensor.blokmeisterp1s_online
+        state: 'on'
+      - condition: state
+        entity: camera.blokmeisterp1s_camera
+        state_not: unavailable
+    card:
+      type: picture-glance
+      title: Printer Camera
+      camera_image: camera.blokmeisterp1s_camera
+      camera_view: live
+      entities:
+        - entity: switch.blokmeisterp1s_camera
+          name: Camera
+        - entity: light.blokmeisterp1s_chamber_light
+          name: Light
+      aspect_ratio: '16:9'
+
+  ##############################  EXTERNAL SPOOL  ##############################
+  - type: picture-elements
+    elements:
+      - type: custom:config-template-card
+        entities:
+          - sensor.blokmeisterp1s_external_spool_external_spool
+        element:
+          type: state-icon
+          entity: sensor.blokmeisterp1s_external_spool_external_spool
+          icon: >-
+            ${states['sensor.blokmeisterp1s_external_spool_external_spool'].state.toLowerCase() != 'empty' ?
+            'local:filament-1' : 'mdi:tray' }
+        style:
+          top: 50%
+          left: 42%
+          transform: translate(-50%, -50%) scale(150%)
+          '--paper-item-icon-color': var(--tray_vt_color)
+          '--icon-primary-color': var(--tray_vt_color)
+          '--state-icon-color': var(--tray_vt_color)
+          background-color: rgba(0,0,0,0.5)
+          box-shadow: 0 0 5px 5px var(--tray_vt_bg)
+          border-radius: 50px
+          '--mdc-icon-size': 1.6em
+      - type: state-label
+        entity: sensor.blokmeisterp1s_external_spool_external_spool
+        attribute: type
+        tap_action:
+          action: none
+        style:
+          top: 50%
+          left: 73%
+          text-align: center
+          font-size: 0.9em
+          background-color: rgba(0,0,0,0.4)
+          box-shadow: 0 0 5px 5px rgba(0, 0, 0, 0.4)
+          border-radius: 50px
+          pointer-events: none
+          color: '#FFFFFF'
+    image: /local/media/bambuprinter/spool.png
+    card_mod:
+      style: |
+          ha-card {
+            margin-left: auto;
+            margin-right: auto;
+            width: 42%;
+            height: 42%;
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            --tray_vt_color: {{ state_attr('sensor.blokmeisterp1s_external_spool_external_spool', 'color') if state_attr('sensor.blokmeisterp1s_external_spool_external_spool', 'color') else 'rgb(255, 255, 255)' }};
+            --tray_vt_bg: {% if is_state_attr('sensor.blokmeisterp1s_external_spool_external_spool', 'active', true) %} rgba(255, 255, 126, 0.5); {% else %} rgba(0,0,0,0.5); {% endif %}
+          }
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: Printer Controls
+        alignment: center
+      - type: grid
+        square: false
+        columns: 2
         cards:
-          - type: custom:mushroom-title-card
-            title: ''
-            subtitle: Printer Controls
-            alignment: center
-          - type: grid
-            square: false
-            columns: 2
-            cards:
-              - type: custom:mushroom-template-card
+          - type: conditional
+            conditions:
+              - condition: state
                 entity: switch.plug_3d_printer_switch
-                primary: Hard Power
-                secondary: >-
-                  {% if is_state('switch.plug_3d_printer_switch', 'on') %}
-                    Printer mains enabled
-                  {% else %}
-                    Printer mains disabled
-                  {% endif %}
-                icon: >-
-                  {% if is_state('switch.plug_3d_printer_switch', 'on') %}
-                    mdi:power-plug
-                  {% else %}
-                    mdi:power-plug-off-outline
-                  {% endif %}
-                icon_color: >-
-                  {% if is_state('switch.plug_3d_printer_switch', 'on') %}
-                    green
-                  {% else %}
-                    red
-                  {% endif %}
-                multiline_secondary: true
-                tap_action:
-                  action: toggle
+                state: 'off'
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.plug_3d_printer_switch
+              primary: Hard Power
+              secondary: Printer mains disabled
+              icon: mdi:power-plug-off-outline
+              icon_color: red
+              multiline_secondary: true
+              tap_action:
+                action: call-service
+                service: switch.turn_on
+                target:
+                  entity_id: switch.plug_3d_printer_switch
+              hold_action:
+                action: more-info
+              card_mod:
+                style: |
+                  ha-card {
+                    --icon-size: 30px;
+                  }
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: switch.plug_3d_printer_switch
+                state: 'on'
+              - condition: or
+                conditions:
+                  - condition: state
+                    entity: sensor.blokmeisterp1s_print_status
+                    state: running
+                  - condition: state
+                    entity: sensor.blokmeisterp1s_print_status
+                    state: pause
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.plug_3d_printer_switch
+              primary: Hard Power
+              secondary: Printer mains enabled · Confirm before power off
+              icon: mdi:power-plug
+              icon_color: green
+              multiline_secondary: true
+              tap_action:
+                action: call-service
+                service: switch.turn_off
+                target:
+                  entity_id: switch.plug_3d_printer_switch
                 confirmation:
-                  text: Hard power toggle? This cuts mains power to the printer.
-                card_mod:
-                  style: |
-                    ha-card {
-                      --icon-size: 30px;
-                    }
-              - type: custom:mushroom-template-card
+                  text: Printer is currently printing or paused. Cut mains power anyway?
+              hold_action:
+                action: more-info
+              card_mod:
+                style: |
+                  ha-card {
+                    --icon-size: 30px;
+                  }
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: switch.plug_3d_printer_switch
+                state: 'on'
+              - condition: state
                 entity: sensor.blokmeisterp1s_print_status
-                primary: Print Status
-                secondary: >-
-                  {{ states('sensor.blokmeisterp1s_print_status') | replace('_', ' ') | title }}
-                icon: mdi:printer-3d
-                icon_color: >-
-                  {% if is_state('sensor.blokmeisterp1s_print_status', 'running') %}
-                    green
-                  {% elif is_state('sensor.blokmeisterp1s_print_status', 'pause') %}
-                    orange
-                  {% elif is_state('sensor.blokmeisterp1s_print_status', 'offline') %}
-                    red
-                  {% else %}
-                    grey
-                  {% endif %}
-          - type: custom:mushroom-title-card
-            title: ''
-            subtitle: Speed Profile
-            alignment: center
-          - type: grid
-            square: false
-            columns: 4
-            cards:
-              - type: custom:button-card
-                entity: select.blokmeisterp1s_printing_speed
-                name: Silent
-                icon: mdi:speedometer-slow
-                tap_action:
-                  action: call-service
-                  service: select.select_option
-                  data:
-                    option: silent
-                  target:
-                    entity_id: select.blokmeisterp1s_printing_speed
-                state:
-                  - value: silent
-                    color: yellow
-                  - value: Silent
-                    color: yellow
-                styles:
-                  card:
-                    - padding: 8px
-                  icon:
-                    - width: 22px
-                  name:
-                    - font-size: 0.85em
-              - type: custom:button-card
-                entity: select.blokmeisterp1s_printing_speed
-                name: Standard
-                icon: mdi:speedometer-medium
-                tap_action:
-                  action: call-service
-                  service: select.select_option
-                  data:
-                    option: standard
-                  target:
-                    entity_id: select.blokmeisterp1s_printing_speed
-                state:
-                  - value: standard
-                    color: yellow
-                  - value: Standard
-                    color: yellow
-                styles:
-                  card:
-                    - padding: 8px
-                  icon:
-                    - width: 22px
-                  name:
-                    - font-size: 0.85em
-              - type: custom:button-card
-                entity: select.blokmeisterp1s_printing_speed
-                name: Sport
-                icon: mdi:speedometer
-                tap_action:
-                  action: call-service
-                  service: select.select_option
-                  data:
-                    option: sport
-                  target:
-                    entity_id: select.blokmeisterp1s_printing_speed
-                state:
-                  - value: sport
-                    color: yellow
-                  - value: Sport
-                    color: yellow
-                styles:
-                  card:
-                    - padding: 8px
-                  icon:
-                    - width: 22px
-                  name:
-                    - font-size: 0.85em
-              - type: custom:button-card
-                entity: select.blokmeisterp1s_printing_speed
-                name: Ludicrous
-                icon: mdi:rocket-launch-outline
-                tap_action:
-                  action: call-service
-                  service: select.select_option
-                  data:
-                    option: ludicrous
-                  target:
-                    entity_id: select.blokmeisterp1s_printing_speed
-                state:
-                  - value: ludicrous
-                    color: yellow
-                  - value: Ludicrous
-                    color: yellow
-                styles:
-                  card:
-                    - padding: 8px
-                  icon:
-                    - width: 22px
-                  name:
-                    - font-size: 0.82em
-          - type: custom:mushroom-title-card
-            title: ''
-            subtitle: Print Actions
-            alignment: center
-          - type: grid
-            square: false
-            columns: 2
-            cards:
-              - type: custom:button-card
-                variables:
-                  pause_entity: button.blokmeisterp1s_pause
-                  resume_entity: button.blokmeisterp1s_resume
+                state_not: running
+              - condition: state
                 entity: sensor.blokmeisterp1s_print_status
-                name: >-
-                  [[[ if (entity.state.toUpperCase() === 'RUNNING') return 'Pause';
-                  if (entity.state.toUpperCase() === 'PAUSE') return 'Resume';
-                  return 'Unavailable'; ]]]
-                icon: >-
-                  [[[ if (entity.state.toUpperCase() === 'RUNNING') return 'mdi:pause';
-                  if (entity.state.toUpperCase() === 'PAUSE') return 'mdi:play';
-                  return 'mdi:void'; ]]]
-                color_type: icon
-                tap_action:
-                  action: >-
-                    [[[ return (entity.state.toUpperCase() === 'RUNNING' || entity.state.toUpperCase() === 'PAUSE')
-                    ? 'call-service' : 'none'; ]]]
-                  service: button.press
-                  service_data:
-                    entity_id: >-
-                      [[[ return entity.state.toUpperCase() === 'RUNNING'
-                      ? variables.pause_entity
-                      : variables.resume_entity; ]]]
-                state:
-                  - value: running
-                    color: orange
-                  - value: RUNNING
-                    color: orange
-                  - value: pause
-                    color: orange
-                  - value: PAUSE
-                    color: orange
-                styles:
-                  card:
-                    - padding: 10px
-                  icon:
-                    - width: 24px
-                  name:
-                    - font-size: 0.95em
-              - type: custom:button-card
-                entity: sensor.blokmeisterp1s_print_status
-                name: Cancel Print
-                icon: mdi:cancel
-                color_type: icon
-                confirmation:
-                  text: Cancel the current print?
-                tap_action:
-                  action: >-
-                    [[[ return (entity.state.toUpperCase() === 'RUNNING' || entity.state.toUpperCase() === 'PAUSE')
-                    ? 'call-service' : 'none'; ]]]
-                  service: button.press
-                  service_data:
-                    entity_id: button.blokmeisterp1s_stop
-                state:
-                  - value: running
-                    color: red
-                  - value: RUNNING
-                    color: red
-                  - value: pause
-                    color: red
-                  - value: PAUSE
-                    color: red
-                styles:
-                  card:
-                    - padding: 10px
-                  icon:
-                    - width: 24px
-                  name:
-                    - font-size: 0.95em
-        card_mod:
-          style: |
-            ha-card {
-              padding: 10px;
-              border: 1px solid rgba(255, 255, 255, 0.08);
-              border-radius: 18px;
-              background: rgba(var(--rgb-card-background-color), 0.72);
-              box-shadow: var(--ha-card-box-shadow, none);
-            }
-
-      - type: vertical-stack
+                state_not: pause
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.plug_3d_printer_switch
+              primary: Hard Power
+              secondary: Printer mains enabled
+              icon: mdi:power-plug
+              icon_color: green
+              multiline_secondary: true
+              tap_action:
+                action: call-service
+                service: switch.turn_off
+                target:
+                  entity_id: switch.plug_3d_printer_switch
+              hold_action:
+                action: more-info
+              card_mod:
+                style: |
+                  ha-card {
+                    --icon-size: 30px;
+                  }
+          - type: custom:mushroom-template-card
+            entity: sensor.blokmeisterp1s_print_status
+            primary: Print Status
+            secondary: >-
+              {{ states('sensor.blokmeisterp1s_print_status') | replace('_', ' ') | title }}
+            icon: mdi:printer-3d
+            icon_color: >-
+              {% if is_state('sensor.blokmeisterp1s_print_status', 'running') %}
+                green
+              {% elif is_state('sensor.blokmeisterp1s_print_status', 'pause') %}
+                orange
+              {% elif is_state('sensor.blokmeisterp1s_print_status', 'offline') %}
+                red
+              {% else %}
+                grey
+              {% endif %}
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: Speed Profile
+        alignment: center
+      - type: grid
+        square: false
+        columns: 4
         cards:
-          - type: custom:mushroom-title-card
-            title: ''
-            subtitle: Power & Energy
-            alignment: center
-          - type: grid
-            square: false
-            columns: 2
-            cards:
-              - type: custom:mushroom-entity-card
-                entity: sensor.plug_3d_printer_power
-                name: Current Power
-                icon: mdi:flash
-              - type: custom:mushroom-entity-card
-                entity: sensor.plug_3d_printer_energy_today
-                name: Energy Today
-                icon: mdi:lightning-bolt
-          - type: custom:apexcharts-card
-            header:
-              show: true
-              title: Printer Power - Last 48h
-              show_states: true
-              colorize_states: true
-            graph_span: 48h
-            update_interval: 1m
-            now:
-              show: true
+          - type: custom:button-card
+            entity: select.blokmeisterp1s_printing_speed
+            name: Silent
+            icon: mdi:speedometer-slow
+            tap_action:
+              action: call-service
+              service: select.select_option
+              data:
+                option: silent
+              target:
+                entity_id: select.blokmeisterp1s_printing_speed
+            state:
+              - value: silent
+                color: yellow
+              - value: Silent
+                color: yellow
+            styles:
+              card:
+                - padding: 8px
+              icon:
+                - width: 22px
+              name:
+                - font-size: 0.85em
+          - type: custom:button-card
+            entity: select.blokmeisterp1s_printing_speed
+            name: Standard
+            icon: mdi:speedometer-medium
+            tap_action:
+              action: call-service
+              service: select.select_option
+              data:
+                option: standard
+              target:
+                entity_id: select.blokmeisterp1s_printing_speed
+            state:
+              - value: standard
+                color: yellow
+              - value: Standard
+                color: yellow
+            styles:
+              card:
+                - padding: 8px
+              icon:
+                - width: 22px
+              name:
+                - font-size: 0.85em
+          - type: custom:button-card
+            entity: select.blokmeisterp1s_printing_speed
+            name: Sport
+            icon: mdi:speedometer
+            tap_action:
+              action: call-service
+              service: select.select_option
+              data:
+                option: sport
+              target:
+                entity_id: select.blokmeisterp1s_printing_speed
+            state:
+              - value: sport
+                color: yellow
+              - value: Sport
+                color: yellow
+            styles:
+              card:
+                - padding: 8px
+              icon:
+                - width: 22px
+              name:
+                - font-size: 0.85em
+          - type: custom:button-card
+            entity: select.blokmeisterp1s_printing_speed
+            name: Ludicrous
+            icon: mdi:rocket-launch-outline
+            tap_action:
+              action: call-service
+              service: select.select_option
+              data:
+                option: ludicrous
+              target:
+                entity_id: select.blokmeisterp1s_printing_speed
+            state:
+              - value: ludicrous
+                color: yellow
+              - value: Ludicrous
+                color: yellow
+            styles:
+              card:
+                - padding: 8px
+              icon:
+                - width: 22px
+              name:
+                - font-size: 0.82em
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: Print Actions
+        alignment: center
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:button-card
+            variables:
+              pause_entity: button.blokmeisterp1s_pause
+              resume_entity: button.blokmeisterp1s_resume
+            entity: sensor.blokmeisterp1s_print_status
+            name: >-
+              [[[ if (entity.state.toUpperCase() === 'RUNNING') return 'Pause';
+              if (entity.state.toUpperCase() === 'PAUSE') return 'Resume';
+              return 'Unavailable'; ]]]
+            icon: >-
+              [[[ if (entity.state.toUpperCase() === 'RUNNING') return 'mdi:pause';
+              if (entity.state.toUpperCase() === 'PAUSE') return 'mdi:play';
+              return 'mdi:void'; ]]]
+            color_type: icon
+            tap_action:
+              action: >-
+                [[[ return (entity.state.toUpperCase() === 'RUNNING' || entity.state.toUpperCase() === 'PAUSE')
+                ? 'call-service' : 'none'; ]]]
+              service: button.press
+              service_data:
+                entity_id: >-
+                  [[[ return entity.state.toUpperCase() === 'RUNNING'
+                  ? variables.pause_entity
+                  : variables.resume_entity; ]]]
+            state:
+              - value: running
+                color: orange
+              - value: RUNNING
+                color: orange
+              - value: pause
+                color: orange
+              - value: PAUSE
+                color: orange
+            styles:
+              card:
+                - padding: 10px
+              icon:
+                - width: 24px
+              name:
+                - font-size: 0.95em
+          - type: custom:button-card
+            entity: sensor.blokmeisterp1s_print_status
+            name: Cancel Print
+            icon: mdi:cancel
+            color_type: icon
+            confirmation:
+              text: Cancel the current print?
+            tap_action:
+              action: >-
+                [[[ return (entity.state.toUpperCase() === 'RUNNING' || entity.state.toUpperCase() === 'PAUSE')
+                ? 'call-service' : 'none'; ]]]
+              service: button.press
+              service_data:
+                entity_id: button.blokmeisterp1s_stop
+            state:
+              - value: running
+                color: red
+              - value: RUNNING
+                color: red
+              - value: pause
+                color: red
+              - value: PAUSE
+                color: red
+            styles:
+              card:
+                - padding: 10px
+              icon:
+                - width: 24px
+              name:
+                - font-size: 0.95em
+    card_mod:
+      style: |
+        ha-card {
+          padding: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 18px;
+          background: rgba(var(--rgb-card-background-color), 0.72);
+          box-shadow: var(--ha-card-box-shadow, none);
+        }
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: Power & Energy
+        alignment: center
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.plug_3d_printer_power
+            name: Current Power
+            icon: mdi:flash
+          - type: custom:mushroom-entity-card
+            entity: sensor.plug_3d_printer_energy_today
+            name: Energy Today
+            icon: mdi:lightning-bolt
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Printer Power - Last 48h
+          show_states: true
+          colorize_states: true
+        graph_span: 48h
+        update_interval: 1m
+        now:
+          show: true
+        apex_config:
+          legend:
+            show: false
+          chart:
+            height: 220px
+        yaxis:
+          - min: 0
+            max: ~400
+            decimals: 0
+            align_to: 50
             apex_config:
-              legend:
-                show: false
-              chart:
-                height: 220px
-            yaxis:
-              - min: 0
-                max: ~400
-                decimals: 0
-                align_to: 50
-                apex_config:
-                  forceNiceScale: true
-            all_series_config:
-              group_by:
-                func: avg
-                duration: 15min
-              fill_raw: last
-              stroke_width: 2
-              float_precision: 0
-            series:
-              - entity: sensor.plug_3d_printer_power
-                name: Power
-                type: area
-                color: '#FF9800'
-                show:
-                  in_header: raw
-                  legend_value: false
-        card_mod:
-          style: |
-            ha-card {
-              padding: 10px;
-              border: 1px solid rgba(255, 255, 255, 0.08);
-              border-radius: 18px;
-              background: rgba(var(--rgb-card-background-color), 0.72);
-              box-shadow: var(--ha-card-box-shadow, none);
-            }
+              forceNiceScale: true
+        all_series_config:
+          group_by:
+            func: avg
+            duration: 15min
+          fill_raw: last
+          stroke_width: 2
+          float_precision: 0
+        series:
+          - entity: sensor.plug_3d_printer_power
+            name: Power
+            type: area
+            color: '#FF9800'
+            show:
+              in_header: raw
+              legend_value: false
+    card_mod:
+      style: |
+        ha-card {
+          padding: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 18px;
+          background: rgba(var(--rgb-card-background-color), 0.72);
+          box-shadow: var(--ha-card-box-shadow, none);
+        }
 
-      - type: vertical-stack
-        cards:
-          - type: conditional
-            conditions:
-              - condition: state
-                entity: fan.blokmeisterp1s_aux_fan
-                state_not: unavailable
-              - condition: state
-                entity: sensor.blokmeisterp1s_aux_fan_speed
-                state_not: unknown
-            card:
-              type: custom:mushroom-fan-card
-              entity: fan.blokmeisterp1s_aux_fan
-              name: Aux Fan
-              icon_animation: true
-              show_percentage_control: true
-              fill_container: false
-              layout: horizontal
-          - type: conditional
-            card:
-              type: custom:mushroom-fan-card
-              entity: fan.blokmeisterp1s_chamber_fan
-              name: Chamber Fan
-              icon_animation: true
-              show_percentage_control: true
-              fill_container: false
-              layout: horizontal
-            conditions:
-              - condition: state
-                entity: fan.blokmeisterp1s_chamber_fan
-                state_not: unavailable
-              - condition: state
-                entity: sensor.blokmeisterp1s_chamber_fan_speed
-                state_not: unknown
-          - type: conditional
-            card:
-              type: custom:mushroom-fan-card
-              entity: fan.blokmeisterp1s_cooling_fan
-              name: Part Cooling Fan
-              icon_animation: true
-              show_percentage_control: true
-              fill_container: false
-              layout: horizontal
-            conditions:
-              - condition: state
-                entity: fan.blokmeisterp1s_cooling_fan
-                state_not: unavailable
-              - condition: state
-                entity: sensor.blokmeisterp1s_cooling_fan_speed
-                state_not: unknown
-          - type: conditional
-            card:
-              type: custom:mushroom-number-card
-              entity: number.blokmeisterp1s_nozzle_target_temperature
-              name: Set Nozzle Temp
-              layout: horizontal
-              display_mode: buttons
-            conditions:
-              - condition: state
-                entity: number.blokmeisterp1s_nozzle_target_temperature
-                state_not: unavailable
-          - type: conditional
-            card:
-              type: custom:mushroom-number-card
-              entity: number.blokmeisterp1s_bed_target_temperature
-              name: Set Bed Temp
-              display_mode: buttons
-              layout: horizontal
-            conditions:
-              - condition: state
-                entity: number.blokmeisterp1s_bed_target_temperature
-                state_not: unavailable
-
+  - type: vertical-stack
+    cards:
       - type: conditional
         conditions:
           - condition: state
-            entity: sensor.blokmeisterp1s_print_status
-            state_not: idle
+            entity: fan.blokmeisterp1s_aux_fan
+            state_not: unavailable
           - condition: state
-            entity: sensor.blokmeisterp1s_print_status
-            state_not: offline
-          - condition: state
-            entity: sensor.blokmeisterp1s_print_status
-            state_not: finish
-          - condition: state
-            entity: sensor.blokmeisterp1s_print_status
-            state_not: failed
+            entity: sensor.blokmeisterp1s_aux_fan_speed
+            state_not: unknown
         card:
-          type: vertical-stack
-          cards:
-            - type: custom:mushroom-title-card
-              title: ''
-              subtitle: Active Print
-              alignment: center
-            - type: custom:button-card
-              entity: sensor.blokmeisterp1s_print_progress
-              name: Print Progress
-              show_icon: false
-              show_state: false
-              styles:
-                grid:
-                  - grid-template-areas: '"n" "bar" "info"'
-                  - grid-template-columns: 1fr
-                  - grid-template-rows: min-content 18px min-content
-                  - row-gap: 10px
-                card:
-                  - padding: 14px
-                name:
-                  - justify-self: start
-                  - font-size: 1.0em
-                  - font-weight: 600
-                custom_fields:
-                  bar:
-                    - position: relative
-                    - height: 18px
-                    - background: rgba(255,255,255,0.10)
-                    - border-radius: 999px
-                    - overflow: hidden
-                  info:
-                    - justify-self: stretch
-                    - text-align: left
-                    - font-size: 0.95em
-                    - line-height: 1.45
-              custom_fields:
-                bar: |
-                  [[[
-                    const progress = Number(states['sensor.blokmeisterp1s_print_progress']?.state || 0);
-                    const safeProgress = Math.max(0, Math.min(progress, 100));
-                    return `
-                      <div style="position:absolute; inset:0; border-radius:999px; overflow:hidden;">
-                        <div style="width:${safeProgress}%; height:100%; background:linear-gradient(90deg, #1e88e5 0%, #42a5f5 100%);"></div>
-                      </div>
-                      <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:0.82em; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.6);">
-                        ${safeProgress.toFixed(0)}%
-                      </div>
-                    `;
-                  ]]]
-                info: |
-                  [[[
-                    const currentLayer = states['sensor.blokmeisterp1s_current_layer']?.state ?? '-';
-                    const totalLayer = states['sensor.blokmeisterp1s_total_layer_count']?.state ?? '-';
-                    const weight = states['sensor.blokmeisterp1s_print_weight']?.state ?? '-';
-                    const endTime = states['sensor.blokmeisterp1s_end_time']?.state ?? '-';
-                    return `Layer ${currentLayer} / ${totalLayer}<br>Weight ${weight} g · ETA ${endTime}`;
-                  ]]]
-            - type: entities
-              title: Print Details
-              show_header_toggle: false
-              entities:
-                - entity: sensor.blokmeisterp1s_task_name
-                  name: Model
-                - entity: sensor.blokmeisterp1s_gcode_filename
-                  name: File
-                - type: custom:multiple-entity-row
-                  entity: sensor.blokmeisterp1s_current_layer
-                  name: Layers
-                  styles:
-                    width: 78px
-                    text-align: right
-                  entities:
-                    - entity: sensor.blokmeisterp1s_total_layer_count
-                      name: Total
-                      styles:
-                        width: 68px
-                        text-align: center
-                    - entity: sensor.blokmeisterp1s_print_weight
-                      name: Weight
-                      unit: g
-                      styles:
-                        width: 68px
-                        text-align: center
-                - entity: sensor.blokmeisterp1s_current_stage
-                  name: Stage
-                - entity: sensor.blokmeisterp1s_start_time
-                  name: Start Time
-                - entity: sensor.blokmeisterp1s_end_time
-                  name: End Time
-                - entity: sensor.blokmeisterp1s_remaining_time
-                  name: Remaining Time
+          type: custom:mushroom-fan-card
+          entity: fan.blokmeisterp1s_aux_fan
+          name: Aux Fan
+          icon_animation: true
+          show_percentage_control: true
+          fill_container: false
+          layout: horizontal
+      - type: conditional
+        card:
+          type: custom:mushroom-fan-card
+          entity: fan.blokmeisterp1s_chamber_fan
+          name: Chamber Fan
+          icon_animation: true
+          show_percentage_control: true
+          fill_container: false
+          layout: horizontal
+        conditions:
+          - condition: state
+            entity: fan.blokmeisterp1s_chamber_fan
+            state_not: unavailable
+          - condition: state
+            entity: sensor.blokmeisterp1s_chamber_fan_speed
+            state_not: unknown
+      - type: conditional
+        card:
+          type: custom:mushroom-fan-card
+          entity: fan.blokmeisterp1s_cooling_fan
+          name: Part Cooling Fan
+          icon_animation: true
+          show_percentage_control: true
+          fill_container: false
+          layout: horizontal
+        conditions:
+          - condition: state
+            entity: fan.blokmeisterp1s_cooling_fan
+            state_not: unavailable
+          - condition: state
+            entity: sensor.blokmeisterp1s_cooling_fan_speed
+            state_not: unknown
+      - type: conditional
+        card:
+          type: custom:mushroom-number-card
+          entity: number.blokmeisterp1s_nozzle_target_temperature
+          name: Set Nozzle Temp
+          layout: horizontal
+          display_mode: buttons
+        conditions:
+          - condition: state
+            entity: number.blokmeisterp1s_nozzle_target_temperature
+            state_not: unavailable
+      - type: conditional
+        card:
+          type: custom:mushroom-number-card
+          entity: number.blokmeisterp1s_bed_target_temperature
+          name: Set Bed Temp
+          display_mode: buttons
+          layout: horizontal
+        conditions:
+          - condition: state
+            entity: number.blokmeisterp1s_bed_target_temperature
+            state_not: unavailable
 
-      - type: entities
-        title: Printer Details
-        show_header_toggle: false
-        entities:
-          - entity: sensor.blokmeisterp1s_nozzle_size
-            name: Nozzle Size
-          - entity: sensor.blokmeisterp1s_nozzle_type
-            name: Nozzle Type
-          - entity: sensor.blokmeisterp1s_active_tray
-            name: Current Filament
-          - entity: binary_sensor.blokmeisterp1s_hms_errors
-            name: HMS Notifications
-          - entity: binary_sensor.blokmeisterp1s_firmware
-            name: Firmware Update Available
-          - entity: sensor.blokmeisterp1s_printer_name
-            name: Printer Name
+  - type: conditional
+    conditions:
+      - condition: state
+        entity: sensor.blokmeisterp1s_print_status
+        state_not: idle
+      - condition: state
+        entity: sensor.blokmeisterp1s_print_status
+        state_not: offline
+      - condition: state
+        entity: sensor.blokmeisterp1s_print_status
+        state_not: finish
+      - condition: state
+        entity: sensor.blokmeisterp1s_print_status
+        state_not: failed
+    card:
+      type: vertical-stack
+      cards:
+        - type: custom:mushroom-title-card
+          title: ''
+          subtitle: Active Print
+          alignment: center
+        - type: custom:button-card
+          entity: sensor.blokmeisterp1s_print_progress
+          name: Print Progress
+          show_icon: false
+          show_state: false
+          styles:
+            grid:
+              - grid-template-areas: '"n" "bar" "info"'
+              - grid-template-columns: 1fr
+              - grid-template-rows: min-content 18px min-content
+              - row-gap: 10px
+            card:
+              - padding: 14px
+            name:
+              - justify-self: start
+              - font-size: 1.0em
+              - font-weight: 600
+            custom_fields:
+              bar:
+                - position: relative
+                - height: 18px
+                - background: rgba(255,255,255,0.10)
+                - border-radius: 999px
+                - overflow: hidden
+              info:
+                - justify-self: stretch
+                - text-align: left
+                - font-size: 0.95em
+                - line-height: 1.45
+          custom_fields:
+            bar: |
+              [[[
+                const progress = Number(states['sensor.blokmeisterp1s_print_progress']?.state || 0);
+                const safeProgress = Math.max(0, Math.min(progress, 100));
+                return `
+                  <div style="position:absolute; inset:0; border-radius:999px; overflow:hidden;">
+                    <div style="width:${safeProgress}%; height:100%; background:linear-gradient(90deg, #1e88e5 0%, #42a5f5 100%);"></div>
+                  </div>
+                  <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:0.82em; color:white; text-shadow:0 1px 2px rgba(0,0,0,0.6);">
+                    ${safeProgress.toFixed(0)}%
+                  </div>
+                `;
+              ]]]
+            info: |
+              [[[
+                const currentLayer = states['sensor.blokmeisterp1s_current_layer']?.state ?? '-';
+                const totalLayer = states['sensor.blokmeisterp1s_total_layer_count']?.state ?? '-';
+                const weight = states['sensor.blokmeisterp1s_print_weight']?.state ?? '-';
+                const endTime = states['sensor.blokmeisterp1s_end_time']?.state ?? '-';
+                return `Layer ${currentLayer} / ${totalLayer}<br>Weight ${weight} g · ETA ${endTime}`;
+              ]]]
+        - type: entities
+          title: Print Details
+          show_header_toggle: false
+          entities:
+            - entity: sensor.blokmeisterp1s_task_name
+              name: Model
+            - entity: sensor.blokmeisterp1s_gcode_filename
+              name: File
+            - type: custom:multiple-entity-row
+              entity: sensor.blokmeisterp1s_current_layer
+              name: Layers
+              styles:
+                width: 78px
+                text-align: right
+              entities:
+                - entity: sensor.blokmeisterp1s_total_layer_count
+                  name: Total
+                  styles:
+                    width: 68px
+                    text-align: center
+                - entity: sensor.blokmeisterp1s_print_weight
+                  name: Weight
+                  unit: g
+                  styles:
+                    width: 68px
+                    text-align: center
+            - entity: sensor.blokmeisterp1s_current_stage
+              name: Stage
+            - entity: sensor.blokmeisterp1s_start_time
+              name: Start Time
+            - entity: sensor.blokmeisterp1s_end_time
+              name: End Time
+            - entity: sensor.blokmeisterp1s_remaining_time
+              name: Remaining Time
+
+  - type: entities
+    title: Printer Details
+    show_header_toggle: false
+    entities:
+      - entity: sensor.blokmeisterp1s_nozzle_size
+        name: Nozzle Size
+      - entity: sensor.blokmeisterp1s_nozzle_type
+        name: Nozzle Type
+      - entity: sensor.blokmeisterp1s_active_tray
+        name: Current Filament
+      - entity: binary_sensor.blokmeisterp1s_hms_errors
+        name: HMS Notifications
+      - entity: binary_sensor.blokmeisterp1s_firmware
+        name: Firmware Update Available
+      - entity: sensor.blokmeisterp1s_printer_name
+        name: Printer Name
