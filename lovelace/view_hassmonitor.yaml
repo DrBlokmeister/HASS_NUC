@@ -63,20 +63,29 @@ cards:
         entity: sensor.backup_backup_manager_state
         primary: Backup manager
         secondary: >-
-          {% set state = states('sensor.backup_backup_manager_state') %}
-          {% if state == 'idle' %}
-            Idle · last success {{ states('sensor.backup_last_successful_automatic_backup') }}
-          {% elif state == 'create_backup' %}
+          {% set state = states('sensor.backup_backup_manager_state') -%}
+          {% set last_success = states('sensor.backup_last_successful_automatic_backup') -%}
+          {% if state == 'idle' -%}
+            Idle{% if last_success not in ['unknown', 'unavailable', 'none', 'None', ''] -%} · last success - 
+            {%- set age = (as_timestamp(now()) - as_timestamp(last_success)) | int(0) -%}
+            {%- if age < 3600 -%}
+              {{ (age / 60) | int(0) }}m ago
+            {% elif age < 86400 -%}
+              {{ (age / 3600) | int(0) }}h ago
+            {% else -%}
+              {{ (age / 86400) | int(0) }}d ago
+            {% endif -%}{% endif -%}
+          {% elif state == 'create_backup' -%}
             Creating backup
-          {% elif state == 'receive_backup' %}
+          {% elif state == 'receive_backup' -%}
             Receiving backup
-          {% elif state == 'restore_backup' %}
+          {% elif state == 'restore_backup' -%}
             Restore in progress
-          {% elif state == 'blocked' %}
+          {% elif state == 'blocked' -%}
             Blocked
-          {% else %}
+          {% else -%}
             {{ state }}
-          {% endif %}
+          {% endif -%}
         icon: mdi:backup-restore
         icon_color: >-
           {% set state = states('sensor.backup_backup_manager_state') %}
@@ -123,7 +132,7 @@ cards:
         entity: sensor.disk_use_percent
         primary: Host disk usage
         secondary: >-
-          {{ states('sensor.disk_use_percent') | float(0) | round(1) }}% used · {{ states('sensor.system_monitor_disk_free') }} GiB free
+          {{ states('sensor.disk_use_percent') | float(0) | round(1) }}% used · {{ states('sensor.system_monitor_disk_free') | float(0) | round(1) }} GiB free
         icon: mdi:harddisk
         icon_color: >-
           {% set d = states('sensor.disk_use_percent') | float(0) %}
@@ -140,7 +149,7 @@ cards:
         entity: sensor.processor_temperature
         primary: CPU temperature
         secondary: >-
-          {{ states('sensor.processor_temperature') }} °C · CPU {{ states('sensor.processor_use') }}%
+          {{ states('sensor.processor_temperature') | float(0) | round(1) }} °C · CPU {{ states('sensor.processor_use') | float(0) | round(0) | int }}%
         icon: mdi:thermometer
         icon_color: >-
           {% set t = states('sensor.processor_temperature') | float(0) %}
@@ -157,7 +166,7 @@ cards:
         entity: sensor.home_assistant_log_errors_per_hour_2
         primary: Error rate
         secondary: >-
-          {{ states('sensor.home_assistant_log_errors_per_hour_2') }} errors/h · {{ states('sensor.home_assistant_log_errors_utility_meter') }} total
+          {{ states('sensor.home_assistant_log_errors_per_hour_2') | float(0) | round(1) }} errors/h · {{ states('sensor.home_assistant_log_errors_utility_meter') | int(0) }} total
         icon: mdi:alert-circle-outline
         icon_color: >-
           {% set e = states('sensor.home_assistant_log_errors_per_hour_2') | float(0) %}
@@ -172,7 +181,7 @@ cards:
         entity: sensor.home_assistant_log_warnings_per_hour_2
         primary: Warning rate
         secondary: >-
-          {{ states('sensor.home_assistant_log_warnings_per_hour_2') }} warnings/h · {{ states('sensor.home_assistant_log_warnings_utility_meter') }} total
+          {{ states('sensor.home_assistant_log_warnings_per_hour_2') | float(0) | round(1) }} warnings/h · {{ states('sensor.home_assistant_log_warnings_utility_meter') | int(0) }} total
         icon: mdi:alert-outline
         icon_color: >-
           {% set w = states('sensor.home_assistant_log_warnings_per_hour_2') | float(0) %}
@@ -265,7 +274,6 @@ cards:
     cards:
       - type: custom:mushroom-title-card
         title: ESPHome Updates
-
       - type: grid
         columns: 4
         square: false
@@ -337,7 +345,19 @@ cards:
         entity: sensor.last_boot
         primary: Last boot
         secondary: >-
-          {{ states('sensor.last_boot') }}
+          {% set dt = states('sensor.last_boot') %}
+          {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            Unavailable
+          {% else %}
+            {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+            {% if age < 3600 %}
+              {{ (age / 60) | int(0) }}m ago
+            {% elif age < 86400 %}
+              {{ (age / 3600) | int(0) }}h ago
+            {% else %}
+              {{ (age / 86400) | int(0) }}d ago
+            {% endif %}
+          {% endif %}
         icon: mdi:clock-start
         icon_color: green
         fill_container: true
@@ -345,7 +365,10 @@ cards:
         entity: sensor.processor_use
         primary: CPU usage
         secondary: >-
-          {{ states('sensor.processor_use') }}% · load {{ states('sensor.load_1m') }} / {{ states('sensor.load_5m') }} / {{ states('sensor.load_15m') }}
+          {{ states('sensor.processor_use') | float(0) | round(1) }}% · load
+          {{ states('sensor.load_1m') | float(0) | round(2) }} /
+          {{ states('sensor.load_5m') | float(0) | round(2) }} /
+          {{ states('sensor.load_15m') | float(0) | round(2) }}
         icon: mdi:cpu-64-bit
         icon_color: >-
           {% set u = states('sensor.processor_use') | float(0) %}
@@ -357,11 +380,16 @@ cards:
             green
           {% endif %}
         fill_container: true
+        multiline_secondary: true
       - type: custom:mushroom-template-card
         entity: sensor.system_monitor_memory_usage
         primary: Memory usage
         secondary: >-
-          {{ states('sensor.system_monitor_memory_usage') }}% · {{ states('sensor.memory_use') }} MiB used · {{ states('sensor.memory_free') }} MiB free
+          {% set used = states('sensor.memory_use') | float(0) %}
+          {% set free = states('sensor.memory_free') | float(0) %}
+          {{ states('sensor.system_monitor_memory_usage') | float(0) | round(1) }}% ·
+          {{ (used / 1024) | round(1) }} GiB used ·
+          {{ (free / 1024) | round(1) }} GiB free
         icon: mdi:memory
         icon_color: >-
           {% set u = states('sensor.system_monitor_memory_usage') | float(0) %}
@@ -378,7 +406,9 @@ cards:
         entity: sensor.disk_use_percent
         primary: Disk usage
         secondary: >-
-          {{ states('sensor.disk_use_percent') }}% · {{ states('sensor.system_monitor_disk_use') }} GiB used · {{ states('sensor.system_monitor_disk_free') }} GiB free
+          {{ states('sensor.disk_use_percent') | float(0) | round(1) }}% ·
+          {{ states('sensor.system_monitor_disk_use') | float(0) | round(1) }} GiB used ·
+          {{ states('sensor.system_monitor_disk_free') | float(0) | round(1) }} GiB free
         icon: mdi:harddisk
         icon_color: >-
           {% set d = states('sensor.disk_use_percent') | float(0) %}
@@ -395,7 +425,8 @@ cards:
         entity: sensor.plug_nuc_power
         primary: Power
         secondary: >-
-          {{ states('sensor.plug_nuc_power') }} W · cabinet {{ states('sensor.temperature_utility_cabinet') }} °C
+          {{ states('sensor.plug_nuc_power') | float(0) | round(1) }} W · cabinet
+          {{ states('sensor.temperature_utility_cabinet') | float(0) | round(1) }} °C
         icon: mdi:flash
         icon_color: blue
         fill_container: true
@@ -403,23 +434,53 @@ cards:
         entity: sensor.system_monitor_network_throughput_in_eno1
         primary: Network in
         secondary: >-
-          {{ states('sensor.system_monitor_network_throughput_in_eno1') }} MB/s · {{ states('sensor.system_monitor_network_in_eno1') }} MiB total
+          {% set total = states('sensor.system_monitor_network_in_eno1') | float(0) %}
+          {{ states('sensor.system_monitor_network_throughput_in_eno1') | float(0) | round(2) }} MB/s ·
+          {% if total >= 1048576 %}
+            {{ (total / 1048576) | round(2) }} TiB total
+          {% elif total >= 1024 %}
+            {{ (total / 1024) | round(1) }} GiB total
+          {% else %}
+            {{ total | round(0) | int }} MiB total
+          {% endif %}
         icon: mdi:download-network
         icon_color: green
         fill_container: true
+        multiline_secondary: true
       - type: custom:mushroom-template-card
         entity: sensor.system_monitor_network_throughput_out_eno1
         primary: Network out
         secondary: >-
-          {{ states('sensor.system_monitor_network_throughput_out_eno1') }} MB/s · {{ states('sensor.system_monitor_network_out_eno1') }} MiB total
+          {% set total = states('sensor.system_monitor_network_out_eno1') | float(0) %}
+          {{ states('sensor.system_monitor_network_throughput_out_eno1') | float(0) | round(2) }} MB/s ·
+          {% if total >= 1048576 %}
+            {{ (total / 1048576) | round(2) }} TiB total
+          {% elif total >= 1024 %}
+            {{ (total / 1024) | round(1) }} GiB total
+          {% else %}
+            {{ total | round(0) | int }} MiB total
+          {% endif %}
         icon: mdi:upload-network
         icon_color: blue
         fill_container: true
+        multiline_secondary: true
       - type: custom:mushroom-template-card
         entity: sensor.system_monitor_swap_usage
         primary: Swap usage
         secondary: >-
-          {{ states('sensor.system_monitor_swap_usage') }}% · {{ states('sensor.system_monitor_swap_use') }} MiB used · {{ states('sensor.system_monitor_swap_free') }} MiB free
+          {% set used = states('sensor.system_monitor_swap_use') | float(0) %}
+          {% set free = states('sensor.system_monitor_swap_free') | float(0) %}
+          {{ states('sensor.system_monitor_swap_usage') | float(0) | round(1) }}% ·
+          {% if used >= 1024 %}
+            {{ (used / 1024) | round(1) }} GiB used
+          {% else %}
+            {{ used | round(0) | int }} MiB used
+          {% endif %} ·
+          {% if free >= 1024 %}
+            {{ (free / 1024) | round(1) }} GiB free
+          {% else %}
+            {{ free | round(0) | int }} MiB free
+          {% endif %}
         icon: mdi:swap-horizontal
         icon_color: >-
           {% set s = states('sensor.system_monitor_swap_usage') | float(0) %}
@@ -432,22 +493,6 @@ cards:
           {% endif %}
         fill_container: true
         multiline_secondary: true
-      - type: custom:mushroom-template-card
-        entity: sensor.home_assistant_host_disk_used
-        primary: Host disk used
-        secondary: >-
-          {{ states('sensor.home_assistant_host_disk_used') }} GB / {{ states('sensor.home_assistant_host_disk_total') }} GB
-        icon: mdi:harddisk-plus
-        icon_color: blue
-        fill_container: true
-      - type: custom:mushroom-template-card
-        entity: sensor.home_assistant_host_disk_free
-        primary: Host disk free
-        secondary: >-
-          {{ states('sensor.home_assistant_host_disk_free') }} GB free
-        icon: mdi:harddisk-remove
-        icon_color: green
-        fill_container: true
       - type: custom:mushroom-template-card
         entity: sensor.uptime
         primary: Uptime
@@ -724,7 +769,17 @@ cards:
             entity: event.backup_automatic_backup
             primary: Automatic backup event
             secondary: >-
-              {{ state_attr('event.backup_automatic_backup', 'event_type') }} · {{ states('event.backup_automatic_backup') }}
+              {% set dt = states('event.backup_automatic_backup') %}
+              {{ state_attr('event.backup_automatic_backup', 'event_type') | default('unknown') | replace('_', ' ') | title }}
+              {% if dt not in ['unknown', 'unavailable', 'none', 'None', ''] %}·
+              {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+              {% if age < 3600 %}
+                {{ (age / 60) | int(0) }}m ago
+              {% elif age < 86400 %}
+                {{ (age / 3600) | int(0) }}h ago
+              {% else %}
+                {{ (age / 86400) | int(0) }}d ago
+              {% endif %}{% endif %}
             icon: mdi:calendar-check
             icon_color: >-
               {% if state_attr('event.backup_automatic_backup', 'event_type') == 'completed' %}
@@ -742,7 +797,19 @@ cards:
             entity: sensor.backup_last_attempted_automatic_backup
             primary: Last attempted backup
             secondary: >-
-              {{ states('sensor.backup_last_attempted_automatic_backup') }}
+              {% set dt = states('sensor.backup_last_attempted_automatic_backup') %}
+              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+                {% if age < 3600 %}
+                  {{ (age / 60) | int(0) }}m ago
+                {% elif age < 86400 %}
+                  {{ (age / 3600) | int(0) }}h ago
+                {% else %}
+                  {{ (age / 86400) | int(0) }}d ago
+                {% endif %}
+              {% endif %}
             icon: mdi:clock-outline
             icon_color: blue
             fill_container: true
@@ -750,7 +817,19 @@ cards:
             entity: sensor.backup_last_successful_automatic_backup
             primary: Last successful backup
             secondary: >-
-              {{ states('sensor.backup_last_successful_automatic_backup') }}
+              {% set dt = states('sensor.backup_last_successful_automatic_backup') %}
+              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+                {% if age < 3600 %}
+                  {{ (age / 60) | int(0) }}m ago
+                {% elif age < 86400 %}
+                  {{ (age / 3600) | int(0) }}h ago
+                {% else %}
+                  {{ (age / 86400) | int(0) }}d ago
+                {% endif %}
+              {% endif %}
             icon: mdi:check-decagram
             icon_color: green
             fill_container: true
@@ -775,7 +854,7 @@ cards:
             entity: sensor.auto_backup
             primary: Pending backups
             secondary: >-
-              {{ states('sensor.auto_backup') }} pending · {{ states('sensor.auto_backup_monitored_backups') }} monitored
+              {{ states('sensor.auto_backup') | int(0) }} pending · {{ states('sensor.auto_backup_monitored_backups') | int(0) }} monitored
             icon: mdi:package-variant-closed
             icon_color: >-
               {% if states('sensor.auto_backup') | int(0) > 0 %}
@@ -788,7 +867,7 @@ cards:
             entity: sensor.auto_backup_purgeable_backups
             primary: Purgeable backups
             secondary: >-
-              {{ states('sensor.auto_backup_purgeable_backups') }} purgeable
+              {{ states('sensor.auto_backup_purgeable_backups') | int(0) }} purgeable
             icon: mdi:package-variant-closed-remove
             icon_color: >-
               {% if states('sensor.auto_backup_purgeable_backups') | int(0) > 0 %}
@@ -801,14 +880,22 @@ cards:
             entity: sensor.auto_backup_last_failure
             primary: Last failure
             secondary: >-
-              {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable'] %}
+              {% set dt = states('sensor.auto_backup_last_failure') %}
+              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
                 No recent failure recorded
               {% else %}
-                {{ states('sensor.auto_backup_last_failure') }}
+                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+                {% if age < 3600 %}
+                  {{ (age / 60) | int(0) }}m ago
+                {% elif age < 86400 %}
+                  {{ (age / 3600) | int(0) }}h ago
+                {% else %}
+                  {{ (age / 86400) | int(0) }}d ago
+                {% endif %}
               {% endif %}
             icon: mdi:alert-circle
             icon_color: >-
-              {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable'] %}
+              {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable', 'none', 'None', ''] %}
                 green
               {% else %}
                 red
@@ -819,31 +906,33 @@ cards:
             entity: sensor.auto_backup_last_success
             primary: Last success
             secondary: >-
-              {% if states('sensor.auto_backup_last_success') in ['unknown', 'unavailable'] %}
+              {% set dt = states('sensor.auto_backup_last_success') %}
+              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
                 No success recorded
               {% else %}
-                {{ states('sensor.auto_backup_last_success') }}
+                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+                {% if age < 3600 %}
+                  {{ (age / 60) | int(0) }}m ago
+                {% elif age < 86400 %}
+                  {{ (age / 3600) | int(0) }}h ago
+                {% else %}
+                  {{ (age / 86400) | int(0) }}d ago
+                {% endif %}
               {% endif %}
             icon: mdi:check-circle
             icon_color: green
             fill_container: true
             multiline_secondary: true
-      - type: entities
-        title: Backup details
-        show_header_toggle: false
-        entities:
-          - entity: sensor.backup_backup_manager_state
-          - entity: event.backup_automatic_backup
-          - entity: sensor.backup_last_attempted_automatic_backup
-          - entity: sensor.backup_last_successful_automatic_backup
-          - entity: sensor.backup_next_scheduled_automatic_backup
-          - entity: binary_sensor.auto_backup_backup_status
-          - entity: sensor.auto_backup
-          - entity: sensor.auto_backup_monitored_backups
-          - entity: sensor.auto_backup_purgeable_backups
-          - entity: sensor.auto_backup_last_failure
-          - entity: sensor.auto_backup_last_success
-          - entity: button.auto_backup_purge_backups
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: button
+            entity: button.auto_backup_purge_backups
+            name: Purge old backups
+            icon: mdi:delete-sweep
+            tap_action:
+              action: toggle
 
   ###########################################################################
   # WATCHMAN
@@ -874,7 +963,7 @@ cards:
             entity: sensor.watchman_missing_entities
             primary: Missing entities
             secondary: >-
-              {{ states('sensor.watchman_missing_entities') }} items
+              {{ states('sensor.watchman_missing_entities') | int(0) }} items
             icon: mdi:shield-alert
             icon_color: >-
               {% if states('sensor.watchman_missing_entities') | int(0) > 0 %}
@@ -887,7 +976,7 @@ cards:
             entity: sensor.watchman_missing_actions
             primary: Missing actions
             secondary: >-
-              {{ states('sensor.watchman_missing_actions') }} items
+              {{ states('sensor.watchman_missing_actions') | int(0) }} items
             icon: mdi:shield-half-full
             icon_color: >-
               {% if states('sensor.watchman_missing_actions') | int(0) > 0 %}
@@ -900,7 +989,7 @@ cards:
             entity: sensor.watchman_processed_files
             primary: Processed files
             secondary: >-
-              {{ states('sensor.watchman_processed_files') }} files
+              {{ states('sensor.watchman_processed_files') | int(0) }} files
             icon: mdi:file-document-check
             icon_color: blue
             fill_container: true
@@ -908,7 +997,7 @@ cards:
             entity: sensor.watchman_ignored_files
             primary: Ignored files
             secondary: >-
-              {{ states('sensor.watchman_ignored_files') }} files
+              {{ states('sensor.watchman_ignored_files') | int(0) }} files
             icon: mdi:file-remove
             icon_color: blue
             fill_container: true
@@ -916,7 +1005,7 @@ cards:
             entity: sensor.watchman_parse_duration
             primary: Parse duration
             secondary: >-
-              {{ states('sensor.watchman_parse_duration') }} s
+              {{ states('sensor.watchman_parse_duration') | float(0) | round(2) }} s
             icon: mdi:timer-outline
             icon_color: blue
             fill_container: true
@@ -924,7 +1013,19 @@ cards:
             entity: sensor.watchman_last_parse
             primary: Last parse
             secondary: >-
-              {{ states('sensor.watchman_last_parse') }}
+              {% set dt = states('sensor.watchman_last_parse') %}
+              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+                {% if age < 3600 %}
+                  {{ (age / 60) | int(0) }}m ago
+                {% elif age < 86400 %}
+                  {{ (age / 3600) | int(0) }}h ago
+                {% else %}
+                  {{ (age / 86400) | int(0) }}d ago
+                {% endif %}
+              {% endif %}
             icon: mdi:calendar-clock
             icon_color: green
             fill_container: true
@@ -932,23 +1033,32 @@ cards:
             entity: sensor.watchman_last_update
             primary: Last update
             secondary: >-
-              {{ states('sensor.watchman_last_update') }}
+              {% set dt = states('sensor.watchman_last_update') %}
+              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+                {% if age < 3600 %}
+                  {{ (age / 60) | int(0) }}m ago
+                {% elif age < 86400 %}
+                  {{ (age / 3600) | int(0) }}h ago
+                {% else %}
+                  {{ (age / 86400) | int(0) }}d ago
+                {% endif %}
+              {% endif %}
             icon: mdi:calendar-clock
             icon_color: green
             fill_container: true
-      - type: entities
-        title: Watchman details
-        show_header_toggle: false
-        entities:
-          - entity: sensor.watchman_status
-          - entity: sensor.watchman_missing_entities
-          - entity: sensor.watchman_missing_actions
-          - entity: sensor.watchman_processed_files
-          - entity: sensor.watchman_ignored_files
-          - entity: sensor.watchman_parse_duration
-          - entity: sensor.watchman_last_parse
-          - entity: sensor.watchman_last_update
-          - entity: button.watchman_create_report_file
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: button
+            entity: button.watchman_create_report_file
+            name: Create Watchman report
+            icon: mdi:file-document-outline
+            tap_action:
+              action: toggle
 
   ###########################################################################
   # CONTAINER STATS (KEEP EXISTING ENTITIES)
