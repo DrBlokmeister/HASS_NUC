@@ -101,32 +101,32 @@ cards:
         tap_action:
           action: more-info
 
-      - type: custom:mushroom-template-card
-        entity: sensor.auto_backup
-        primary: Auto Backup
-        secondary: >-
-          {% set pending = states('sensor.auto_backup') | int(0) %}
-          {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
-            Backup currently running
-          {% elif pending > 0 %}
-            {{ pending }} pending · {{ states('sensor.auto_backup_purgeable_backups') }} purgeable
-          {% else %}
-            No pending backups
-          {% endif %}
-        icon: mdi:package-variant-closed
-        icon_color: >-
-          {% set pending = states('sensor.auto_backup') | int(0) %}
-          {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
-            amber
-          {% elif pending > 0 %}
-            amber
-          {% else %}
-            green
-          {% endif %}
-        multiline_secondary: true
-        fill_container: true
-        tap_action:
-          action: more-info
+      # - type: custom:mushroom-template-card
+      #   entity: sensor.auto_backup
+      #   primary: Auto Backup
+      #   secondary: >-
+      #     {% set pending = states('sensor.auto_backup') | int(0) %}
+      #     {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+      #       Backup currently running
+      #     {% elif pending > 0 %}
+      #       {{ pending }} pending · {{ states('sensor.auto_backup_purgeable_backups') }} purgeable
+      #     {% else %}
+      #       No pending backups
+      #     {% endif %}
+      #   icon: mdi:package-variant-closed
+      #   icon_color: >-
+      #     {% set pending = states('sensor.auto_backup') | int(0) %}
+      #     {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+      #       amber
+      #     {% elif pending > 0 %}
+      #       amber
+      #     {% else %}
+      #       green
+      #     {% endif %}
+      #   multiline_secondary: true
+      #   fill_container: true
+      #   tap_action:
+      #     action: more-info
 
       - type: custom:mushroom-template-card
         entity: sensor.disk_use_percent
@@ -263,12 +263,12 @@ cards:
         icon: mdi:file-document-outline
         tap_action:
           action: toggle
-      - type: button
-        entity: button.auto_backup_purge_backups
-        name: Purge Backups
-        icon: mdi:close-circle
-        tap_action:
-          action: toggle
+      # - type: button
+      #   entity: button.auto_backup_purge_backups
+      #   name: Purge Backups
+      #   icon: mdi:close-circle
+      #   tap_action:
+      #     action: toggle
 
   - type: vertical-stack
     cards:
@@ -743,196 +743,196 @@ cards:
   ###########################################################################
   # BACKUPS
   ###########################################################################
-  - type: custom:collapsable-cards
-    title: Backups
-    cards:
-      - type: grid
-        square: false
-        columns: 2
-        cards:
-          - type: custom:mushroom-template-card
-            entity: sensor.backup_backup_manager_state
-            primary: Backup manager state
-            secondary: >-
-              {{ states('sensor.backup_backup_manager_state') }}
-            icon: mdi:backup-restore
-            icon_color: >-
-              {% if states('sensor.backup_backup_manager_state') == 'idle' %}
-                green
-              {% elif states('sensor.backup_backup_manager_state') in ['create_backup', 'receive_backup', 'restore_backup'] %}
-                amber
-              {% else %}
-                red
-              {% endif %}
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: event.backup_automatic_backup
-            primary: Automatic backup event
-            secondary: >-
-              {% set dt = states('event.backup_automatic_backup') %}
-              {{ state_attr('event.backup_automatic_backup', 'event_type') | default('unknown') | replace('_', ' ') | title }}
-              {% if dt not in ['unknown', 'unavailable', 'none', 'None', ''] %}·
-              {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
-              {% if age < 3600 %}
-                {{ (age / 60) | int(0) }}m ago
-              {% elif age < 86400 %}
-                {{ (age / 3600) | int(0) }}h ago
-              {% else %}
-                {{ (age / 86400) | int(0) }}d ago
-              {% endif %}{% endif %}
-            icon: mdi:calendar-check
-            icon_color: >-
-              {% if state_attr('event.backup_automatic_backup', 'event_type') == 'completed' %}
-                green
-              {% elif state_attr('event.backup_automatic_backup', 'event_type') == 'in_progress' %}
-                amber
-              {% elif state_attr('event.backup_automatic_backup', 'event_type') == 'failed' %}
-                red
-              {% else %}
-                blue
-              {% endif %}
-            fill_container: true
-            multiline_secondary: true
-          - type: custom:mushroom-template-card
-            entity: sensor.backup_last_attempted_automatic_backup
-            primary: Last attempted backup
-            secondary: >-
-              {% set dt = states('sensor.backup_last_attempted_automatic_backup') %}
-              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
-                Unavailable
-              {% else %}
-                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
-                {% if age < 3600 %}
-                  {{ (age / 60) | int(0) }}m ago
-                {% elif age < 86400 %}
-                  {{ (age / 3600) | int(0) }}h ago
-                {% else %}
-                  {{ (age / 86400) | int(0) }}d ago
-                {% endif %}
-              {% endif %}
-            icon: mdi:clock-outline
-            icon_color: blue
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: sensor.backup_last_successful_automatic_backup
-            primary: Last successful backup
-            secondary: >-
-              {% set dt = states('sensor.backup_last_successful_automatic_backup') %}
-              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
-                Unavailable
-              {% else %}
-                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
-                {% if age < 3600 %}
-                  {{ (age / 60) | int(0) }}m ago
-                {% elif age < 86400 %}
-                  {{ (age / 3600) | int(0) }}h ago
-                {% else %}
-                  {{ (age / 86400) | int(0) }}d ago
-                {% endif %}
-              {% endif %}
-            icon: mdi:check-decagram
-            icon_color: green
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: binary_sensor.auto_backup_backup_status
-            primary: Auto Backup running
-            secondary: >-
-              {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
-                Running
-              {% else %}
-                Idle
-              {% endif %}
-            icon: mdi:progress-clock
-            icon_color: >-
-              {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
-                amber
-              {% else %}
-                green
-              {% endif %}
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: sensor.auto_backup
-            primary: Pending backups
-            secondary: >-
-              {{ states('sensor.auto_backup') | int(0) }} pending · {{ states('sensor.auto_backup_monitored_backups') | int(0) }} monitored
-            icon: mdi:package-variant-closed
-            icon_color: >-
-              {% if states('sensor.auto_backup') | int(0) > 0 %}
-                amber
-              {% else %}
-                green
-              {% endif %}
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: sensor.auto_backup_purgeable_backups
-            primary: Purgeable backups
-            secondary: >-
-              {{ states('sensor.auto_backup_purgeable_backups') | int(0) }} purgeable
-            icon: mdi:package-variant-closed-remove
-            icon_color: >-
-              {% if states('sensor.auto_backup_purgeable_backups') | int(0) > 0 %}
-                amber
-              {% else %}
-                green
-              {% endif %}
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: sensor.auto_backup_last_failure
-            primary: Last failure
-            secondary: >-
-              {% set dt = states('sensor.auto_backup_last_failure') %}
-              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
-                No recent failure recorded
-              {% else %}
-                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
-                {% if age < 3600 %}
-                  {{ (age / 60) | int(0) }}m ago
-                {% elif age < 86400 %}
-                  {{ (age / 3600) | int(0) }}h ago
-                {% else %}
-                  {{ (age / 86400) | int(0) }}d ago
-                {% endif %}
-              {% endif %}
-            icon: mdi:alert-circle
-            icon_color: >-
-              {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable', 'none', 'None', ''] %}
-                green
-              {% else %}
-                red
-              {% endif %}
-            fill_container: true
-            multiline_secondary: true
-          - type: custom:mushroom-template-card
-            entity: sensor.auto_backup_last_success
-            primary: Last success
-            secondary: >-
-              {% set dt = states('sensor.auto_backup_last_success') %}
-              {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
-                No success recorded
-              {% else %}
-                {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
-                {% if age < 3600 %}
-                  {{ (age / 60) | int(0) }}m ago
-                {% elif age < 86400 %}
-                  {{ (age / 3600) | int(0) }}h ago
-                {% else %}
-                  {{ (age / 86400) | int(0) }}d ago
-                {% endif %}
-              {% endif %}
-            icon: mdi:check-circle
-            icon_color: green
-            fill_container: true
-            multiline_secondary: true
-      - type: grid
-        square: false
-        columns: 2
-        cards:
-          - type: button
-            entity: button.auto_backup_purge_backups
-            name: Purge old backups
-            icon: mdi:delete-sweep
-            tap_action:
-              action: toggle
+  # - type: custom:collapsable-cards
+  #   title: Backups
+  #   cards:
+  #     - type: grid
+  #       square: false
+  #       columns: 2
+  #       cards:
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.backup_backup_manager_state
+  #           primary: Backup manager state
+  #           secondary: >-
+  #             {{ states('sensor.backup_backup_manager_state') }}
+  #           icon: mdi:backup-restore
+  #           icon_color: >-
+  #             {% if states('sensor.backup_backup_manager_state') == 'idle' %}
+  #               green
+  #             {% elif states('sensor.backup_backup_manager_state') in ['create_backup', 'receive_backup', 'restore_backup'] %}
+  #               amber
+  #             {% else %}
+  #               red
+  #             {% endif %}
+  #           fill_container: true
+  #         - type: custom:mushroom-template-card
+  #           entity: event.backup_automatic_backup
+  #           primary: Automatic backup event
+  #           secondary: >-
+  #             {% set dt = states('event.backup_automatic_backup') %}
+  #             {{ state_attr('event.backup_automatic_backup', 'event_type') | default('unknown') | replace('_', ' ') | title }}
+  #             {% if dt not in ['unknown', 'unavailable', 'none', 'None', ''] %}·
+  #             {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+  #             {% if age < 3600 %}
+  #               {{ (age / 60) | int(0) }}m ago
+  #             {% elif age < 86400 %}
+  #               {{ (age / 3600) | int(0) }}h ago
+  #             {% else %}
+  #               {{ (age / 86400) | int(0) }}d ago
+  #             {% endif %}{% endif %}
+  #           icon: mdi:calendar-check
+  #           icon_color: >-
+  #             {% if state_attr('event.backup_automatic_backup', 'event_type') == 'completed' %}
+  #               green
+  #             {% elif state_attr('event.backup_automatic_backup', 'event_type') == 'in_progress' %}
+  #               amber
+  #             {% elif state_attr('event.backup_automatic_backup', 'event_type') == 'failed' %}
+  #               red
+  #             {% else %}
+  #               blue
+  #             {% endif %}
+  #           fill_container: true
+  #           multiline_secondary: true
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.backup_last_attempted_automatic_backup
+  #           primary: Last attempted backup
+  #           secondary: >-
+  #             {% set dt = states('sensor.backup_last_attempted_automatic_backup') %}
+  #             {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+  #               Unavailable
+  #             {% else %}
+  #               {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+  #               {% if age < 3600 %}
+  #                 {{ (age / 60) | int(0) }}m ago
+  #               {% elif age < 86400 %}
+  #                 {{ (age / 3600) | int(0) }}h ago
+  #               {% else %}
+  #                 {{ (age / 86400) | int(0) }}d ago
+  #               {% endif %}
+  #             {% endif %}
+  #           icon: mdi:clock-outline
+  #           icon_color: blue
+  #           fill_container: true
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.backup_last_successful_automatic_backup
+  #           primary: Last successful backup
+  #           secondary: >-
+  #             {% set dt = states('sensor.backup_last_successful_automatic_backup') %}
+  #             {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+  #               Unavailable
+  #             {% else %}
+  #               {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+  #               {% if age < 3600 %}
+  #                 {{ (age / 60) | int(0) }}m ago
+  #               {% elif age < 86400 %}
+  #                 {{ (age / 3600) | int(0) }}h ago
+  #               {% else %}
+  #                 {{ (age / 86400) | int(0) }}d ago
+  #               {% endif %}
+  #             {% endif %}
+  #           icon: mdi:check-decagram
+  #           icon_color: green
+  #           fill_container: true
+  #         - type: custom:mushroom-template-card
+  #           entity: binary_sensor.auto_backup_backup_status
+  #           primary: Auto Backup running
+  #           secondary: >-
+  #             {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+  #               Running
+  #             {% else %}
+  #               Idle
+  #             {% endif %}
+  #           icon: mdi:progress-clock
+  #           icon_color: >-
+  #             {% if is_state('binary_sensor.auto_backup_backup_status', 'on') %}
+  #               amber
+  #             {% else %}
+  #               green
+  #             {% endif %}
+  #           fill_container: true
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.auto_backup
+  #           primary: Pending backups
+  #           secondary: >-
+  #             {{ states('sensor.auto_backup') | int(0) }} pending · {{ states('sensor.auto_backup_monitored_backups') | int(0) }} monitored
+  #           icon: mdi:package-variant-closed
+  #           icon_color: >-
+  #             {% if states('sensor.auto_backup') | int(0) > 0 %}
+  #               amber
+  #             {% else %}
+  #               green
+  #             {% endif %}
+  #           fill_container: true
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.auto_backup_purgeable_backups
+  #           primary: Purgeable backups
+  #           secondary: >-
+  #             {{ states('sensor.auto_backup_purgeable_backups') | int(0) }} purgeable
+  #           icon: mdi:package-variant-closed-remove
+  #           icon_color: >-
+  #             {% if states('sensor.auto_backup_purgeable_backups') | int(0) > 0 %}
+  #               amber
+  #             {% else %}
+  #               green
+  #             {% endif %}
+  #           fill_container: true
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.auto_backup_last_failure
+  #           primary: Last failure
+  #           secondary: >-
+  #             {% set dt = states('sensor.auto_backup_last_failure') %}
+  #             {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+  #               No recent failure recorded
+  #             {% else %}
+  #               {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+  #               {% if age < 3600 %}
+  #                 {{ (age / 60) | int(0) }}m ago
+  #               {% elif age < 86400 %}
+  #                 {{ (age / 3600) | int(0) }}h ago
+  #               {% else %}
+  #                 {{ (age / 86400) | int(0) }}d ago
+  #               {% endif %}
+  #             {% endif %}
+  #           icon: mdi:alert-circle
+  #           icon_color: >-
+  #             {% if states('sensor.auto_backup_last_failure') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+  #               green
+  #             {% else %}
+  #               red
+  #             {% endif %}
+  #           fill_container: true
+  #           multiline_secondary: true
+  #         - type: custom:mushroom-template-card
+  #           entity: sensor.auto_backup_last_success
+  #           primary: Last success
+  #           secondary: >-
+  #             {% set dt = states('sensor.auto_backup_last_success') %}
+  #             {% if dt in ['unknown', 'unavailable', 'none', 'None', ''] %}
+  #               No success recorded
+  #             {% else %}
+  #               {% set age = (as_timestamp(now()) - as_timestamp(dt)) | int(0) %}
+  #               {% if age < 3600 %}
+  #                 {{ (age / 60) | int(0) }}m ago
+  #               {% elif age < 86400 %}
+  #                 {{ (age / 3600) | int(0) }}h ago
+  #               {% else %}
+  #                 {{ (age / 86400) | int(0) }}d ago
+  #               {% endif %}
+  #             {% endif %}
+  #           icon: mdi:check-circle
+  #           icon_color: green
+  #           fill_container: true
+  #           multiline_secondary: true
+  #     - type: grid
+  #       square: false
+  #       columns: 2
+  #       cards:
+  #         - type: button
+  #           entity: button.auto_backup_purge_backups
+  #           name: Purge old backups
+  #           icon: mdi:delete-sweep
+  #           tap_action:
+  #             action: toggle
 
   ###########################################################################
   # WATCHMAN
