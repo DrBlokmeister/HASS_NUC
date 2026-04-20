@@ -6,9 +6,20 @@ esphome:
   comment: ESP32C3
   platformio_options:
     board_build.f_cpu: 80000000L  # Set CPU frequency to 80MHz
+  on_boot:
+    priority: -100  # Run after most other components have initialized
+    then:
+      - light.turn_on:
+          id: ledstrip
+          effect: "Rainbow Swirl"
+      - delay: 5s
+      - light.turn_off:
+          id: ledstrip
 
 esp32:
   board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
 
 packages:
   wifi: !include /config/esphome/common/wifi.yaml
@@ -25,18 +36,17 @@ power_supply:
   - id: led_power_control
     pin: GPIO18  # GPIO pin connected to the gate of the IRLZ34N via 100 Ohm
 
-
 light:
-  - platform: neopixelbus
-    type: GRB
-    variant: WS2812X
-    pin: GPIO06
+  - platform: esp32_rmt_led_strip
+    chipset: WS2812
+    rgb_order: GRB
+    pin: GPIO6
     num_leds: 91
-    power_supply: led_power_control  # This controls the MOSFET
+    power_supply: led_power_control
     gamma_correct: 1.3
     color_correct: [100%, 80%, 80%]
     name: "${device_name}"
-    id: led_strip
+    id: ledstrip
     internal: false
     effects:
       - e131:
@@ -52,17 +62,14 @@ light:
             - red: 100%
               green: 0%
               blue: 0%
-              white: 0%
               num_leds: 91
             - red: 0%
               green: 100%
               blue: 0%
-              white: 0%
               num_leds: 91
             - red: 0%
               green: 0%
               blue: 100%
-              white: 0%
               num_leds: 91
           add_led_interval: 100ms
       - addressable_scan:
@@ -76,41 +83,32 @@ light:
             for (int i = it.size() - 1; i > 0; i--) {
               it[i] = it[i - 1].get();
             }
-            it[0] = ESPColor::random_color();  // Correct random color function
+            it[0] = Color::random_color();
       - addressable_lambda:
           name: "Random Sparkle"
           update_interval: 50ms
           lambda: |-
-            it.all().fade_to_black(50);  // Correct fading method
+            it.all().fade_to_black(50);
             if (random_uint32() % 10 > 8) {
-              it[random_uint32() % it.size()] = ESPColor::random_color();  // Correct random color function
+              it[random_uint32() % it.size()] = Color::random_color();
             }
       - addressable_lambda:
           name: "Gradient Shift"
           update_interval: 50ms
           lambda: |-
-            static uint16_t start_index = 0;
+            static uint8_t start_hue = 0;
             it.shift_right(1);
-            start_index++;
-            if (start_index >= it.size()) {
-              start_index = 0;
-            }
-            float hue = float(start_index) / it.size();
-            int hue_deg = int(hue * 360);  // Convert to degrees
-            int saturation = 255;  // Maximum saturation
-            int value = 255;       // Maximum brightness
-            // Create an HSV color and set it to the first LED
-            ESPHSVColor hsv_color(hue_deg, saturation, value);
-            it[0].set_hsv(hsv_color);
+            start_hue++;
+            it[0] = ESPHSVColor(start_hue, 255, 255);
 
-  # Define Partition 1: First 20 LEDs
+  # Partition 1: First 25 LEDs (0-24)
   - platform: partition
     name: "LED Strip - Soldering Section"
     id: soldering_section
     default_transition_length: 0s
     restore_mode: ALWAYS_OFF
     segments:
-      - id: led_strip
+      - id: ledstrip
         from: 0
         to: 24
     effects:
@@ -127,7 +125,7 @@ light:
     default_transition_length: 0s
     restore_mode: ALWAYS_OFF
     segments:
-      - id: led_strip
+      - id: ledstrip
         from: 25
         to: 90
     effects:
@@ -144,18 +142,15 @@ light:
             - red: 100%
               green: 0%
               blue: 0%
-              white: 0%
-              num_leds: 91
+              num_leds: 66
             - red: 0%
               green: 100%
               blue: 0%
-              white: 0%
-              num_leds: 91
+              num_leds: 66
             - red: 0%
               green: 0%
               blue: 100%
-              white: 0%
-              num_leds: 91
+              num_leds: 66
           add_led_interval: 100ms
       - addressable_scan:
           name: "Ping Pong"
@@ -168,29 +163,20 @@ light:
             for (int i = it.size() - 1; i > 0; i--) {
               it[i] = it[i - 1].get();
             }
-            it[0] = ESPColor::random_color();  // Correct random color function
+            it[0] = Color::random_color();
       - addressable_lambda:
           name: "Random Sparkle"
           update_interval: 50ms
           lambda: |-
-            it.all().fade_to_black(50);  // Correct fading method
+            it.all().fade_to_black(50);
             if (random_uint32() % 10 > 8) {
-              it[random_uint32() % it.size()] = ESPColor::random_color();  // Correct random color function
+              it[random_uint32() % it.size()] = Color::random_color();
             }
       - addressable_lambda:
           name: "Gradient Shift"
           update_interval: 50ms
           lambda: |-
-            static uint16_t start_index = 0;
+            static uint8_t start_hue = 0;
             it.shift_right(1);
-            start_index++;
-            if (start_index >= it.size()) {
-              start_index = 0;
-            }
-            float hue = float(start_index) / it.size();
-            int hue_deg = int(hue * 360);  // Convert to degrees
-            int saturation = 255;  // Maximum saturation
-            int value = 255;       // Maximum brightness
-            // Create an HSV color and set it to the first LED
-            ESPHSVColor hsv_color(hue_deg, saturation, value);
-            it[0].set_hsv(hsv_color);
+            start_hue++;
+            it[0] = ESPHSVColor(start_hue, 255, 255);
