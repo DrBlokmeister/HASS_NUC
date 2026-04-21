@@ -175,164 +175,738 @@ cards:
   - type: custom:collapsable-cards
     title: BlokmeisterP9Pro
     cards:
-      - type: map
-        #title: BlokmeisterP9Pro
-        default_zoom: 15
-        hours_to_show: 24
-        entities:
-          - device_tracker.blokmeisterp9pro
+      - type: vertical-stack
+        cards:
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_battery_level
+                primary: Battery
+                secondary: >-
+                  {% set lvl = states('sensor.blokmeisterp9pro_battery_level') %}
+                  {% if lvl in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unavailable
+                  {% else %}
+                    {{ lvl | int(0) }}%
+                  {% endif %}
+                icon: mdi:battery
+                icon_color: >-
+                  {% set lvl = states('sensor.blokmeisterp9pro_battery_level') | int(0) %}
+                  {% if lvl <= 15 %}
+                    red
+                  {% elif lvl <= 35 %}
+                    orange
+                  {% else %}
+                    green
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_geocoded_location
+                primary: Location
+                secondary: >-
+                  {% set loc = states('sensor.blokmeisterp9pro_geocoded_location') %}
+                  {% if loc in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unknown
+                  {% else %}
+                    {{ loc }}
+                  {% endif %}
+                icon: mdi:map-marker
+                icon_color: blue
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_wi_fi_connection
+                primary: Wi-Fi
+                secondary: >-
+                  {% set ssid = states('sensor.blokmeisterp9pro_wi_fi_connection') %}
+                  {% set rssi = states('sensor.blokmeisterp9pro_wi_fi_signal_strength') %}
+                  {% if ssid in ['unknown', 'unavailable', 'none', 'None', '', '<not connected>'] %}
+                    Not connected
+                  {% else %}
+                    {{ ssid }}{% if rssi not in ['unknown', 'unavailable', 'none', 'None', ''] %} · {{ rssi }} dBm{% endif %}
+                  {% endif %}
+                icon: mdi:wifi
+                icon_color: >-
+                  {% set rssi = states('sensor.blokmeisterp9pro_wi_fi_signal_strength') | int(-200) %}
+                  {% if rssi >= -60 %}
+                    green
+                  {% elif rssi >= -72 %}
+                    orange
+                  {% else %}
+                    red
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_data_network_type_sim_1
+                primary: Mobile
+                secondary: >-
+                  {% set net = states('sensor.blokmeisterp9pro_data_network_type_sim_1') %}
+                  {% set sig = states('sensor.blokmeisterp9pro_signal_strength_sim_1') %}
+                  {% if net in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    No network info
+                  {% else %}
+                    {{ net }}{% if sig not in ['unknown', 'unavailable', 'none', 'None', ''] %} · {{ sig }}{% endif %}
+                  {% endif %}
+                icon: mdi:signal
+                icon_color: green
+                tap_action:
+                  action: more-info
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: template
+                entity: sensor.blokmeisterp9pro_battery_state
+                icon: >-
+                  {% set s = states('sensor.blokmeisterp9pro_battery_state') | lower %}
+                  {% if 'charging' in s %}
+                    mdi:lightning-bolt
+                  {% elif 'full' in s %}
+                    mdi:battery-check
+                  {% else %}
+                    mdi:battery
+                  {% endif %}
+                icon_color: >-
+                  {% set s = states('sensor.blokmeisterp9pro_battery_state') | lower %}
+                  {% if 'charging' in s or 'full' in s %}
+                    green
+                  {% else %}
+                    grey
+                  {% endif %}
+                content: >-
+                  {% set s = states('sensor.blokmeisterp9pro_battery_state') %}
+                  {{ s | replace('_', ' ') | title if s not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Battery unknown' }}
+              - type: template
+                entity: binary_sensor.blokmeisterp9pro_wi_fi_state
+                icon: mdi:wifi
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.blokmeisterp9pro_wi_fi_state', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'Wi-Fi on' if is_state('binary_sensor.blokmeisterp9pro_wi_fi_state', 'on') else 'Wi-Fi off' }}
+              - type: template
+                entity: binary_sensor.blokmeisterp9pro_mobile_data
+                icon: mdi:signal
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.blokmeisterp9pro_mobile_data', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'Mobile on' if is_state('binary_sensor.blokmeisterp9pro_mobile_data', 'on') else 'Mobile off' }}
+              - type: template
+                entity: binary_sensor.blokmeisterp9pro_high_accuracy_mode
+                icon: mdi:crosshairs-gps
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.blokmeisterp9pro_high_accuracy_mode', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'High accuracy' if is_state('binary_sensor.blokmeisterp9pro_high_accuracy_mode', 'on') else 'Normal accuracy' }}
+          - type: map
+            aspect_ratio: 16:9
+            default_zoom: 15
+            hours_to_show: 24
+            entities:
+              - device_tracker.blokmeisterp9pro
+          - type: grid
+            columns: 3
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_charger_type
+                primary: Charger
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_charger_type') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Not charging / unknown' }}
+                icon: mdi:power-plug
+                icon_color: teal
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_battery_health
+                primary: Health
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_battery_health') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:heart-pulse
+                icon_color: green
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_battery_cycle_count
+                primary: Cycle count
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_battery_cycle_count') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:battery-sync
+                icon_color: amber
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_wi_fi_link_speed
+                primary: Link speed
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_wi_fi_link_speed') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:speedometer
+                icon_color: blue
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_wi_fi_frequency
+                primary: Frequency
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_wi_fi_frequency') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:wifi-marker
+                icon_color: cyan
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_wi_fi_ip_address
+                primary: Wi-Fi IP
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_wi_fi_ip_address') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:ip-network
+                icon_color: indigo
+                multiline_secondary: true
+              - type: custom:mushroom-template-card
+                entity: sensor.sander_phone_ap_name
+                primary: AP name
+                secondary: >-
+                  {% set v = states('sensor.sander_phone_ap_name') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:access-point
+                icon_color: green
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_wi_fi_bssid
+                primary: BSSID
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_wi_fi_bssid') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:identifier
+                icon_color: grey
+                multiline_secondary: true
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_data_network_type_sim_2
+                primary: Network type SIM 2
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_data_network_type_sim_2') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:sim
+                icon_color: deep-orange
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_signal_strength_sim_2
+                primary: Signal SIM 2
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_signal_strength_sim_2') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:signal
+                icon_color: orange
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_public_ip_address
+                primary: Public IP
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_public_ip_address') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:ip-outline
+                icon_color: purple
+                multiline_secondary: true
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_app_importance
+                primary: App importance
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_app_importance') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:application-cog
+                icon_color: blue-grey
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.blokmeisterp9pro_app_inactive
+                primary: App inactive
+                secondary: >-
+                  {{ 'Yes' if is_state('binary_sensor.blokmeisterp9pro_app_inactive', 'on') else 'No' }}
+                icon: mdi:pause-circle
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.blokmeisterp9pro_app_inactive', 'on') else 'green' }}
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_high_accuracy_update_interval
+                primary: High accuracy interval
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_high_accuracy_update_interval') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:timer-cog
+                icon_color: amber
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterp9pro_last_update_trigger
+                primary: Last update trigger
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterp9pro_last_update_trigger') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:update
+                icon_color: cyan
+                multiline_secondary: true
 
-      - type: entities
-        title: Connectivity
-        show_header_toggle: false
-        entities:
-          - entity: sensor.blokmeisterp9pro_geocoded_location
-            name: Location (decoded)
-
-          - type: section
-            label: Wi-Fi
-          - entity: binary_sensor.blokmeisterp9pro_wi_fi_state
-            name: Wi-Fi enabled
-          - entity: sensor.blokmeisterp9pro_wi_fi_connection
-            name: Wi-Fi SSID
-          - entity: sensor.blokmeisterp9pro_wi_fi_signal_strength
-            name: Wi-Fi signal (RSSI)
-          - entity: sensor.blokmeisterp9pro_wi_fi_link_speed
-            name: Wi-Fi link speed
-          - entity: sensor.blokmeisterp9pro_wi_fi_frequency
-            name: Wi-Fi frequency
-          - entity: sensor.blokmeisterp9pro_wi_fi_ip_address
-            name: Wi-Fi IP
-          - entity: sensor.blokmeisterp9pro_wi_fi_bssid
-            name: Wi-Fi BSSID
-          - entity: sensor.sander_phone_ap_name
-            name: Wi-Fi AP Name
-
-          - type: section
-            label: Mobile / SIM
-          - entity: binary_sensor.blokmeisterp9pro_mobile_data
-            name: Mobile data enabled
-          - entity: sensor.blokmeisterp9pro_data_network_type_sim_1
-            name: Network type (SIM 1)
-          - entity: sensor.blokmeisterp9pro_data_network_type_sim_2
-            name: Network type (SIM 2)
-          - entity: sensor.blokmeisterp9pro_signal_strength_sim_1
-            name: Signal strength (SIM 1)
-          - entity: sensor.blokmeisterp9pro_signal_strength_sim_2
-            name: Signal strength (SIM 2)
-          - entity: sensor.blokmeisterp9pro_public_ip_address
-            name: Public IP
-
-      - type: entities
-        title: Battery
-        show_header_toggle: false
-        entities:
-          - entity: sensor.blokmeisterp9pro_battery_level
-            name: Battery level
-          - entity: sensor.blokmeisterp9pro_battery_state
-            name: Battery state
-          - entity: sensor.blokmeisterp9pro_charger_type
-            name: Charger type
-          - entity: sensor.blokmeisterp9pro_battery_health
-            name: Battery health
-          - entity: sensor.blokmeisterp9pro_battery_cycle_count
-            name: Cycle count
-
-      - type: entities
-        title: App status
-        show_header_toggle: false
-        entities:
-          - entity: sensor.blokmeisterp9pro_app_importance
-            name: App importance
-          - entity: binary_sensor.blokmeisterp9pro_app_inactive
-            name: App inactive
-          - entity: binary_sensor.blokmeisterp9pro_high_accuracy_mode
-            name: High accuracy mode
-          - entity: sensor.blokmeisterp9pro_high_accuracy_update_interval
-            name: High accuracy interval
-          - entity: sensor.blokmeisterp9pro_last_update_trigger
-            name: Last update trigger
-
-
-  # =========================
-  # Pixel 9a (TamaraPhoneP9a)
-  # =========================
   - type: custom:collapsable-cards
     title: TamaraPhoneP9a
     cards:
-      - type: map
-        #title: TamaraPhoneP9a (Pixel 9a)
-        default_zoom: 15
-        hours_to_show: 24
-        entities:
-          - device_tracker.pixel_9a_3
+      - type: vertical-stack
+        cards:
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_battery_level
+                primary: Battery
+                secondary: >-
+                  {% set lvl = states('sensor.pixel_9a_battery_level') %}
+                  {% if lvl in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unavailable
+                  {% else %}
+                    {{ lvl | int(0) }}%
+                  {% endif %}
+                icon: mdi:battery
+                icon_color: >-
+                  {% set lvl = states('sensor.pixel_9a_battery_level') | int(0) %}
+                  {% if lvl <= 15 %}
+                    red
+                  {% elif lvl <= 35 %}
+                    orange
+                  {% else %}
+                    green
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_geocoded_location
+                primary: Location
+                secondary: >-
+                  {% set loc = states('sensor.pixel_9a_geocoded_location') %}
+                  {% if loc in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unknown
+                  {% else %}
+                    {{ loc }}
+                  {% endif %}
+                icon: mdi:map-marker
+                icon_color: pink
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_wi_fi_connection
+                primary: Wi-Fi
+                secondary: >-
+                  {% set ssid = states('sensor.pixel_9a_wi_fi_connection') %}
+                  {% set rssi = states('sensor.pixel_9a_wi_fi_signal_strength') %}
+                  {% if ssid in ['unknown', 'unavailable', 'none', 'None', '', '<not connected>'] %}
+                    Not connected
+                  {% else %}
+                    {{ ssid }}{% if rssi not in ['unknown', 'unavailable', 'none', 'None', ''] %} · {{ rssi }} dBm{% endif %}
+                  {% endif %}
+                icon: mdi:wifi
+                icon_color: >-
+                  {% set rssi = states('sensor.pixel_9a_wi_fi_signal_strength') | int(-200) %}
+                  {% if rssi >= -60 %}
+                    green
+                  {% elif rssi >= -72 %}
+                    orange
+                  {% else %}
+                    red
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_network_type
+                primary: Mobile
+                secondary: >-
+                  {% set net = states('sensor.pixel_9a_network_type') %}
+                  {% set sig = states('sensor.pixel_9a_signal_strength_sim_1') %}
+                  {% if net in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    No network info
+                  {% else %}
+                    {{ net }}{% if sig not in ['unknown', 'unavailable', 'none', 'None', ''] %} · {{ sig }}{% endif %}
+                  {% endif %}
+                icon: mdi:signal
+                icon_color: green
+                tap_action:
+                  action: more-info
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: template
+                entity: sensor.pixel_9a_battery_state
+                icon: >-
+                  {% set s = states('sensor.pixel_9a_battery_state') | lower %}
+                  {% if 'charging' in s %}
+                    mdi:lightning-bolt
+                  {% elif 'full' in s %}
+                    mdi:battery-check
+                  {% else %}
+                    mdi:battery
+                  {% endif %}
+                icon_color: >-
+                  {% set s = states('sensor.pixel_9a_battery_state') | lower %}
+                  {% if 'charging' in s or 'full' in s %}
+                    green
+                  {% else %}
+                    grey
+                  {% endif %}
+                content: >-
+                  {% set s = states('sensor.pixel_9a_battery_state') %}
+                  {{ s | replace('_', ' ') | title if s not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Battery unknown' }}
+              - type: template
+                entity: binary_sensor.pixel_9a_wi_fi_state
+                icon: mdi:wifi
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.pixel_9a_wi_fi_state', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'Wi-Fi on' if is_state('binary_sensor.pixel_9a_wi_fi_state', 'on') else 'Wi-Fi off' }}
+              - type: template
+                entity: binary_sensor.pixel_9a_mobile_data
+                icon: mdi:signal
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.pixel_9a_mobile_data', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'Mobile on' if is_state('binary_sensor.pixel_9a_mobile_data', 'on') else 'Mobile off' }}
+              - type: template
+                entity: binary_sensor.pixel_9a_high_accuracy_mode
+                icon: mdi:crosshairs-gps
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.pixel_9a_high_accuracy_mode', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'High accuracy' if is_state('binary_sensor.pixel_9a_high_accuracy_mode', 'on') else 'Normal accuracy' }}
+          - type: map
+            aspect_ratio: 16:9
+            default_zoom: 15
+            hours_to_show: 24
+            entities:
+              - device_tracker.pixel_9a_3
+          - type: grid
+            columns: 3
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_charger_type
+                primary: Charger
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_charger_type') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Not charging / unknown' }}
+                icon: mdi:power-plug
+                icon_color: teal
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_wi_fi_link_speed
+                primary: Link speed
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_wi_fi_link_speed') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:speedometer
+                icon_color: blue
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_wi_fi_frequency
+                primary: Frequency
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_wi_fi_frequency') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:wifi-marker
+                icon_color: cyan
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_wi_fi_ip_address
+                primary: Wi-Fi IP
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_wi_fi_ip_address') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:ip-network
+                icon_color: indigo
+                multiline_secondary: true
+              - type: custom:mushroom-template-card
+                entity: sensor.tamara_phone_ap_name
+                primary: AP name
+                secondary: >-
+                  {% set v = states('sensor.tamara_phone_ap_name') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:access-point
+                icon_color: green
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_wi_fi_bssid
+                primary: BSSID
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_wi_fi_bssid') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:identifier
+                icon_color: grey
+                multiline_secondary: true
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_data_network_type_sim_1
+                primary: Network type SIM 1
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_data_network_type_sim_1') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:sim
+                icon_color: deep-orange
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_public_ip_address
+                primary: Public IP
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_public_ip_address') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:ip-outline
+                icon_color: purple
+                multiline_secondary: true
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_ipv6_addresses
+                primary: IPv6
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_ipv6_addresses') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:ip
+                icon_color: deep-purple
+                multiline_secondary: true
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_app_importance
+                primary: App importance
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_app_importance') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:application-cog
+                icon_color: blue-grey
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.pixel_9a_app_inactive
+                primary: App inactive
+                secondary: >-
+                  {{ 'Yes' if is_state('binary_sensor.pixel_9a_app_inactive', 'on') else 'No' }}
+                icon: mdi:pause-circle
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.pixel_9a_app_inactive', 'on') else 'green' }}
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_high_accuracy_update_interval
+                primary: High accuracy interval
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_high_accuracy_update_interval') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:timer-cog
+                icon_color: amber
+              - type: custom:mushroom-template-card
+                entity: sensor.pixel_9a_last_update_trigger
+                primary: Last update trigger
+                secondary: >-
+                  {% set v = states('sensor.pixel_9a_last_update_trigger') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:update
+                icon_color: cyan
+                multiline_secondary: true
 
-      - type: entities
-        title: Connectivity
-        show_header_toggle: false
-        entities:
-          - entity: sensor.pixel_9a_geocoded_location
-            name: Location (decoded)
-
-          - type: section
-            label: Wi-Fi
-          - entity: binary_sensor.pixel_9a_wi_fi_state
-            name: Wi-Fi enabled
-          - entity: sensor.pixel_9a_wi_fi_connection
-            name: Wi-Fi SSID
-          - entity: sensor.pixel_9a_wi_fi_signal_strength
-            name: Wi-Fi signal (RSSI)
-          - entity: sensor.pixel_9a_wi_fi_link_speed
-            name: Wi-Fi link speed
-          - entity: sensor.pixel_9a_wi_fi_frequency
-            name: Wi-Fi frequency
-          - entity: sensor.pixel_9a_wi_fi_ip_address
-            name: Wi-Fi IP
-          - entity: sensor.pixel_9a_wi_fi_bssid
-            name: Wi-Fi BSSID
-          - entity: sensor.tamara_phone_ap_name
-            name: Wi-Fi AP Name
-
-          - type: section
-            label: Mobile / SIM
-          - entity: binary_sensor.pixel_9a_mobile_data
-            name: Mobile data enabled
-          - entity: sensor.pixel_9a_data_network_type_sim_1
-            name: Network type (SIM 1)
-          - entity: sensor.pixel_9a_network_type
-            name: Network type (overall)
-          - entity: sensor.pixel_9a_signal_strength_sim_1
-            name: Signal strength (SIM 1)
-          - entity: sensor.pixel_9a_public_ip_address
-            name: Public IP
-          - entity: sensor.pixel_9a_ipv6_addresses
-            name: IPv6 addresses
-
-      - type: entities
-        title: Battery
-        show_header_toggle: false
-        entities:
-          - entity: sensor.pixel_9a_battery_level
-            name: Battery level
-          - entity: sensor.pixel_9a_battery_state
-            name: Battery state
-          - entity: sensor.pixel_9a_charger_type
-            name: Charger type
-
-      - type: entities
-        title: App status
-        show_header_toggle: false
-        entities:
-          - entity: sensor.pixel_9a_app_importance
-            name: App importance
-          - entity: binary_sensor.pixel_9a_app_inactive
-            name: App inactive
-          - entity: binary_sensor.pixel_9a_high_accuracy_mode
-            name: High accuracy mode
-          - entity: sensor.pixel_9a_high_accuracy_update_interval
-            name: High accuracy interval
-          - entity: sensor.pixel_9a_last_update_trigger
-            name: Last update trigger
+  - type: custom:collapsable-cards
+    title: BlokmeisterPW3
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_battery_level_2
+                primary: Battery
+                secondary: >-
+                  {% set lvl = states('sensor.blokmeisterpw3_battery_level_2') %}
+                  {% if lvl in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unavailable
+                  {% else %}
+                    {{ lvl }}
+                  {% endif %}
+                icon: mdi:watch
+                icon_color: >-
+                  {% set lvl = states('sensor.blokmeisterpw3_battery_level_2') | replace('%', '') | trim | int(0) %}
+                  {% if lvl <= 15 %}
+                    red
+                  {% elif lvl <= 35 %}
+                    orange
+                  {% else %}
+                    green
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.blokmeisterpw3_on_body_sensor
+                primary: On body
+                secondary: >-
+                  {{ 'Being worn' if is_state('binary_sensor.blokmeisterpw3_on_body_sensor', 'on') else 'Not worn' }}
+                icon: mdi:watch-variant
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.blokmeisterpw3_on_body_sensor', 'on') else 'disabled' }}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_heart_rate
+                primary: Heart rate
+                secondary: >-
+                  {% set hr = states('sensor.blokmeisterpw3_heart_rate') %}
+                  {% if hr in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unknown
+                  {% else %}
+                    {{ hr }}
+                  {% endif %}
+                icon: mdi:heart-pulse
+                icon_color: red
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_daily_steps
+                primary: Daily steps
+                secondary: >-
+                  {% set steps = states('sensor.blokmeisterpw3_daily_steps') %}
+                  {% if steps in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    Unknown
+                  {% else %}
+                    {{ steps }}
+                  {% endif %}
+                icon: mdi:walk
+                icon_color: green
+                tap_action:
+                  action: more-info
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: template
+                entity: sensor.blokmeisterpw3_battery_state_2
+                icon: >-
+                  {% set s = states('sensor.blokmeisterpw3_battery_state_2') | lower %}
+                  {% if 'charging' in s %}
+                    mdi:lightning-bolt
+                  {% elif 'full' in s %}
+                    mdi:battery-check
+                  {% else %}
+                    mdi:battery
+                  {% endif %}
+                icon_color: >-
+                  {% set s = states('sensor.blokmeisterpw3_battery_state_2') | lower %}
+                  {% if 'charging' in s or 'full' in s %}
+                    green
+                  {% else %}
+                    grey
+                  {% endif %}
+                content: >-
+                  {% set s = states('sensor.blokmeisterpw3_battery_state_2') %}
+                  {{ s | replace('_', ' ') | title if s not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Battery unknown' }}
+              - type: template
+                entity: sensor.blokmeisterpw3_network_type
+                icon: mdi:bluetooth
+                icon_color: >-
+                  {{ 'blue' if states('sensor.blokmeisterpw3_network_type') == 'bluetooth' else 'disabled' }}
+                content: >-
+                  {% set v = states('sensor.blokmeisterpw3_network_type') %}
+                  {{ v | title if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Network unknown' }}
+              - type: template
+                entity: binary_sensor.blokmeisterpw3_bedtime_mode
+                icon: mdi:sleep
+                icon_color: >-
+                  {{ 'indigo' if is_state('binary_sensor.blokmeisterpw3_bedtime_mode', 'on') else 'disabled' }}
+                content: >-
+                  {{ 'Bedtime on' if is_state('binary_sensor.blokmeisterpw3_bedtime_mode', 'on') else 'Bedtime off' }}
+              - type: template
+                entity: binary_sensor.blokmeisterpw3_app_inactive
+                icon: mdi:pause-circle
+                icon_color: >-
+                  {{ 'orange' if is_state('binary_sensor.blokmeisterpw3_app_inactive', 'on') else 'green' }}
+                content: >-
+                  {{ 'App inactive' if is_state('binary_sensor.blokmeisterpw3_app_inactive', 'on') else 'App active' }}
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_activity_state
+                primary: Activity
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_activity_state') %}
+                  {{ v | replace('_', ' ') | title if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:run
+                icon_color: teal
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_bluetooth_connection
+                primary: Bluetooth
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_bluetooth_connection') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:bluetooth-connect
+                icon_color: blue
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_charger_type_2
+                primary: Charger
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_charger_type_2') %}
+                  {{ v | title if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:power-plug
+                icon_color: teal
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_app_importance
+                primary: App importance
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_app_importance') %}
+                  {{ v | replace('_', ' ') | title if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:application-cog
+                icon_color: blue-grey
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_battery_health
+                primary: Battery health
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_battery_health') %}
+                  {{ v | title if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:heart-pulse
+                icon_color: green
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_battery_cycle_count
+                primary: Cycle count
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_battery_cycle_count') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:battery-sync
+                icon_color: amber
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_steps_sensor
+                primary: Total steps
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_steps_sensor') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:counter
+                icon_color: green
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_current_version
+                primary: Version
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_current_version') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:watch-vibrate
+                icon_color: cyan
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_last_reboot
+                primary: Last reboot
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_last_reboot') %}
+                  {{ relative_time(as_datetime(v)) ~ ' ago' if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:restart
+                icon_color: orange
+                multiline_secondary: true
+              - type: custom:mushroom-template-card
+                entity: sensor.blokmeisterpw3_last_update_trigger_2
+                primary: Last update trigger
+                secondary: >-
+                  {% set v = states('sensor.blokmeisterpw3_last_update_trigger_2') %}
+                  {{ v if v not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Unknown' }}
+                icon: mdi:update
+                icon_color: purple
+                multiline_secondary: true
 
   - type: vertical-stack
     cards:
