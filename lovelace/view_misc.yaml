@@ -572,3 +572,3159 @@ cards:
                 return data
                   .filter((p) => p && p.start && p.value != null)
                   .map((p) => [Date.parse(p.start), p.value]);
+
+  - type: custom:tabbed-card
+    options:
+      defaultTabIndex: 0
+    styles:
+      --mdc-typography-button-font-size: 13px
+      --mdc-tab-text-label-color-default: rgba(160, 160, 160, 0.9)
+    attributes:
+      minWidth: true
+      isMinWidthIndicator: true
+      stacked: false
+    tabs:
+      - attributes:
+          label: Baby
+          icon: mdi:baby-face-outline
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: >-
+                [Open device page](/config/devices/device/567b1663e9dabc45bf197537adbab92c)
+
+            - type: conditional
+              conditions:
+                - condition: state
+                  entity: device_tracker.aqm_baby_room
+                  state_not: home
+              card:
+                type: custom:mushroom-template-card
+                entity: device_tracker.aqm_baby_room
+                primary: AQM Baby Room offline
+                secondary: Device tracker is not home
+                icon: mdi:wifi-off
+                icon_color: red
+                fill_container: true
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_aqm_temperature
+                  primary: Temperature
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} °C
+                    {% endif %}
+                  icon: mdi:thermometer
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 26 %}
+                      red
+                    {% elif v | float >= 23 %}
+                      orange
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_aqm_humidity
+                  primary: Humidity
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} %
+                    {% endif %}
+                  icon: mdi:water-percent
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float < 30 %}
+                      orange
+                    {% elif v | float > 60 %}
+                      blue
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_aqm_pressure
+                  primary: Pressure
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} hPa
+                    {% endif %}
+                  icon: mdi:gauge
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      cyan
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_co2
+                  primary: CO₂
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule-co2
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1200 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_eco2
+                  primary: eCO₂
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1500 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_tvoc
+                  primary: TVOC
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppb
+                    {% endif %}
+                  icon: mdi:weather-windy
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1000 %}
+                      red
+                    {% elif v | float >= 400 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_pm_1_concentration
+                  primary: PM1
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 20 %}
+                      red
+                    {% elif v | float >= 10 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_pm_2_5_concentration
+                  primary: PM2.5
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:chemical-weapon
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 35 %}
+                      red
+                    {% elif v | float >= 15 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_pm_10_concentration
+                  primary: PM10
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur-linear
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 50 %}
+                      red
+                    {% elif v | float >= 20 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_baby_room_air_quality_index
+                  primary: AQI
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_baby_room_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }}
+                    {% endif %}
+                  icon: mdi:air-filter
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_baby_room_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 75 %}
+                      red
+                    {% elif v | float >= 35 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.baby_room_mh_z19_temperature
+                  primary: MH-Z19 Temp
+                  secondary: >-
+                    {% set v = states('sensor.baby_room_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} °C
+                    {% endif %}
+                  icon: mdi:chip
+                  icon_color: >-
+                    {% set v = states('sensor.baby_room_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      teal
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: device_tracker.aqm_baby_room
+                  primary: Presence
+                  secondary: >-
+                    {% set v = states('device_tracker.aqm_baby_room') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:map-marker-radius
+                  icon_color: >-
+                    {% set v = states('device_tracker.aqm_baby_room') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'home' %}
+                      green
+                    {% else %}
+                      red
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: light.baby_room_led1
+                  primary: LED 1
+                  secondary: >-
+                    {{ states('light.baby_room_led1') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.baby_room_led1') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.baby_room_led2
+                  primary: LED 2
+                  secondary: >-
+                    {{ states('light.baby_room_led2') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.baby_room_led2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.baby_room_led3
+                  primary: LED 3
+                  secondary: >-
+                    {{ states('light.baby_room_led3') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.baby_room_led3') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.baby_room_rgb_strip
+                  primary: RGB Strip
+                  secondary: >-
+                    {{ states('light.baby_room_rgb_strip') }}
+                  icon: mdi:led-strip-variant
+                  icon_color: >-
+                    {% set v = states('light.baby_room_rgb_strip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: switch.baby_room_mh_z19_abc
+                  primary: MH-Z19 ABC
+                  secondary: >-
+                    {{ states('switch.baby_room_mh_z19_abc') }}
+                  icon: mdi:toggle-switch
+                  icon_color: >-
+                    {% set v = states('switch.baby_room_mh_z19_abc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      green
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: update.aqm_baby_room_firmware
+                  primary: Firmware
+                  secondary: >-
+                    {% set v = states('update.aqm_baby_room_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:package-up
+                  icon_color: >-
+                    {% set v = states('update.aqm_baby_room_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_wifi_signal
+                  primary: Wi-Fi
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} dBm
+                    {% endif %}
+                  icon: mdi:wifi
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float <= -75 %}
+                      red
+                    {% elif v | float <= -67 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_aqm_baby_room_ap_name
+                  primary: AP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_aqm_baby_room_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:access-point
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_aqm_baby_room_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_ip
+                  primary: IP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:ip-network
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_ssid
+                  primary: SSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:wifi-settings
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_bssid
+                  primary: BSSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:identifier
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_esphome_version
+                  primary: ESPHome
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  multiline_secondary: true
+                  icon: mdi:chip
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      teal
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_baby_room_uptime
+                  primary: Uptime
+                  secondary: >-
+                    {% set v = states('sensor.aqm_baby_room_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ (v | float / 86400) | round(1) }} d
+                    {% endif %}
+                  icon: mdi:timer-outline
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_baby_room_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% else %}
+                      teal
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: button.baby_room_calibrate_mh_z19
+                  primary: Calibrate
+                  secondary: button
+                  icon: mdi:crosshairs-gps
+                  icon_color: grey
+
+                - type: custom:mushroom-template-card
+                  entity: button.aqm_baby_room_restart
+                  primary: Restart
+                  secondary: button
+                  icon: mdi:restart
+                  icon_color: grey
+
+      - attributes:
+          label: Bedroom
+          icon: mdi:bed-king-outline
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: >-
+                [Open device page](/config/devices/device/7cf3174566953de4cafa658dcba4faf9)
+
+            - type: conditional
+              conditions:
+                - condition: state
+                  entity: device_tracker.bedroom_air_quality_monitor
+                  state_not: home
+              card:
+                type: custom:mushroom-template-card
+                entity: device_tracker.bedroom_air_quality_monitor
+                primary: AQM Bedroom offline
+                secondary: Device tracker is not home
+                icon: mdi:wifi-off
+                icon_color: red
+                fill_container: true
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_aqm_temperature
+                  primary: Temperature
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} °C
+                    {% endif %}
+                  icon: mdi:thermometer
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 26 %}
+                      red
+                    {% elif v | float >= 23 %}
+                      orange
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_aqm_humidity
+                  primary: Humidity
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} %
+                    {% endif %}
+                  icon: mdi:water-percent
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float < 30 %}
+                      orange
+                    {% elif v | float > 60 %}
+                      blue
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_aqm_pressure
+                  primary: Pressure
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} hPa
+                    {% endif %}
+                  icon: mdi:gauge
+                  icon_color: cyan
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_co2
+                  primary: CO₂
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule-co2
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1200 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_eco2
+                  primary: eCO₂
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1500 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_tvoc
+                  primary: TVOC
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppb
+                    {% endif %}
+                  icon: mdi:weather-windy
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1000 %}
+                      red
+                    {% elif v | float >= 400 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_pm_1_concentration
+                  primary: PM1
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 20 %}
+                      red
+                    {% elif v | float >= 10 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_pm_2_5_concentration
+                  primary: PM2.5
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:chemical-weapon
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 35 %}
+                      red
+                    {% elif v | float >= 15 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_pm_10_concentration
+                  primary: PM10
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur-linear
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 50 %}
+                      red
+                    {% elif v | float >= 20 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_bedroom_bedroom_air_quality_index
+                  primary: AQI
+                  secondary: >-
+                    {% set v = states('sensor.aqm_bedroom_bedroom_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }}
+                    {% endif %}
+                  icon: mdi:air-filter
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_bedroom_bedroom_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 75 %}
+                      red
+                    {% elif v | float >= 35 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_mh_z19_temperature
+                  primary: MH-Z19 Temp
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} °C
+                    {% endif %}
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: device_tracker.bedroom_air_quality_monitor
+                  primary: Presence
+                  secondary: >-
+                    {% set v = states('device_tracker.bedroom_air_quality_monitor') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:map-marker-radius
+                  icon_color: >-
+                    {% set v = states('device_tracker.bedroom_air_quality_monitor') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'home' %}
+                      green
+                    {% else %}
+                      red
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: switch.bedroom_mh_z19_abc
+                  primary: MH-Z19 ABC
+                  secondary: >-
+                    {{ states('switch.bedroom_mh_z19_abc') }}
+                  icon: mdi:toggle-switch
+                  icon_color: >-
+                    {% set v = states('switch.bedroom_mh_z19_abc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      green
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: update.aqm_bedroom_firmware
+                  primary: Firmware
+                  secondary: >-
+                    {% set v = states('update.aqm_bedroom_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:package-up
+                  icon_color: >-
+                    {% set v = states('update.aqm_bedroom_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_uptime
+                  primary: Uptime
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ (v | float / 86400) | round(1) }} d
+                    {% endif %}
+                  icon: mdi:timer-outline
+                  icon_color: teal
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_wifi_signal
+                  primary: Wi-Fi
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} dBm
+                    {% endif %}
+                  icon: mdi:wifi
+                  icon_color: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float <= -75 %}
+                      red
+                    {% elif v | float <= -67 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_ap_name
+                  primary: AP
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:access-point
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_ip
+                  primary: IP
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:ip-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_ssid
+                  primary: SSID
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:wifi-settings
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_bssid
+                  primary: BSSID
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:identifier
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.bedroom_air_quality_monitor_aqm_bedroom_esphome_version
+                  primary: ESPHome
+                  secondary: >-
+                    {% set v = states('sensor.bedroom_air_quality_monitor_aqm_bedroom_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  multiline_secondary: true
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: button.bedroom_calibrate_mh_z19
+                  primary: Calibrate
+                  secondary: button
+                  icon: mdi:crosshairs-gps
+                  icon_color: grey
+
+                - type: custom:mushroom-template-card
+                  entity: button.bedroom_air_quality_monitor_aqm_bedroom_restart
+                  primary: Restart
+                  secondary: button
+                  icon: mdi:restart
+                  icon_color: grey
+
+      - attributes:
+          label: Guest
+          icon: mdi:bed-outline
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: >-
+                [Open device page](/config/devices/device/f3c394df69b8abb6c73664f4658a7230)
+
+            - type: conditional
+              conditions:
+                - condition: state
+                  entity: device_tracker.aqm_guest_room
+                  state_not: home
+              card:
+                type: custom:mushroom-template-card
+                entity: device_tracker.aqm_guest_room
+                primary: AQM Guest Room offline
+                secondary: Device tracker is not home
+                icon: mdi:wifi-off
+                icon_color: red
+                fill_container: true
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_aqm_temperature
+                  primary: Temperature
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} °C
+                    {% endif %}
+                  icon: mdi:thermometer
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 26 %}
+                      red
+                    {% elif v | float >= 23 %}
+                      orange
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_aqm_humidity
+                  primary: Humidity
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} %
+                    {% endif %}
+                  icon: mdi:water-percent
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float < 30 %}
+                      orange
+                    {% elif v | float > 60 %}
+                      blue
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_aqm_pressure
+                  primary: Pressure
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} hPa
+                    {% endif %}
+                  icon: mdi:gauge
+                  icon_color: cyan
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_co2
+                  primary: CO₂
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule-co2
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1200 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_eco2
+                  primary: eCO₂
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1500 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_tvoc
+                  primary: TVOC
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppb
+                    {% endif %}
+                  icon: mdi:weather-windy
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1000 %}
+                      red
+                    {% elif v | float >= 400 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_pm_1_concentration
+                  primary: PM1
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 20 %}
+                      red
+                    {% elif v | float >= 10 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_pm_2_5_concentration
+                  primary: PM2.5
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:chemical-weapon
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 35 %}
+                      red
+                    {% elif v | float >= 15 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_pm_10_concentration
+                  primary: PM10
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur-linear
+                  icon_color: >-
+                    {% set v = states('sensor.guest_room_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 50 %}
+                      red
+                    {% elif v | float >= 20 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_guest_room_air_quality_index
+                  primary: AQI
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_guest_room_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }}
+                    {% endif %}
+                  icon: mdi:air-filter
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_guest_room_guest_room_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 75 %}
+                      red
+                    {% elif v | float >= 35 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.guest_room_mh_z19_temperature
+                  primary: MH-Z19 Temp
+                  secondary: >-
+                    {% set v = states('sensor.guest_room_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} °C
+                    {% endif %}
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: device_tracker.aqm_guest_room
+                  primary: Presence
+                  secondary: >-
+                    {% set v = states('device_tracker.aqm_guest_room') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:map-marker-radius
+                  icon_color: >-
+                    {% set v = states('device_tracker.aqm_guest_room') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'home' %}
+                      green
+                    {% else %}
+                      red
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: switch.guest_room_mh_z19_abc
+                  primary: MH-Z19 ABC
+                  secondary: >-
+                    {{ states('switch.guest_room_mh_z19_abc') }}
+                  icon: mdi:toggle-switch
+                  icon_color: >-
+                    {% set v = states('switch.guest_room_mh_z19_abc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      green
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: update.aqm_guest_room_firmware
+                  primary: Firmware
+                  secondary: >-
+                    {% set v = states('update.aqm_guest_room_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:package-up
+                  icon_color: >-
+                    {% set v = states('update.aqm_guest_room_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_uptime_3
+                  primary: Uptime
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_uptime_3') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ (v | float / 86400) | round(1) }} d
+                    {% endif %}
+                  icon: mdi:timer-outline
+                  icon_color: teal
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_wifi_signal
+                  primary: Wi-Fi
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} dBm
+                    {% endif %}
+                  icon: mdi:wifi
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_guest_room_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float <= -75 %}
+                      red
+                    {% elif v | float <= -67 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_ap_name
+                  primary: AP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:access-point
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_ip
+                  primary: IP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:ip-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_ssid
+                  primary: SSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:wifi-settings
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_bssid
+                  primary: BSSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:identifier
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_esphome_version
+                  primary: ESPHome
+                  secondary: >-
+                    {% set v = states('sensor.aqm_guest_room_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  multiline_secondary: true
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_rx_2
+                  primary: RX
+                  secondary: >-
+                    {{ states('sensor.aqm_guest_room_rx_2') }}
+                  icon: mdi:download-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_guest_room_tx_2
+                  primary: TX
+                  secondary: >-
+                    {{ states('sensor.aqm_guest_room_tx_2') }}
+                  icon: mdi:upload-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: button.guest_room_calibrate_mh_z19
+                  primary: Calibrate
+                  secondary: button
+                  icon: mdi:crosshairs-gps
+                  icon_color: grey
+
+                - type: custom:mushroom-template-card
+                  entity: button.aqm_guest_room_restart
+                  primary: Restart
+                  secondary: button
+                  icon: mdi:restart
+                  icon_color: grey
+
+      - attributes:
+          label: Living
+          icon: mdi:sofa-outline
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: >-
+                [Open device page](/config/devices/device/14c8df05796e4d8d8c292e0d2d976080)
+
+            - type: conditional
+              conditions:
+                - condition: state
+                  entity: device_tracker.aqm_living_room
+                  state_not: home
+              card:
+                type: custom:mushroom-template-card
+                entity: device_tracker.aqm_living_room
+                primary: AQM Living Room offline
+                secondary: Device tracker is not home
+                icon: mdi:wifi-off
+                icon_color: red
+                fill_container: true
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_aqm_temperature
+                  primary: Temperature
+                  secondary: >-
+                    {% set v = states('sensor.living_room_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} °C
+                    {% endif %}
+                  icon: mdi:thermometer
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 26 %}
+                      red
+                    {% elif v | float >= 23 %}
+                      orange
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_aqm_humidity
+                  primary: Humidity
+                  secondary: >-
+                    {% set v = states('sensor.living_room_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} %
+                    {% endif %}
+                  icon: mdi:water-percent
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float < 30 %}
+                      orange
+                    {% elif v | float > 60 %}
+                      blue
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_aqm_pressure
+                  primary: Pressure
+                  secondary: >-
+                    {% set v = states('sensor.living_room_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} hPa
+                    {% endif %}
+                  icon: mdi:gauge
+                  icon_color: cyan
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_co2
+                  primary: CO₂
+                  secondary: >-
+                    {% set v = states('sensor.living_room_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule-co2
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1200 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_eco2
+                  primary: eCO₂
+                  secondary: >-
+                    {% set v = states('sensor.living_room_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1500 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_tvoc
+                  primary: TVOC
+                  secondary: >-
+                    {% set v = states('sensor.living_room_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppb
+                    {% endif %}
+                  icon: mdi:weather-windy
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1000 %}
+                      red
+                    {% elif v | float >= 400 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_pm_1_concentration
+                  primary: PM1
+                  secondary: >-
+                    {% set v = states('sensor.living_room_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 20 %}
+                      red
+                    {% elif v | float >= 10 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_pm_2_5_concentration
+                  primary: PM2.5
+                  secondary: >-
+                    {% set v = states('sensor.living_room_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:chemical-weapon
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 35 %}
+                      red
+                    {% elif v | float >= 15 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_pm_10_concentration
+                  primary: PM10
+                  secondary: >-
+                    {% set v = states('sensor.living_room_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur-linear
+                  icon_color: >-
+                    {% set v = states('sensor.living_room_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 50 %}
+                      red
+                    {% elif v | float >= 20 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_living_room_air_quality_index
+                  primary: AQI
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_living_room_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }}
+                    {% endif %}
+                  icon: mdi:air-filter
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_living_room_living_room_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 75 %}
+                      red
+                    {% elif v | float >= 35 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.living_room_mh_z19_temperature
+                  primary: MH-Z19 Temp
+                  secondary: >-
+                    {% set v = states('sensor.living_room_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} °C
+                    {% endif %}
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: device_tracker.aqm_living_room
+                  primary: Presence
+                  secondary: >-
+                    {% set v = states('device_tracker.aqm_living_room') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:map-marker-radius
+                  icon_color: >-
+                    {% set v = states('device_tracker.aqm_living_room') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'home' %}
+                      green
+                    {% else %}
+                      red
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: fan.aqm_living_room_living_room_fan
+                  primary: Fan
+                  secondary: >-
+                    {{ states('fan.aqm_living_room_living_room_fan') }}
+                  icon: mdi:fan
+                  icon_color: >-
+                    {% set v = states('fan.aqm_living_room_living_room_fan') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      blue
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_living_room_fan_speed
+                  primary: Fan Speed
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_living_room_fan_speed') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} RPM
+                    {% endif %}
+                  icon: mdi:fan-speed-1
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: switch.aqm_living_room_mh_z19_abc
+                  primary: MH-Z19 ABC
+                  secondary: >-
+                    {{ states('switch.aqm_living_room_mh_z19_abc') }}
+                  icon: mdi:toggle-switch
+                  icon_color: >-
+                    {% set v = states('switch.aqm_living_room_mh_z19_abc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      green
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.aqm_living_room_led1
+                  primary: LED 1
+                  secondary: >-
+                    {{ states('light.aqm_living_room_led1') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.aqm_living_room_led1') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.aqm_living_room_led2
+                  primary: LED 2
+                  secondary: >-
+                    {{ states('light.aqm_living_room_led2') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.aqm_living_room_led2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.aqm_living_room_led3
+                  primary: LED 3
+                  secondary: >-
+                    {{ states('light.aqm_living_room_led3') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.aqm_living_room_led3') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.aqm_living_room_rgb_strip
+                  primary: RGB Strip
+                  secondary: >-
+                    {{ states('light.aqm_living_room_rgb_strip') }}
+                  icon: mdi:led-strip-variant
+                  icon_color: >-
+                    {% set v = states('light.aqm_living_room_rgb_strip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: update.aqm_living_room_firmware_firmware
+                  primary: Firmware
+                  secondary: >-
+                    {% set v = states('update.aqm_living_room_firmware_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:package-up
+                  icon_color: >-
+                    {% set v = states('update.aqm_living_room_firmware_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_uptime
+                  primary: Uptime
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ (v | float / 86400) | round(1) }} d
+                    {% endif %}
+                  icon: mdi:timer-outline
+                  icon_color: teal
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_wifi_signal
+                  primary: Wi-Fi
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} dBm
+                    {% endif %}
+                  icon: mdi:wifi
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_living_room_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float <= -75 %}
+                      red
+                    {% elif v | float <= -67 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_ap_name
+                  primary: AP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:access-point
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_ip
+                  primary: IP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:ip-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_ssid
+                  primary: SSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:wifi-settings
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_bssid
+                  primary: BSSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:identifier
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_esphome_version
+                  primary: ESPHome
+                  secondary: >-
+                    {% set v = states('sensor.aqm_living_room_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  multiline_secondary: true
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_living_room_tx
+                  primary: TX
+                  secondary: >-
+                    {{ states('sensor.aqm_living_room_tx') }}
+                  icon: mdi:upload-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: button.living_room_calibrate_mh_z19
+                  primary: Calibrate
+                  secondary: button
+                  icon: mdi:crosshairs-gps
+                  icon_color: grey
+
+                - type: custom:mushroom-template-card
+                  entity: button.aqm_living_room_restart
+                  primary: Restart
+                  secondary: button
+                  icon: mdi:restart
+                  icon_color: grey
+
+      - attributes:
+          label: Shed
+          icon: mdi:greenhouse
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: >-
+                [Open device page](/config/devices/device/23a2d9078e4f550849df2457954ded24)
+
+            - type: conditional
+              conditions:
+                - condition: state
+                  entity: device_tracker.aqm_shed
+                  state_not: home
+              card:
+                type: custom:mushroom-template-card
+                entity: device_tracker.aqm_shed
+                primary: AQM Shed offline
+                secondary: Device tracker is not home
+                icon: mdi:wifi-off
+                icon_color: red
+                fill_container: true
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_aqm_temperature
+                  primary: Temperature
+                  secondary: >-
+                    {% set v = states('sensor.shed_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} °C
+                    {% endif %}
+                  icon: mdi:thermometer
+                  icon_color: >-
+                    {% set v = states('sensor.shed_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 30 %}
+                      red
+                    {% elif v | float >= 24 %}
+                      orange
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_aqm_humidity
+                  primary: Humidity
+                  secondary: >-
+                    {% set v = states('sensor.shed_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} %
+                    {% endif %}
+                  icon: mdi:water-percent
+                  icon_color: >-
+                    {% set v = states('sensor.shed_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float < 30 %}
+                      orange
+                    {% elif v | float > 70 %}
+                      blue
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_aqm_pressure
+                  primary: Pressure
+                  secondary: >-
+                    {% set v = states('sensor.shed_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} hPa
+                    {% endif %}
+                  icon: mdi:gauge
+                  icon_color: cyan
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_co2
+                  primary: CO₂
+                  secondary: >-
+                    {% set v = states('sensor.shed_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule-co2
+                  icon_color: >-
+                    {% set v = states('sensor.shed_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1200 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_eco2
+                  primary: eCO₂
+                  secondary: >-
+                    {% set v = states('sensor.shed_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule
+                  icon_color: >-
+                    {% set v = states('sensor.shed_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1500 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_tvoc
+                  primary: TVOC
+                  secondary: >-
+                    {% set v = states('sensor.shed_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppb
+                    {% endif %}
+                  icon: mdi:weather-windy
+                  icon_color: >-
+                    {% set v = states('sensor.shed_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1000 %}
+                      red
+                    {% elif v | float >= 400 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_pm_1_concentration
+                  primary: PM1
+                  secondary: >-
+                    {% set v = states('sensor.shed_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur
+                  icon_color: >-
+                    {% set v = states('sensor.shed_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 20 %}
+                      red
+                    {% elif v | float >= 10 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_pm_2_5_concentration
+                  primary: PM2.5
+                  secondary: >-
+                    {% set v = states('sensor.shed_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:chemical-weapon
+                  icon_color: >-
+                    {% set v = states('sensor.shed_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 35 %}
+                      red
+                    {% elif v | float >= 15 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_pm_10_concentration
+                  primary: PM10
+                  secondary: >-
+                    {% set v = states('sensor.shed_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur-linear
+                  icon_color: >-
+                    {% set v = states('sensor.shed_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 50 %}
+                      red
+                    {% elif v | float >= 20 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_shed_shed_air_quality_index
+                  primary: AQI
+                  secondary: >-
+                    {% set v = states('sensor.aqm_shed_shed_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }}
+                    {% endif %}
+                  icon: mdi:air-filter
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_shed_shed_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 75 %}
+                      red
+                    {% elif v | float >= 35 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_mh_z19_temperature
+                  primary: MH-Z19 Temp
+                  secondary: >-
+                    {% set v = states('sensor.shed_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} °C
+                    {% endif %}
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: device_tracker.aqm_shed
+                  primary: Presence
+                  secondary: >-
+                    {% set v = states('device_tracker.aqm_shed') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:map-marker-radius
+                  icon_color: >-
+                    {% set v = states('device_tracker.aqm_shed') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'home' %}
+                      green
+                    {% else %}
+                      red
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: fan.shed_fan
+                  primary: Fan
+                  secondary: >-
+                    {{ states('fan.shed_fan') }}
+                  icon: mdi:fan
+                  icon_color: >-
+                    {% set v = states('fan.shed_fan') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      blue
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_fan_speed
+                  primary: Fan Speed
+                  secondary: >-
+                    {% set v = states('sensor.shed_fan_speed') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} RPM
+                    {% endif %}
+                  icon: mdi:fan-speed-1
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: switch.shed_mh_z19_abc
+                  primary: MH-Z19 ABC
+                  secondary: >-
+                    {{ states('switch.shed_mh_z19_abc') }}
+                  icon: mdi:toggle-switch
+                  icon_color: >-
+                    {% set v = states('switch.shed_mh_z19_abc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      green
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.shed_led1
+                  primary: LED 1
+                  secondary: >-
+                    {{ states('light.shed_led1') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.shed_led1') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.shed_led2
+                  primary: LED 2
+                  secondary: >-
+                    {{ states('light.shed_led2') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.shed_led2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.shed_led3
+                  primary: LED 3
+                  secondary: >-
+                    {{ states('light.shed_led3') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.shed_led3') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.shed_rgb_strip
+                  primary: RGB Strip
+                  secondary: >-
+                    {{ states('light.shed_rgb_strip') }}
+                  icon: mdi:led-strip-variant
+                  icon_color: >-
+                    {% set v = states('light.shed_rgb_strip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: update.aqm_shed_firmware
+                  primary: Firmware
+                  secondary: >-
+                    {% set v = states('update.aqm_shed_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:package-up
+                  icon_color: >-
+                    {% set v = states('update.aqm_shed_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_uptime
+                  primary: Uptime
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ (v | float / 86400) | round(1) }} d
+                    {% endif %}
+                  icon: mdi:timer-outline
+                  icon_color: teal
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_wifi_signal
+                  primary: Wi-Fi
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} dBm
+                    {% endif %}
+                  icon: mdi:wifi
+                  icon_color: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float <= -75 %}
+                      red
+                    {% elif v | float <= -67 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_ap_name
+                  primary: AP
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:access-point
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_ip
+                  primary: IP
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:ip-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_ssid
+                  primary: SSID
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:wifi-settings
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_bssid
+                  primary: BSSID
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:identifier
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_aqm_shed_esphome_version
+                  primary: ESPHome
+                  secondary: >-
+                    {% set v = states('sensor.shed_air_quality_monitor_aqm_shed_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  multiline_secondary: true
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_rx
+                  primary: RX
+                  secondary: >-
+                    {{ states('sensor.shed_air_quality_monitor_rx') }}
+                  icon: mdi:download-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.shed_air_quality_monitor_tx
+                  primary: TX
+                  secondary: >-
+                    {{ states('sensor.shed_air_quality_monitor_tx') }}
+                  icon: mdi:upload-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: button.shed_calibrate_mh_z19
+                  primary: Calibrate
+                  secondary: button
+                  icon: mdi:crosshairs-gps
+                  icon_color: grey
+
+                - type: custom:mushroom-template-card
+                  entity: button.shed_air_quality_monitor_aqm_shed_restart
+                  primary: Restart
+                  secondary: button
+                  icon: mdi:restart
+                  icon_color: grey
+
+      - attributes:
+          label: Study
+          icon: mdi:desk
+        card:
+          type: vertical-stack
+          cards:
+            - type: markdown
+              content: >-
+                [Open device page](/config/devices/device/84ff721482b33b49d0808a9aca2e8381)
+
+            - type: conditional
+              conditions:
+                - condition: state
+                  entity: device_tracker.aqm_study
+                  state_not: home
+              card:
+                type: custom:mushroom-template-card
+                entity: device_tracker.aqm_study
+                primary: AQM Study offline
+                secondary: Device tracker is not home
+                icon: mdi:wifi-off
+                icon_color: red
+                fill_container: true
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_aqm_temperature
+                  primary: Temperature
+                  secondary: >-
+                    {% set v = states('sensor.study_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} °C
+                    {% endif %}
+                  icon: mdi:thermometer
+                  icon_color: >-
+                    {% set v = states('sensor.study_aqm_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 26 %}
+                      red
+                    {% elif v | float >= 23 %}
+                      orange
+                    {% else %}
+                      blue
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_aqm_humidity
+                  primary: Humidity
+                  secondary: >-
+                    {% set v = states('sensor.study_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} %
+                    {% endif %}
+                  icon: mdi:water-percent
+                  icon_color: >-
+                    {% set v = states('sensor.study_aqm_humidity') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float < 30 %}
+                      orange
+                    {% elif v | float > 60 %}
+                      blue
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_aqm_pressure
+                  primary: Pressure
+                  secondary: >-
+                    {% set v = states('sensor.study_aqm_pressure') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} hPa
+                    {% endif %}
+                  icon: mdi:gauge
+                  icon_color: cyan
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_co2
+                  primary: CO₂
+                  secondary: >-
+                    {% set v = states('sensor.study_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule-co2
+                  icon_color: >-
+                    {% set v = states('sensor.study_co2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1200 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_eco2
+                  primary: eCO₂
+                  secondary: >-
+                    {% set v = states('sensor.study_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppm
+                    {% endif %}
+                  icon: mdi:molecule
+                  icon_color: >-
+                    {% set v = states('sensor.study_eco2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1500 %}
+                      red
+                    {% elif v | float >= 800 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_tvoc
+                  primary: TVOC
+                  secondary: >-
+                    {% set v = states('sensor.study_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} ppb
+                    {% endif %}
+                  icon: mdi:weather-windy
+                  icon_color: >-
+                    {% set v = states('sensor.study_tvoc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 1000 %}
+                      red
+                    {% elif v | float >= 400 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_pm_1_concentration
+                  primary: PM1
+                  secondary: >-
+                    {% set v = states('sensor.study_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur
+                  icon_color: >-
+                    {% set v = states('sensor.study_pm_1_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 20 %}
+                      red
+                    {% elif v | float >= 10 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_pm_2_5_concentration
+                  primary: PM2.5
+                  secondary: >-
+                    {% set v = states('sensor.study_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:chemical-weapon
+                  icon_color: >-
+                    {% set v = states('sensor.study_pm_2_5_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 35 %}
+                      red
+                    {% elif v | float >= 15 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_pm_10_concentration
+                  primary: PM10
+                  secondary: >-
+                    {% set v = states('sensor.study_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} µg/m³
+                    {% endif %}
+                  icon: mdi:blur-linear
+                  icon_color: >-
+                    {% set v = states('sensor.study_pm_10_concentration') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 50 %}
+                      red
+                    {% elif v | float >= 20 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_study_air_quality_index
+                  primary: AQI
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_study_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }}
+                    {% endif %}
+                  icon: mdi:air-filter
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_study_study_air_quality_index') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float >= 75 %}
+                      red
+                    {% elif v | float >= 35 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_mh_z19_temperature
+                  primary: MH-Z19 Temp
+                  secondary: >-
+                    {% set v = states('sensor.study_mh_z19_temperature') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(0) }} °C
+                    {% endif %}
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: device_tracker.aqm_study
+                  primary: Presence
+                  secondary: >-
+                    {% set v = states('device_tracker.aqm_study') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:map-marker-radius
+                  icon_color: >-
+                    {% set v = states('device_tracker.aqm_study') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'home' %}
+                      green
+                    {% else %}
+                      red
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: light.study_led1
+                  primary: LED 1
+                  secondary: >-
+                    {{ states('light.study_led1') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.study_led1') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.study_led2
+                  primary: LED 2
+                  secondary: >-
+                    {{ states('light.study_led2') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.study_led2') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.study_led3
+                  primary: LED 3
+                  secondary: >-
+                    {{ states('light.study_led3') }}
+                  icon: mdi:led-on
+                  icon_color: >-
+                    {% set v = states('light.study_led3') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: light.study_rgb_strip
+                  primary: RGB Strip
+                  secondary: >-
+                    {{ states('light.study_rgb_strip') }}
+                  icon: mdi:led-strip-variant
+                  icon_color: >-
+                    {% set v = states('light.study_rgb_strip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      amber
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: switch.study_mh_z19_abc
+                  primary: MH-Z19 ABC
+                  secondary: >-
+                    {{ states('switch.study_mh_z19_abc') }}
+                  icon: mdi:toggle-switch
+                  icon_color: >-
+                    {% set v = states('switch.study_mh_z19_abc') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      green
+                    {% else %}
+                      disabled
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: update.aqm_study_firmware
+                  primary: Firmware
+                  secondary: >-
+                    {% set v = states('update.aqm_study_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:package-up
+                  icon_color: >-
+                    {% set v = states('update.aqm_study_firmware') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v == 'on' %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+            - type: grid
+              columns: 3
+              square: false
+              cards:
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_wifi_signal
+                  primary: Wi-Fi
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v | float | round(1) }} dBm
+                    {% endif %}
+                  icon: mdi:wifi
+                  icon_color: >-
+                    {% set v = states('sensor.aqm_study_wifi_signal') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      grey
+                    {% elif v | float <= -75 %}
+                      red
+                    {% elif v | float <= -67 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_ap_name
+                  primary: AP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_ap_name') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:access-point
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_ip
+                  primary: IP
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_ip') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:ip-network
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_ssid
+                  primary: SSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_ssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:wifi-settings
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_bssid
+                  primary: BSSID
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_bssid') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:identifier
+                  icon_color: blue
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_esphome_version
+                  primary: ESPHome
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_esphome_version') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  multiline_secondary: true
+                  icon: mdi:chip
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.aqm_study_uptime
+                  primary: Uptime
+                  secondary: >-
+                    {% set v = states('sensor.aqm_study_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ (v | float / 86400) | round(1) }} d
+                    {% endif %}
+                  icon: mdi:timer-outline
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: sensor.study_air_quality_monitory_uptime
+                  primary: Last Online
+                  secondary: >-
+                    {% set v = states('sensor.study_air_quality_monitory_uptime') %}
+                    {% if v in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                      Unavailable
+                    {% else %}
+                      {{ v }}
+                    {% endif %}
+                  icon: mdi:clock-outline
+                  icon_color: teal
+
+                - type: custom:mushroom-template-card
+                  entity: button.study_calibrate_mh_z19
+                  primary: Calibrate
+                  secondary: button
+                  icon: mdi:crosshairs-gps
+                  icon_color: grey
+
+                - type: custom:mushroom-template-card
+                  entity: button.aqm_study_restart
+                  primary: Restart
+                  secondary: button
+                  icon: mdi:restart
+                  icon_color: grey
