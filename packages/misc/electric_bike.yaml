@@ -1,0 +1,285 @@
+input_number:
+  electric_bike_charge_remaining_slots:
+    name: Electric Bike Charge Remaining Slots
+    icon: mdi:battery-sync
+    min: 0
+    max: 16
+    step: 1
+    mode: box
+    unit_of_measurement: slots
+    initial: 0
+
+input_datetime:
+  electric_bike_charge_deadline:
+    name: Electric Bike Charge Deadline
+    icon: mdi:clock-end
+    has_date: true
+    has_time: true
+
+template:
+  - trigger:
+      - trigger: state
+        entity_id:
+          - input_number.electric_bike_charge_remaining_slots
+          - input_datetime.electric_bike_charge_deadline
+          - automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+      - trigger: time_pattern
+        minutes: "/15"
+        seconds: 1
+      - trigger: homeassistant
+        event: start
+    sensor:
+      - name: Electric Bike Charge Planned Slot Count
+        unique_id: yaml_template_sensor_electric_bike_charge_planned_slot_count
+        icon: mdi:format-list-numbered
+        unit_of_measurement: slots
+        availability: >-
+          {{ states('sensor.nordpool_energy_price') not in ['unknown', 'unavailable', 'none', ''] }}
+        state: >-
+          {% if not is_state('automation.misc_electric_bike_arm_cheapest_overnight_bike_charging', 'on') %}
+            0
+          {% else %}
+            {% set remaining = states('input_number.electric_bike_charge_remaining_slots') | int(0) %}
+            {% set deadline_ts = as_timestamp(states('input_datetime.electric_bike_charge_deadline'), 0) | int(0) %}
+            {% set now_ts = as_timestamp(now()) | int(0) %}
+            {% set next_slot_ts = (((now_ts // 900) + (1 if (now_ts % 900) > 0 else 0)) * 900) | int %}
+            {% set source_slots = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
+            {% if state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') %}
+              {% set source_slots = source_slots + (state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or []) %}
+            {% endif %}
+            {% set ns = namespace(candidates=[]) %}
+            {% for item in source_slots %}
+              {% set start_ts = as_timestamp(item.start) | int(0) %}
+              {% if start_ts >= next_slot_ts and start_ts < deadline_ts %}
+                {% set ns.candidates = ns.candidates + [{'start': start_ts, 'price': item.value | float(999)}] %}
+              {% endif %}
+            {% endfor %}
+            {% set selected = (ns.candidates | sort(attribute='price'))[:remaining] %}
+            {{ selected | count }}
+          {% endif %}
+        attributes:
+          planned_slots: >-
+            {% if not is_state('automation.misc_electric_bike_arm_cheapest_overnight_bike_charging', 'on') %}
+              {{ [] }}
+            {% else %}
+              {% set remaining = states('input_number.electric_bike_charge_remaining_slots') | int(0) %}
+              {% set deadline_ts = as_timestamp(states('input_datetime.electric_bike_charge_deadline'), 0) | int(0) %}
+              {% set now_ts = as_timestamp(now()) | int(0) %}
+              {% set next_slot_ts = (((now_ts // 900) + (1 if (now_ts % 900) > 0 else 0)) * 900) | int %}
+              {% set source_slots = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
+              {% if state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') %}
+                {% set source_slots = source_slots + (state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or []) %}
+              {% endif %}
+              {% set ns = namespace(candidates=[]) %}
+              {% for item in source_slots %}
+                {% set start_ts = as_timestamp(item.start) | int(0) %}
+                {% if start_ts >= next_slot_ts and start_ts < deadline_ts %}
+                  {% set ns.candidates = ns.candidates + [{'start': start_ts, 'price': item.value | float(999)}] %}
+                {% endif %}
+              {% endfor %}
+              {% set selected = (ns.candidates | sort(attribute='price'))[:remaining] %}
+              {{ selected | map(attribute='start') | list }}
+            {% endif %}
+          planned_prices: >-
+            {% if not is_state('automation.misc_electric_bike_arm_cheapest_overnight_bike_charging', 'on') %}
+              {{ [] }}
+            {% else %}
+              {% set remaining = states('input_number.electric_bike_charge_remaining_slots') | int(0) %}
+              {% set deadline_ts = as_timestamp(states('input_datetime.electric_bike_charge_deadline'), 0) | int(0) %}
+              {% set now_ts = as_timestamp(now()) | int(0) %}
+              {% set next_slot_ts = (((now_ts // 900) + (1 if (now_ts % 900) > 0 else 0)) * 900) | int %}
+              {% set source_slots = state_attr('sensor.nordpool_energy_price', 'raw_today') or [] %}
+              {% if state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') %}
+                {% set source_slots = source_slots + (state_attr('sensor.nordpool_energy_price', 'raw_tomorrow') or []) %}
+              {% endif %}
+              {% set ns = namespace(candidates=[]) %}
+              {% for item in source_slots %}
+                {% set start_ts = as_timestamp(item.start) | int(0) %}
+                {% if start_ts >= next_slot_ts and start_ts < deadline_ts %}
+                  {% set ns.candidates = ns.candidates + [{'start': start_ts, 'price': item.value | float(999)}] %}
+                {% endif %}
+              {% endfor %}
+              {% set selected = (ns.candidates | sort(attribute='price'))[:remaining] %}
+              {{ selected | map(attribute='price') | list }}
+            {% endif %}
+          planned_slots_local: >-
+            {% set planned_slots = this.attributes.planned_slots if this.attributes.planned_slots is defined else [] %}
+            {{ planned_slots | map('timestamp_local') | list }}
+
+  - sensor:
+      - name: Electric Bike Charge Next Planned Slot
+        unique_id: yaml_template_sensor_electric_bike_charge_next_planned_slot
+        icon: mdi:clock-start
+        device_class: timestamp
+        availability: >-
+          {% set planned_slots = state_attr('sensor.electric_bike_charge_planned_slot_count', 'planned_slots') or [] %}
+          {{ planned_slots | count > 0 }}
+        state: >-
+          {% set planned_slots = state_attr('sensor.electric_bike_charge_planned_slot_count', 'planned_slots') or [] %}
+          {{ (planned_slots | sort | first) | int | timestamp_local }}
+
+    binary_sensor:
+      - name: Electric Bike Charge Current Slot Planned
+        unique_id: yaml_template_binary_sensor_electric_bike_charge_current_slot_planned
+        icon: mdi:lightning-bolt-circle
+        state: >-
+          {% set planned_slots = state_attr('sensor.electric_bike_charge_planned_slot_count', 'planned_slots') or [] %}
+          {% set current_slot_ts = ((as_timestamp(now()) // 900) * 900) | int %}
+          {{ current_slot_ts in planned_slots }}
+
+automation:
+  - alias: "[misc|electric_bike] Arm cheapest overnight bike charging"
+    id: yaml_automation_misc_electric_bike_arm_cheapest_overnight_bike_charging
+    description: >-
+      Manual control automation. Turn this on when the bike charger is plugged
+      in and you want Home Assistant to charge the bike during the cheapest
+      15-minute slots before 06:30 the next day.
+    mode: single
+    triggers:
+      - trigger: event
+        event_type: yaml_electric_bike_charge_request_dummy_event
+    actions: []
+
+  - alias: "[misc|electric_bike] Initialize cheapest bike charging plan"
+    id: yaml_automation_misc_electric_bike_initialize_cheapest_bike_charging_plan
+    description: >-
+      Starts a new charge cycle when the arm automation is enabled. It resets
+      the remaining charging time to 16 quarters, stores the deadline at 06:30
+      the next day, turns the charger off, and fires a custom refresh event for
+      the trigger-based template entities.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+        to: "on"
+    actions:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.electric_bike_charge_remaining_slots
+        data:
+          value: 16
+
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.electric_bike_charge_deadline
+        data:
+          date: >-
+            {{ (now().date() + timedelta(days=1)).isoformat() }}
+          time: "06:30:00"
+
+      - action: switch.turn_off
+        target:
+          entity_id: switch.plug_electric_bike_switch
+
+      - event: electric_bike_charge_plan_refresh
+        event_data:
+          source: arm_automation
+
+  - alias: "[misc|electric_bike] Run bike charging for selected quarter-hours"
+    id: yaml_automation_misc_electric_bike_run_bike_charging_for_selected_quarter_hours
+    description: >-
+      At each 15-minute boundary, Home Assistant checks whether the current
+      quarter-hour is one of the cheapest planned slots. If so, it turns the
+      charger on for that slot and decrements the remaining slot count. On Home
+      Assistant startup it also restores the charger state for the current slot
+      without decrementing.
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: "/15"
+        seconds: 0
+        id: quarter_boundary
+      - trigger: homeassistant
+        event: start
+        id: startup
+      - trigger: state
+        entity_id: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+        to: "off"
+        id: disarmed
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: disarmed
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id: switch.plug_electric_bike_switch
+
+          - conditions:
+              - condition: state
+                entity_id: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+                state: "on"
+              - condition: template
+                value_template: >-
+                  {% set deadline_ts = as_timestamp(states('input_datetime.electric_bike_charge_deadline'), 0) | int(0) %}
+                  {{ deadline_ts <= as_timestamp(now()) or states('input_number.electric_bike_charge_remaining_slots') | int(0) <= 0 }}
+            sequence:
+              - action: switch.turn_off
+                target:
+                  entity_id: switch.plug_electric_bike_switch
+              - action: automation.turn_off
+                target:
+                  entity_id: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+                data:
+                  stop_actions: false
+
+          - conditions:
+              - condition: state
+                entity_id: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+                state: "on"
+            sequence:
+              - variables:
+                  planned_slots: >-
+                    {{ state_attr('sensor.electric_bike_charge_planned_slot_count', 'planned_slots') or [] }}
+                  current_slot_ts: >-
+                    {{ ((as_timestamp(now()) // 900) * 900) | int }}
+                  current_slot_planned: >-
+                    {{ current_slot_ts in planned_slots }}
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ current_slot_planned }}"
+                    sequence:
+                      - action: switch.turn_on
+                        target:
+                          entity_id: switch.plug_electric_bike_switch
+                      - choose:
+                          - conditions:
+                              - condition: trigger
+                                id: quarter_boundary
+                            sequence:
+                              - action: input_number.set_value
+                                target:
+                                  entity_id: input_number.electric_bike_charge_remaining_slots
+                                data:
+                                  value: >-
+                                    {% set remaining = states('input_number.electric_bike_charge_remaining_slots') | int(0) %}
+                                    {{ [remaining - 1, 0] | max }}
+                              - event: electric_bike_charge_plan_refresh
+                                event_data:
+                                  source: quarter_boundary
+                  - conditions: []
+                    sequence:
+                      - action: switch.turn_off
+                        target:
+                          entity_id: switch.plug_electric_bike_switch
+
+  - alias: "[misc|electric_bike] Reset cheapest bike charging when cancelled"
+    id: yaml_automation_misc_electric_bike_reset_cheapest_bike_charging_when_cancelled
+    description: >-
+      Clears the active request state when the arm automation is disabled.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+        to: "off"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.plug_electric_bike_switch
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.electric_bike_charge_remaining_slots
+        data:
+          value: 0

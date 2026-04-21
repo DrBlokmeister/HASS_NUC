@@ -493,6 +493,85 @@ cards:
   #             duration: 15min
   #           show:
   #             datalabels: False
+  - type: vertical-stack
+    title: Electric bike charging
+    cards:
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: automation.misc_electric_bike_arm_cheapest_overnight_bike_charging
+            primary: Charging plan
+            secondary: >-
+              {% set armed = is_state('automation.misc_electric_bike_arm_cheapest_overnight_bike_charging', 'on') %}
+              {% set charging = states('sensor.plug_electric_bike_power') | float(0) > 5 %}
+              {% set next_slot = states('sensor.electric_bike_charge_next_planned_slot') %}
+              {% if charging %}
+                Charging now
+              {% elif armed %}
+                Armed{% if next_slot not in ['unknown','unavailable','none','None',''] %}
+                  · next {{ relative_time(as_datetime(next_slot)) }}
+                {% endif %}
+              {% else %}
+                Disabled
+              {% endif %}
+            icon: mdi:bicycle-electric
+            icon_color: >-
+              {% if states('sensor.plug_electric_bike_power') | float(0) > 5 %}
+                orange
+              {% elif is_state('automation.misc_electric_bike_arm_cheapest_overnight_bike_charging', 'on') %}
+                green
+              {% else %}
+                disabled
+              {% endif %}
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            multiline_secondary: true
+            fill_container: true
+
+          - type: custom:mushroom-template-card
+            entity: sensor.plug_electric_bike_power
+            primary: Power
+            secondary: >-
+              {{ states('sensor.plug_electric_bike_power') | float(0) | round(0) }} W
+              · {{ states('sensor.plug_electric_bike_energy_today') | float(0) | round(2) }} kWh today
+            icon: mdi:flash
+            icon_color: >-
+              {% set p = states('sensor.plug_electric_bike_power') %}
+              {% if p in ['unknown','unavailable','none','None',''] %}
+                grey
+              {% elif p | float(0) > 5 %}
+                orange
+              {% else %}
+                disabled
+              {% endif %}
+            tap_action:
+              action: more-info
+            fill_container: true
+
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.plug_electric_bike_power
+            name: Power
+            color: '#FF9800'
+        hours_to_show: 12
+        points_per_hour: 12
+        line_width: 3
+        hour24: true
+        height: 80
+        font_size: 50
+        decimals: 0
+        show:
+          name: true
+          icon: false
+          state: true
+          labels: false
+          points: false
+          extrema: false
+          fill: fade
 
   - type: vertical-stack
     cards:
