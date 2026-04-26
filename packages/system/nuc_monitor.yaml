@@ -677,7 +677,6 @@ automation:
               "sensor.ping_shelly_washroom_round_trip_time_average": "ddab2d0aca5ca9adf7d5dde9abee5f3a"
             } %}
             {{ mapping[trigger.entity_id] }}
-
 ################
 #    SCENES    #
 ################
@@ -863,7 +862,6 @@ script:
           message: "ESPHome update finished processing group {{ group_entity }} after running of updater script."
           level: info
 
-
   run_profiler_every_minute:
     alias: "Run Profiler Every Minute"
     description: "Runs the profiler for 58 seconds every 60 seconds, repeating 60 times."
@@ -884,3 +882,67 @@ script:
           title: "Profiler Run Complete"
           message: "The profiler has successfully run 60 times over the past hour."
           notification_id: "profiler_complete"
+
+  dreame_profiler_ab_comparison:
+    alias: "Dreame profiler A/B comparison"
+    icon: mdi:chart-timeline-variant
+    description: >
+      Manually started diagnostic script that alternates the Dreame config entry
+      between disabled and enabled states, runs a 5-minute profiler capture in each
+      state, and waits long enough between phases to compare NUC power usage.
+      Runs 5 full A/B cycles.
+    mode: single
+    sequence:
+      - repeat:
+          count: 5
+          sequence:
+            - action: system_log.write
+              data:
+                level: warning
+                logger: homeassistant.components.script.dreame_profiler_ab_comparison
+                message: >
+                  Dreame A/B profiler test cycle {{ repeat.index }} of 5:
+                  disabling Dreame integration.
+            - action: homeassistant.disable_config_entry
+              data:
+                config_entry_id: f290bf75d1dc0533ebd74417047bbe1d
+            - delay: "00:01:00"
+            - action: system_log.write
+              data:
+                level: warning
+                logger: homeassistant.components.script.dreame_profiler_ab_comparison
+                message: >
+                  Dreame A/B profiler test cycle {{ repeat.index }} of 5:
+                  Dreame disabled, starting 300 second profiler capture.
+            - action: profiler.start
+              data:
+                seconds: 300
+            - delay: "00:20:00"
+            - action: system_log.write
+              data:
+                level: warning
+                logger: homeassistant.components.script.dreame_profiler_ab_comparison
+                message: >
+                  Dreame A/B profiler test cycle {{ repeat.index }} of 5:
+                  enabling Dreame integration.
+            - action: homeassistant.enable_config_entry
+              data:
+                config_entry_id: f290bf75d1dc0533ebd74417047bbe1d
+            - delay: "00:02:00"
+            - action: system_log.write
+              data:
+                level: warning
+                logger: homeassistant.components.script.dreame_profiler_ab_comparison
+                message: >
+                  Dreame A/B profiler test cycle {{ repeat.index }} of 5:
+                  Dreame enabled, starting 300 second profiler capture.
+            - action: profiler.start
+              data:
+                seconds: 300
+            - delay: "00:20:00"
+      - action: system_log.write
+        data:
+          level: warning
+          logger: homeassistant.components.script.dreame_profiler_ab_comparison
+          message: >
+            Dreame A/B profiler comparison completed after 5 full cycles.
