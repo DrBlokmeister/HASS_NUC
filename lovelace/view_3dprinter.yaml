@@ -396,25 +396,40 @@ cards:
       'on': /local/media/bambuprinter/on_p1s.png
       'off': /local/media/bambuprinter/off_p1s.png
 
-  - type: conditional
-    conditions:
-      - condition: state
-        entity: binary_sensor.blokmeisterp1s_online
-        state: 'on'
-      - condition: state
-        entity: camera.blokmeisterp1s_camera
-        state_not: unavailable
-    card:
-      type: picture-glance
-      title: Printer Camera
-      camera_image: camera.blokmeisterp1s_camera
-      camera_view: live
-      entities:
-        - entity: switch.blokmeisterp1s_camera
-          name: Camera
-        - entity: light.blokmeisterp1s_chamber_light
-          name: Light
-      aspect_ratio: '16:9'
+  - type: vertical-stack
+    cards:
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: binary_sensor.blokmeisterp1s_online
+            state: 'on'
+          - condition: state
+            entity: camera.p1s_camera
+            state_not: unavailable
+        card:
+          type: picture-glance
+          title: Printer Camera
+          camera_image: camera.p1s_camera
+          camera_view: live
+          entities:
+            - entity: switch.blokmeisterp1s_camera
+              name: Camera
+            - entity: light.blokmeisterp1s_chamber_light
+              name: Light
+          aspect_ratio: '16:9'
+      - type: custom:collapsable-cards
+        title: Internal Camera
+        cards:
+          - type: picture-glance
+            title: Printer Camera
+            camera_image: camera.blokmeisterp1s_camera
+            camera_view: live
+            entities:
+              - entity: switch.blokmeisterp1s_camera
+                name: Camera
+              - entity: light.blokmeisterp1s_chamber_light
+                name: Light
+            aspect_ratio: '16:9'
 
   ##############################  EXTERNAL SPOOL  ##############################
   - type: picture-elements
@@ -1035,3 +1050,278 @@ cards:
         name: Firmware Update Available
       - entity: sensor.blokmeisterp1s_printer_name
         name: Printer Name
+
+  - type: custom:collapsable-cards
+    title: P1S External Camera
+    defaultOpen: desktop-only
+    cards:
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.p1s_cam_system_details
+            primary: Camera Pi
+            secondary: >-
+              {% if is_state('sensor.p1s_cam_system_details', 'unavailable') %}
+                Offline · SSH sensor unavailable
+              {% elif is_state('binary_sensor.p1s_cam_stream_connected', 'on') %}
+                Online · stream connected
+              {% elif is_state('binary_sensor.p1s_cam_mediamtx_running', 'on') %}
+                Online · MediaMTX running
+              {% else %}
+                Online · stream idle
+              {% endif %}
+            icon: mdi:raspberry-pi
+            icon_color: >-
+              {% if is_state('sensor.p1s_cam_system_details', 'unavailable') %}
+                red
+              {% elif is_state('binary_sensor.p1s_cam_stream_connected', 'on') %}
+                green
+              {% elif is_state('binary_sensor.p1s_cam_mediamtx_running', 'on') %}
+                amber
+              {% else %}
+                grey
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.p1s_cam_under_voltage_active
+            primary: Power
+            secondary: >-
+              {% if is_state('binary_sensor.p1s_cam_under_voltage_active', 'on') %}
+                Under-voltage active · {{ states('sensor.p1s_cam_throttled_flags') }}
+              {% elif is_state('binary_sensor.p1s_cam_under_voltage_has_occurred', 'on') %}
+                Voltage OK now · under-voltage occurred since boot
+              {% elif is_state('binary_sensor.p1s_cam_under_voltage_active', 'off') %}
+                Voltage OK · {{ states('sensor.p1s_cam_throttled_flags') }}
+              {% else %}
+                Unknown
+              {% endif %}
+            icon: mdi:flash-alert
+            icon_color: >-
+              {% if is_state('binary_sensor.p1s_cam_under_voltage_active', 'on') %}
+                red
+              {% elif is_state('binary_sensor.p1s_cam_under_voltage_has_occurred', 'on') %}
+                amber
+              {% elif is_state('binary_sensor.p1s_cam_under_voltage_active', 'off') %}
+                green
+              {% else %}
+                grey
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.p1s_cam_mediamtx_running
+            primary: MediaMTX
+            secondary: >-
+              {% if is_state('binary_sensor.p1s_cam_mediamtx_running', 'on') %}
+                MediaMTX running
+              {% elif is_state('binary_sensor.p1s_cam_mediamtx_running', 'off') %}
+                MediaMTX stopped
+              {% else %}
+                MediaMTX unknown
+              {% endif %}
+              · helper {{ states('binary_sensor.p1s_cam_camera_helper_running') }}
+            icon: mdi:server
+            icon_color: >-
+              {% if is_state('binary_sensor.p1s_cam_mediamtx_running', 'on')
+                    and is_state('binary_sensor.p1s_cam_camera_helper_running', 'on') %}
+                green
+              {% elif is_state('binary_sensor.p1s_cam_mediamtx_running', 'on') %}
+                amber
+              {% elif is_state('binary_sensor.p1s_cam_mediamtx_running', 'off') %}
+                red
+              {% else %}
+                grey
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.p1s_cam_stream_connected
+            primary: Stream
+            secondary: >-
+              {% set rtsp = states('sensor.p1s_cam_rtsp_established_connections') %}
+              {% set webrtc = states('sensor.p1s_cam_webrtc_established_connections') %}
+              {% set readers = states('sensor.p1s_cam_rtsp_reader_sessions') %}
+              {% if is_state('binary_sensor.p1s_cam_stream_connected', 'on') %}
+                Connected
+              {% elif is_state('binary_sensor.p1s_cam_stream_connected', 'off') %}
+                Idle
+              {% else %}
+                Unknown
+              {% endif %}
+              · RTSP {{ rtsp }}
+              · WebRTC {{ webrtc }}
+              · readers {{ readers }}
+            icon: mdi:video-wireless-outline
+            icon_color: >-
+              {% if is_state('binary_sensor.p1s_cam_stream_connected', 'on') %}
+                green
+              {% elif is_state('binary_sensor.p1s_cam_stream_connected', 'off') %}
+                amber
+              {% else %}
+                grey
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+
+          - type: custom:mushroom-template-card
+            entity: sensor.p1s_cam_signal_level
+            primary: Wi-Fi
+            secondary: >-
+              {% set signal = states('sensor.p1s_cam_signal_level') %}
+              {% set quality = states('sensor.p1s_cam_link_quality') %}
+              {% set rate = states('sensor.p1s_cam_bit_rate') %}
+              {% if signal in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ signal | float(0) | round(0) }} dBm
+                · {{ quality | float(0) | round(0) }}%
+                · {{ rate | float(0) | round(1) }} Mbit/s
+              {% endif %}
+            icon: mdi:wifi
+            icon_color: >-
+              {% set signal_state = states('sensor.p1s_cam_signal_level') %}
+              {% set signal = signal_state | float(-100) %}
+              {% if signal_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                grey
+              {% elif signal >= -60 %}
+                green
+              {% elif signal >= -70 %}
+                amber
+              {% else %}
+                red
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+
+          - type: custom:mushroom-template-card
+            entity: sensor.p1s_cam_cpu_temp
+            primary: Pi load
+            secondary: >-
+              {% set temp = states('sensor.p1s_cam_cpu_temp') %}
+              {% set mem = states('sensor.p1s_cam_memory_used') %}
+              {% set uptime = states('sensor.p1s_cam_uptime') | int(0) %}
+              {% if temp in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                Unavailable
+              {% else %}
+                {{ temp | float(0) | round(1) }} °C
+                · RAM {{ mem | float(0) | round(0) }}%
+                · up {{ (uptime / 86400) | round(1) }} d
+              {% endif %}
+            icon: mdi:chip
+            icon_color: >-
+              {% set temp_state = states('sensor.p1s_cam_cpu_temp') %}
+              {% set temp = temp_state | float(0) %}
+              {% if temp_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                grey
+              {% elif temp >= 75 %}
+                red
+              {% elif temp >= 65 %}
+                amber
+              {% else %}
+                green
+              {% endif %}
+            fill_container: true
+            multiline_secondary: true
+
+      - type: custom:collapsable-cards
+        title: P1S Camera Details
+        defaultOpen: false
+        cards:
+          - type: grid
+            square: false
+            columns: 2
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.p1s_cam_ssid
+                primary: Access point
+                secondary: >-
+                  SSID {{ states('sensor.p1s_cam_ssid') }}
+                  · AP {{ states('sensor.p1s_cam_ap_mac') }}
+                icon: mdi:access-point-network
+                icon_color: >-
+                  {% if states('sensor.p1s_cam_ssid') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    grey
+                  {% else %}
+                    blue
+                  {% endif %}
+                fill_container: true
+                multiline_secondary: true
+
+              - type: custom:mushroom-template-card
+                entity: sensor.p1s_cam_tx_retries
+                primary: Wi-Fi errors
+                secondary: >-
+                  Retries {{ states('sensor.p1s_cam_tx_retries') }}
+                  · missed beacons {{ states('sensor.p1s_cam_missed_beacon') }}
+                icon: mdi:wifi-alert
+                icon_color: >-
+                  {% set retries_state = states('sensor.p1s_cam_tx_retries') %}
+                  {% set beacons_state = states('sensor.p1s_cam_missed_beacon') %}
+                  {% set retries = retries_state | int(0) %}
+                  {% set beacons = beacons_state | int(0) %}
+                  {% if retries_state in ['unknown', 'unavailable', 'none', 'None', '']
+                        or beacons_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    grey
+                  {% elif retries > 500 or beacons > 20 %}
+                    red
+                  {% elif retries > 100 or beacons > 5 %}
+                    amber
+                  {% else %}
+                    green
+                  {% endif %}
+                fill_container: true
+                multiline_secondary: true
+
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.p1s_cam_rtsp_listening
+                primary: Listeners
+                secondary: >-
+                  RTSP {{ states('binary_sensor.p1s_cam_rtsp_listening') }}
+                  · WebRTC {{ states('binary_sensor.p1s_cam_webrtc_listening') }}
+                  · ICE {{ states('binary_sensor.p1s_cam_ice_listening') }}
+                icon: mdi:lan-pending
+                icon_color: >-
+                  {% if is_state('binary_sensor.p1s_cam_rtsp_listening', 'on')
+                        and is_state('binary_sensor.p1s_cam_webrtc_listening', 'on')
+                        and is_state('binary_sensor.p1s_cam_ice_listening', 'on') %}
+                    green
+                  {% elif is_state('binary_sensor.p1s_cam_rtsp_listening', 'on')
+                        or is_state('binary_sensor.p1s_cam_webrtc_listening', 'on') %}
+                    amber
+                  {% elif is_state('binary_sensor.p1s_cam_rtsp_listening', 'unavailable')
+                        and is_state('binary_sensor.p1s_cam_webrtc_listening', 'unavailable')
+                        and is_state('binary_sensor.p1s_cam_ice_listening', 'unavailable') %}
+                    grey
+                  {% else %}
+                    red
+                  {% endif %}
+                fill_container: true
+                multiline_secondary: true
+
+              - type: custom:mushroom-template-card
+                entity: sensor.p1s_cam_configured_bitrate_mbps
+                primary: Encoding
+                secondary: >-
+                  Configured {{ states('sensor.p1s_cam_configured_bitrate_mbps') }} Mbit/s
+                  · TX power {{ states('sensor.p1s_cam_tx_power') }} dBm
+                  · PID {{ states('sensor.p1s_cam_mediamtx_pid') }}
+                icon: mdi:video-high-definition
+                icon_color: >-
+                  {% set bitrate = states('sensor.p1s_cam_configured_bitrate_mbps') | float(0) %}
+                  {% if states('sensor.p1s_cam_configured_bitrate_mbps') in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                    grey
+                  {% elif bitrate >= 6 %}
+                    green
+                  {% elif bitrate >= 3 %}
+                    purple
+                  {% else %}
+                    amber
+                  {% endif %}
+                fill_container: true
+                multiline_secondary: true

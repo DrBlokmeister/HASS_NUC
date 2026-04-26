@@ -1,10 +1,391 @@
 homeassistant:
   customize: {}
 
+###################
+#    TEMPLATES    #
+###################
+template:
+  - sensor:
+      - name: "P1S Cam Signal Level"
+        unique_id: yaml_template_sensor_p1s_cam_signal_level
+        icon: mdi:wifi-strength-2
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'signal_level') | int(0) }}"
+        unit_of_measurement: "dBm"
+        device_class: signal_strength
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'signal_level') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Link Quality"
+        unique_id: yaml_template_sensor_p1s_cam_link_quality
+        icon: mdi:wifi-strength
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'link_quality') | int(0) }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'link_quality') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Bit Rate"
+        unique_id: yaml_template_sensor_p1s_cam_bit_rate
+        icon: mdi:speedometer
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'bit_rate') | float(0) }}"
+        unit_of_measurement: "Mbit/s"
+        device_class: data_rate
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'bit_rate') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam TX Power"
+        unique_id: yaml_template_sensor_p1s_cam_tx_power
+        icon: mdi:access-point
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'tx_power') | int(0) }}"
+        unit_of_measurement: "dBm"
+        device_class: signal_strength
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'tx_power') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam AP MAC"
+        unique_id: yaml_template_sensor_p1s_cam_ap_mac
+        icon: mdi:lan-connect
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'ap_mac') }}"
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'ap_mac') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam SSID"
+        unique_id: yaml_template_sensor_p1s_cam_ssid
+        icon: mdi:wifi
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'ssid') }}"
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'ssid') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Missed Beacon"
+        unique_id: yaml_template_sensor_p1s_cam_missed_beacon
+        icon: mdi:wifi-alert
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'missed_beacon') | int(0) }}"
+        unit_of_measurement: "count"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'missed_beacon') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam TX Retries"
+        unique_id: yaml_template_sensor_p1s_cam_tx_retries
+        icon: mdi:reload
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'tx_retries') | int(0) }}"
+        unit_of_measurement: "count"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'tx_retries') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam CPU Temp"
+        unique_id: yaml_template_sensor_p1s_cam_cpu_temp
+        icon: mdi:thermometer
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'cpu_temp') | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'cpu_temp') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Memory Used"
+        unique_id: yaml_template_sensor_p1s_cam_memory_used
+        icon: mdi:memory
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'memory_used_pct') | float(0) }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'memory_used_pct') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Uptime"
+        unique_id: yaml_template_sensor_p1s_cam_uptime
+        icon: mdi:timer-outline
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'uptime_s') | int(0) }}"
+        unit_of_measurement: "s"
+        device_class: duration
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'uptime_s') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Throttled Flags"
+        unique_id: yaml_template_sensor_p1s_cam_throttled_flags
+        icon: mdi:speedometer-slow
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'throttled') }}"
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'throttled') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam MediaMTX PID"
+        unique_id: yaml_template_sensor_p1s_cam_mediamtx_pid
+        icon: mdi:identifier
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'mediamtx_pid') | int(0) }}"
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'mediamtx_pid') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam RTSP Established Connections"
+        unique_id: yaml_template_sensor_p1s_cam_rtsp_established_connections
+        icon: mdi:connection
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'rtsp_established_connections') | int(0) }}"
+        unit_of_measurement: "connections"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'rtsp_established_connections') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam WebRTC Established Connections"
+        unique_id: yaml_template_sensor_p1s_cam_webrtc_established_connections
+        icon: mdi:connection
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'webrtc_established_connections') | int(0) }}"
+        unit_of_measurement: "connections"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'webrtc_established_connections') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam RTSP Reader Sessions"
+        unique_id: yaml_template_sensor_p1s_cam_rtsp_reader_sessions
+        icon: mdi:eye-outline
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'rtsp_reader_sessions') | int(0) }}"
+        unit_of_measurement: "sessions"
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'rtsp_reader_sessions') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Configured Bitrate"
+        unique_id: yaml_template_sensor_p1s_cam_configured_bitrate
+        icon: mdi:video-high-definition
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'configured_bitrate') | int(0) }}"
+        unit_of_measurement: "bit/s"
+        device_class: data_rate
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'configured_bitrate') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Configured Bitrate Mbps"
+        unique_id: yaml_template_sensor_p1s_cam_configured_bitrate_mbps
+        icon: mdi:video-high-definition
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'configured_bitrate_mbps') | float(0) }}"
+        unit_of_measurement: "Mbit/s"
+        device_class: data_rate
+        state_class: measurement
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'configured_bitrate_mbps') not in [none, '', 'unknown', 'unavailable']
+          }}
+
+  - binary_sensor:
+      - name: "P1S Cam MediaMTX Running"
+        unique_id: yaml_template_binary_sensor_p1s_cam_mediamtx_running
+        icon: mdi:server
+        device_class: running
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'mediamtx_active') == 'active' }}"
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'mediamtx_active') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Camera Helper Running"
+        unique_id: yaml_template_binary_sensor_p1s_cam_camera_helper_running
+        icon: mdi:camera-sync
+        device_class: running
+        state: >-
+          {% set value = state_attr('sensor.p1s_cam_system_details', 'camera_helper_running') %}
+          {{ value in [true, 'true', 'True', 1, '1'] }}
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'camera_helper_running') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam RTSP Listening"
+        unique_id: yaml_template_binary_sensor_p1s_cam_rtsp_listening
+        icon: mdi:lan-pending
+        device_class: running
+        state: >-
+          {% set value = state_attr('sensor.p1s_cam_system_details', 'rtsp_listening') %}
+          {{ value in [true, 'true', 'True', 1, '1'] }}
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'rtsp_listening') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam WebRTC Listening"
+        unique_id: yaml_template_binary_sensor_p1s_cam_webrtc_listening
+        icon: mdi:web
+        device_class: running
+        state: >-
+          {% set value = state_attr('sensor.p1s_cam_system_details', 'webrtc_listening') %}
+          {{ value in [true, 'true', 'True', 1, '1'] }}
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'webrtc_listening') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam ICE Listening"
+        unique_id: yaml_template_binary_sensor_p1s_cam_ice_listening
+        icon: mdi:ip-network
+        device_class: running
+        state: >-
+          {% set value = state_attr('sensor.p1s_cam_system_details', 'ice_listening') %}
+          {{ value in [true, 'true', 'True', 1, '1'] }}
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'ice_listening') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Stream Connected"
+        unique_id: yaml_template_binary_sensor_p1s_cam_stream_connected
+        icon: mdi:video-wireless-outline
+        device_class: connectivity
+        state: "{{ state_attr('sensor.p1s_cam_system_details', 'stream_connected') | int(0) > 0 }}"
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'stream_connected') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Under-Voltage Active"
+        unique_id: yaml_template_binary_sensor_p1s_cam_under_voltage_active
+        icon: mdi:flash-alert
+        device_class: problem
+        state: >-
+          {% set raw = state_attr('sensor.p1s_cam_system_details', 'throttled') | default('0x0', true) %}
+          {% set value = raw | int(0, 0) %}
+          {{ value % 2 == 1 }}
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'throttled') not in [none, '', 'unknown', 'unavailable']
+          }}
+      - name: "P1S Cam Under-Voltage Has Occurred"
+        unique_id: yaml_template_binary_sensor_p1s_cam_under_voltage_has_occurred
+        icon: mdi:flash-alert-outline
+        device_class: problem
+        state: >-
+          {% set raw = state_attr('sensor.p1s_cam_system_details', 'throttled') | default('0x0', true) %}
+          {% set value = raw | int(0, 0) %}
+          {{ ((value // 65536) % 2) == 1 }}
+        availability: >-
+          {{
+            not is_state('sensor.p1s_cam_system_details', 'unavailable')
+            and state_attr('sensor.p1s_cam_system_details', 'throttled') not in [none, '', 'unknown', 'unavailable']
+          }}
 #################
 #    SENSORS    #
 #################
 sensor:
+
+######################
+#    COMMAND LINE    #
+######################
+command_line:
+  - sensor:
+      name: P1S Cam System Details
+      unique_id: yaml_command_line_sensor_p1s_cam_system_details
+      icon: mdi:cctv
+      scan_interval: 300
+      command_timeout: 20
+      state_class: measurement
+      command: >-
+        ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q drblokmeister@p1s-cam.local '
+          PATH=$PATH:/usr/sbin:/sbin:/usr/local/bin;
+          iface=wlan0;
+          cfg="/usr/local/etc/mediamtx/mediamtx.yml";
+          iw=$(iwconfig "$iface" 2>/dev/null || true);
+          sig=$(echo "$iw" | grep -oP "Signal level=-?\K\d+" | head -n1);
+          lq_pair=$(echo "$iw" | grep -oP "Link Quality=\K\d+/\d+" | head -n1);
+          lq_cur="${lq_pair%/*}";
+          lq_max="${lq_pair#*/}";
+          lq_pct=$(( ${lq_max:-0} > 0 ? ${lq_cur:-0} * 100 / ${lq_max:-1} : 0 ));
+          bit=$(echo "$iw" | grep -oP "Bit Rate=\K[0-9.]+" | head -n1);
+          txp=$(echo "$iw" | grep -oP "Tx-Power=\K\d+" | head -n1);
+          apm=$(echo "$iw" | grep -oP "Access Point: \K([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}" | head -n1);
+          missed=$(echo "$iw" | grep -oP "Missed beacon:\K\d+" | head -n1);
+          retry=$(echo "$iw" | grep -oP "Tx excessive retries:\K\d+" | head -n1);
+          ssid=$(iwgetid -r 2>/dev/null || true);
+          load=$(cut -d" " -f1 /proc/loadavg);
+          temp=$(awk "{printf \"%.1f\",\$1/1000}" /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0);
+          mem=$(awk "/MemTotal:/ {t=\$2} /MemAvailable:/ {a=\$2} END {if(t>0) printf \"%.1f\",(t-a)*100/t; else print 0}" /proc/meminfo);
+          up=$(cut -d"." -f1 /proc/uptime);
+          thr=$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2 || echo "");
+          active=$(systemctl is-active mediamtx 2>/dev/null || echo unknown);
+          pid=$(systemctl show mediamtx -p MainPID --value 2>/dev/null || echo 0);
+          helper=$(pgrep -f "mtxrpicam|rpicamera" >/dev/null && echo true || echo false);
+          rtsp=$(ss -lnt 2>/dev/null | grep -q ":8554 " && echo true || echo false);
+          webrtc=$(ss -lnt 2>/dev/null | grep -q ":8889 " && echo true || echo false);
+          ice=$(ss -lun 2>/dev/null | grep -q ":8189 " && echo true || echo false);
+
+          rtsp_established=$(ss -Htn 2>/dev/null | awk "$4 ~ /:8554$/ && \$1 == \"ESTAB\" {c++} END {print c+0}");
+          webrtc_established=$(ss -Htn 2>/dev/null | awk "$4 ~ /:8889$/ && \$1 == \"ESTAB\" {c++} END {print c+0}");
+          rtsp_reader_sessions=$(journalctl -u mediamtx -n 80 --no-pager 2>/dev/null | grep -c "is reading from path .cam." || true);
+          stream_connected=$(( rtsp_established > 0 || webrtc_established > 0 ? 1 : 0 ));
+
+          configured_bitrate=$(awk "$1 == \"rpiCameraBitrate:\" {print \$2; exit}" "$cfg" 2>/dev/null || echo 0);
+          configured_bitrate_mbps=$(awk -v b="${configured_bitrate:-0}" "BEGIN {printf \"%.1f\", b/1000000}");
+
+          printf "{\"signal_level\":%s,\"link_quality\":%s,\"bit_rate\":%s,\"tx_power\":%s,\"ap_mac\":\"%s\",\"ssid\":\"%s\",\"missed_beacon\":%s,\"tx_retries\":%s,\"load_avg\":%s,\"cpu_temp\":%s,\"memory_used_pct\":%s,\"uptime_s\":%s,\"throttled\":\"%s\",\"mediamtx_active\":\"%s\",\"mediamtx_pid\":%s,\"camera_helper_running\":%s,\"rtsp_listening\":%s,\"webrtc_listening\":%s,\"ice_listening\":%s,\"rtsp_established_connections\":%s,\"webrtc_established_connections\":%s,\"rtsp_reader_sessions\":%s,\"stream_connected\":%s,\"configured_bitrate\":%s,\"configured_bitrate_mbps\":%s}\n" \
+            "${sig:-0}" "${lq_pct:-0}" "${bit:-0}" "${txp:-0}" \
+            "${apm:-}" "${ssid:-}" "${missed:-0}" "${retry:-0}" \
+            "${load:-0}" "${temp:-0}" "${mem:-0}" "${up:-0}" \
+            "${thr:-}" "${active:-unknown}" "${pid:-0}" \
+            "${helper:-false}" "${rtsp:-false}" "${webrtc:-false}" "${ice:-false}" \
+            "${rtsp_established:-0}" "${webrtc_established:-0}" "${rtsp_reader_sessions:-0}" "${stream_connected:-0}" \
+            "${configured_bitrate:-0}" "${configured_bitrate_mbps:-0}";
+        ' || echo '{}'
+      value_template: "{{ value_json.load_avg | default(0) }}"
+      json_attributes:
+        - signal_level
+        - link_quality
+        - bit_rate
+        - tx_power
+        - ap_mac
+        - ssid
+        - missed_beacon
+        - tx_retries
+        - cpu_temp
+        - memory_used_pct
+        - uptime_s
+        - throttled
+        - mediamtx_active
+        - mediamtx_pid
+        - camera_helper_running
+        - rtsp_listening
+        - webrtc_listening
+        - ice_listening
+        - rtsp_established_connections
+        - webrtc_established_connections
+        - rtsp_reader_sessions
+        - stream_connected
+        - configured_bitrate
+        - configured_bitrate_mbps
 
 ########################
 #    BINARY SENSORS    #
@@ -34,7 +415,8 @@ automation:
     mode: single
     triggers:
       - trigger: state
-        entity_id: sensor.blokmeisterp1s_print_status
+        entity_id: sensor.
+        from: "running"
         to: "finish"
     conditions:
       - condition: state
@@ -82,7 +464,7 @@ automation:
               Bambu print
             {% endif %}
           completion_image: >
-            {{ state_attr('camera.blokmeisterp1s_camera', 'entity_picture') }}
+            {{ state_attr('camera.p1s_camera', 'entity_picture') }}
       - service: notify.mobile_app_blokmeisterp9pro
         data:
           title: "3D printer: print finished"
