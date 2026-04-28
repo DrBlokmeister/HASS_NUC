@@ -578,7 +578,7 @@ class DreameVacuumStatus(IntEnum):
     PAUSED = 1
     CLEANING = 2
     BACK_HOME = 3
-    PART_CLEANING = 4
+    PARTIAL_CLEANING = 4
     FOLLOW_WALL = 5
     CHARGING = 6
     OTA = 7
@@ -1112,120 +1112,121 @@ class DreameVacuumProperty(IntEnum):
     CLEANING_PROGRESS = 67
     DRYING_PROGRESS = 68
     DEVICE_CAPABILITY = 69
-    DND = 70
-    DND_START = 71
-    DND_END = 72
-    DND_TASK = 73
-    MAP_DATA = 74
-    FRAME_INFO = 75
-    OBJECT_NAME = 76
-    MAP_EXTEND_DATA = 77
-    ROBOT_TIME = 78
-    RESULT_CODE = 79
-    MULTI_FLOOR_MAP = 80
-    MAP_LIST = 81
-    RECOVERY_MAP_LIST = 82
-    MAP_RECOVERY = 83
-    MAP_RECOVERY_STATUS = 84
-    OLD_MAP_DATA = 85
-    MAP_BACKUP_STATUS = 86
-    WIFI_MAP = 87
-    RESTORE_MAP_BY_AREA = 88
-    VOLUME = 89
-    VOICE_PACKET_ID = 90
-    VOICE_CHANGE_STATUS = 91
-    VOICE_CHANGE = 92
-    VOICE_ASSISTANT = 93
-    VOICE_ASSISTANT_LANGUAGE = 94
-    EMPTY_STAMP = 95
-    CURRENT_CITY = 96
-    VOICE_TEST = 97
-    LISTEN_LANGUAGE_TYPE = 98
-    BAIDU_LOG = 99
-    RESPONSE_WORD = 100
-    DREAME_GPT = 101
-    LISTEN_LANGUAGE = 102
-    LISTEN_LANGUAGE_STATUS = 103
-    TIMEZONE = 104
-    SCHEDULE = 105
-    SCHEDULE_ID = 106
-    SCHEDULE_CANCEL_REASON = 107
-    CRUISE_SCHEDULE = 108
-    MAIN_BRUSH_TIME_LEFT = 109
-    MAIN_BRUSH_LEFT = 110
-    SIDE_BRUSH_TIME_LEFT = 111
-    SIDE_BRUSH_LEFT = 112
-    FILTER_LEFT = 113
-    FILTER_TIME_LEFT = 114
-    FIRST_CLEANING_DATE = 115
-    TOTAL_CLEANING_TIME = 116
-    CLEANING_COUNT = 117
-    TOTAL_CLEANED_AREA = 118
-    TOTAL_RUNTIME = 119
-    TOTAL_CRUISE_TIME = 120
-    MAP_SAVING = 121
-    KEEP_ALIVE = 122
-    AUTO_DUST_COLLECTING = 123
-    AUTO_EMPTY_FREQUENCY = 124
-    DUST_COLLECTION = 125
-    AUTO_EMPTY_STATUS = 126
-    SENSOR_DIRTY_LEFT = 127
-    SENSOR_DIRTY_TIME_LEFT = 128
-    MOP_PAD_LEFT = 129
-    MOP_PAD_TIME_LEFT = 130
-    TANK_FILTER_LEFT = 131
-    TANK_FILTER_TIME_LEFT = 132
-    SILVER_ION_TIME_LEFT = 133
-    SILVER_ION_LEFT = 134
-    SILVER_ION_ADD = 135
-    DETERGENT_LEFT = 136
-    DETERGENT_TIME_LEFT = 137
-    SQUEEGEE_LEFT = 138
-    SQUEEGEE_TIME_LEFT = 139
-    DIRTY_WATER_CHANNEL_DIRTY_TIME_LEFT = 140
-    DIRTY_WATER_CHANNEL_DIRTY_LEFT = 141
-    ONBOARD_DIRTY_WATER_TANK_TIME_LEFT = 142
-    ONBOARD_DIRTY_WATER_TANK_LEFT = 143
-    CLEAN_WATER_TANK_STATUS = 144
-    DIRTY_WATER_TANK_STATUS = 145
-    DUST_BAG_STATUS = 146
-    DETERGENT_STATUS = 147
-    STATION_DRAINAGE_STATUS = 148
-    AI_MAP_OPTIMIZATION_STATUS = 149
-    SECOND_CLEANING_STATUS = 150
-    WATER_TANK_STATUS = 151
-    ADD_CLEANING_AREA_STATUS = 152
-    ADD_CLEANING_AREA_RESULT = 153
-    FIRST_CONNECT_WIFI = 154
-    HAND_DUST_STATUS = 155
-    HAND_DUST_CONNECT_STATUS = 156
-    HOT_WATER_STATUS = 157
-    THRESHOLD_CONFIRMATION_STATUS = 158
-    DUST_BAG_DRYING_LEFT = 159
-    DUST_BAG_DRYING_STATUS = 160
-    DUST_BOX_STATUS = 161
-    ROLLER_COVER = 162
-    CABIN_DOOR_DRYING_LEFT_TIME = 163
-    MOP_TRANSPORT_CARRIER_RESET = 164
-    MOP_TRANSPORT_CARRIER_STATUS = 165
-    ROLLER_COVER_STATUS = 166
-    WASHBOARD_CLEANING_STATUS = 167
-    MECHANICAL_FOOT_STATUS = 168
-    STATION_OTA_STATUS = 169
-    WETNESS_LEVEL = 170
-    CLEAN_CARPETS_FIRST = 171
-    AUTO_LDS_COVERAGE = 172
-    LDS_STATE = 173
-    CLEANGENIUS_MODE = 174
-    QUICK_WASH_MODE = 175
-    WATER_TEMPERATURE = 176
-    CLEAN_EFFICIENCY = 177
-    IMPACT_INJECTION_PUMP = 178
-    OBSTACLE_VIDEOS = 179
-    DND_DISABLE_RESUME_CLEANING = 180
-    DND_DISABLE_AUTO_EMPTY = 181
-    DND_REDUCE_VOLUME = 182
-    HAND_VACUUM_AUTO_DUSTING = 183
+    ONBOARD_WETNESS_LEVEL = 70
+    DND = 71
+    DND_START = 72
+    DND_END = 73
+    DND_TASK = 74
+    MAP_DATA = 75
+    FRAME_INFO = 76
+    OBJECT_NAME = 77
+    MAP_EXTEND_DATA = 78
+    ROBOT_TIME = 79
+    RESULT_CODE = 80
+    MULTI_FLOOR_MAP = 81
+    MAP_LIST = 82
+    RECOVERY_MAP_LIST = 83
+    MAP_RECOVERY = 84
+    MAP_RECOVERY_STATUS = 85
+    OLD_MAP_DATA = 86
+    MAP_BACKUP_STATUS = 87
+    WIFI_MAP = 88
+    RESTORE_MAP_BY_AREA = 89
+    VOLUME = 90
+    VOICE_PACKET_ID = 91
+    VOICE_CHANGE_STATUS = 92
+    VOICE_CHANGE = 93
+    VOICE_ASSISTANT = 94
+    VOICE_ASSISTANT_LANGUAGE = 95
+    EMPTY_STAMP = 96
+    CURRENT_CITY = 97
+    VOICE_TEST = 98
+    LISTEN_LANGUAGE_TYPE = 99
+    BAIDU_LOG = 100
+    RESPONSE_WORD = 101
+    DREAME_GPT = 102
+    LISTEN_LANGUAGE = 103
+    LISTEN_LANGUAGE_STATUS = 104
+    TIMEZONE = 105
+    SCHEDULE = 106
+    SCHEDULE_ID = 107
+    SCHEDULE_CANCEL_REASON = 108
+    CRUISE_SCHEDULE = 109
+    MAIN_BRUSH_TIME_LEFT = 110
+    MAIN_BRUSH_LEFT = 111
+    SIDE_BRUSH_TIME_LEFT = 112
+    SIDE_BRUSH_LEFT = 113
+    FILTER_LEFT = 114
+    FILTER_TIME_LEFT = 115
+    FIRST_CLEANING_DATE = 116
+    TOTAL_CLEANING_TIME = 117
+    CLEANING_COUNT = 118
+    TOTAL_CLEANED_AREA = 119
+    TOTAL_RUNTIME = 120
+    TOTAL_CRUISE_TIME = 121
+    MAP_SAVING = 122
+    KEEP_ALIVE = 123
+    AUTO_DUST_COLLECTING = 124
+    AUTO_EMPTY_FREQUENCY = 125
+    DUST_COLLECTION = 126
+    AUTO_EMPTY_STATUS = 127
+    SENSOR_DIRTY_LEFT = 128
+    SENSOR_DIRTY_TIME_LEFT = 129
+    MOP_PAD_LEFT = 130
+    MOP_PAD_TIME_LEFT = 131
+    TANK_FILTER_LEFT = 132
+    TANK_FILTER_TIME_LEFT = 133
+    SILVER_ION_TIME_LEFT = 134
+    SILVER_ION_LEFT = 135
+    SILVER_ION_ADD = 136
+    DETERGENT_LEFT = 137
+    DETERGENT_TIME_LEFT = 138
+    SQUEEGEE_LEFT = 139
+    SQUEEGEE_TIME_LEFT = 140
+    DIRTY_WATER_CHANNEL_DIRTY_TIME_LEFT = 141
+    DIRTY_WATER_CHANNEL_DIRTY_LEFT = 142
+    ONBOARD_DIRTY_WATER_TANK_TIME_LEFT = 143
+    ONBOARD_DIRTY_WATER_TANK_LEFT = 144
+    CLEAN_WATER_TANK_STATUS = 145
+    DIRTY_WATER_TANK_STATUS = 146
+    DUST_BAG_STATUS = 147
+    DETERGENT_STATUS = 148
+    STATION_DRAINAGE_STATUS = 149
+    AI_MAP_OPTIMIZATION_STATUS = 150
+    SECOND_CLEANING_STATUS = 151
+    WATER_TANK_STATUS = 152
+    ADD_CLEANING_AREA_STATUS = 153
+    ADD_CLEANING_AREA_RESULT = 154
+    FIRST_CONNECT_WIFI = 155
+    HAND_DUST_STATUS = 156
+    HAND_DUST_CONNECT_STATUS = 157
+    HOT_WATER_STATUS = 158
+    THRESHOLD_CONFIRMATION_STATUS = 159
+    DUST_BAG_DRYING_LEFT = 160
+    DUST_BAG_DRYING_STATUS = 161
+    DUST_BOX_STATUS = 162
+    ROLLER_COVER = 163
+    CABIN_DOOR_DRYING_LEFT_TIME = 164
+    MOP_TRANSPORT_CARRIER_RESET = 165
+    MOP_TRANSPORT_CARRIER_STATUS = 166
+    ROLLER_COVER_STATUS = 167
+    WASHBOARD_CLEANING_STATUS = 168
+    MECHANICAL_FOOT_STATUS = 169
+    STATION_OTA_STATUS = 170
+    WETNESS_LEVEL = 171
+    CLEAN_CARPETS_FIRST = 172
+    AUTO_LDS_COVERAGE = 173
+    LDS_STATE = 174
+    CLEANGENIUS_MODE = 175
+    QUICK_WASH_MODE = 176
+    WATER_TEMPERATURE = 177
+    CLEAN_EFFICIENCY = 178
+    IMPACT_INJECTION_PUMP = 179
+    OBSTACLE_VIDEOS = 180
+    DND_DISABLE_RESUME_CLEANING = 181
+    DND_DISABLE_AUTO_EMPTY = 182
+    DND_REDUCE_VOLUME = 183
+    HAND_VACUUM_AUTO_DUSTING = 184
     DYNAMIC_OBSTACLE_CLEANING = 185
     HUMAN_NOISE_REDUCTION = 186
     PET_CARE = 187
@@ -1522,6 +1523,7 @@ DreameVacuumPropertyMapping = {
     DreameVacuumProperty.DRYING_PROGRESS: {siid: 4, piid: 64},
     DreameVacuumProperty.DEVICE_CAPABILITY: {siid: 4, piid: 83},
     # DreameVacuumProperty.COMBINED_DATA: {siid: 4, piid: 99},
+    DreameVacuumProperty.ONBOARD_WETNESS_LEVEL: {siid: 4, piid: 105},
     DreameVacuumProperty.DND: {siid: 5, piid: 1},
     DreameVacuumProperty.DND_START: {siid: 5, piid: 2},
     DreameVacuumProperty.DND_END: {siid: 5, piid: 3},
@@ -1807,7 +1809,13 @@ PROPERTY_AVAILABILITY: Final = {
     and not device.status.fast_mapping
     and not device.status.scheduled_clean
     and not device.status.cruising
-    and not device.status.max_suction_power,
+    and not (
+        device.status.max_suction_power
+        and (
+            (device.capability.max_suction_power_extended and device.status.mopping_after_sweeping)
+            or device.status.sweeping
+        )
+    ),
     DreameVacuumAutoSwitchProperty.MAX_SUCTION_POWER.name: lambda device: (
         (device.capability.max_suction_power_extended and device.status.mopping_after_sweeping)
         or device.status.sweeping
@@ -1824,7 +1832,7 @@ PROPERTY_AVAILABILITY: Final = {
     and not device.status.fast_mapping
     and not device.status.scheduled_clean
     and not device.status.cruising,
-    DreameVacuumProperty.WETNESS_LEVEL.name: lambda device: (device.status.water_tank_or_mop_installed)
+    DreameVacuumProperty.WETNESS_LEVEL.name.lower(): lambda device: (device.status.water_tank_or_mop_installed)
     and not device.status.sweeping
     and not device.status.fast_mapping
     and not device.status.scheduled_clean
@@ -2362,6 +2370,7 @@ WARNING_ERROR_CODE: Final = [
     DreameVacuumErrorCode.SLIPPERY_FLOOR,
     DreameVacuumErrorCode.ONBOARD_WATER_TANK_EMPTY,
     DreameVacuumErrorCode.ONBOARD_DIRTY_WATER_TANK_FULL,
+    DreameVacuumErrorCode.UNKNOWN_WARNING,
 ]
 
 
@@ -2449,7 +2458,7 @@ class ObstaclePictureStatus(IntEnum):
     UPLOAD_FAILED = 3
 
 
-class SegmentSkipReason(IntEnum):
+class ObstacleReason(IntEnum):
     BLOCKED_BY_VIRTUAL_WALL = 2
     BLOCKED_BY_DOOR = 3
     BLOCKED_BY_THRESHOLD = 4
@@ -2669,6 +2678,9 @@ class DeviceCapability(IntEnum):
     SELF_CLEAN_AREA_DEFAULT = 138
     SELF_CLEAN_AREA_FIXED_DEFAULT = 139
     SMALL_WATER_TANK = 140
+    ONBOARD_WETNESS_LEVEL = 141
+    LONG_DRYING_TIME = 142
+    NO_DETERGENT = 143
 
 
 class DreameVacuumDeviceCapability:
@@ -2841,7 +2853,12 @@ class DreameVacuumDeviceCapability:
         self.self_clean_area_default = 20
         self.self_clean_area_fixed_default = 0
         self.small_water_tank = False
+        self.onboard_wetness_level = False
+        self.long_drying_time = False
+        self.no_detergent = False
         self.furnitures_v3 = False
+        self.cleaning_progress = False
+        self.hidden_wetness_level = False
         self._custom_cleaning_mode = False
         self._capability = None
         self._device = device
@@ -2888,6 +2905,7 @@ class DreameVacuumDeviceCapability:
         self.shortcuts = bool(self._device.get_property(DreameVacuumProperty.SHORTCUTS) is not None)
         self.off_peak_charging = bool(self._device.get_property(DreameVacuumProperty.OFF_PEAK_CHARGING) is not None)
         self.voice_assistant = bool(self._device.get_property(DreameVacuumProperty.VOICE_ASSISTANT) is not None)
+        self.cleaning_progress = bool(self._device.get_property(DreameVacuumProperty.CLEANING_PROGRESS) is not None)
 
         if self._capability:
             version = self._device.info.version if self._device.info.version else 1
@@ -2924,6 +2942,7 @@ class DreameVacuumDeviceCapability:
 
         self.detergent = bool(
             self.self_wash_base
+            and not self.no_detergent
             and (self.detergent or self._device.get_property(DreameVacuumProperty.DETERGENT_LEFT) != None)
         )
 
@@ -2949,6 +2968,7 @@ class DreameVacuumDeviceCapability:
         self.pet_detective = bool(
             self.pet_detective and self._device.get_property(DreameVacuumProperty.PET_DETECTIVE) is not None
         )
+        self.wetness_level = self.wetness_level or self.onboard_wetness_level
         self.mopping_settings = self.mopping_settings or self.mopping_type
         self.segment_mopping_settings = self.segment_mopping_settings or self.segment_mopping_type
         self.task_type = bool(self.task_type and self._device.get_property(DreameVacuumProperty.TASK_TYPE) is not None)
@@ -2956,6 +2976,15 @@ class DreameVacuumDeviceCapability:
             self.wetness_level
             or (self.mopping_settings and self._device.get_property(DreameVacuumProperty.WETNESS_LEVEL))
         )
+        if (
+            self.wetness
+            and not self.wetness_level
+            and self.self_wash_base
+            and self.self_clean_frequency
+            and (self.long_drying_time or (self.cleaning_progress and self.cleangenius_auto))
+        ):
+            self.wetness_level = True
+            self.hidden_wetness_level = True
         if not self.cleaning_route:
             self.segment_slow_clean_route = False
         self.custom_mopping_route = self.mopping_settings and not self.cleaning_route
@@ -4000,11 +4029,9 @@ class CleaningHistory:
                         values = json.loads(values)
                         if values:
                             self.blocked_segments = {
-                                v[0]: (
-                                    [SegmentSkipReason(v[1]), v[2], v[3]] if len(v) > 3 else [SegmentSkipReason(v[1])]
-                                )
+                                v[0]: ([ObstacleReason(v[1]), v[2], v[3]] if len(v) > 3 else [ObstacleReason(v[1])])
                                 for v in values
-                                if v[1] in SegmentSkipReason._value2member_map_
+                                if v[1] in ObstacleReason._value2member_map_
                             }
 
 
@@ -4255,6 +4282,7 @@ class MapData:
         self.walls_info: Optional[Any] = None
         self.walls_info_new: Optional[Any] = None
         self.zone_cleaning: Optional[bool] = False
+        self.dirty: Optional[bool] = False
 
     def __eq__(self: MapData, other: MapData) -> bool:
         if other is None:
@@ -4535,7 +4563,7 @@ class DNDTask:
 
     def as_dict(self) -> Dict[str, Any]:
         return asdict(self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
-    
+
 
 @dataclass
 class ScheduledTask:
@@ -4661,7 +4689,7 @@ MAP_COLOR_SCHEME_LIST: Final = {
         wall=(64, 64, 64, 255),
         passive_segment=(100, 100, 100, 255),
         hidden_segment=(116, 116, 116, 255),
-        new_segment=(0, 91, 244, 255),
+        new_segment=(22, 104, 242, 255),
         no_go=(133, 0, 0, 128),
         no_go_outline=(149, 0, 0, 200),
         no_mop=(134, 0, 226, 128),
@@ -4681,10 +4709,10 @@ MAP_COLOR_SCHEME_LIST: Final = {
         path=(200, 200, 200, 255),
         mop_path=(200, 200, 200, 100),
         segment=(
-            [(13, 64, 155, 255), (0, 55, 150, 255)],
-            [(143, 75, 7, 255), (117, 53, 0, 255)],
-            [(0, 106, 176, 255), (0, 96, 158, 255)],
-            [(76, 107, 36, 255), (44, 107, 36, 255)],
+            [(46, 81, 142, 255), (12, 92, 232, 255)],
+            [(130, 111, 38, 255), (180, 146, 9, 255)],
+            [(39, 111, 158, 255), (15, 152, 242, 255)],
+            [(83, 104, 56, 255), (76, 168, 63, 255)],
         ),
         obstacle_bg=(28, 81, 176, 255),
         material_color=(255, 255, 255, 20),
@@ -4837,7 +4865,7 @@ class Line:
 @dataclass
 class CLine(Line):
     length: int = 0
-    findEnd: bool = False
+    find: bool = False
 
 
 @dataclass
@@ -5003,5 +5031,6 @@ class MapRendererData:
     change_mop: bool = False
     docked: bool = True
     work_status: int = 0
+    dirty: bool = False
     resources: MapRendererResources = None
     version: int = 1

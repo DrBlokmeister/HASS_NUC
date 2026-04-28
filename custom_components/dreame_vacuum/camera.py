@@ -806,7 +806,7 @@ class DreameVacuumCameraEntity(DreameVacuumEntity, Camera):
         if self.map_index == 0:
             map_data = await self.hass.async_add_executor_job(self.device.history_map, index, cruising)
             if map_data:
-                if not cleaning_map and not cruising and wifi_map:
+                if not cleaning_map and wifi_map:
                     if not map_data.wifi_map_data:
                         return None
                     map_data = self.device.get_map_for_render(map_data.wifi_map_data)
@@ -906,7 +906,7 @@ class DreameVacuumCameraEntity(DreameVacuumEntity, Camera):
         if self.device:
             data = None
             for v in self.device.status.map_data_list.values():
-                if v.map_index == int(index):
+                if v.map_index == int(index) or (not self.device.status.multi_map and int(index) == 1):
                     data = v
 
             if data:
@@ -921,7 +921,7 @@ class DreameVacuumCameraEntity(DreameVacuumEntity, Camera):
         if self.device:
             data = None
             for v in self.device.status.map_data_list.values():
-                if v.map_index == int(index):
+                if v.map_index == int(index) or (not self.device.status.multi_map and int(index) == 1):
                     data = v
 
             if data:

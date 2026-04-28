@@ -144,7 +144,7 @@ NUMBERS: tuple[DreameVacuumNumberEntityDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
     ),
     DreameVacuumNumberEntityDescription(
-        property_key=DreameVacuumProperty.WETNESS_LEVEL,
+        key=DreameVacuumProperty.WETNESS_LEVEL.name.lower(),
         icon_fn=lambda value, device: (
             "mdi:water-off"
             if (
@@ -160,6 +160,7 @@ NUMBERS: tuple[DreameVacuumNumberEntityDescription, ...] = (
         max_value_fn=lambda device: 15 if device.capability.mop_clean_frequency else 32,
         native_step=1,
         exists_fn=lambda description, device: device.capability.wetness_level,
+        value_fn=lambda value, device: device.status.wetness_level,
     ),
     DreameVacuumNumberEntityDescription(
         property_key=DreameVacuumProperty.DRYING_TIME,
@@ -170,7 +171,8 @@ NUMBERS: tuple[DreameVacuumNumberEntityDescription, ...] = (
         native_max_value=12,
         native_step=1,
         entity_category=None,
-        exists_fn=lambda description, device: device.capability.mop_clean_frequency,
+        exists_fn=lambda description, device: device.capability.self_wash_base
+        and (device.capability.mop_clean_frequency or device.capability.long_drying_time),
     ),
     DreameVacuumNumberEntityDescription(
         property_key=DreameVacuumProperty.AUTO_EMPTY_AREA,

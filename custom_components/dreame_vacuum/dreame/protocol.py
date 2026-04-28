@@ -416,7 +416,7 @@ class DreameVacuumDreameHomeCloudProtocol:
         unsupported_devices = []
         if response:
             all_devices = list(response["page"]["records"])
-            for device in all_devices:                
+            for device in all_devices:
                 model = device["model"]
                 if model in models:
                     device["name"] = (
@@ -752,9 +752,7 @@ class DreameVacuumDreameHomeCloudProtocol:
                 retries = retries + 1
                 response = None
                 if self._connected:
-                    _LOGGER.warning(
-                        f"Error while executing request: Read timed out. (timeout={timeout})"
-                    )
+                    _LOGGER.warning(f"Error while executing request: Read timed out. (timeout={timeout})")
             except Exception as ex:
                 retries = retries + 1
                 response = None

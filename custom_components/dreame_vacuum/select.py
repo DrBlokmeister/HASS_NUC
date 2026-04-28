@@ -246,7 +246,8 @@ SELECTS: tuple[DreameVacuumSelectEntityDescription, ...] = (
         entity_category=None,
         value_fn=lambda value, device: f"{value}h",
         value_int_fn=lambda value, self: int(value[0]),
-        exists_fn=lambda description, device: not device.capability.mop_clean_frequency
+        exists_fn=lambda description, device: not device.capability.mop_clean_frequency 
+        and not device.capability.long_drying_time
         and device.capability.self_wash_base,
         available_fn=lambda device: not device.status.smart_drying
         and not device.status.silent_drying
@@ -827,12 +828,13 @@ SEGMENT_SELECTS: tuple[DreameVacuumSelectEntityDescription, ...] = (
         ),
         entity_category=EntityCategory.CONFIG,
         segment_available_fn=lambda device, segment: bool(
-            device.status.current_segments
+            device.status.current_segments is not None
             and segment.visibility is not None
             and not device.status.started
             and not device.status.fast_mapping
             and not device.status.has_temporary_map
             and not device.status.scheduled_clean
+            and device.status.station_room != segment
             and device.status.has_saved_map
         ),
         value_fn=lambda device, segment: SEGMENT_VISIBILITY_CODE_TO_NAME.get(segment.visibility, STATE_UNKNOWN),
