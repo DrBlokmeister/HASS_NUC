@@ -795,7 +795,61 @@ automation:
                 {%- endfor -%}
                 {{ ns.found }}
 
-
+  - alias: "[system|nas] Notify if Unraid cache usage is high"
+    id: yaml_automation_system_nas_notify_if_unraid_cache_usage_is_high
+    description: >
+      Sends a high-priority mobile notification when the Unraid cache disk usage
+      reaches 90% or higher. Updates the notification every 5 minutes while the
+      cache remains above the threshold, then replaces it with a resolved message.
+    mode: single
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.tower_disk_cache_usage
+        above: 90
+    condition: []
+    action:
+      - repeat:
+          sequence:
+            - variables:
+                cache_usage: "{{ states('sensor.tower_disk_cache_usage') | float(none) }}"
+            - service: notify.mobile_app_blokmeisterp9pro
+              data:
+                title: "⚠️ Unraid Cache High"
+                message: >-
+                  Cache usage: {{ cache_usage | round(1) }}%.
+                data:
+                  ttl: 0
+                  priority: high
+                  clickAction: "/config/devices/device/db9950b8bef71e0918844cce1953eeb5"
+                  sticky: "true"
+                  tag: "unraid_cache_usage_high"
+                  group: "unraid_cache_usage_high"
+                  notification_icon: "mdi:harddisk-alert"
+            - wait_for_trigger:
+                - platform: numeric_state
+                  entity_id: sensor.tower_disk_cache_usage
+                  below: 90
+              timeout: "00:05:00"
+              continue_on_timeout: true
+          while:
+            - condition: numeric_state
+              entity_id: sensor.tower_disk_cache_usage
+              above: 90
+      - variables:
+          cache_usage: "{{ states('sensor.tower_disk_cache_usage') | float(none) }}"
+      - service: notify.mobile_app_blokmeisterp9pro
+        data:
+          title: "✅ Unraid Cache Resolved"
+          message: >-
+            Cache usage is back to {{ cache_usage | round(1) }}%.
+          data:
+            ttl: 0
+            priority: high
+            clickAction: "/config/devices/device/db9950b8bef71e0918844cce1953eeb5"
+            sticky: "false"
+            tag: "unraid_cache_usage_high"
+            group: "unraid_cache_usage_high"
+            notification_icon: "mdi:harddisk-check"
 ################
 #    SCENES    #
 ################
