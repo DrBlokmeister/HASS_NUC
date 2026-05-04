@@ -37,50 +37,188 @@ badges:
         entity: device_tracker.phone_eddy
         state: home
 cards:
-  - type: custom:auto-entities
-    card:
-      type: entities
-      title: 'Afvalkalender'
-    filter:
-      include:
-        - entity_id: sensor.afval_voor_restafval
-          options:
-            type: custom:multiple-entity-row
-            attribute: Days_until
-        - entity_id: sensor.afval_voor_papier
-          options:
-            type: custom:multiple-entity-row
-            attribute: Days_until
-        - entity_id: sensor.afval_voor_gft
-          options:
-            type: custom:multiple-entity-row
-            attribute: Days_until
-    sort:
-      method: attribute
-      attribute: Days_until
-      numeric: true
-  - type: entity-filter
-    state_filter:
-      - operator: "!="
-        value: None
-    entities:
-      - entity: sensor.afval_voor_tomorrow
-      - entity: sensor.afval_voor_today
-    show_empty: false
-  - type: conditional
-    conditions:
-      - entity: sensor.afval_voor_tomorrow
-        state: 'None'
-      - entity: sensor.afval_voor_today
-        state: 'None'
-    card:
-      type: vertical-stack
-      cards:
-        - type: entities
-          entities:
-            - entity: sensor.afval_voor_gft
-            - entity: sensor.afval_voor_papier
-            - entity: sensor.afval_voor_restafval
+  - type: vertical-stack
+    cards:
+      - type: heading
+        icon: mdi:delete-outline
+        heading: Afval
+        heading_style: subtitle
+      # Only shown when something is collected today
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: sensor.afval_voor_today
+            state_not: "None"
+          - condition: state
+            entity: sensor.afval_voor_today
+            state_not: none
+          - condition: state
+            entity: sensor.afval_voor_today
+            state_not: unknown
+          - condition: state
+            entity: sensor.afval_voor_today
+            state_not: unavailable
+        card:
+          type: custom:mushroom-template-card
+          entity: sensor.afval_voor_today
+          primary: Vandaag
+          secondary: "{{ states('sensor.afval_voor_today') }}"
+          icon: mdi:alert-circle-outline
+          icon_color: red
+          tap_action:
+            action: more-info
+          card_mod:
+            style: |
+              ha-card {
+                min-height: 58px;
+                --icon-size: 30px;
+              }
+      # Only shown when something is collected tomorrow,
+      # but not if today already has waste.
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: sensor.afval_voor_today
+            state: "None"
+          - condition: state
+            entity: sensor.afval_voor_tomorrow
+            state_not: "None"
+          - condition: state
+            entity: sensor.afval_voor_tomorrow
+            state_not: none
+          - condition: state
+            entity: sensor.afval_voor_tomorrow
+            state_not: unknown
+          - condition: state
+            entity: sensor.afval_voor_tomorrow
+            state_not: unavailable
+        card:
+          type: custom:mushroom-template-card
+          entity: sensor.afval_voor_tomorrow
+          primary: Morgen
+          secondary: "{{ states('sensor.afval_voor_tomorrow') }}"
+          icon: mdi:calendar-alert
+          icon_color: orange
+          tap_action:
+            action: more-info
+          card_mod:
+            style: |
+              ha-card {
+                min-height: 58px;
+                --icon-size: 30px;
+              }
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.afval_voor_gft
+            primary: GFT
+            secondary: >-
+              {%- set d = state_attr('sensor.afval_voor_gft', 'Days_until') | int(999) -%}
+              {%- if d == 0 -%}
+                Vandaag
+              {%- elif d == 1 -%}
+                Morgen
+              {%- elif d == 999 -%}
+                ?
+              {%- else -%}
+                {{ d }} d
+              {%- endif -%}
+            icon: mdi:leaf
+            icon_color: >-
+              {%- set d = state_attr('sensor.afval_voor_gft', 'Days_until') | int(999) -%}
+              {%- if d == 0 -%} red
+              {%- elif d == 1 -%} orange
+              {%- elif d <= 3 -%} amber
+              {%- else -%} green
+              {%- endif -%}
+            layout: vertical
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 70px;
+                  padding: 8px !important;
+                  --icon-size: 24px;
+                }
+                mushroom-state-info {
+                  --card-primary-font-size: 13px;
+                  --card-secondary-font-size: 12px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.afval_voor_restafval
+            primary: Rest
+            secondary: >-
+              {%- set d = state_attr('sensor.afval_voor_restafval', 'Days_until') | int(999) -%}
+              {%- if d == 0 -%}
+                Vandaag
+              {%- elif d == 1 -%}
+                Morgen
+              {%- elif d == 999 -%}
+                ?
+              {%- else -%}
+                {{ d }} d
+              {%- endif -%}
+            icon: mdi:trash-can-outline
+            icon_color: >-
+              {%- set d = state_attr('sensor.afval_voor_restafval', 'Days_until') | int(999) -%}
+              {%- if d == 0 -%} red
+              {%- elif d == 1 -%} orange
+              {%- elif d <= 3 -%} amber
+              {%- else -%} grey
+              {%- endif -%}
+            layout: vertical
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 70px;
+                  padding: 8px !important;
+                  --icon-size: 24px;
+                }
+                mushroom-state-info {
+                  --card-primary-font-size: 13px;
+                  --card-secondary-font-size: 12px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.afval_voor_papier
+            primary: Papier
+            secondary: >-
+              {%- set d = state_attr('sensor.afval_voor_papier', 'Days_until') | int(999) -%}
+              {%- if d == 0 -%}
+                Vandaag
+              {%- elif d == 1 -%}
+                Morgen
+              {%- elif d == 999 -%}
+                ?
+              {%- else -%}
+                {{ d }} d
+              {%- endif -%}
+            icon: mdi:newspaper-variant-outline
+            icon_color: >-
+              {%- set d = state_attr('sensor.afval_voor_papier', 'Days_until') | int(999) -%}
+              {%- if d == 0 -%} red
+              {%- elif d == 1 -%} orange
+              {%- elif d <= 3 -%} amber
+              {%- else -%} blue
+              {%- endif -%}
+            layout: vertical
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 70px;
+                  padding: 8px !important;
+                  --icon-size: 24px;
+                }
+                mushroom-state-info {
+                  --card-primary-font-size: 13px;
+                  --card-secondary-font-size: 12px;
+                }
   - type: custom:auto-entities
     filter:
       # template: >
