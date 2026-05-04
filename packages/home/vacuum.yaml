@@ -51,11 +51,11 @@ template:
         icon: mdi:battery
         device_class: battery
         unit_of_measurement: "%"
-        state: "{{ state_attr('vacuum.alfred', 'battery_level') }}"
+        state: >-
+          {{ state_attr('vacuum.alfred', 'battery_level') | int(0) }}
         availability: >-
-          {{ states('vacuum.alfred') not in ['none', 'None', 'unavailable', 'unknown', None]
-             and state_attr('vacuum.alfred', 'battery_level') is not none }}
-
+          {{ states('vacuum.alfred') not in ['none', 'None', 'unavailable', 'unknown', '']
+              and state_attr('vacuum.alfred', 'battery_level') is not none }}
       - name: "Dustin Power Estimate"
         unique_id: yaml_template_sensor_dustin_power_estimate
         icon: mdi:flash
@@ -65,23 +65,21 @@ template:
           {% set vacuum_state = states('vacuum.dustin') %}
           {% set battery = states('sensor.dustin_battery_level') | int(100) %}
           {% set base_status = states('sensor.dustin_self_wash_base_status') %}
-          {% set drying = is_state('sensor.dustin_self_wash_base_status', 'drying') or is_state('sensor.dustin_drying_progress', 'unknown') == false and states('sensor.dustin_drying_progress') | int(0) > 0 %}
+          {% set drying_progress = states('sensor.dustin_drying_progress') | int(0) %}
+          {% set drying = base_status == 'drying' or drying_progress > 0 %}
           {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
             0
-          {% elif is_state('vacuum.dustin', 'docked') and battery < 100 and drying %}
+          {% elif vacuum_state == 'docked' and battery < 100 and drying %}
             60
-          {% elif is_state('vacuum.dustin', 'docked') and battery < 100 %}
+          {% elif vacuum_state == 'docked' and battery < 100 %}
             20
-          {% elif is_state('vacuum.dustin', 'docked') and drying %}
+          {% elif vacuum_state == 'docked' and drying %}
             50
-          {% elif is_state('vacuum.dustin', 'docked') %}
+          {% elif vacuum_state == 'docked' %}
             3
           {% else %}
             0
           {% endif %}
-        availability: >-
-          {{ states('vacuum.dustin') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
-
       - name: "Moeke Power Estimate"
         unique_id: yaml_template_sensor_moeke_power_estimate
         icon: mdi:flash
@@ -90,23 +88,21 @@ template:
         state: >-
           {% set vacuum_state = states('vacuum.moeke') %}
           {% set battery = states('sensor.moeke_battery_level') | int(100) %}
-          {% set drying = is_state('sensor.moeke_self_wash_base_status', 'drying') %}
+          {% set base_status = states('sensor.moeke_self_wash_base_status') %}
+          {% set drying = base_status == 'drying' %}
           {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
             0
-          {% elif is_state('vacuum.moeke', 'docked') and battery < 100 and drying %}
+          {% elif vacuum_state == 'docked' and battery < 100 and drying %}
             60
-          {% elif is_state('vacuum.moeke', 'docked') and battery < 100 %}
+          {% elif vacuum_state == 'docked' and battery < 100 %}
             20
-          {% elif is_state('vacuum.moeke', 'docked') and drying %}
+          {% elif vacuum_state == 'docked' and drying %}
             50
-          {% elif is_state('vacuum.moeke', 'docked') %}
+          {% elif vacuum_state == 'docked' %}
             3
           {% else %}
             0
           {% endif %}
-        availability: >-
-          {{ states('vacuum.moeke') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
-
       - name: "Alfred Power Estimate"
         unique_id: yaml_template_sensor_alfred_power_estimate
         icon: mdi:flash
@@ -117,15 +113,13 @@ template:
           {% set battery = state_attr('vacuum.alfred', 'battery_level') | int(100) %}
           {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
             0
-          {% elif is_state('vacuum.alfred', 'docked') and battery < 100 %}
+          {% elif vacuum_state == 'docked' and battery < 100 %}
             20
-          {% elif is_state('vacuum.alfred', 'docked') and battery == 100 %}
+          {% elif vacuum_state == 'docked' and battery >= 100 %}
             3
           {% else %}
             0
           {% endif %}
-        availability: >-
-          {{ states('vacuum.alfred') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
 
   - binary_sensor:
       - name: "Tamara or Sander Downstairs"
@@ -218,8 +212,8 @@ counter:
 #    AUTOMATIONS    #
 #####################
 automation:
-  - alias: '[home|vacuum] Scheduled Cleanup'
-    id: home_vacuum_scheduled_cleanup
+  - alias: "[home|vacuum] Scheduled Cleanup"
+    id: yaml_automation_home_vacuum_scheduled_cleanup
     description: >
       Starts the available vacuums when nobody is home. Dustin covers the ground
       floor, Moeke covers the first floor on Monday, Wednesday and Friday with
@@ -246,10 +240,10 @@ automation:
       - condition: or
         conditions:
           - condition: numeric_state
-            entity_id: sensor.moeke_area_cleaned_today
+            entity_id: sensor.dustin_area_cleaned_today
             below: 20
           - condition: numeric_state
-            entity_id: sensor.argus_area_cleaned_today
+            entity_id: sensor.moeke_area_cleaned_today
             below: 20
           - condition: numeric_state
             entity_id: sensor.alfred_area_cleaned_today
@@ -259,40 +253,72 @@ automation:
             state: "Multiple Times Daily"
     action:
       - parallel:
-          - if:   #Start Alfred
-              - condition: numeric_state
-                entity_id: sensor.dustin_area_cleaned_today
-                below: 20
+          # Dustin - Ground floor
+          - if:
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.dustin_area_cleaned_today
+                    below: 20
+                  - condition: state
+                    entity_id: input_select.vacuum_scheduled_cleaning_mode
+                    state: "Multiple Times Daily"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
             then:
+              - variables:
+                  dustin_cleaning_mode: >-
+                    {{ 'sweeping'
+                        if states('sensor.dustin_error') in ['clean_tank_level', 'dirty_tank_level']
+                          or states('sensor.dustin_low_water_warning') not in ['no_warning', 'unavailable', 'unknown']
+                          or is_state('sensor.dustin_mop_pad', 'not_installed')
+                        else 'sweeping_and_mopping' }}
               - service: vacuum.set_fan_speed
                 continue_on_error: true
                 target:
                   entity_id: vacuum.dustin
                 data:
                   fan_speed: Strong
-              - service: select.select_option
-                continue_on_error: true
-                target:
-                  entity_id: select.dustin_cleaning_mode
-                data:
-                  option: >-
-                    {% if states('sensor.dustin_error') in ['clean_tank_level', 'dirty_tank_level']
-                        or states('sensor.dustin_low_water_warning') not in ['no_warning', 'unavailable', 'unknown']
-                        or is_state('sensor.dustin_mop_pad', 'not_installed') %}
-                      sweeping
-                    {% else %}
-                      sweeping_and_mopping
-                    {% endif %}
-              - delay:
-                  seconds: 2
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleangenius', 'off') }}"
+                then:
+                  - service: select.select_option
+                    continue_on_error: true
+                    target:
+                      entity_id: select.dustin_cleangenius
+                    data:
+                      option: "off"
+                  - delay:
+                      seconds: 10
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleaning_mode', dustin_cleaning_mode) }}"
+                then:
+                  - service: select.select_option
+                    continue_on_error: true
+                    target:
+                      entity_id: select.dustin_cleaning_mode
+                    data:
+                      option: "{{ dustin_cleaning_mode }}"
+                  - delay:
+                      seconds: 3
               - service: vacuum.start
                 continue_on_error: true
                 target:
                   entity_id: vacuum.dustin
+          # Moeke - First floor
           - if:
-              - condition: numeric_state
-                entity_id: sensor.moeke_area_cleaned_today
-                below: 20
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.moeke_area_cleaned_today
+                    below: 20
+                  - condition: state
+                    entity_id: input_select.vacuum_scheduled_cleaning_mode
+                    state: "Multiple Times Daily"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
             then:
               - service: vacuum.set_fan_speed
                 continue_on_error: true
@@ -308,8 +334,7 @@ automation:
                   option: >-
                     {% if states('sensor.moeke_error') in ['clean_tank_level', 'dirty_tank_level']
                         or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-                        or now().weekday() in [1, 3, 5, 6]
-                    %}
+                        or now().weekday() in [1, 3, 5, 6] %}
                       sweeping
                     {% else %}
                       sweeping_and_mopping
@@ -320,10 +345,18 @@ automation:
                 continue_on_error: true
                 target:
                   entity_id: vacuum.moeke
+          # Alfred - Second floor
           - if:
-              - condition: numeric_state
-                entity_id: sensor.alfred_area_cleaned_today
-                below: 20
+              - condition: or
+                conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.alfred_area_cleaned_today
+                    below: 20
+                  - condition: state
+                    entity_id: input_select.vacuum_scheduled_cleaning_mode
+                    state: "Multiple Times Daily"
+              - condition: template
+                value_template: "{{ not is_state('vacuum.alfred', 'cleaning') }}"
             then:
               - service: vacuum.set_fan_speed
                 continue_on_error: true
@@ -342,7 +375,11 @@ automation:
           title: "Home Assistant - Vacuum"
           message: >-
             {% set vacuums = [states.vacuum.dustin, states.vacuum.moeke, states.vacuum.alfred] %}
-            {% set active = vacuums | reject('eq', None) | selectattr('state', 'equalto', 'cleaning') | map(attribute='name') | list %}
+            {% set active = vacuums
+                | reject('eq', None)
+                | selectattr('state', 'equalto', 'cleaning')
+                | map(attribute='name')
+                | list %}
             {% if active | length == 0 %}
               Scheduled cleanup triggered but no vacuums started.
             {% elif active | length == 1 %}
@@ -361,8 +398,8 @@ automation:
             notification_icon: mdi:robot-vacuum
             timeout: 1800
 
-  - alias: "[home|vacuum] Backup cleanup"  #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
-    id: home_vacuum_backup_cleanup
+  - alias: "[home|vacuum] Backup cleanup"
+    id: yaml_automation_home_vacuum_backup_cleanup
     description: >
       If the ground floor was not cleaned before 15:00, start Dustin when nobody
       appears to be downstairs for at least 15 minutes.
@@ -387,28 +424,46 @@ automation:
         state: "off"
         for:
           minutes: 15
+      - condition: template
+        value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
     action:
+      - variables:
+          dustin_cleaning_mode: >-
+            {{ 'sweeping'
+                if states('sensor.dustin_error') in ['clean_tank_level', 'dirty_tank_level']
+                  or states('sensor.dustin_low_water_warning') not in ['no_warning', 'unavailable', 'unknown']
+                  or is_state('sensor.dustin_mop_pad', 'not_installed')
+                else 'sweeping_and_mopping' }}
       - service: vacuum.set_fan_speed
         continue_on_error: true
         target:
           entity_id: vacuum.dustin
         data:
           fan_speed: Strong
-      - service: select.select_option
-        continue_on_error: true
-        target:
-          entity_id: select.dustin_cleaning_mode
-        data:
-          option: >-
-            {% if states('sensor.dustin_error') in ['clean_tank_level', 'dirty_tank_level']
-               or states('sensor.dustin_low_water_warning') not in ['no_warning', 'unavailable', 'unknown']
-               or is_state('sensor.dustin_mop_pad', 'not_installed') %}
-              sweeping
-            {% else %}
-              sweeping_and_mopping
-            {% endif %}
-      - delay:
-          seconds: 2
+      - if:
+          - condition: template
+            value_template: "{{ not is_state('select.dustin_cleangenius', 'off') }}"
+        then:
+          - service: select.select_option
+            continue_on_error: true
+            target:
+              entity_id: select.dustin_cleangenius
+            data:
+              option: "off"
+          - delay:
+              seconds: 10
+      - if:
+          - condition: template
+            value_template: "{{ not is_state('select.dustin_cleaning_mode', dustin_cleaning_mode) }}"
+        then:
+          - service: select.select_option
+            continue_on_error: true
+            target:
+              entity_id: select.dustin_cleaning_mode
+            data:
+              option: "{{ dustin_cleaning_mode }}"
+          - delay:
+              seconds: 3
       - service: vacuum.start
         continue_on_error: true
         target:
@@ -442,7 +497,6 @@ automation:
                 continue_on_error: true
                 data:
                   notification_id: "NOTIFICATION_ID_WARNING"
-
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1002 }}"
@@ -462,7 +516,7 @@ automation:
                 data:
                   option: >-
                     {% if states('sensor.moeke_error') in ['clean_tank_level', 'dirty_tank_level']
-                       or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off') %}
+                        or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off') %}
                       sweeping
                     {% else %}
                       sweeping_and_mopping
@@ -473,7 +527,6 @@ automation:
                 continue_on_error: true
                 target:
                   entity_id: vacuum.moeke
-
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1002 }}"
@@ -484,7 +537,6 @@ automation:
               - service: vacuum.pause
                 target:
                   entity_id: vacuum.moeke
-
           - conditions:
               - condition: template
                 value_template: "{{ trigger.event.data.event == 1004 }}"
