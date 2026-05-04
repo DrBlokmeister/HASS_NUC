@@ -231,8 +231,8 @@ automation:
   - alias: "[kitchen|switch] Kitchen Multiswitch Automation"
     id: yaml_automation_kitchen_switch_kitchen_multiswitch_automation
     description: >
-      Automations for toggling kitchen lights, setting full brightness, vacuuming, 
-      mopping the kitchen, and controlling ground floor activities using the Hue 
+      Automations for toggling kitchen lights, setting full brightness, vacuuming,
+      mopping the kitchen, and controlling ground floor activities using the Hue
       multiswitch.
     mode: queued
     trigger:
@@ -257,8 +257,6 @@ automation:
           id: kitchen_multiswitch
           event: 4000
     condition: []
-      # - condition: template
-      #   value_template: "{{ trigger.event.data.event in [1000, 2000, 3000, 4000] }}"
     action:
       - wait_for_trigger:
           - platform: event
@@ -267,6 +265,7 @@ automation:
               id: kitchen_multiswitch
         timeout:
           seconds: 20
+        continue_on_timeout: false
       - choose:
           # Short press button 1 - Toggle kitchen lights
           - conditions:
@@ -277,8 +276,10 @@ automation:
                 target:
                   entity_id: light.kitchen
                 data:
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
-                  brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
+                  color_temp_kelvin: >
+                    {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}
+                  brightness_pct: >
+                    {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}
           # Long press button 1 - Full brightness kitchen lights
           - conditions:
               - condition: template
@@ -288,134 +289,179 @@ automation:
                 target:
                   entity_id: light.kitchen
                 data:
-                  color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
+                  color_temp_kelvin: >
+                    {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}
                   brightness_pct: 100
-
           # Short press button 2 - Vacuum the kitchen
           - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 2002 }}"
               - condition: template
-                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+                value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
             sequence:
-              - service: select.select_option
-                continue_on_error: true
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleangenius', 'off') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleangenius
+                    data:
+                      option: "off"
+                  - delay: "00:00:10"
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleaning_mode', 'sweeping') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleaning_mode
+                    data:
+                      option: "sweeping"
+                  - delay: "00:00:03"
+              - service: dreame_vacuum.vacuum_clean_segment
                 target:
-                  entity_id: select.moeke_cleaning_mode
+                  entity_id: vacuum.dustin
                 data:
-                  option: "sweeping"
-              - delay: "00:00:02"
-              - service: script.vacuum_kitchen_twice
-              # - service: dreame_vacuum.vacuum_clean_zone
-              #   data:
-              #     entity_id: vacuum.moeke
-              #     repeats: 2
-              #     zone: [[-7781,-464,-5148,1452]]
-          - conditions: # Pause if vacuum is running
+                  segments: 1
+                  repeats: 2
+          # Short press button 2 - Pause Dustin if already cleaning
+          - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 2002 }}"
               - condition: state
-                entity_id: vacuum.moeke
+                entity_id: vacuum.dustin
                 state: cleaning
             sequence:
               - service: vacuum.pause
-                entity_id: vacuum.moeke
+                target:
+                  entity_id: vacuum.dustin
           # Long press button 2 - Mop the kitchen
           - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 2001 }}"
               - condition: template
-                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+                value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
             sequence:
-              - service: select.select_option
-                continue_on_error: true
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleangenius', 'off') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleangenius
+                    data:
+                      option: "off"
+                  - delay: "00:00:10"
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleaning_mode', 'sweeping_and_mopping') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleaning_mode
+                    data:
+                      option: "sweeping_and_mopping"
+                  - delay: "00:00:03"
+              - service: dreame_vacuum.vacuum_clean_segment
                 target:
-                  entity_id: select.moeke_cleaning_mode
+                  entity_id: vacuum.dustin
                 data:
-                  option: "sweeping_and_mopping"
-              - delay: "00:00:02"
-              - service: script.vacuum_kitchen_twice
-              # - service: dreame_vacuum.vacuum_clean_zone
-              #   data:
-              #     entity_id: vacuum.moeke
-              #     repeats: 2
-              #     zone: [[-7781,-464,-5148,1452]]
-          - conditions: # Pause if vacuum is running
+                  segments: 1
+                  repeats: 2
+          # Long press button 2 - Pause Dustin if already cleaning
+          - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 2001 }}"
               - condition: state
-                entity_id: vacuum.moeke
+                entity_id: vacuum.dustin
                 state: cleaning
             sequence:
               - service: vacuum.pause
-                entity_id: vacuum.moeke
-
+                target:
+                  entity_id: vacuum.dustin
           # Short press button 3 - Vacuum the entire ground floor
           - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 3002 }}"
               - condition: template
-                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+                value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
             sequence:
-              - service: select.select_option
-                continue_on_error: true
-                target:
-                  entity_id: select.moeke_cleaning_mode
-                data:
-                  option: "sweeping"
-              - delay: "00:00:02"
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleangenius', 'off') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleangenius
+                    data:
+                      option: "off"
+                  - delay: "00:00:10"
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleaning_mode', 'sweeping') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleaning_mode
+                    data:
+                      option: "sweeping"
+                  - delay: "00:00:03"
               - service: vacuum.start
                 target:
-                  entity_id: vacuum.moeke
+                  entity_id: vacuum.dustin
+          # Short press button 3 - Pause Dustin if already cleaning
           - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 3002 }}"
               - condition: state
-                entity_id: vacuum.moeke
+                entity_id: vacuum.dustin
                 state: cleaning
             sequence:
               - service: vacuum.pause
-                entity_id: vacuum.moeke
+                target:
+                  entity_id: vacuum.dustin
           # Long press button 3 - Mop the entire ground floor
           - conditions:
               - condition: template
                 value_template: "{{ wait.trigger.event.data.event == 3001 }}"
               - condition: template
-                value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
+                value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
             sequence:
-              - service: select.select_option
-                continue_on_error: true
-                target:
-                  entity_id: select.moeke_cleaning_mode
-                data:
-                  option: "sweeping_and_mopping"
-              - delay: "00:00:02"
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleangenius', 'off') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleangenius
+                    data:
+                      option: "off"
+                  - delay: "00:00:10"
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state('select.dustin_cleaning_mode', 'sweeping_and_mopping') }}"
+                then:
+                  - service: select.select_option
+                    target:
+                      entity_id: select.dustin_cleaning_mode
+                    data:
+                      option: "sweeping_and_mopping"
+                  - delay: "00:00:03"
               - service: vacuum.start
                 target:
-                  entity_id: vacuum.moeke
+                  entity_id: vacuum.dustin
+          # Long press button 3 - Pause Dustin if already cleaning
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 3001 }}"
+                value_template: "{{ wait.trigger.event.data.event == 3001 }}"
               - condition: state
-                entity_id: vacuum.moeke
+                entity_id: vacuum.dustin
                 state: cleaning
             sequence:
               - service: vacuum.pause
-                entity_id: vacuum.moeke
-
-          # Short press button 4 - Toggle all ground floor lights
-          # - conditions:
-          #     - condition: template
-          #       value_template: "{{ trigger.event.data.event == 4002 }}"
-          #   sequence:
-          #     # Uncomment and specify the lights in the ground floor
-          #     - service: light.toggle
-          #       target:
-          #         entity_id:
-          #           - light.living_room
-          #           - light.kitchen
-          #           - light.hallway
-          #           - light.bathroom
+                target:
+                  entity_id: vacuum.dustin
 
   - alias: '[areas|kitchen] Light Calibration Automation'
     id: yaml_automation_areas_kitchen_light_calibration_automation
