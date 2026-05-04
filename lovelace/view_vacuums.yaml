@@ -23,6 +23,14 @@ cards:
           service: script.start_all_vacuums
       - type: button
         icon: mdi:robot-vacuum
+        name: Start Dustin
+        tap_action:
+          action: call-service
+          service: vacuum.start
+          service_data:
+            entity_id: vacuum.dustin
+      - type: button
+        icon: mdi:robot-vacuum
         name: Start Moeke
         tap_action:
           action: call-service
@@ -31,20 +39,97 @@ cards:
             entity_id: vacuum.moeke
       - type: button
         icon: mdi:robot-vacuum
-        name: Start Argus
-        tap_action:
-          action: call-service
-          service: vacuum.start
-          service_data:
-            entity_id: vacuum.argus
-      - type: button
-        icon: mdi:robot-vacuum
         name: Start Alfred
         tap_action:
           action: call-service
           service: vacuum.start
           service_data:
             entity_id: vacuum.alfred
+
+  - type: vertical-stack
+    cards:
+      - type: button
+        name: "Dustin: Go to Device Settings"
+        tap_action:
+          action: navigate
+          navigation_path: "/config/devices/device/7fd9ba2df8849e21864f27b8c34df87b"
+      - type: custom:xiaomi-vacuum-map-card
+        #title: Dustin
+        preset_name: Live map
+        map_locked: true
+        entity: vacuum.dustin
+        map_source:
+          camera: camera.dustin_map
+          crop:
+            top: 10
+            bottom: 10
+            left: 30
+            right: 7
+        calibration_source:
+          camera: true
+        debug: true
+        append_tiles: true
+        tiles:
+          - entity: sensor.dustin_battery_level
+            label: Battery
+          - entity: sensor.dustin_current_room
+            label: Current Room
+          - entity: sensor.dustin_status
+            label: Status
+      - type: entities
+        entities:
+          # - entity: sensor.dustin_cleaned_area
+          #   name: Dustin Cleaned Today
+          - entity: select.dustin_cleangenius
+          - entity: select.dustin_cleangenius_mode
+          - entity: select.dustin_auto_empty_mode
+          - entity: select.dustin_washing_mode
+          - entity: select.dustin_water_temperature
+      - type: glance
+        title: Clean Areas
+        columns: 4
+        entities:
+          - entity: script.vacuum_entry_twice
+            icon: mdi:door
+            name: Entry
+            tap_action:
+              action: call-service
+              service: script.vacuum_entry_twice
+          - entity: script.vacuum_kitchen_twice
+            icon: mdi:fridge-outline
+            name: Kitchen
+            tap_action:
+              action: call-service
+              service: script.vacuum_kitchen_twice
+          - entity: script.vacuum_livingroom_twice
+            icon: mdi:table-chair
+            name: Living Room
+            tap_action:
+              action: call-service
+              service: script.vacuum_livingroom_twice
+        show_icon: true
+        show_name: true
+        show_state: false
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.dustin_total_cleaned_area
+            aggregate_func: last
+            name: Area Cleaned Today
+        name: Dustin Cleaned Area
+        line_color: '#8891d0'
+        hours_to_show: 336 # 14 days
+        group_by: date
+        points_per_hour: 1
+        line_width: 8
+        font_size: 75
+        font_size_header: 14
+        align_state: right
+        lower_bound: 0
+        upper_bound: ~60
+        show:
+          graph: bar
+          icon: false
+          points: false
 
   - type: vertical-stack
     cards:
@@ -92,70 +177,6 @@ cards:
         title: Clean Areas
         columns: 4
         entities:
-          - entity: script.vacuum_entry_twice
-            icon: mdi:door
-            name: Entry
-            tap_action:
-              action: call-service
-              service: script.vacuum_entry_twice
-          - entity: script.vacuum_kitchen_twice
-            icon: mdi:fridge-outline
-            name: Kitchen
-            tap_action:
-              action: call-service
-              service: script.vacuum_kitchen_twice
-          - entity: script.vacuum_livingroom_twice
-            icon: mdi:table-chair
-            name: Living Room
-            tap_action:
-              action: call-service
-              service: script.vacuum_livingroom_twice
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.moeke_area_cleaned_today
-            aggregate_func: last
-            name: Area Cleaned Today
-        name: Moeke Cleaned Area
-        line_color: '#8891d0'
-        hours_to_show: 336 # 14 days
-        group_by: date
-        points_per_hour: 1
-        line_width: 8
-        font_size: 75
-        font_size_header: 14
-        align_state: right
-        lower_bound: 0
-        upper_bound: ~60
-        show:
-          graph: bar
-          icon: false
-          points: false
-
-  - type: vertical-stack
-    cards:
-      - type: button
-        name: "Argus: Go to Device Settings"
-        tap_action:
-          action: navigate
-          navigation_path: "/config/devices/device/5b526629f18568d13731a63d0c9b2ab4"
-      - type: custom:xiaomi-vacuum-map-card
-        #title: Argus
-        preset_name: Live map
-        map_locked: true
-        entity: vacuum.argus
-        map_source:
-          camera: image.argus_map
-        calibration_source:
-          camera: true
-        debug: true
-      # - type: entities
-      #   entities:
-      #     - entity: sensor.argus_area_cleaned_today
-      #       name: Argus Cleaned Today
-      - type: glance
-        title: Clean Areas
-        columns: 5
-        entities:
           - entity: script.vacuum_bedroom_twice
             icon: mdi:bed
             name: Bedroom
@@ -179,10 +200,10 @@ cards:
         show_state: false
       - type: custom:mini-graph-card
         entities:
-          - entity: sensor.argus_area_cleaned_today
+          - entity: sensor.moeke_area_cleaned_today
             aggregate_func: last
             name: Area Cleaned Today
-        name: Argus Cleaned Area
+        name: Moeke Cleaned Area
         line_color: '#8891d0'
         hours_to_show: 336 # 14 days
         group_by: date
@@ -271,3 +292,73 @@ cards:
           icon: false
           points: false
 
+  - type: custom:collapsable-cards
+    title: Argus
+    defaultOpen: false
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: button
+            name: "Argus: Go to Device Settings"
+            tap_action:
+              action: navigate
+              navigation_path: "/config/devices/device/5b526629f18568d13731a63d0c9b2ab4"
+          - type: custom:xiaomi-vacuum-map-card
+            #title: Argus
+            preset_name: Live map
+            map_locked: true
+            entity: vacuum.argus
+            map_source:
+              camera: image.argus_map
+            calibration_source:
+              camera: true
+            debug: true
+          # - type: entities
+          #   entities:
+          #     - entity: sensor.argus_area_cleaned_today
+          #       name: Argus Cleaned Today
+          - type: glance
+            title: Clean Areas
+            columns: 5
+            entities:
+              - entity: script.vacuum_bedroom_twice
+                icon: mdi:bed
+                name: Bedroom
+                tap_action:
+                  action: call-service
+                  service: script.vacuum_bedroom_twice
+              - entity: script.vacuum_bathroom_twice
+                icon: mdi:bathtub
+                name: Bathroom
+                tap_action:
+                  action: call-service
+                  service: script.vacuum_bathroom_twice
+              - entity: script.vacuum_babyroom
+                icon: mdi:baby
+                name: Baby Room
+                tap_action:
+                  action: call-service
+                  service: script.vacuum_babyroom
+            show_icon: true
+            show_name: true
+            show_state: false
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.argus_area_cleaned_today
+                aggregate_func: last
+                name: Area Cleaned Today
+            name: Argus Cleaned Area
+            line_color: '#8891d0'
+            hours_to_show: 336 # 14 days
+            group_by: date
+            points_per_hour: 1
+            line_width: 8
+            font_size: 75
+            font_size_header: 14
+            align_state: right
+            lower_bound: 0
+            upper_bound: ~60
+            show:
+              graph: bar
+              icon: false
+              points: false

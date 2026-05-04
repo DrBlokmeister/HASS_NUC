@@ -1,7 +1,7 @@
 homeassistant:
   customize: {}
 
-input_number:
+input_number: {}
 
 input_select:
   vacuum_scheduled_cleaning_mode:
@@ -13,8 +13,16 @@ input_select:
     initial: "Once Daily"
     icon: mdi:robot-vacuum
 
-
 utility_meter:
+  dustin_area_cleaned_today:
+    name: Dustin Area Cleaned Today
+    source: sensor.dustin_cleaned_area
+    cycle: daily
+    offset:
+      hours: 3
+    periodically_resetting: true
+    always_available: true
+
   moeke_area_cleaned_today:
     name: Moeke Area Cleaned Today
     source: sensor.moeke_cleaned_area
@@ -23,14 +31,7 @@ utility_meter:
       hours: 3
     periodically_resetting: true
     always_available: true
-  argus_area_cleaned_today:
-    name: Argus Area Cleaned Today
-    source: sensor.argus_current_clean_area
-    cycle: daily
-    offset:
-      hours: 3
-    periodically_resetting: true
-    always_available: true
+
   alfred_area_cleaned_today:
     name: Alfred Area Cleaned Today
     source: sensor.alfred_current_clean_area
@@ -40,6 +41,9 @@ utility_meter:
     periodically_resetting: true
     always_available: true
 
+########################
+#    TEMPLATE ENTITIES #
+########################
 template:
   - sensor:
       - name: "Alfred Battery"
@@ -48,61 +52,80 @@ template:
         device_class: battery
         unit_of_measurement: "%"
         state: "{{ state_attr('vacuum.alfred', 'battery_level') }}"
-        availability: "{{ states('vacuum.alfred') not in ['None', 'unavailable', 'unknown', None] }}"
-      - name: "Argus Battery"
-        unique_id: yaml_template_sensor_argus_battery
-        icon: mdi:battery
-        device_class: battery
-        unit_of_measurement: "%"
-        state: "{{ state_attr('vacuum.argus', 'battery_level') }}"
-        availability: "{{ states('vacuum.argus') not in ['None', 'unavailable', 'unknown', None] }}"
+        availability: >-
+          {{ states('vacuum.alfred') not in ['none', 'None', 'unavailable', 'unknown', None]
+             and state_attr('vacuum.alfred', 'battery_level') is not none }}
+
+      - name: "Dustin Power Estimate"
+        unique_id: yaml_template_sensor_dustin_power_estimate
+        icon: mdi:flash
+        device_class: power
+        unit_of_measurement: "W"
+        state: >-
+          {% set vacuum_state = states('vacuum.dustin') %}
+          {% set battery = states('sensor.dustin_battery_level') | int(100) %}
+          {% set base_status = states('sensor.dustin_self_wash_base_status') %}
+          {% set drying = is_state('sensor.dustin_self_wash_base_status', 'drying') or is_state('sensor.dustin_drying_progress', 'unknown') == false and states('sensor.dustin_drying_progress') | int(0) > 0 %}
+          {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            0
+          {% elif is_state('vacuum.dustin', 'docked') and battery < 100 and drying %}
+            60
+          {% elif is_state('vacuum.dustin', 'docked') and battery < 100 %}
+            20
+          {% elif is_state('vacuum.dustin', 'docked') and drying %}
+            50
+          {% elif is_state('vacuum.dustin', 'docked') %}
+            3
+          {% else %}
+            0
+          {% endif %}
+        availability: >-
+          {{ states('vacuum.dustin') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
+
       - name: "Moeke Power Estimate"
         unique_id: yaml_template_sensor_moeke_power_estimate
         icon: mdi:flash
         device_class: power
         unit_of_measurement: "W"
         state: >-
-          {% if is_state('vacuum.moeke', 'docked') and states('sensor.moeke_battery_level')|int(100) < 100 and is_state('sensor.moeke_self_wash_base_status', 'drying') %}
+          {% set vacuum_state = states('vacuum.moeke') %}
+          {% set battery = states('sensor.moeke_battery_level') | int(100) %}
+          {% set drying = is_state('sensor.moeke_self_wash_base_status', 'drying') %}
+          {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+            0
+          {% elif is_state('vacuum.moeke', 'docked') and battery < 100 and drying %}
             60
-          {% elif is_state('vacuum.moeke', 'docked') and states('sensor.moeke_battery_level')|int(100) < 100 and not is_state('sensor.moeke_self_wash_base_status', 'drying') %}
+          {% elif is_state('vacuum.moeke', 'docked') and battery < 100 %}
             20
-          {% elif is_state('vacuum.moeke', 'docked') and states('sensor.moeke_battery_level')|int(100) == 100 and is_state('sensor.moeke_self_wash_base_status', 'drying') %}
+          {% elif is_state('vacuum.moeke', 'docked') and drying %}
             50
           {% elif is_state('vacuum.moeke', 'docked') %}
             3
           {% else %}
             0
           {% endif %}
-      - name: "Argus Power Estimate"
-        unique_id: yaml_template_sensor_argus_power_estimate
-        icon: mdi:flash
-        device_class: power
-        unit_of_measurement: "W"
-        state: >-
-          {% if states.vacuum.argus == None or states.vacuum.argus.state in ['unknown', 'unavailable', None, 'None'] %}
-            0
-          {% elif is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int(100) < 100 %}
-            20
-          {% elif is_state('vacuum.argus', 'docked') and state_attr('vacuum.argus', 'battery_level')|int(100) == 100 %}
-            3
-          {% else %}
-            0
-          {% endif %}
+        availability: >-
+          {{ states('vacuum.moeke') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
+
       - name: "Alfred Power Estimate"
         unique_id: yaml_template_sensor_alfred_power_estimate
         icon: mdi:flash
         device_class: power
         unit_of_measurement: "W"
         state: >-
-          {% if states.vacuum.alfred == None or states.vacuum.alfred.state in ['unknown', 'unavailable', None, 'None'] %}
+          {% set vacuum_state = states('vacuum.alfred') %}
+          {% set battery = state_attr('vacuum.alfred', 'battery_level') | int(100) %}
+          {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
             0
-          {% elif is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int(100) < 100 %}
+          {% elif is_state('vacuum.alfred', 'docked') and battery < 100 %}
             20
-          {% elif is_state('vacuum.alfred', 'docked') and state_attr('vacuum.alfred', 'battery_level')|int(100) == 100 %}
+          {% elif is_state('vacuum.alfred', 'docked') and battery == 100 %}
             3
           {% else %}
             0
           {% endif %}
+        availability: >-
+          {{ states('vacuum.alfred') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
 
   - binary_sensor:
       - name: "Tamara or Sander Downstairs"
@@ -122,6 +145,7 @@ template:
               is_state('device_tracker.tamaraphonep9a_unifi', 'unavailable')
               and is_state('device_tracker.blokmeisterp9pro_unifi', 'unavailable')
             ) }}
+
 #################
 #    SENSORS    #
 #################
@@ -131,11 +155,19 @@ sensor:
     type: sum
     round_digits: 0
     entity_ids:
+      - sensor.dustin_power_estimate
       - sensor.moeke_power_estimate
-      - sensor.argus_power_estimate
       - sensor.alfred_power_estimate
 
-##### ENERGY ESTIMATION #####
+  - platform: integration
+    source: sensor.dustin_power_estimate
+    name: Dustin Energy
+    unique_id: integration_dustin_energy
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
+
   - platform: integration
     source: sensor.moeke_power_estimate
     name: Moeke Energy
@@ -144,14 +176,7 @@ sensor:
     unit_prefix: k
     method: left
     round: 2
-  - platform: integration
-    source: sensor.argus_power_estimate
-    name: Argus Energy
-    unique_id: integration_argus_energy
-    unit_time: h
-    unit_prefix: k
-    method: left
-    round: 2
+
   - platform: integration
     source: sensor.alfred_power_estimate
     name: Alfred Energy
@@ -166,9 +191,10 @@ sensor:
     type: sum
     round_digits: 2
     entity_ids:
+      - sensor.dustin_energy
       - sensor.moeke_energy
-      - sensor.argus_energy
       - sensor.alfred_energy
+
 ########################
 #    BINARY SENSORS    #
 ########################
@@ -192,24 +218,26 @@ counter:
 #    AUTOMATIONS    #
 #####################
 automation:
-#Auto clean whole house when I'm not home on mon, wed, fri
   - alias: '[home|vacuum] Scheduled Cleanup'
     id: home_vacuum_scheduled_cleanup
+    description: >
+      Starts the available vacuums when nobody is home. Dustin covers the ground
+      floor, Moeke covers the first floor on Monday, Wednesday and Friday with
+      mopping enabled, and Alfred covers the second floor.
     mode: single
     trigger:
       - platform: state
         entity_id: binary_sensor.house_occupied
-        to: 'off'
-        # for: 00:10:00
+        to: "off"
       - platform: time
-        at: '07:00:00'
+        at: "07:00:00"
     condition:
       - condition: time
-        after: '7:00:00'
-        before: '22:00:00'
+        after: "07:00:00"
+        before: "22:00:00"
       - condition: state
         entity_id: binary_sensor.house_occupied
-        state: 'off'
+        state: "off"
       - condition: state
         entity_id: input_select.vacuum_scheduled_cleaning_mode
         state:
@@ -233,38 +261,43 @@ automation:
       - parallel:
           - if:   #Start Alfred
               - condition: numeric_state
-                entity_id: sensor.alfred_area_cleaned_today
+                entity_id: sensor.dustin_area_cleaned_today
                 below: 20
             then:
               - service: vacuum.set_fan_speed
-                entity_id: vacuum.alfred
                 continue_on_error: true
+                target:
+                  entity_id: vacuum.dustin
                 data:
-                  fan_speed: Medium
-              - service: vacuum.start
-                entity_id: vacuum.alfred
+                  fan_speed: Strong
+              - service: select.select_option
                 continue_on_error: true
-          - if:   #Start Argus
-              - condition: numeric_state
-                entity_id: sensor.argus_area_cleaned_today
-                below: 20
-            then:
-              - service: vacuum.set_fan_speed
-                entity_id: vacuum.argus
-                continue_on_error: true
+                target:
+                  entity_id: select.dustin_cleaning_mode
                 data:
-                  fan_speed: Medium
+                  option: >-
+                    {% if states('sensor.dustin_error') in ['clean_tank_level', 'dirty_tank_level']
+                        or states('sensor.dustin_low_water_warning') not in ['no_warning', 'unavailable', 'unknown']
+                        or is_state('sensor.dustin_mop_pad', 'not_installed') %}
+                      sweeping
+                    {% else %}
+                      sweeping_and_mopping
+                    {% endif %}
+              - delay:
+                  seconds: 2
               - service: vacuum.start
-                entity_id: vacuum.argus
                 continue_on_error: true
-          - if:   #Start Moeke
+                target:
+                  entity_id: vacuum.dustin
+          - if:
               - condition: numeric_state
                 entity_id: sensor.moeke_area_cleaned_today
                 below: 20
             then:
               - service: vacuum.set_fan_speed
-                entity_id: vacuum.moeke
                 continue_on_error: true
+                target:
+                  entity_id: vacuum.moeke
                 data:
                   fan_speed: Strong
               - service: select.select_option
@@ -272,111 +305,122 @@ automation:
                 target:
                   entity_id: select.moeke_cleaning_mode
                 data:
-                  option: >
-                      {% if
-                        is_state('sensor.moeke_error', 'clean_tank_level') or
-                        is_state('sensor.moeke_error', 'dirty_tank_level') or
-                        is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-                      %}
-                        sweeping
-                      {% else %}
-                        sweeping_and_mopping
-                      {% endif %}
-                  #option: "sweeping_and_mopping"
-                  #option: "sweeping"
+                  option: >-
+                    {% if states('sensor.moeke_error') in ['clean_tank_level', 'dirty_tank_level']
+                        or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+                        or now().weekday() in [1, 3, 5, 6]
+                    %}
+                      sweeping
+                    {% else %}
+                      sweeping_and_mopping
+                    {% endif %}
               - delay:
                   seconds: 2
               - service: vacuum.start
                 continue_on_error: true
-                entity_id: vacuum.moeke
+                target:
+                  entity_id: vacuum.moeke
+          - if:
+              - condition: numeric_state
+                entity_id: sensor.alfred_area_cleaned_today
+                below: 20
+            then:
+              - service: vacuum.set_fan_speed
+                continue_on_error: true
+                target:
+                  entity_id: vacuum.alfred
+                data:
+                  fan_speed: Medium
+              - service: vacuum.start
+                continue_on_error: true
+                target:
+                  entity_id: vacuum.alfred
       - delay:
           seconds: 30
       - service: notify.sander_and_tamara_phones
         data:
-          message: >
-              {% set vacuums = [
-                states.vacuum.moeke,
-                states.vacuum.argus,
-                states.vacuum.alfred
-              ] %}
-              {% set active = vacuums | selectattr('state', 'equalto', 'cleaning') | map(attribute='name') | list %}
-              {% if active | length == 0 %}
-                Scheduled cleanup triggered but no vacuums started.
-              {% elif active | length == 1 %}
-                Started scheduled cleanup with vacuum {{ active[0] }}
-              {% elif active | length == 2 %}
-                Started scheduled cleanup with vacuums {{ active | join(' and ') }}
-              {% else %}
-                Started scheduled cleanup with vacuums {{ active[:-1] | join(', ') }} and {{ active[-1] }}
-              {% endif %}
           title: "Home Assistant - Vacuum"
+          message: >-
+            {% set vacuums = [states.vacuum.dustin, states.vacuum.moeke, states.vacuum.alfred] %}
+            {% set active = vacuums | reject('eq', None) | selectattr('state', 'equalto', 'cleaning') | map(attribute='name') | list %}
+            {% if active | length == 0 %}
+              Scheduled cleanup triggered but no vacuums started.
+            {% elif active | length == 1 %}
+              Started scheduled cleanup with vacuum {{ active[0] }}.
+            {% elif active | length == 2 %}
+              Started scheduled cleanup with vacuums {{ active | join(' and ') }}.
+            {% else %}
+              Started scheduled cleanup with vacuums {{ active[:-1] | join(', ') }} and {{ active[-1] }}.
+            {% endif %}
           data:
             ttl: 0
             priority: high
             sticky: "true"
             group: info
             tag: vacuum
-            # icon_url: local/icons/robot-vacuum.png
             notification_icon: mdi:robot-vacuum
             timeout: 1800
 
-  - alias: '[home|vacuum]backup cleanup' #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
+  - alias: "[home|vacuum] Backup cleanup"  #If we stay home until 15:00, be more agressive in trying to find a cleaning slot
     id: home_vacuum_backup_cleanup
+    description: >
+      If the ground floor was not cleaned before 15:00, start Dustin when nobody
+      appears to be downstairs for at least 15 minutes.
     mode: single
     trigger:
       - platform: state
         entity_id: binary_sensor.tamara_or_sander_downstairs
-        to: 'off'
+        to: "off"
         for:
           minutes: 15
       - platform: time
-        at: '15:00:00'
+        at: "15:00:00"
     condition:
       - condition: time
-        after: '15:00:00'
-        before: '22:00:00'
+        after: "15:00:00"
+        before: "22:00:00"
       - condition: numeric_state
-        entity_id: sensor.moeke_area_cleaned_today
+        entity_id: sensor.dustin_area_cleaned_today
         below: 20
       - condition: state
         entity_id: binary_sensor.tamara_or_sander_downstairs
-        state: 'off'
+        state: "off"
         for:
           minutes: 15
     action:
       - service: vacuum.set_fan_speed
-        entity_id: vacuum.moeke
+        continue_on_error: true
+        target:
+          entity_id: vacuum.dustin
         data:
           fan_speed: Strong
       - service: select.select_option
+        continue_on_error: true
         target:
-          entity_id: select.moeke_cleaning_mode
+          entity_id: select.dustin_cleaning_mode
         data:
-          option: >
-            {% if
-              is_state('sensor.moeke_error', 'clean_tank_level') or
-              is_state('sensor.moeke_error', 'dirty_tank_level') or
-              is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-            %}
+          option: >-
+            {% if states('sensor.dustin_error') in ['clean_tank_level', 'dirty_tank_level']
+               or states('sensor.dustin_low_water_warning') not in ['no_warning', 'unavailable', 'unknown']
+               or is_state('sensor.dustin_mop_pad', 'not_installed') %}
               sweeping
             {% else %}
               sweeping_and_mopping
             {% endif %}
-          #option: "sweeping_and_mopping"
-          #option: "sweeping"
       - delay:
           seconds: 2
       - service: vacuum.start
-        entity_id: vacuum.moeke
+        continue_on_error: true
+        target:
+          entity_id: vacuum.dustin
 
-  - alias: '[home|vacuum] Button control moeke'
+  - alias: "[home|vacuum] Button control Moeke"
     id: home_vacuum_button_control_moeke
+    description: >
+      Controls Moeke with the existing deCONZ switch. This remains on Moeke
+      because the leak sensor and button workflow move with the vacuum.
     mode: restart
     trigger:
-      # - platform: event
-      #   event_type: deconz_event
-      #   event_data:
-      #     id: smart_switch
       - platform: event
         event_type: deconz_event
         event_data:
@@ -385,201 +429,191 @@ automation:
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1003 }}" #long press release
-              - condition: template
-                value_template: "{{ is_state('vacuum.moeke', 'docked') }}"
+                value_template: "{{ trigger.event.data.event == 1003 }}"
+              - condition: state
+                entity_id: vacuum.moeke
+                state: "docked"
             sequence:
               - service: button.press
+                continue_on_error: true
                 target:
                   entity_id: button.moeke_clear_warning
               - service: persistent_notification.dismiss
+                continue_on_error: true
                 data:
                   notification_id: "NOTIFICATION_ID_WARNING"
+
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1002 }}" #single
+                value_template: "{{ trigger.event.data.event == 1002 }}"
               - condition: template
                 value_template: "{{ not is_state('vacuum.moeke', 'cleaning') }}"
             sequence:
               - service: vacuum.set_fan_speed
-                entity_id: vacuum.moeke
+                continue_on_error: true
+                target:
+                  entity_id: vacuum.moeke
                 data:
                   fan_speed: Strong
               - service: select.select_option
+                continue_on_error: true
                 target:
                   entity_id: select.moeke_cleaning_mode
                 data:
-                  option: >
-                      {% if
-                        is_state('sensor.moeke_error', 'clean_tank_level') or
-                        is_state('sensor.moeke_error', 'dirty_tank_level') or
-                        is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-                      %}
-                        sweeping
-                      {% else %}
-                        sweeping_and_mopping
-                      {% endif %}
-                  #option: "sweeping_and_mopping"
-                  #option: "sweeping"
+                  option: >-
+                    {% if states('sensor.moeke_error') in ['clean_tank_level', 'dirty_tank_level']
+                       or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off') %}
+                      sweeping
+                    {% else %}
+                      sweeping_and_mopping
+                    {% endif %}
               - delay:
                   seconds: 2
               - service: vacuum.start
-                entity_id: vacuum.moeke
+                continue_on_error: true
+                target:
+                  entity_id: vacuum.moeke
+
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1002 }}" #single
+                value_template: "{{ trigger.event.data.event == 1002 }}"
               - condition: state
                 entity_id: vacuum.moeke
-                state: cleaning
+                state: "cleaning"
             sequence:
               - service: vacuum.pause
-                entity_id: vacuum.moeke
+                target:
+                  entity_id: vacuum.moeke
+
           - conditions:
               - condition: template
-                value_template: "{{ trigger.event.data.event == 1004 }}" #double
+                value_template: "{{ trigger.event.data.event == 1004 }}"
               - condition: template
                 value_template: "{{ not is_state('vacuum.moeke', 'docked') }}"
             sequence:
               - service: vacuum.return_to_base
-                entity_id: vacuum.moeke
+                target:
+                  entity_id: vacuum.moeke
 
-########## NOTIFICATIONS ##########
-  - alias: '[home|vacuum]Notify Phone if Vacuum is in Error'
+  - alias: "[home|vacuum] Notify phone if vacuum is in error"
     id: home_vacuum_notify_phone_if_vacuum_is_in_error
+    description: >
+      Sends a high-priority notification when Dustin, Moeke, or Alfred reports an
+      error. Dustin and Moeke use Dreame-style camera maps; Alfred keeps the
+      existing image map behavior.
     mode: parallel
     trigger:
       - platform: state
-        entity_id: vacuum.argus
+        entity_id: vacuum.dustin
         to: "error"
-        id: "Argus"
-      - platform: state
-        entity_id: vacuum.alfred
-        to: "error"
-        id: "Alfred"
+        id: Dustin
       - platform: state
         entity_id: vacuum.moeke
         to: "error"
-        id: "Moeke"
-      # - platform: state
-      #   entity_id: sensor.moeke_error
-      #   not_to:
-      #     - no_error
-      #     - clean_mop_pad
-      #     - remove_mop
-      #     - unavailable
-      #   id: "Moeke"
-      # - platform: template
-      #   value_template: "{{ not (states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'remove_mop', 'unavailable']) and (states('vacuum.moeke') in ['docked', 'paused', 'unavailable', 'error']) }}"
-      #   id: "Moeke"
+        id: Moeke
+      - platform: state
+        entity_id: vacuum.alfred
+        to: "error"
+        id: Alfred
     action:
       - variables:
-          vacuumentityid: "{{ trigger.entity_id }}"
-          vacuumentityname: "{{ 'vacuum.moeke' if trigger.id == 'Moeke' else trigger.entity_id }}"
-          errordescription: "{{ states('sensor.moeke_error') if trigger.id == 'Moeke' else 'Error' }}"
-          vac_slug: "{{ vacuumentityname.split('.')[1] }}"
+          vacuum_entity_id: "{{ trigger.entity_id }}"
+          vacuum_slug: "{{ trigger.entity_id.split('.')[1] }}"
           map_entity_id: >-
-            {% if trigger.id == 'Moeke' %}
-              {{ 'camera.' ~ vac_slug ~ '_map' }}
+            {% if trigger.id in ['Dustin', 'Moeke'] %}
+              camera.{{ vacuum_slug }}_map
             {% else %}
-              {{ 'image.' ~ vac_slug ~ '_map' }}
+              image.{{ vacuum_slug }}_map
             {% endif %}
           map_type: >-
-            {% if trigger.id == 'Moeke' %}
+            {% if trigger.id in ['Dustin', 'Moeke'] %}
               camera
             {% else %}
               image
             {% endif %}
-          # unique file per run (parallel-safe)
-          snapshot_file: >-
-            /config/www/tmp/snapshot_vacuum_error_{{ vac_slug }}_{{ now().timestamp() | int(1000000000) }}.jpg
-          snapshot_local_url: "{{ snapshot_file | replace('/config/www', '/local') }}"
       - choose:
-          # Case 1: Moeke
           - conditions:
               - condition: template
-                value_template: "{{ trigger.id == 'Moeke' }}"
+                value_template: "{{ trigger.id == 'Dustin' }}"
             sequence:
               - service: homeassistant.update_entity
+                continue_on_error: true
                 target:
                   entity_id: "{{ map_entity_id }}"
               - service: conversation.process
                 response_variable: gpt_vacuum_error_response
                 data:
                   agent_id: conversation.chatgpt_5d1
-                  text: >
-                    You are a helpful assistant. Write a short phone notification message
-                    to inform the user that their ground floor robot vacuum cleaner "Moeke"
-                    (Dreame L10S Ultra with self-cleaning base) has reported an error.
-
-                    Goal: Help the user understand what might be wrong using the sensor data below.
-                    Write no more than 2 short sentences (max ~200 characters total). Be friendly and clear.
+                  text: >-
+                    Write a short phone notification message for the user. The ground floor robot vacuum "Dustin"
+                    has reported an error. Keep it to max 2 short sentences and max about 200 characters.
+                    Be clear and useful. Add one relevant emoji.
 
                     Sensor data:
-                    - Current state: {{ states.vacuum.moeke.state }}
-                    - Error description: {{ states.vacuum.moeke.attributes.error }}
-                    - Low water warning (from vacuum): {{ states.vacuum.moeke.attributes.low_water_warning }}
-                    - Water detected in clean reservoir (leak sensor): {{ states('binary_sensor.moeke_reservoir_leak_sensor') }}
+                    - Current state: {{ states('vacuum.dustin') }}
+                    - Error description: {{ state_attr('vacuum.dustin', 'error') }}
+                    - Error sensor: {{ states('sensor.dustin_error') }}
+                    - Low water warning: {{ states('sensor.dustin_low_water_warning') }}
+                    - Clean water tank: {{ states('sensor.dustin_clean_water_tank_status') }}
+                    - Dirty water tank: {{ states('sensor.dustin_dirty_water_tank_status') }}
+                    - Mop pad: {{ states('sensor.dustin_mop_pad') }}
+
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.id == 'Moeke' }}"
+            sequence:
+              - service: homeassistant.update_entity
+                continue_on_error: true
+                target:
+                  entity_id: "{{ map_entity_id }}"
+              - service: conversation.process
+                response_variable: gpt_vacuum_error_response
+                data:
+                  agent_id: conversation.chatgpt_5d1
+                  text: >-
+                    You are a helpful assistant. Write a short phone notification message
+                    to inform the user that their first-floor robot vacuum cleaner "Moeke"
+                    has reported an error.
+
+                    Goal: Help the user understand what might be wrong using the sensor data below.
+                    Write no more than 2 short sentences, max about 200 characters total.
+                    Be friendly and clear.
+
+                    Sensor data:
+                    - Current state: {{ states('vacuum.moeke') }}
+                    - Error description: {{ state_attr('vacuum.moeke', 'error') }}
+                    - Error sensor: {{ states('sensor.moeke_error') }}
+                    - Low water warning from vacuum: {{ state_attr('vacuum.moeke', 'low_water_warning') }}
+                    - Water detected in clean reservoir leak sensor: {{ states('binary_sensor.moeke_reservoir_leak_sensor') }}
 
                     Context notes:
                     - Moeke uses clean water for mop washing. The leak sensor hangs inside this reservoir.
                     - If the leak sensor is 'off', the tank is truly empty.
                     - If the leak sensor is 'on' and low water warning is 'No warning', everything is fine — do not mention a water issue.
-                    - A water refill might be needed if leak sensor is 'off' or low water warning is indicates this.
-                    - If there’s a known error description, summarize it briefly and clearly.
+                    - A water refill might be needed if leak sensor is 'off' or low water warning indicates this.
+                    - If there is a known error description, summarize it briefly and clearly.
                     - If everything seems okay but a transient error occurred, say it might be a fluke.
-                    - End with a relevant emoji (💧 if water, 🧼 if cleaning-related, 🤖 otherwise).
-                    - No markdown, titles, or formatting — just the plain text.
-              # - delay:
-              #     seconds: 5
-              # - service: camera.snapshot
-              #   continue_on_error: true
-              #   data:
-              #     entity_id: "{{ map_entity_id }}"
-              #     filename: "{{ snapshot_file }}"
-        # Case 2: Argus or Alfred
+                    - End with a relevant emoji: 💧 if water, 🧼 if cleaning-related, 🤖 otherwise.
+                    - No markdown, titles, or formatting — just plain text.
         default:
-          # - service: homeassistant.update_entity
-          #   target:
-          #     entity_id: "{{ map_entity_id }}"
           - service: conversation.process
             response_variable: gpt_vacuum_error_response
             data:
               agent_id: conversation.chatgpt_5d1
-              text: >
+              text: >-
                 Write a short and clear phone notification to inform the user
-                that their robot vacuum cleaner (Roborock S7 Max with auto empty dock) encountered an error.
+                that their second-floor robot vacuum cleaner "Alfred" encountered an error.
 
-                Vacuum name: {{ trigger.id }},
-                Floor location: {% if trigger.id == 'Argus' %}First floor{% else %}Second floor{% endif %},
-                Entity state: {{ states(trigger.entity_id) }},
-                Error description: {{ state_attr(trigger.entity_id, 'error') }},
+                Entity state: {{ states('vacuum.alfred') }}
+                Error description: {{ state_attr('vacuum.alfred', 'error') }}
 
                 Extra information regarding different errors:
-                  - Error description: None means no error description or no error.
-                  - Device Stuck, clean area: the device is stuck, the area around the robot needs to be cleared.
-                  - Wheels on top of void, move robot: the robot's wheels are suspended, robot needs to be moved.
+                - Error description: None means no error description or no error.
+                - Device Stuck, clean area: the device is stuck, the area around the robot needs to be cleared.
+                - Wheels on top of void, move robot: the robot's wheels are suspended and needs to be moved.
 
-                Mention the floor and the name, say it's in error, clearly describe the type of error if available, and be brief (~150 characters).
-                One friendly sentence is enough. Add a relevant emoji.
-          # - delay:
-          #     seconds: 5
-          # - service: image.snapshot
-          #   continue_on_error: true
-          #   data:
-          #     entity_id: "{{ map_entity_id }}"
-          #     filename: "{{ snapshot_file }}"
-      # - service: homeassistant.update_entity
-      #   target:
-      #     entity_id: "camera.{{ vacuumentityname.split('.')[1] }}_map"
-      # - delay:
-      #     minutes: 1
-      # - service: camera.snapshot
-      #   continue_on_error: true
-      #   data:
-      #     entity_id: "camera.{{ vacuumentityname.split('.')[1] }}_map"
-      #     filename: "/config/www/tmp/snapshot_vacuum_error.jpg"
-      # - delay:
-      #     seconds: 5
+                Mention the floor and the name, say it is in error, clearly describe the type of error if available,
+                and be brief, around 150 characters. One friendly sentence is enough. Add a relevant emoji.
       - service: notify.sander_and_tamara_phones
         continue_on_error: true
         data:
@@ -592,11 +626,10 @@ automation:
             group: vacuum
             tag: vacuumerror
             notification_icon: mdi:robot-vacuum
-            image: /api/{{ map_type }}_proxy/{{ map_entity_id }}
-            #image: "{{ snapshot_local_url }}"
+            image: "/api/{{ map_type }}_proxy/{{ map_entity_id }}"
       - service: scene.create
         data:
-          scene_id: "atmoorb_bulbs_before"
+          scene_id: atmoorb_bulbs_before
           snapshot_entities:
             - light.atmoorb_left
             - light.atmoorb_right
@@ -609,14 +642,18 @@ automation:
           rgb_color: [255, 0, 0]
           effect: "Fast Pulse"
       - wait_template: >-
-          {% if trigger.id == 'Moeke' %}
-            {{ states('sensor.moeke_error') in ['no_error', 'clean_mop_pad'] }}
+          {% if trigger.id == 'Dustin' %}
+            {{ states('sensor.dustin_error') in ['no_error', 'clean_mop_pad', 'unavailable']
+               or not is_state('vacuum.dustin', 'error') }}
+          {% elif trigger.id == 'Moeke' %}
+            {{ states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'unavailable']
+               or not is_state('vacuum.moeke', 'error') }}
           {% else %}
-            {{ not is_state(vacuumentityid, 'error') and not is_state(vacuumentityid, 'paused') }}
+            {{ not is_state('vacuum.alfred', 'error') and not is_state('vacuum.alfred', 'paused') }}
           {% endif %}
       - service: scene.turn_on
         data:
-          entity_id: "scene.atmoorb_bulbs_before"
+          entity_id: scene.atmoorb_bulbs_before
           transition: 1
       - service: notify.sander_and_tamara_phones
         data:
@@ -624,10 +661,13 @@ automation:
           data:
             ttl: 0
             priority: high
-            tag: "vacuumerror"
+            tag: vacuumerror
 
-  - alias: '[home|vacuum]Notify if Moeke Clean Water Reservoir is Empty'
+  - alias: "[home|vacuum] Notify if Moeke clean water reservoir is empty"
     id: home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty
+    description: >
+      Keeps the existing Moeke water reservoir notification workflow. This stays
+      with Moeke because the leak sensor physically moves with that vacuum.
     mode: single
     trigger:
       - platform: state
@@ -639,16 +679,16 @@ automation:
           minutes: 5
       - platform: state
         entity_id: binary_sensor.moeke_reservoir_leak_sensor
-        to: 'off'
+        to: "off"
         for:
           minutes: 5
     action:
       - choose:
-          - conditions:   # Case 1: Dirty tank full
+          - conditions:
               - condition: template
                 value_template: >-
                   {{ trigger.entity_id == 'sensor.moeke_error'
-                    and trigger.to_state.state == 'dirty_tank_level' }}
+                     and trigger.to_state.state == 'dirty_tank_level' }}
             sequence:
               - service: notify.sander_and_tamara_phones
                 continue_on_error: true
@@ -660,19 +700,18 @@ automation:
                     priority: high
                     group: vacuum
                     tag: vacuumerror
-                    #icon_url: "/local/icons/robot-vacuum.png"
                     notification_icon: mdi:robot-vacuum
-          - conditions:  # Case 2: Clean tank empty
+          - conditions:
               - condition: or
                 conditions:
                   - condition: template
                     value_template: >-
                       {{ trigger.entity_id == 'binary_sensor.moeke_reservoir_leak_sensor'
-                        and trigger.to_state.state == 'off' }}
+                         and trigger.to_state.state == 'off' }}
                   - condition: template
                     value_template: >-
                       {{ trigger.entity_id == 'sensor.moeke_error'
-                        and trigger.to_state.state == 'clean_tank_level' }}
+                         and trigger.to_state.state == 'clean_tank_level' }}
             sequence:
               - service: notify.sander_and_tamara_phones
                 continue_on_error: true
@@ -685,19 +724,6 @@ automation:
                     group: vacuum
                     tag: vacuumerror
                     notification_icon: mdi:robot-vacuum
-                    # icon_url: "/local/icons/robot-vacuum.png"
-      - service: notify.sander_and_tamara_phones
-        continue_on_error: true
-        data:
-          title: "Moeke water reservoir empty"
-          message: "Please refill Moeke reservoir."
-          data:
-            ttl: 0
-            priority: high
-            group: vacuum
-            tag: vacuumerror
-            notification_icon: mdi:robot-vacuum
-            # icon_url: local/icons/robot-vacuum.png
       - service: scene.create
         data:
           scene_id: atmoorb_right_bulb_before
@@ -708,12 +734,12 @@ automation:
           entity_id:
             - light.atmoorb_right
         data:
-          rgb_color: [70,70,255]
+          rgb_color: [70, 70, 255]
           effect: Fast Pulse
       - wait_for_trigger:
           - platform: state
             entity_id: binary_sensor.moeke_reservoir_leak_sensor
-            to: 'on'
+            to: "on"
             for:
               seconds: 30
           - platform: state
@@ -724,6 +750,7 @@ automation:
             for:
               seconds: 30
       - service: button.press
+        continue_on_error: true
         target:
           entity_id: button.moeke_clear_warning
       - service: scene.turn_on
@@ -738,97 +765,47 @@ automation:
             priority: high
             tag: vacuumerror
 
-  # - alias: "[home|vacuum] Update Argus Map When Running"
-  #   description: Update Argus Map every 5 minutes when Argus vacuum is running
-  #   mode: restart
-  #   trigger:
-  #     - platform: state
-  #       entity_id: vacuum.argus
-  #       to: 'cleaning'
-  #       id: vacuum_cleaning
-  #     - platform: state
-  #       entity_id: vacuum.argus
-  #       to: 'error'
-  #       id: vacuum_error
-  #   condition: []
-  #   action:
-  #     - choose:
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.id == 'vacuum_cleaning' }}"
-  #           sequence:
-  #             - alias: "Update Argus map loop"
-  #               repeat:
-  #                 while:
-  #                   - condition: state
-  #                     entity_id: vacuum.argus
-  #                     state: 'cleaning'
-  #                 sequence:
-  #                   - service: homeassistant.update_entity
-  #                     target:
-  #                       entity_id: camera.argus_map
-  #                   - delay:
-  #                       minutes: 5
-  #             - service: homeassistant.update_entity
-  #               target:
-  #                 entity_id: camera.argus_map
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.id == 'vacuum_error' }}"
-  #           sequence:
-  #             - delay:
-  #                 minutes: 1
-  #             - service: homeassistant.update_entity
-  #               target:
-  #                 entity_id: camera.argus_map
+  - alias: "[home|vacuum] Reset Dustin utility meter on sudden area jump"
+    id: yaml_automation_home_vacuum_reset_dustin_utility_meter_on_sudden_area_jump
+    description: >
+      Resets Dustin's daily cleaned-area utility meter when a sudden jump occurs
+      while Dustin is not cleaning.
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: sensor.dustin_area_cleaned_today
+    condition:
+      - condition: template
+        value_template: >-
+          {% set old = trigger.from_state.state | float(0) %}
+          {% set new = trigger.to_state.state | float(0) %}
+          {{ (new - old) > 10 }}
+      - condition: template
+        value_template: "{{ not is_state('vacuum.dustin', 'cleaning') }}"
+      - condition: state
+        entity_id: vacuum.dustin
+        state:
+          - "docked"
+          - "paused"
+          - "idle"
+    action:
+      - service: utility_meter.calibrate
+        target:
+          entity_id: sensor.dustin_area_cleaned_today
+        data:
+          value: "0"
+      - service: system_log.write
+        data:
+          level: info
+          message: >-
+            Reset dustin_area_cleaned_today due to sudden jump from
+            {{ trigger.from_state.state }} to {{ trigger.to_state.state }} m².
 
-  # - alias: "[home|vacuum] Update Alfred Map When Running"
-  #   description: Update Alfred Map every 5 minutes when Alfred vacuum is running
-  #   mode: restart
-  #   trigger:
-  #     - platform: state
-  #       entity_id: vacuum.alfred
-  #       to: 'cleaning'
-  #       id: vacuum_cleaning
-  #     - platform: state
-  #       entity_id: vacuum.alfred
-  #       to: 'error'
-  #       id: vacuum_error
-  #   condition: []
-  #   action:
-  #     - choose:
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.id == 'vacuum_cleaning' }}"
-  #           sequence:
-  #             - alias: "Start updating Alfred map"
-  #               repeat:
-  #                 while:
-  #                   - condition: state
-  #                     entity_id: vacuum.alfred
-  #                     state: 'cleaning'
-  #                 sequence:
-  #                   - service: homeassistant.update_entity
-  #                     target:
-  #                       entity_id: camera.alfred_map
-  #                   - delay:
-  #                       minutes: 5
-  #             - service: homeassistant.update_entity
-  #               target:
-  #                 entity_id: camera.alfred_map
-  #         - conditions:
-  #             - condition: template
-  #               value_template: "{{ trigger.id == 'vacuum_error' }}"
-  #           sequence:
-  #             - delay:
-  #                 minutes: 1
-  #             - service: homeassistant.update_entity
-  #               target:
-  #                 entity_id: camera.alfred_map
-
-  - alias: "[home|vacuum] Reset Utility Meter on Sudden Area Jump"
+  - alias: "[home|vacuum] Reset Moeke utility meter on sudden area jump"
     id: home_vacuum_reset_utility_meter_on_sudden_area_jump
-    description: Reset the utility meter if there's an abnormal sudden increase in cleaned area
+    description: >
+      Resets Moeke's daily cleaned-area utility meter when a sudden jump occurs
+      while Moeke is not cleaning.
     mode: single
     trigger:
       - platform: state
@@ -844,9 +821,9 @@ automation:
       - condition: state
         entity_id: vacuum.moeke
         state:
-          - 'docked'
-          - 'paused'
-          - 'idle'
+          - "docked"
+          - "paused"
+          - "idle"
     action:
       - service: utility_meter.calibrate
         target:
@@ -855,14 +832,16 @@ automation:
           value: "0"
       - service: system_log.write
         data:
+          level: info
           message: >-
             Reset moeke_area_cleaned_today due to sudden jump from
-            {{ trigger.from_state.state }} to {{ trigger.to_state.state }} m²
-          level: info
+            {{ trigger.from_state.state }} to {{ trigger.to_state.state }} m².
 
-
-  - alias: "[home|vacuum]Moeke: Detergent low warning and reset option"
+  - alias: "[home|vacuum] Moeke detergent low warning and reset option"
     id: yaml_automation_home_vacuum_moeke_detergent_low_warning_and_reset_option
+    description: >
+      Warns when Moeke detergent is low and offers a mobile action to reset the
+      detergent level after refill.
     mode: single
     trigger:
       - platform: numeric_state
@@ -874,7 +853,9 @@ automation:
       - service: notify.sander_and_tamara_phones
         data:
           title: "Moeke: Detergent almost empty"
-          message: "The detergent level is below 60% (currently at: {{ states('sensor.moeke_detergent_left') }}). Do you want to reset it now?"
+          message: >-
+            The detergent level is below 60% and is currently at
+            {{ states('sensor.moeke_detergent_left') }}%. Do you want to reset it now?
           data:
             ttl: 0
             priority: high
@@ -894,7 +875,6 @@ automation:
             event_type: mobile_app_notification_action
             event_data:
               action: CANCEL_MOEKE_DETERGENT
-        #timeout: "01:00:00"
         continue_on_timeout: false
       - choose:
           - conditions:
@@ -904,15 +884,17 @@ automation:
               - service: button.press
                 target:
                   entity_id: button.moeke_reset_detergent
+              - delay:
+                  seconds: 10
               - service: notify.sander_and_tamara_phones
                 data:
                   title: "Detergent level reset"
-                  message: "The detergent level has been reset to 100%. Currently at: {{ states('sensor.moeke_detergent_left') }}."
+                  message: >-
+                    The detergent level has been reset. Currently at
+                    {{ states('sensor.moeke_detergent_left') }}%.
                   data:
                     sticky: "true"
                     tag: "{{ notification_tag }}"
-              - delay:
-                  seconds: 10
       - service: notify.sander_and_tamara_phones
         data:
           message: "clear_notification"
@@ -922,11 +904,6 @@ automation:
             tag: "{{ notification_tag }}"
 
 ################
-#    SCENES    #
-################
-scene:
-
-################
 #    GROUPS    #
 ################
 group:
@@ -934,164 +911,241 @@ group:
     name: "Vacuum Automations Group"
     entities:
       - automation.home_vacuum_scheduled_cleanup
-      - automation.home_vacuum_backup_cleanup
-      # - automation.home_vacuum_drive_alfred_to_hallway_when_dust_bin_is_full
-      # - automation.home_vacuum_drive_argus_to_hallway_when_dust_bin_is_full
-      # - automation.home_vacuum_drive_consuela_to_hallway_when_dust_bin_is_full
-      # - automation.home_vacuum_reset_area_cleaned_input_number
+      - automation.home_vacuum_backup_cleanup_downstairs
+      - automation.home_vacuum_button_control_moeke
+      - automation.home_vacuum_notify_phone_if_vacuum_is_in_error
+      - automation.home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty
+      - automation.home_vacuum_moeke_detergent_low_warning_and_reset_option
+
 #################
 #    SCRIPTS    #
 #################
 script:
   vacuum_around_litterbox_twice:
     alias: "Clean around litterbox"
+    mode: single
     sequence:
       - service: vacuum.set_fan_speed
-        entity_id: vacuum.moeke
+        target:
+          entity_id: vacuum.dustin
         data:
           fan_speed: Strong
       - service: select.select_option
+        continue_on_error: true
         target:
-          entity_id: select.moeke_cleaning_mode
+          entity_id: select.dustin_cleaning_mode
         data:
-          option: "sweeping"
+          option: sweeping
       - service: dreame_vacuum.vacuum_clean_zone
         data:
-          entity_id: vacuum.moeke
+          entity_id: vacuum.dustin
           repeats: 2
-          zone: [[-8593,1877,-6279,3078]]
-      - service: select.select_option
-        target:
-          entity_id: select.moeke_cleaning_mode
-        data:
-          option: >
-            {% if
-              is_state('sensor.moeke_error', 'clean_tank_level') or
-              is_state('sensor.moeke_error', 'dirty_tank_level') or
-              is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
-            %}
-              sweeping
-            {% else %}
-              sweeping_and_mopping
-            {% endif %}
-          #option: "sweeping_and_mopping"
+          zone:
+            - [-950, -3850, 4150, 2500]
+
   vacuum_entry_twice:
     alias: "Clean Entry"
+    mode: single
     sequence:
       - service: vacuum.set_fan_speed
-        entity_id: vacuum.moeke
+        target:
+          entity_id: vacuum.dustin
         data:
           fan_speed: Strong
       - service: select.select_option
+        continue_on_error: true
+        target:
+          entity_id: select.dustin_cleaning_mode
+        data:
+          option: sweeping
+      - service: dreame_vacuum.vacuum_clean_zone
+        data:
+          entity_id: vacuum.dustin
+          repeats: 1
+          zone:
+            - [2000, 2100, 3100, 5700]
+
+  vacuum_kitchen_twice:
+    alias: "Clean kitchen"
+    mode: single
+    sequence:
+      - service: dreame_vacuum.vacuum_clean_zone
+        data:
+          entity_id: vacuum.dustin
+          repeats: 1
+          zone:
+            - [-350, 2450, 1450, 4900]
+
+  vacuum_kitchen_around_counter_twice:
+    alias: "Clean Kitchen Around Counter"
+    mode: single
+    sequence:
+      - service: dreame_vacuum.vacuum_clean_zone
+        data:
+          entity_id: vacuum.dustin
+          repeats: 1
+          zone:
+            - [-350, 2450, 1450, 4900]
+
+  vacuum_livingroom_twice:
+    alias: "Clean Living Room"
+    mode: single
+    sequence:
+      - service: dreame_vacuum.vacuum_clean_zone
+        data:
+          entity_id: vacuum.dustin
+          repeats: 1
+          zone:
+            - [-950, -3850, 4150, 2500]
+
+  vacuum_bedroom_twice:
+    alias: "Clean bedroom"
+    mode: single
+    sequence:
+      - service: vacuum.set_fan_speed
+        continue_on_error: true
+        target:
+          entity_id: vacuum.moeke
+        data:
+          fan_speed: Strong
+      - service: select.select_option
+        continue_on_error: true
         target:
           entity_id: select.moeke_cleaning_mode
         data:
-          option: "sweeping"
-      - service: dreame_vacuum.vacuum_clean_zone
-        data:
+          option: sweeping_and_mopping
+      - service: vacuum.start
+        target:
           entity_id: vacuum.moeke
-          repeats: 1
-          zone: [[-8626,1928,-4795,3098]]
-  vacuum_kitchen_twice:
-    alias: "Clean kitchen"
-    sequence:
-      - service: dreame_vacuum.vacuum_clean_zone
-        data:
-          entity_id: vacuum.moeke
-          repeats: 1
-          zone: [[-7781,-464,-5148,1452]]
-  vacuum_kitchen_around_counter_twice:
-    alias: "Clean Kitchen Around Counter"
-    sequence:
-      - service: dreame_vacuum.vacuum_clean_zone
-        data:
-          entity_id: vacuum.moeke
-          repeats: 1
-          zone: [[-7742,-441,-6036,1379]]
-  vacuum_livingroom_twice:
-    alias: "Clean Living Room"
-    sequence:
-    - service: dreame_vacuum.vacuum_clean_zone
-      data:
-        entity_id: vacuum.moeke
-        repeats: 1
-        zone: [[-4797,-1009,791,4214]]
-  vacuum_study_twice:
-    alias: "Clean study"
-    sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.alfred
-          repeats: 1
-          zone: [[24657,25083,30534,27920]]
-  vacuum_guestroom_twice:
-    alias: "Clean Guest Room"
-    sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.alfred
-          repeats: 1
-          zone: [[21350,25015,24718,27851]]
-  vacuum_tamarasroom_twice:
-    alias: "Clean Tamara's Room"
-    sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.alfred
-          repeats: 1
-          zone: [[26506,28094,30490,29973]]
-  vacuum_washroom_twice:
-    alias: "Clean Wash Room"
-    sequence:
-      - service: xiaomi_miio.vacuum_clean_zone
-        data:
-          entity_id: vacuum.alfred
-          repeats: 1
-          zone: [[22011,27866,23737,29950]]
-  vacuum_bedroom_twice:
-    alias: "Clean bedroom"
-    sequence:
-    - service: xiaomi_miio.vacuum_clean_zone
-      data:
-        entity_id: vacuum.argus
-        repeats: 1
-        zone: [[20631,21261,24793,25893]]
+
   vacuum_bathroom_twice:
     alias: "Clean bathroom"
+    mode: single
     sequence:
-    - service: xiaomi_miio.vacuum_clean_zone
-      data:
-        entity_id: vacuum.argus
-        repeats: 1
-        zone: [[27645,20729,30029,23503]]
+      - service: vacuum.set_fan_speed
+        continue_on_error: true
+        target:
+          entity_id: vacuum.moeke
+        data:
+          fan_speed: Strong
+      - service: select.select_option
+        continue_on_error: true
+        target:
+          entity_id: select.moeke_cleaning_mode
+        data:
+          option: sweeping_and_mopping
+      - service: vacuum.start
+        target:
+          entity_id: vacuum.moeke
+
   vacuum_babyroom:
     alias: "Clean Babyroom"
+    mode: single
     sequence:
-    - service: xiaomi_miio.vacuum_clean_zone
-      data:
-        entity_id: vacuum.argus
-        repeats: 1
-        zone: [[24919,23632,30030,25972]]
+      - service: vacuum.set_fan_speed
+        continue_on_error: true
+        target:
+          entity_id: vacuum.moeke
+        data:
+          fan_speed: Strong
+      - service: select.select_option
+        continue_on_error: true
+        target:
+          entity_id: select.moeke_cleaning_mode
+        data:
+          option: sweeping_and_mopping
+      - service: vacuum.start
+        target:
+          entity_id: vacuum.moeke
+
+  vacuum_study_twice:
+    alias: "Clean study"
+    mode: single
+    sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.alfred
+          repeats: 1
+          zone:
+            - [24657, 25083, 30534, 27920]
+
+  vacuum_guestroom_twice:
+    alias: "Clean Guest Room"
+    mode: single
+    sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.alfred
+          repeats: 1
+          zone:
+            - [21350, 25015, 24718, 27851]
+
+  vacuum_tamarasroom_twice:
+    alias: "Clean Tamara's Room"
+    mode: single
+    sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.alfred
+          repeats: 1
+          zone:
+            - [26506, 28094, 30490, 29973]
+
+  vacuum_washroom_twice:
+    alias: "Clean Wash Room"
+    mode: single
+    sequence:
+      - service: xiaomi_miio.vacuum_clean_zone
+        data:
+          entity_id: vacuum.alfred
+          repeats: 1
+          zone:
+            - [22011, 27866, 23737, 29950]
 
   start_all_vacuums:
     alias: "Start All Vacuums"
+    mode: single
     sequence:
       - parallel:
           - sequence:
-              - service: select.select_option
+              - service: vacuum.set_fan_speed
+                continue_on_error: true
                 target:
-                  entity_id: select.moeke_cleaning_mode
+                  entity_id: vacuum.dustin
                 data:
-                  option: "sweeping_and_mopping"
-                  #option: "sweeping"
+                  fan_speed: Strong
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.dustin_cleaning_mode
+                data:
+                  option: sweeping_and_mopping
               - delay:
                   seconds: 2
               - service: vacuum.start
+                continue_on_error: true
+                target:
+                  entity_id: vacuum.dustin
+          - sequence:
+              - service: vacuum.set_fan_speed
+                continue_on_error: true
+                target:
+                  entity_id: vacuum.moeke
+                data:
+                  fan_speed: Strong
+              - service: select.select_option
+                continue_on_error: true
+                target:
+                  entity_id: select.moeke_cleaning_mode
+                data:
+                  option: sweeping_and_mopping
+              - delay:
+                  seconds: 2
+              - service: vacuum.start
+                continue_on_error: true
                 target:
                   entity_id: vacuum.moeke
           - service: vacuum.start
-            target:
-              entity_id: vacuum.argus
-          - service: vacuum.start
+            continue_on_error: true
             target:
               entity_id: vacuum.alfred
