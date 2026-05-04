@@ -560,83 +560,180 @@ cards:
   - type: markdown
     content: |
       ## Ambilight and HyperHDR
-
-  - type: grid
-    square: false
-    columns: 2
+  - type: vertical-stack
     cards:
-      - type: custom:mushroom-template-card
-        entity: light.hyperhdr_atmoorb_left
-        primary: AtmoOrb Left
-        secondary: >-
-          {% if is_state('light.hyperhdr_atmoorb_left', 'on') %}
-            {{ state_attr('light.hyperhdr_atmoorb_left', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_atmoorb_left_visible_priority') }}
-          {% else %}
-            Off · {{ states('sensor.hyperhdr_atmoorb_left_visible_priority') }}
-          {% endif %}
-        icon: mdi:lightbulb-on-outline
-        icon_color: >-
-          {% if is_state('light.hyperhdr_atmoorb_left', 'on') %}
-            green
-          {% else %}
-            grey
-          {% endif %}
-        multiline_secondary: true
-        fill_container: true
-      - type: custom:mushroom-template-card
-        entity: light.hyperhdr_atmoorb_right
-        primary: AtmoOrb Right
-        secondary: >-
-          {% if is_state('light.hyperhdr_atmoorb_right', 'on') %}
-            {{ state_attr('light.hyperhdr_atmoorb_right', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_atmoorb_right_visible_priority') }}
-          {% else %}
-            Off · {{ states('sensor.hyperhdr_atmoorb_right_visible_priority') }}
-          {% endif %}
-        icon: mdi:lightbulb-on-outline
-        icon_color: >-
-          {% if is_state('light.hyperhdr_atmoorb_right', 'on') %}
-            green
-          {% else %}
-            grey
-          {% endif %}
-        multiline_secondary: true
-        fill_container: true
-      - type: custom:mushroom-template-card
-        entity: light.hyperhdr_falconlights
-        primary: Falconlights
-        secondary: >-
-          {% if is_state('light.hyperhdr_falconlights', 'on') %}
-            {{ state_attr('light.hyperhdr_falconlights', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_falconlights_visible_priority') }}
-          {% else %}
-            Off · {{ states('sensor.hyperhdr_falconlights_visible_priority') }}
-          {% endif %}
-        icon: mdi:television-ambient-light
-        icon_color: >-
-          {% if is_state('light.hyperhdr_falconlights', 'on') %}
-            green
-          {% else %}
-            grey
-          {% endif %}
-        multiline_secondary: true
-        fill_container: true
-      - type: custom:mushroom-template-card
-        entity: light.tv_ledstrip
-        primary: TV LEDstrip
-        secondary: >-
-          {% if is_state('light.tv_ledstrip', 'on') %}
-            {{ state_attr('light.tv_ledstrip', 'effect') or 'On' }} · {{ states('sensor.tv_ledstrip_visible_priority') }}
-          {% else %}
-            Off · {{ states('sensor.tv_ledstrip_visible_priority') }}
-          {% endif %}
-        icon: mdi:television-ambient-light
-        icon_color: >-
-          {% if is_state('light.tv_ledstrip', 'on') %}
-            green
-          {% else %}
-            grey
-          {% endif %}
-        multiline_secondary: true
-        fill_container: true
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: Physical Ambilight Controls
+        alignment: center
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:button-card
+            entity: light.atmoorb_left
+            name: AtmoOrb Left
+            icon: mdi:lightbulb-on-outline
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles: &ambilight_button_styles
+              card:
+                - padding: 10px
+                - border-radius: 16px
+                - background-color: >
+                    [[[
+                      return entity.state === 'on'
+                        ? 'rgba(46, 125, 50, 0.28)'
+                        : 'rgba(120, 120, 120, 0.20)';
+                    ]]]
+                - border: >
+                    [[[
+                      return entity.state === 'on'
+                        ? '1px solid rgba(46, 125, 50, 0.45)'
+                        : '1px solid rgba(158, 158, 158, 0.28)';
+                    ]]]
+              icon:
+                - color: >
+                    [[[
+                      return entity.state === 'on'
+                        ? 'rgb(129, 199, 132)'
+                        : 'rgb(189, 189, 189)';
+                    ]]]
+                - width: 24px
+              name:
+                - font-size: 0.82em
+                - font-weight: 600
+              state:
+                - font-size: 0.78em
+          - type: custom:button-card
+            entity: light.atmoorb_right
+            name: AtmoOrb Right
+            icon: mdi:lightbulb-on-outline
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles: *ambilight_button_styles
+          - type: custom:button-card
+            entity: light.ledstrip_falcon
+            name: LED Strip Falcon
+            icon: mdi:led-strip-variant
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles: *ambilight_button_styles
+          - type: custom:button-card
+            entity: switch.ambilight_power
+            name: Ambilight Power
+            icon: mdi:power
+            show_state: true
+            state_display: >
+              [[[
+                return entity.state === 'on' ? 'On' : 'Off';
+              ]]]
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            styles: *ambilight_button_styles
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: HyperHDR Outputs
+        alignment: center
+      - type: grid
+        square: false
+        columns: 2
+        cards:
+          - type: custom:mushroom-template-card
+            entity: light.hyperhdr_atmoorb_left
+            primary: HyperHDR AtmoOrb Left
+            secondary: >-
+              {% if is_state('light.hyperhdr_atmoorb_left', 'on') %}
+                {{ state_attr('light.hyperhdr_atmoorb_left', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_atmoorb_left_visible_priority') }}
+              {% else %}
+                Off · {{ states('sensor.hyperhdr_atmoorb_left_visible_priority') }}
+              {% endif %}
+            icon: mdi:lightbulb-on-outline
+            icon_color: >-
+              {% if is_state('light.hyperhdr_atmoorb_left', 'on') %}
+                green
+              {% else %}
+                grey
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: light.hyperhdr_atmoorb_right
+            primary: HyperHDR AtmoOrb Right
+            secondary: >-
+              {% if is_state('light.hyperhdr_atmoorb_right', 'on') %}
+                {{ state_attr('light.hyperhdr_atmoorb_right', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_atmoorb_right_visible_priority') }}
+              {% else %}
+                Off · {{ states('sensor.hyperhdr_atmoorb_right_visible_priority') }}
+              {% endif %}
+            icon: mdi:lightbulb-on-outline
+            icon_color: >-
+              {% if is_state('light.hyperhdr_atmoorb_right', 'on') %}
+                green
+              {% else %}
+                grey
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: light.hyperhdr_falconlights
+            primary: HyperHDR Falconlights
+            secondary: >-
+              {% if is_state('light.hyperhdr_falconlights', 'on') %}
+                {{ state_attr('light.hyperhdr_falconlights', 'effect') or 'On' }} · {{ states('sensor.hyperhdr_falconlights_visible_priority') }}
+              {% else %}
+                Off · {{ states('sensor.hyperhdr_falconlights_visible_priority') }}
+              {% endif %}
+            icon: mdi:television-ambient-light
+            icon_color: >-
+              {% if is_state('light.hyperhdr_falconlights', 'on') %}
+                green
+              {% else %}
+                grey
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+          - type: custom:mushroom-template-card
+            entity: light.tv_ledstrip
+            primary: HyperHDR TV LEDstrip
+            secondary: >-
+              {% if is_state('light.tv_ledstrip', 'on') %}
+                {{ state_attr('light.tv_ledstrip', 'effect') or 'On' }} · {{ states('sensor.tv_ledstrip_visible_priority') }}
+              {% else %}
+                Off · {{ states('sensor.tv_ledstrip_visible_priority') }}
+              {% endif %}
+            icon: mdi:television-ambient-light
+            icon_color: >-
+              {% if is_state('light.tv_ledstrip', 'on') %}
+                green
+              {% else %}
+                grey
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
 
   - type: custom:collapsable-cards
     title: Legacy ambilight controls
