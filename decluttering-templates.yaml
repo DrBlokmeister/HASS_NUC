@@ -704,6 +704,60 @@ tower_disk_health_card:
     fill_container: true
     multiline_secondary: true
 
+##############################
+## DISK USAGE MUSHROOM CARD ##
+##############################
+disk_usage_mushroom_card:
+  card:
+    type: custom:mushroom-template-card
+    entity: '[[usage_entity]]'
+    primary: '[[name]]'
+    secondary: >-
+      {%- set usage_entity = '[[usage_entity]]' -%}
+      {%- set health_entity = '[[health_entity]]' -%}
+      {%- set s = states(usage_entity) -%}
+      {%- set health_state = states(health_entity) -%}
+      {%- set spinning = state_attr(health_entity, 'spinning') -%}
+      {%- set health_temp = state_attr(health_entity, 'temperature') -%}
+      {%- set sensor_temp = states('[[temp_entity]]') -%}
+      {%- set temp = health_temp if health_temp not in [none, 'unknown', 'unavailable', 'none', 'None', ''] else sensor_temp -%}
+      {%- set used = state_attr(usage_entity, 'used') -%}
+      {%- set total = state_attr(usage_entity, 'total') -%}
+      {%- set usage_ok = s not in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+      {%- set has_size = used not in [none, 'unknown', 'unavailable', 'none', 'None', ''] and total not in [none, 'unknown', 'unavailable', 'none', 'None', ''] -%}
+      {%- if health_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+        Unavailable
+      {%- elif is_state(health_entity, 'on') -%}
+        Problem · {{ temp if temp not in ['unknown', 'unavailable', 'none', 'None', ''] else '—' }} °C{{ '\n' }}{{ 'spinning' if spinning else 'standby' }}
+      {%- elif usage_ok -%}
+        {{ temp if temp not in ['unknown', 'unavailable', 'none', 'None', ''] else '—' }} °C · {{ s | float(0) | round(1) }}%{{ '\n' }}{{ used }} / {{ total }}
+      {%- elif has_size -%}
+        {{ temp if temp not in ['unknown', 'unavailable', 'none', 'None', ''] else '—' }} °C · {{ 'spinning' if spinning else 'standby' }}{{ '\n' }}{{ used }} / {{ total }}
+      {%- else -%}
+        {{ temp if temp not in ['unknown', 'unavailable', 'none', 'None', ''] else '—' }} °C · {{ 'spinning' if spinning else 'standby' }}{{ '\n' }}Usage unavailable
+      {%- endif -%}
+    icon: '[[icon]]'
+    icon_color: >-
+      {%- set usage_entity = '[[usage_entity]]' -%}
+      {%- set health_entity = '[[health_entity]]' -%}
+      {%- set s = states(usage_entity) -%}
+      {%- set health_state = states(health_entity) -%}
+      {%- if health_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+        disabled
+      {%- elif is_state(health_entity, 'on') -%}
+        red
+      {%- elif s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | float(0) >= 90 -%}
+        red
+      {%- elif s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | float(0) >= 80 -%}
+        amber
+      {%- else -%}
+        [[ok_color]]
+      {%- endif -%}
+    multiline_secondary: true
+    #fill_container: false
+    tap_action:
+      action: more-info
+
 ##################################
 ## CONTAINER STATUS BUTTON CARD ##
 ##################################
@@ -770,7 +824,6 @@ container_status_button:
 esphome_update_group_card:
   default:
     - icon: mdi:chip
-
   card:
     type: custom:mushroom-template-card
     entity: '[[group_entity]]'
@@ -778,21 +831,18 @@ esphome_update_group_card:
     multiline_secondary: true
     vertical: true
     icon: '[[icon]]'
-
     secondary: >-
       {% set ents = expand('[[group_entity]]') | list %}
       {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
       {% set unavailable = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list %}
       {% set pending = available | selectattr('state', 'eq', 'on') | list %}
       {% set flashing = available | selectattr('attributes.in_progress', 'eq', true) | list %}
-
       {% set total = ents | count %}
       {% set available_count = available | count %}
       {% set unavailable_count = unavailable | count %}
       {% set pending_count = pending | count %}
       {% set flashing_count = flashing | count %}
       {% set done_count = available_count - pending_count %}
-
       {% if total == 0 %}
         No entities
       {% elif flashing_count > 0 %}
@@ -809,14 +859,12 @@ esphome_update_group_card:
       {% else %}
         All {{ total }} up-to-date
       {% endif %}
-
     color: >-
       {% set ents = expand('[[group_entity]]') | list %}
       {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
       {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
       {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
       {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
-
       {% if flashing_count > 0 %}
         blue
       {% elif pending_count > 0 %}
@@ -826,14 +874,12 @@ esphome_update_group_card:
       {% else %}
         green
       {% endif %}
-
     badge_icon: >-
       {% set ents = expand('[[group_entity]]') | list %}
       {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
       {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
       {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
       {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
-
       {% if flashing_count > 0 %}
         mdi:progress-download
       {% elif pending_count > 0 %}
@@ -843,14 +889,12 @@ esphome_update_group_card:
       {% else %}
         mdi:check-bold
       {% endif %}
-
     badge_color: >-
       {% set ents = expand('[[group_entity]]') | list %}
       {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
       {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
       {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
       {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
-
       {% if flashing_count > 0 %}
         blue
       {% elif pending_count > 0 %}
@@ -860,14 +904,12 @@ esphome_update_group_card:
       {% else %}
         green
       {% endif %}
-
     badge_text: >-
       {% set ents = expand('[[group_entity]]') | list %}
       {% set available = ents | rejectattr('state', 'in', ['unknown', 'unavailable']) | list %}
       {% set unavailable_count = ents | selectattr('state', 'in', ['unknown', 'unavailable']) | list | count %}
       {% set pending_count = available | selectattr('state', 'eq', 'on') | list | count %}
       {% set flashing_count = available | selectattr('attributes.in_progress', 'eq', true) | list | count %}
-
       {% if flashing_count > 0 %}
         {{ flashing_count }}
       {% elif pending_count > 0 %}
@@ -877,12 +919,52 @@ esphome_update_group_card:
       {% else %}
         {{ available | count }}
       {% endif %}
-
     tap_action:
       action: call-service
       service: script.update_esphome_group
       data:
         group_entity: '[[group_entity]]'
-
     hold_action:
       action: more-info
+
+
+##############################
+## DISK USAGE MUSHROOM CARD ##
+##############################
+disk_usage_mushroom_card:
+  card:
+    type: custom:mushroom-template-card
+    entity: '[[usage_entity]]'
+    primary: '[[name]]'
+    secondary: >-
+      {%- set s = states('[[usage_entity]]') -%}
+      {%- set temp = states('[[temp_entity]]') -%}
+      {%- set used = state_attr('[[usage_entity]]', 'used') -%}
+      {%- set total = state_attr('[[usage_entity]]', 'total') -%}
+      {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+        Unavailable
+      {%- else -%}
+        {{ temp }} °C · {{ s | float(0) | round(1) }}%{{ '\n' }}{{ used }} / {{ total }}
+      {%- endif -%}
+    icon: '[[icon]]'
+    icon_color: >-
+      {%- set s = states('[[usage_entity]]') -%}
+      {%- set health_state = states('[[health_entity]]') -%}
+      {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+        disabled
+      {%- elif is_state('[[health_entity]]', 'on') or s | float(0) >= 90 -%}
+        red
+      {%- elif s | float(0) >= 80 -%}
+        amber
+      {%- else -%}
+        [[ok_color]]
+      {%- endif -%}
+    multiline_secondary: true
+    fill_container: true
+    tap_action:
+      action: more-info
+    card_mod:
+      style: |
+        ha-card {
+          min-height: 104px;
+        }

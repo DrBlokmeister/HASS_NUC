@@ -147,12 +147,12 @@ cards:
         entity: sensor.airvpn_connected_since
         primary: VPN status
         secondary: >-
-          {% set s = states('sensor.airvpn_connected_since') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('sensor.airvpn_connected_since') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             VPN appears disconnected
-          {% else %}
-            Connected since {{ s }}
-          {% endif %}
+          {%- else -%}
+            Connected {{ relative_time(as_datetime(s)) }} ago
+          {%- endif -%}
         icon: mdi:shield-lock
         icon_color: >-
           {% set s = states('sensor.airvpn_connected_since') %}
@@ -453,12 +453,12 @@ cards:
         entity: sensor.tower_uptime_2
         primary: Up since
         secondary: >-
-          {% set s = states('sensor.tower_uptime_2') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('sensor.tower_uptime_2') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
-            {{ s }}
-          {% endif %}
+          {%- else -%}
+            Up {{ relative_time(as_datetime(s)) }}
+          {%- endif -%}
         icon: mdi:clock-start
         icon_color: >-
           {% if states('sensor.tower_uptime_2') in ['unknown', 'unavailable', 'none', 'None', ''] %}
@@ -844,217 +844,123 @@ cards:
     square: false
     columns: 2
     cards:
-      - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_cache_usage
-        primary: Cache
-        secondary: >-
-          {% set s = states('sensor.tower_disk_cache_usage') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            Unavailable
-          {% else %}
-            {{ states('sensor.tower_disk_cache_temperature') }} °C ·
-            {{ s | float(0) | round(1) }}% used ·
-            {{ state_attr('sensor.tower_disk_cache_usage', 'used') }} / {{ state_attr('sensor.tower_disk_cache_usage', 'total') }}
-          {% endif %}
-        icon: mdi:harddisk-plus
-        icon_color: >-
-          {% set s = states('sensor.tower_disk_cache_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_cache_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            disabled
-          {% elif is_state('binary_sensor.tower_disk_cache_health', 'on') or s | float(0) >= 90 %}
-            red
-          {% elif s | float(0) >= 80 %}
-            amber
-          {% else %}
-            blue
-          {% endif %}
-        fill_container: true
-        multiline_secondary: true
-        tap_action:
-          action: more-info
+      - type: custom:decluttering-card
+        template: disk_usage_mushroom_card
+        variables:
+          - usage_entity: sensor.tower_disk_cache_usage
+          - temp_entity: sensor.tower_disk_cache_temperature
+          - health_entity: binary_sensor.tower_disk_cache_health
+          - name: Cache
+          - icon: mdi:harddisk-plus
+          - ok_color: blue
 
       - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_parity_temperature
+        entity: binary_sensor.tower_disk_parity_health
         primary: Parity disk
         secondary: >-
-          {% set s = states('sensor.tower_disk_parity_temperature') %}
-          {% set health_state = states('binary_sensor.tower_disk_parity_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set health_entity = 'binary_sensor.tower_disk_parity_health' -%}
+          {%- set health_state = states(health_entity) -%}
+          {%- set temp = state_attr(health_entity, 'temperature') -%}
+          {%- set status = state_attr(health_entity, 'status') -%}
+          {%- set spinning = state_attr(health_entity, 'spinning') -%}
+          {%- if health_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
-            {{ s }} °C ·
-            {{ state_attr('binary_sensor.tower_disk_parity_health', 'status') }} ·
-            {{ 'spinning' if state_attr('binary_sensor.tower_disk_parity_health', 'spinning') else 'standby' }}
-          {% endif %}
-        icon: mdi:shield-harddisk
+          {%- else -%}
+            {{ temp if temp not in [none, 'unknown', 'unavailable', 'none', 'None', ''] else '—' }} °C · {{ 'spinning' if spinning else 'standby' }}{{ '\n' }}{{ status | default('OK', true) | replace('DISK_', '') }}
+          {%- endif -%}
+        icon: mdi:harddisk
         icon_color: >-
-          {% set s = states('sensor.tower_disk_parity_temperature') %}
-          {% set health_state = states('binary_sensor.tower_disk_parity_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set health_entity = 'binary_sensor.tower_disk_parity_health' -%}
+          {%- set health_state = states(health_entity) -%}
+          {%- if health_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             disabled
-          {% elif is_state('binary_sensor.tower_disk_parity_health', 'on') %}
+          {%- elif is_state(health_entity, 'on') -%}
             red
-          {% else %}
+          {%- else -%}
             teal
-          {% endif %}
+          {%- endif -%}
         fill_container: true
         multiline_secondary: true
         tap_action:
           action: more-info
-
+      - type: custom:decluttering-card
+        template: disk_usage_mushroom_card
+        variables:
+          - usage_entity: sensor.tower_disk_disk1_usage
+          - temp_entity: sensor.tower_disk_disk1_temperature
+          - health_entity: binary_sensor.tower_disk_disk1_health
+          - name: Disk 1
+          - icon: mdi:harddisk
+          - ok_color: green
+      - type: custom:decluttering-card
+        template: disk_usage_mushroom_card
+        variables:
+          - usage_entity: sensor.tower_disk_disk2_usage
+          - temp_entity: sensor.tower_disk_disk2_temperature
+          - health_entity: binary_sensor.tower_disk_disk2_health
+          - name: Disk 2
+          - icon: mdi:harddisk
+          - ok_color: green
+      - type: custom:decluttering-card
+        template: disk_usage_mushroom_card
+        variables:
+          - usage_entity: sensor.tower_disk_disk3_usage
+          - temp_entity: sensor.tower_disk_disk3_temperature
+          - health_entity: binary_sensor.tower_disk_disk3_health
+          - name: Disk 3
+          - icon: mdi:harddisk
+          - ok_color: green
+      - type: custom:decluttering-card
+        template: disk_usage_mushroom_card
+        variables:
+          - usage_entity: sensor.tower_disk_disk4_usage
+          - temp_entity: sensor.tower_disk_disk4_temperature
+          - health_entity: binary_sensor.tower_disk_disk4_health
+          - name: Disk 4
+          - icon: mdi:harddisk
+          - ok_color: green
+      - type: custom:decluttering-card
+        template: disk_usage_mushroom_card
+        variables:
+          - usage_entity: sensor.tower_disk_disk5_usage
+          - temp_entity: sensor.tower_disk_disk5_temperature
+          - health_entity: binary_sensor.tower_disk_disk5_health
+          - name: Disk 5
+          - icon: mdi:harddisk
+          - ok_color: green
       - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_disk1_usage
-        primary: Disk 1
+        entity: binary_sensor.tower_disks_invalid
+        primary: Disk / FS issues
         secondary: >-
-          {% set s = states('sensor.tower_disk_disk1_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk1_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_invalid') -%}
+          {%- set disabled = state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) -%}
+          {%- set invalid = state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) -%}
+          {%- set missing = state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) -%}
+          {%- set unmountable = state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) -%}
+          {%- set total = disabled + invalid + missing + unmountable -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
-            {{ states('sensor.tower_disk_disk1_temperature') }} °C ·
-            {{ s | float(0) | round(1) }}% used ·
-            {{ state_attr('sensor.tower_disk_disk1_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk1_usage', 'total') }}
-          {% endif %}
-        icon: mdi:harddisk
+          {%- elif total > 0 -%}
+            {{ total }} issue{{ 's' if total != 1 else '' }}{{ '\n' }}{{ disabled }} dis · {{ invalid }} inv · {{ missing }} miss · {{ unmountable }} unmnt
+          {%- else -%}
+            All disks OK{{ '\n' }}No FS issues
+          {%- endif -%}
+        icon: mdi:harddisk-remove
         icon_color: >-
-          {% set s = states('sensor.tower_disk_disk1_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk1_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_invalid') -%}
+          {%- set disabled = state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) -%}
+          {%- set invalid = state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) -%}
+          {%- set missing = state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) -%}
+          {%- set unmountable = state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             disabled
-          {% elif is_state('binary_sensor.tower_disk_disk1_health', 'on') or s | float(0) >= 90 %}
+          {%- elif disabled + invalid + missing + unmountable > 0 -%}
             red
-          {% elif s | float(0) >= 80 %}
-            amber
-          {% else %}
+          {%- else -%}
             green
-          {% endif %}
-        fill_container: true
+          {%- endif -%}
         multiline_secondary: true
-        tap_action:
-          action: more-info
-
-      - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_disk2_usage
-        primary: Disk 2
-        secondary: >-
-          {% set s = states('sensor.tower_disk_disk2_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk2_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            Unavailable
-          {% else %}
-            {{ states('sensor.tower_disk_disk2_temperature') }} °C ·
-            {{ s | float(0) | round(1) }}% used ·
-            {{ state_attr('sensor.tower_disk_disk2_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk2_usage', 'total') }}
-          {% endif %}
-        icon: mdi:harddisk
-        icon_color: >-
-          {% set s = states('sensor.tower_disk_disk2_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk2_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            disabled
-          {% elif is_state('binary_sensor.tower_disk_disk2_health', 'on') or s | float(0) >= 90 %}
-            red
-          {% elif s | float(0) >= 80 %}
-            amber
-          {% else %}
-            green
-          {% endif %}
         fill_container: true
-        multiline_secondary: true
-        tap_action:
-          action: more-info
-
-      - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_disk3_usage
-        primary: Disk 3
-        secondary: >-
-          {% set s = states('sensor.tower_disk_disk3_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk3_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            Unavailable
-          {% else %}
-            {{ states('sensor.tower_disk_disk3_temperature') }} °C ·
-            {{ s | float(0) | round(1) }}% used ·
-            {{ state_attr('sensor.tower_disk_disk3_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk3_usage', 'total') }}
-          {% endif %}
-        icon: mdi:harddisk
-        icon_color: >-
-          {% set s = states('sensor.tower_disk_disk3_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk3_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            disabled
-          {% elif is_state('binary_sensor.tower_disk_disk3_health', 'on') or s | float(0) >= 90 %}
-            red
-          {% elif s | float(0) >= 80 %}
-            amber
-          {% else %}
-            green
-          {% endif %}
-        fill_container: true
-        multiline_secondary: true
-        tap_action:
-          action: more-info
-
-      - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_disk4_usage
-        primary: Disk 4
-        secondary: >-
-          {% set s = states('sensor.tower_disk_disk4_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk4_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            Unavailable
-          {% else %}
-            {{ states('sensor.tower_disk_disk4_temperature') }} °C ·
-            {{ s | float(0) | round(1) }}% used ·
-            {{ state_attr('sensor.tower_disk_disk4_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk4_usage', 'total') }}
-          {% endif %}
-        icon: mdi:harddisk
-        icon_color: >-
-          {% set s = states('sensor.tower_disk_disk4_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk4_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            disabled
-          {% elif is_state('binary_sensor.tower_disk_disk4_health', 'on') or s | float(0) >= 90 %}
-            red
-          {% elif s | float(0) >= 80 %}
-            amber
-          {% else %}
-            green
-          {% endif %}
-        fill_container: true
-        multiline_secondary: true
-        tap_action:
-          action: more-info
-
-      - type: custom:mushroom-template-card
-        entity: sensor.tower_disk_disk5_usage
-        primary: Disk 5
-        secondary: >-
-          {% set s = states('sensor.tower_disk_disk5_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk5_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            Unavailable
-          {% else %}
-            {{ states('sensor.tower_disk_disk5_temperature') }} °C ·
-            {{ s | float(0) | round(1) }}% used ·
-            {{ state_attr('sensor.tower_disk_disk5_usage', 'used') }} / {{ state_attr('sensor.tower_disk_disk5_usage', 'total') }}
-          {% endif %}
-        icon: mdi:harddisk
-        icon_color: >-
-          {% set s = states('sensor.tower_disk_disk5_usage') %}
-          {% set health_state = states('binary_sensor.tower_disk_disk5_health') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] or health_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
-            disabled
-          {% elif is_state('binary_sensor.tower_disk_disk5_health', 'on') or s | float(0) >= 90 %}
-            red
-          {% elif s | float(0) >= 80 %}
-            amber
-          {% else %}
-            green
-          {% endif %}
-        fill_container: true
-        multiline_secondary: true
         tap_action:
           action: more-info
 
@@ -1067,7 +973,7 @@ cards:
         variables:
           - disk_key: cache
           - disk_title: Cache
-          #- icon: mdi:harddisk-plus
+          - icon: mdi:harddisk-plus
       - type: custom:decluttering-card
         template: tower_disk_health_card
         variables:
@@ -1098,92 +1004,93 @@ cards:
         variables:
           - disk_key: disk5
           - disk_title: Disk 5
+
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_disks_disabled
         primary: Disks disabled
         secondary: >-
-          {% set s = states('binary_sensor.tower_disks_disabled') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_disabled') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
+          {%- else -%}
             {{ state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) }} affected
-          {% endif %}
+          {%- endif -%}
         icon: mdi:harddisk-off
         icon_color: >-
-          {% set s = states('binary_sensor.tower_disks_disabled') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_disabled') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             disabled
-          {% elif state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) > 0 %}
+          {%- elif state_attr('binary_sensor.tower_disks_disabled', 'count') | int(0) > 0 -%}
             red
-          {% else %}
+          {%- else -%}
             green
-          {% endif %}
+          {%- endif -%}
         fill_container: true
 
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_disks_invalid
         primary: Disks invalid
         secondary: >-
-          {% set s = states('binary_sensor.tower_disks_invalid') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_invalid') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
+          {%- else -%}
             {{ state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) }} affected
-          {% endif %}
+          {%- endif -%}
         icon: mdi:alert-circle
         icon_color: >-
-          {% set s = states('binary_sensor.tower_disks_invalid') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_invalid') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             disabled
-          {% elif state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) > 0 %}
+          {%- elif state_attr('binary_sensor.tower_disks_invalid', 'count') | int(0) > 0 -%}
             red
-          {% else %}
+          {%- else -%}
             green
-          {% endif %}
+          {%- endif -%}
         fill_container: true
 
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_disks_missing
         primary: Disks missing
         secondary: >-
-          {% set s = states('binary_sensor.tower_disks_missing') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_missing') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
+          {%- else -%}
             {{ state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) }} affected
-          {% endif %}
+          {%- endif -%}
         icon: mdi:harddisk-remove
         icon_color: >-
-          {% set s = states('binary_sensor.tower_disks_missing') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_disks_missing') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             disabled
-          {% elif state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) > 0 %}
+          {%- elif state_attr('binary_sensor.tower_disks_missing', 'count') | int(0) > 0 -%}
             red
-          {% else %}
+          {%- else -%}
             green
-          {% endif %}
+          {%- endif -%}
         fill_container: true
 
       - type: custom:mushroom-template-card
         entity: binary_sensor.tower_filesystems_unmountable
-        primary: Filesystems unmountable
+        primary: FS unmountable
         secondary: >-
-          {% set s = states('binary_sensor.tower_filesystems_unmountable') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_filesystems_unmountable') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             Unavailable
-          {% else %}
+          {%- else -%}
             {{ state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) }} affected
-          {% endif %}
+          {%- endif -%}
         icon: mdi:folder-remove
         icon_color: >-
-          {% set s = states('binary_sensor.tower_filesystems_unmountable') %}
-          {% if s in ['unknown', 'unavailable', 'none', 'None', ''] %}
+          {%- set s = states('binary_sensor.tower_filesystems_unmountable') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
             disabled
-          {% elif state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) > 0 %}
+          {%- elif state_attr('binary_sensor.tower_filesystems_unmountable', 'count') | int(0) > 0 -%}
             red
-          {% else %}
+          {%- else -%}
             green
-          {% endif %}
+          {%- endif -%}
         fill_container: true
 
   - type: custom:collapsable-cards
@@ -1710,7 +1617,12 @@ cards:
             entity: sensor.airvpn_connected_since
             primary: Connected since
             secondary: >-
-              {{ states('sensor.airvpn_connected_since') }}
+              {%- set s = states('sensor.airvpn_connected_since') -%}
+              {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ relative_time(as_datetime(s)) }} ago
+              {%- endif -%}
             icon: mdi:clock-outline
             icon_color: blue
             fill_container: true
