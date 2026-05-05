@@ -740,7 +740,7 @@ automation:
               - condition: template
                 value_template: >-
                   {{ trigger.entity_id == 'sensor.moeke_error'
-                     and trigger.to_state.state == 'dirty_tank_level' }}
+                      and trigger.to_state.state == 'dirty_tank_level' }}
             sequence:
               - service: notify.sander_and_tamara_phones
                 continue_on_error: true
@@ -759,11 +759,11 @@ automation:
                   - condition: template
                     value_template: >-
                       {{ trigger.entity_id == 'binary_sensor.moeke_reservoir_leak_sensor'
-                         and trigger.to_state.state == 'off' }}
+                          and trigger.to_state.state == 'off' }}
                   - condition: template
                     value_template: >-
                       {{ trigger.entity_id == 'sensor.moeke_error'
-                         and trigger.to_state.state == 'clean_tank_level' }}
+                          and trigger.to_state.state == 'clean_tank_level' }}
             sequence:
               - service: notify.sander_and_tamara_phones
                 continue_on_error: true
@@ -816,6 +816,133 @@ automation:
             ttl: 0
             priority: high
             tag: vacuumerror
+
+  - alias: "[home|vacuum] Notify if Dustin water tanks need attention"
+    id: yaml_automation_home_vacuum_notify_if_dustin_water_tanks_need_attention
+    description: >
+      Sends phone notifications when Dustin reports that the clean water tank
+      needs refilling or the dirty water tank needs emptying.
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: sensor.dustin_low_water_warning
+        to: "no_water_left"
+        for:
+          minutes: 5
+        id: clean_water_empty
+      - platform: state
+        entity_id: sensor.dustin_dirty_water_tank_status
+        not_from:
+          - "unknown"
+          - "unavailable"
+        not_to:
+          - "installed"
+          - "unknown"
+          - "unavailable"
+        for:
+          minutes: 5
+        id: dirty_water_full
+      - platform: homeassistant
+        event: start
+        id: startup_or_reload
+      - platform: event
+        event_type: automation_reloaded
+        id: startup_or_reload
+    condition:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: sensor.dustin_low_water_warning
+            state: "no_water_left"
+          - condition: template
+            value_template: >-
+              {{ states('sensor.dustin_dirty_water_tank_status') not in ['installed','unknown','unavailable','none',''] }}
+    action:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: sensor.dustin_low_water_warning
+                state: "no_water_left"
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                continue_on_error: true
+                data:
+                  title: "Dustin: clean water tank empty"
+                  message: "Please refill the clean water tank on the auto-empty dock."
+                  data:
+                    ttl: 0
+                    priority: high
+                    group: vacuum
+                    tag: dustin_clean_water_tank_empty
+                    notification_icon: mdi:robot-vacuum-alert
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ states('sensor.dustin_dirty_water_tank_status') not in ['installed','unknown','unavailable','none',''] }}
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                continue_on_error: true
+                data:
+                  title: "Dustin: dirty water tank full"
+                  message: "Please empty the dirty water tank on the auto-empty dock."
+                  data:
+                    ttl: 0
+                    priority: high
+                    group: vacuum
+                    tag: dustin_dirty_water_tank_full
+                    notification_icon: mdi:robot-vacuum-alert
+      - service: scene.create
+        data:
+          scene_id: atmoorb_right_bulb_before_dustin_water_warning
+          snapshot_entities:
+            - light.atmoorb_right
+      - service: light.turn_on
+        target:
+          entity_id:
+            - light.atmoorb_right
+        data:
+          rgb_color: [70,70,255]
+          effect: Fast Pulse
+      - wait_template: >-
+          {{ states('sensor.dustin_low_water_warning') == 'no_warning'
+              and states('sensor.dustin_dirty_water_tank_status') == 'installed' }}
+        timeout:
+          hours: 12
+        continue_on_timeout: true
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: sensor.dustin_low_water_warning
+                state: "no_warning"
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                data:
+                  message: "clear_notification"
+                  data:
+                    ttl: 0
+                    priority: high
+                    tag: dustin_clean_water_tank_empty
+          - conditions:
+              - condition: state
+                entity_id: sensor.dustin_dirty_water_tank_status
+                state: "installed"
+            sequence:
+              - service: notify.sander_and_tamara_phones
+                data:
+                  message: "clear_notification"
+                  data:
+                    ttl: 0
+                    priority: high
+                    tag: dustin_dirty_water_tank_full
+      - service: button.press
+        continue_on_error: true
+        target:
+          entity_id: button.dustin_clear_warning
+      - service: scene.turn_on
+        continue_on_error: true
+        data:
+          entity_id: scene.atmoorb_right_bulb_before_dustin_water_warning
+          transition: 1
 
   - alias: "[home|vacuum] Reset Dustin utility meter on sudden area jump"
     id: yaml_automation_home_vacuum_reset_dustin_utility_meter_on_sudden_area_jump
