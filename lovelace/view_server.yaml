@@ -1700,60 +1700,208 @@ cards:
         cards:
           - type: custom:mushroom-template-card
             entity: binary_sensor.pikvm_nas
-            primary: PiKVM status
+            primary: PiKVM NAS
             secondary: >-
-              {% if is_state('binary_sensor.pikvm_nas', 'on') %}
+              {%- if is_state('binary_sensor.pikvm_nas', 'on') -%}
                 Reachable
-              {% else %}
+              {%- elif is_state('binary_sensor.pikvm_nas', 'off') -%}
                 Unreachable
-              {% endif %}
-            icon: mdi:kvm
+              {%- else -%}
+                Unknown
+              {%- endif -%}
+            icon: mdi:server-network
             icon_color: >-
-              {% if is_state('binary_sensor.pikvm_nas', 'on') %}
+              {%- if is_state('binary_sensor.pikvm_nas', 'on') -%}
                 green
-              {% else %}
+              {%- elif is_state('binary_sensor.pikvm_nas', 'off') -%}
                 red
-              {% endif %}
+              {%- else -%}
+                grey
+              {%- endif -%}
             fill_container: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_link_quality
+            primary: Link quality
+            secondary: >-
+              {%- set quality = states('sensor.pikvm_nas_link_quality') -%}
+              {%- if quality in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ quality | float(0) | round(0) }} %
+              {%- endif -%}
+            icon: mdi:wifi-check
+            icon_color: >-
+              {%- set quality_state = states('sensor.pikvm_nas_link_quality') -%}
+              {%- set quality = quality_state | float(0) -%}
+              {%- if quality_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif quality >= 70 -%}
+                green
+              {%- elif quality >= 45 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_cpu_temp
+            primary: CPU temperature
+            secondary: >-
+              {%- set temp = states('sensor.pikvm_nas_cpu_temp') -%}
+              {%- if temp in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ temp | float(0) | round(1) }} °C
+              {%- endif -%}
+            icon: mdi:chip
+            icon_color: >-
+              {%- set temp_state = states('sensor.pikvm_nas_cpu_temp') -%}
+              {%- set temp = temp_state | float(0) -%}
+              {%- if temp_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif temp >= 75 -%}
+                red
+              {%- elif temp >= 65 -%}
+                amber
+              {%- else -%}
+                green
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_signal_level
+            primary: Signal level
+            secondary: >-
+              {%- set signal = states('sensor.pikvm_nas_signal_level') -%}
+              {%- if signal in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ signal | float(0) | round(0) }}
+              {%- endif -%}
+            icon: mdi:wifi-strength-3
+            icon_color: >-
+              {%- set signal_state = states('sensor.pikvm_nas_signal_level') -%}
+              {%- set signal = signal_state | float(0) -%}
+              {%- if signal_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif signal >= 60 -%}
+                green
+              {%- elif signal >= 40 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: more-info
           - type: custom:mushroom-template-card
             entity: sensor.pikvm_nas_round_trip_time_average
             primary: Latency
             secondary: >-
-              Avg {{ states('sensor.pikvm_nas_round_trip_time_average') }} · Max {{ states('sensor.pikvm_nas_round_trip_time_max') }}
+              {%- set rtt = states('sensor.pikvm_nas_round_trip_time_average') -%}
+              {%- if rtt in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                Avg {{ rtt | float(0) | round(1) }} ms
+              {%- endif -%}
             icon: mdi:speedometer
-            icon_color: blue
+            icon_color: >-
+              {%- set rtt_state = states('sensor.pikvm_nas_round_trip_time_average') -%}
+              {%- set rtt = rtt_state | float(999) -%}
+              {%- if rtt_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif rtt <= 30 -%}
+                green
+              {%- elif rtt <= 75 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_tx_retries
+            primary: TX retries
+            secondary: >-
+              {%- set retries = states('sensor.pikvm_nas_tx_retries') -%}
+              {%- set missed = states('sensor.pikvm_nas_missed_beacon') -%}
+              {%- if retries in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                Retries {{ retries | int(0) }} · beacons {{ missed | int(0) }}
+              {%- endif -%}
+            icon: mdi:wifi-alert
+            icon_color: >-
+              {%- set retries_state = states('sensor.pikvm_nas_tx_retries') -%}
+              {%- set missed_state = states('sensor.pikvm_nas_missed_beacon') -%}
+              {%- set retries = retries_state | int(0) -%}
+              {%- set missed = missed_state | int(0) -%}
+              {%- if retries_state in ['unknown', 'unavailable', 'none', 'None', '']
+                    or missed_state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif retries > 500 or missed > 20 -%}
+                red
+              {%- elif retries > 100 or missed > 5 -%}
+                amber
+              {%- else -%}
+                green
+              {%- endif -%}
             fill_container: true
             multiline_secondary: true
+            tap_action:
+              action: more-info
           - type: custom:mushroom-template-card
-            entity: sensor.pikvm_nas_packets_received
-            primary: Packets received
+            entity: sensor.pikvm_nas_ap_mac
+            primary: Access point
             secondary: >-
-              {{ states('sensor.pikvm_nas_packets_received') }}
-            icon: mdi:download
-            icon_color: teal
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: sensor.pikvm_nas_packets_transmitted
-            primary: Packets transmitted
-            secondary: >-
-              {{ states('sensor.pikvm_nas_packets_transmitted') }}
-            icon: mdi:upload
-            icon_color: cyan
-            fill_container: true
-          - type: custom:mushroom-template-card
-            entity: sensor.pikvm_nas_percent_packet_loss
-            primary: Packet loss
-            secondary: >-
-              {{ states('sensor.pikvm_nas_percent_packet_loss') }}%
-            icon: mdi:packet
+              {%- set ssid = states('sensor.pikvm_nas_ssid') -%}
+              {%- set ap = states('sensor.pikvm_nas_ap_mac') -%}
+              {%- if ap in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ ssid }}
+                {{ ap }}
+              {%- endif -%}
+            icon: mdi:access-point-network
             icon_color: >-
-              {% set loss = states('sensor.pikvm_nas_percent_packet_loss') | float(0) %}
-              {% if loss > 0 %}
-                amber
-              {% else %}
-                green
-              {% endif %}
+              {%- if states('sensor.pikvm_nas_ap_mac') in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- else -%}
+                blue
+              {%- endif -%}
             fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.pikvm_nas_bit_rate
+            primary: Wi-Fi radio
+            secondary: >-
+              {%- set rate = states('sensor.pikvm_nas_bit_rate') -%}
+              {%- set tx_power = states('sensor.pikvm_nas_tx_power') -%}
+              {%- if rate in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                Rate {{ rate | float(0) | round(0) }}
+                TX power {{ tx_power | float(0) | round(0) }}
+              {%- endif -%}
+            icon: mdi:radio-tower
+            icon_color: >-
+              {%- if states('sensor.pikvm_nas_bit_rate') in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- else -%}
+                cyan
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: more-info
 
   ###########################################################################
   # FIREWALL
