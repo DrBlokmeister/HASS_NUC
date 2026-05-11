@@ -1,0 +1,359 @@
+usw_poe_port_power:
+  show_icon: false
+  show_name: true
+  show_state: false
+  tap_action:
+    action: more-info
+  hold_action:
+    action: more-info
+
+  custom_fields:
+    port: |
+      [[[
+        const value = Number(entity?.state);
+        const unavailable = !entity || ['unknown', 'unavailable', 'none'].includes(entity.state);
+        const active = Number.isFinite(value) && value > 0.05;
+
+        const watts = unavailable
+          ? '—'
+          : `${value.toFixed(value >= 10 ? 0 : 1)} W`;
+
+        return `
+          <div class="rj45 ${active ? 'active' : 'inactive'} ${unavailable ? 'unavailable' : ''}">
+            <div class="clip"></div>
+            <div class="pins">
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="power">${watts}</div>
+          </div>
+        `;
+      ]]]
+
+  styles:
+    grid:
+      - grid-template-areas: '"n" "port"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: min-content 1fr
+      - row-gap: 4px
+    card:
+      - padding: 6px
+      - border-radius: 10px
+      - background: rgba(var(--rgb-card-background-color), 0.65)
+      - border: 1px solid rgba(255,255,255,0.08)
+      - box-shadow: none
+      - min-height: 76px
+    name:
+      - font-size: 0.72em
+      - font-weight: 700
+      - justify-self: center
+      - color: var(--secondary-text-color)
+    custom_fields:
+      port:
+        - justify-self: center
+        - align-self: center
+
+  extra_styles: |
+    .rj45 {
+      position: relative;
+      width: 46px;
+      height: 36px;
+      border-radius: 5px 5px 8px 8px;
+      border: 2px solid rgba(160,160,160,0.55);
+      background:
+        linear-gradient(180deg, rgba(20,20,20,0.95), rgba(55,55,55,0.75));
+      box-shadow:
+        inset 0 2px 3px rgba(255,255,255,0.10),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .rj45.active {
+      border-color: rgba(76, 175, 80, 0.95);
+      box-shadow:
+        0 0 8px rgba(76, 175, 80, 0.55),
+        inset 0 2px 3px rgba(255,255,255,0.12),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .rj45.inactive {
+      border-color: rgba(120,120,120,0.45);
+      opacity: 0.72;
+    }
+
+    .rj45.unavailable {
+      border-color: rgba(244,67,54,0.7);
+      opacity: 0.45;
+    }
+
+    .clip {
+      position: absolute;
+      top: -2px;
+      left: 13px;
+      width: 20px;
+      height: 7px;
+      border-radius: 0 0 4px 4px;
+      background: rgba(0,0,0,0.8);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .pins {
+      position: absolute;
+      top: 8px;
+      left: 6px;
+      right: 6px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 2px;
+    }
+
+    .pins span {
+      height: 7px;
+      border-radius: 1px;
+      background: rgba(255, 193, 7, 0.85);
+      box-shadow: 0 0 3px rgba(255, 193, 7, 0.45);
+    }
+
+    .power {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 4px;
+      text-align: center;
+      font-size: 0.66em;
+      font-weight: 700;
+      line-height: 1;
+      color: rgba(255,255,255,0.92);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+unifi_link_speed_port:
+  show_icon: false
+  show_name: true
+  show_state: false
+
+  variables:
+    speed_entity: ""
+    port_type: rj45
+
+  tap_action:
+    action: >-
+      [[[
+        return states[variables.speed_entity] ? 'more-info' : 'none';
+      ]]]
+    entity: >-
+      [[[
+        return variables.speed_entity;
+      ]]]
+
+  hold_action:
+    action: >-
+      [[[
+        return states[variables.speed_entity] ? 'more-info' : 'none';
+      ]]]
+    entity: >-
+      [[[
+        return variables.speed_entity;
+      ]]]
+
+  custom_fields:
+    port: |
+      [[[
+        const stateObj = states[variables.speed_entity];
+        const raw = stateObj?.state;
+        const speed = Number(raw);
+        const disconnected =
+          !stateObj ||
+          raw === undefined ||
+          ['unknown', 'unavailable', 'none', 'None', ''].includes(String(raw));
+
+        let label = '—';
+        let speedClass = 'disconnected';
+
+        if (!disconnected && Number.isFinite(speed) && speed > 0) {
+          if (speed >= 10000) {
+            label = '10G';
+            speedClass = 'speed-10g';
+          } else if (speed >= 2500) {
+            label = '2.5G';
+            speedClass = 'speed-25g';
+          } else if (speed >= 1000) {
+            label = '1G';
+            speedClass = 'speed-1g';
+          } else if (speed >= 100) {
+            label = '100M';
+            speedClass = 'speed-100m';
+          } else {
+            label = `${speed}M`;
+            speedClass = 'speed-low';
+          }
+        }
+
+        const typeClass = variables.port_type === 'sfp' ? 'sfp' : 'rj45';
+
+        return `
+          <div class="port ${typeClass} ${speedClass}">
+            <div class="clip"></div>
+            <div class="pins">
+              <span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div class="speed">${label}</div>
+          </div>
+        `;
+      ]]]
+
+  styles:
+    grid:
+      - grid-template-areas: '"n" "port"'
+      - grid-template-columns: 1fr
+      - grid-template-rows: min-content 1fr
+      - row-gap: 4px
+
+    card:
+      - padding: 6px
+      - border-radius: 10px
+      - background: rgba(var(--rgb-card-background-color), 0.65)
+      - border: 1px solid rgba(255,255,255,0.08)
+      - box-shadow: none
+      - min-height: 76px
+
+    name:
+      - font-size: 0.72em
+      - font-weight: 700
+      - justify-self: center
+      - color: var(--secondary-text-color)
+
+    custom_fields:
+      port:
+        - justify-self: center
+        - align-self: center
+
+  extra_styles: |
+    .port {
+      position: relative;
+      width: 46px;
+      height: 36px;
+      border-radius: 5px 5px 8px 8px;
+      border: 2px solid rgba(120,120,120,0.45);
+      background:
+        linear-gradient(180deg, rgba(20,20,20,0.95), rgba(55,55,55,0.75));
+      box-shadow:
+        inset 0 2px 3px rgba(255,255,255,0.10),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+      opacity: 0.72;
+    }
+
+    .port.rj45 .clip {
+      position: absolute;
+      top: -2px;
+      left: 13px;
+      width: 20px;
+      height: 7px;
+      border-radius: 0 0 4px 4px;
+      background: rgba(0,0,0,0.8);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .port.sfp {
+      border-radius: 4px;
+      background:
+        linear-gradient(180deg, rgba(10,10,10,0.95), rgba(35,35,35,0.85));
+    }
+
+    .port.sfp .clip {
+      position: absolute;
+      top: 5px;
+      left: 7px;
+      right: 7px;
+      height: 5px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.10);
+    }
+
+    .pins {
+      position: absolute;
+      top: 8px;
+      left: 6px;
+      right: 6px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 2px;
+    }
+
+    .port.sfp .pins {
+      display: none;
+    }
+
+    .pins span {
+      height: 7px;
+      border-radius: 1px;
+      background: rgba(255, 193, 7, 0.85);
+      box-shadow: 0 0 3px rgba(255, 193, 7, 0.45);
+    }
+
+    .speed {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 4px;
+      text-align: center;
+      font-size: 0.66em;
+      font-weight: 800;
+      line-height: 1;
+      color: rgba(255,255,255,0.94);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .speed-10g {
+      opacity: 1;
+      border-color: rgba(156, 39, 176, 0.95);
+      box-shadow:
+        0 0 8px rgba(156, 39, 176, 0.65),
+        inset 0 2px 3px rgba(255,255,255,0.12),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .speed-25g {
+      opacity: 1;
+      border-color: rgba(3, 169, 244, 0.95);
+      box-shadow:
+        0 0 8px rgba(3, 169, 244, 0.60),
+        inset 0 2px 3px rgba(255,255,255,0.12),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .speed-1g {
+      opacity: 1;
+      border-color: rgba(76, 175, 80, 0.95);
+      box-shadow:
+        0 0 8px rgba(76, 175, 80, 0.55),
+        inset 0 2px 3px rgba(255,255,255,0.12),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .speed-100m {
+      opacity: 1;
+      border-color: rgba(255, 152, 0, 0.95);
+      box-shadow:
+        0 0 8px rgba(255, 152, 0, 0.55),
+        inset 0 2px 3px rgba(255,255,255,0.12),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .speed-low {
+      opacity: 1;
+      border-color: rgba(244, 67, 54, 0.95);
+      box-shadow:
+        0 0 8px rgba(244, 67, 54, 0.55),
+        inset 0 2px 3px rgba(255,255,255,0.12),
+        inset 0 -3px 5px rgba(0,0,0,0.55);
+    }
+
+    .disconnected {
+      border-color: rgba(120,120,120,0.35);
+      opacity: 0.42;
+      filter: g
