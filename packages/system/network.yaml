@@ -1,3 +1,46 @@
+# Template to get all Unifi device entities:
+# {%- set devices = [
+# ('UniFi Dream Machine', '998b24ec2cff3c9d633fc615ea121857'),
+# ('USW-Flex-XG', '0cea0500771a7827a0ce408db6b60db0'),
+# ('USW Pro Max 16 PoE', 'c1518229cb39e028d573c79fe9f035b4'),
+# ('USW Flex Mini Heatpump', '07f1f4082ec78a8176b325d0357138d8'),
+# ('USW Flex Mini Mediacenter', 'a8f9c89d0c20a99a8e659b213ec1403e'),
+# ('U6 Pro 2nd Floor', 'aab0b44112393bd79601a9d20dcce3af'),
+# ('U6-LR', '0fdd97d71d3a9fc34dd6dba5324a6a58'),
+# ('AP-Lite Outside', '09651def7877f53acd9f0973cb348ecd'),
+# ('AP-Lite 1st Floor', '4b844b21e0c9568cca266fdf22a29ebd'),
+# ('Network Port Forwarding', '0d08550266c02da91d95844bc7d8fd69'),
+# ('BlokmeisterWIFI', '0247fe9ed95ed03fb92733dc5156b928'),
+# ('BlokmeisterWIFI_NoT', '545ad445b3ebddb83c6edd51db6be944'),
+# ('BlokmeisterWIFI_IoT', '2a6742bfeb4e89c4c5123c6032d98b5a'),
+# ('BlokmeisterWIFI_Guest', '3df63d1c531f4b48919ed3c246ede5b6')
+# ] -%}
+# {%- for device_name, device_id in devices %}
+# {{ device_name }}
+# device_id: {{ device_id }}
+# entities:
+# {%- set entities = device_entities(device_id) | sort %}
+# {%- if entities | count > 0 %}
+# {%- for entity_id in entities %}
+# {%- set entity = states[entity_id] %}
+# - entity_id: {{ entity_id }}
+#   friendly_name: {{ state_attr(entity_id, 'friendly_name') | default('', true) }}
+#   state: {{ states(entity_id) }}
+#   attributes:
+# {%- if entity is not none and entity.attributes | count > 0 %}
+# {%- for attr_name, attr_value in entity.attributes.items() | sort %}
+#     {{ attr_name }}: {{ attr_value }}
+# {%- endfor %}
+# {%- else %}
+#     {}
+# {%- endif %}
+# {%- endfor %}
+# {%- else %}
+# []
+# {%- endif %}
+
+# {%- endfor %}
+
 homeassistant:
   customize: {}
     # sensor.speedtest_download:

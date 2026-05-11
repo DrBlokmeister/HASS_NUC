@@ -3,103 +3,610 @@ icon: 'mdi:network'
 panel: false
 badges: []
 cards:
-  - type: glance
-    title: UniFi Firmware Update Status
-    show_state: true
-    show_name: true
-    columns: 3
-    state_color: true
-    entities:
-      - entity: update.udmpro
-        name: UDM Pro
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:mushroom-template-card
+        entity: sensor.speedtest_ping
+        primary: Internet
+        secondary: >-
+          {%- set down = states('sensor.speedtest_download') -%}
+          {%- set up = states('sensor.speedtest_upload') -%}
+          {%- set ping = states('sensor.speedtest_ping') -%}
+          Down {{ down | float(0) | round(0) }} · Up {{ up | float(0) | round(0) }} Mbit/s
+          Ping {{ ping | float(0) | round(1) }} ms
+        icon: mdi:web
+        icon_color: >-
+          {%- set ping = states('sensor.speedtest_ping') | float(999) -%}
+          {%- if ping < 10 -%}
+            green
+          {%- elif ping < 25 -%}
+            amber
+          {%- else -%}
+            red
+          {%- endif -%}
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+      - type: custom:mushroom-template-card
+        entity: sensor.udmpro_cpu_utilization
+        primary: UDM Pro
+        secondary: >-
+          CPU {{ states('sensor.udmpro_cpu_utilization') | float(0) | round(0) }}%
+          · {{ states('sensor.udmpro_cpu_temperature') | float(0) | round(0) }} °C
+          SFP+ {{ states('sensor.udmpro_udmpro_phy_temperature') | float(0) | round(0) }} °C
         icon: mdi:router-network
+        icon_color: >-
+          {%- set temp = states('sensor.udmpro_cpu_temperature') | float(0) -%}
+          {%- if temp >= 70 -%}
+            red
+          {%- elif temp >= 60 -%}
+            amber
+          {%- else -%}
+            green
+          {%- endif -%}
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.usw_pro_max_16_poe_temperature
+        primary: PoE switch
+        secondary: >-
+          CPU {{ states('sensor.usw_pro_max_16_poe_cpu_utilization') | float(0) | round(0) }}%
+          · {{ states('sensor.usw_pro_max_16_poe_temperature') | float(0) | round(0) }} °C
+          Cabinet {{ states('sensor.temperature_utility_cabinet') | float(0) | round(0) }} °C
+        icon: mdi:switch
+        icon_color: >-
+          {%- set temp = states('sensor.usw_pro_max_16_poe_temperature') | float(0) -%}
+          {%- if temp >= 60 -%}
+            red
+          {%- elif temp >= 50 -%}
+            amber
+          {%- else -%}
+            green
+          {%- endif -%}
+        multiline_secondary: true
+      - type: custom:mushroom-template-card
+        entity: sensor.u6_lr_clients
+        primary: Wi-Fi clients
+        secondary: >-
+          {%- set total =
+            states('sensor.u6_lr_clients') | int(0)
+            + states('sensor.ap_lite_1st_floor_clients') | int(0)
+            + states('sensor.u6_pro_2nd_floor_clients') | int(0)
+            + states('sensor.ap_lite_outside_clients') | int(0)
+          -%}
+          {{ total }} total
+          LR {{ states('sensor.u6_lr_clients') | int(0) }}
+          · 1F {{ states('sensor.ap_lite_1st_floor_clients') | int(0) }}
+          · 2F {{ states('sensor.u6_pro_2nd_floor_clients') | int(0) }}
+          · Out {{ states('sensor.ap_lite_outside_clients') | int(0) }}
+        icon: mdi:wifi
+        icon_color: blue
+        multiline_secondary: true
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-template-card
+        primary: UniFi firmware
+        secondary: >-
+          {%- set updates = [
+            'update.udmpro',
+            'update.usw_pro_max_16_poe',
+            'update.usw_flex_xg',
+            'update.usw_flex_mini_mediacenter',
+            'update.usw_flex_mini_heatpump',
+            'update.ap_lr_ground_floor',
+            'update.ap_lite_1st_floor',
+            'update.ap_pro_2nd_floor',
+            'update.ap_lite_outside'
+          ] -%}
+          {%- set pending = updates | select('is_state', 'on') | list | count -%}
+          {%- set unavailable = updates | select('is_state', 'unavailable') | list | count -%}
+          {%- if pending > 0 -%}
+            {{ pending }} update{{ 's' if pending != 1 else '' }} pending
+            {%- if unavailable > 0 %} · {{ unavailable }} unavailable{%- endif -%}
+          {%- elif unavailable > 0 -%}
+            Up-to-date · {{ unavailable }} unavailable
+          {%- else -%}
+            All devices up-to-date
+          {%- endif -%}
+        icon: mdi:package-up
+        icon_color: >-
+          {%- set updates = [
+            'update.udmpro',
+            'update.usw_pro_max_16_poe',
+            'update.usw_flex_xg',
+            'update.usw_flex_mini_mediacenter',
+            'update.usw_flex_mini_heatpump',
+            'update.ap_lr_ground_floor',
+            'update.ap_lite_1st_floor',
+            'update.ap_pro_2nd_floor',
+            'update.ap_lite_outside'
+          ] -%}
+          {%- set pending = updates | select('is_state', 'on') | list | count -%}
+          {%- if pending > 0 -%}
+            amber
+          {%- else -%}
+            green
+          {%- endif -%}
         tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.udmpro
-          confirmation:
-            text: "Update firmware for UDM Pro?"
-      - entity: update.usw_pro_max_16_poe
-        name: USW Pro Max 16 PoE
-        icon: mdi:router-network
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.usw_pro_max_16_poe
-          confirmation:
-            text: "Update firmware for USW Pro Max 16 PoE?"
-      - entity: update.usw_flex_xg
-        name: USW Flex XG
-        icon: mdi:router-network
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.usw_flex_xg
-          confirmation:
-            text: "Update firmware for Device USW Flex XG?"
-      - entity: update.usw_flex_mini_mediacenter
-        name: US Mini
-        icon: mdi:router-network
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.usw_flex_mini_mediacenter
-          confirmation:
-            text: "Update firmware for USW Flex Mini Mediacenter?"
-      - entity: update.usw_flex_mini_heatpump
-        name: USW Flex Mini
-        icon: mdi:router-network
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.usw_flex_mini_heatpump
-          confirmation:
-            text: "Update firmware for USW Flex Mini Heatpump?"
-      - entity: update.ap_lr_ground_floor
-        name: AP LR (Ground Floor)
-        icon: mdi:access-point
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.ap_lr_ground_floor
-          confirmation:
-            text: "Update firmware for AP LR (Ground Floor)?"
-      - entity: update.ap_lite_1st_floor
-        name: AP Lite (1st Floor)
-        icon: mdi:access-point
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.ap_lite_1st_floor
-          confirmation:
-            text: "Update firmware for AP Lite (1st Floor)?"
-      - entity: update.ap_pro_2nd_floor
-        name: AP Pro (2nd Floor)
-        icon: mdi:access-point
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.ap_pro_2nd_floor
-          confirmation:
-            text: "Update firmware for AP Pro (2nd Floor)?"
-      - entity: update.ap_lite_outside
-        name: AP Lite (Outside)
-        icon: mdi:access-point
-        tap_action:
-          action: call-service
-          service: update.install
-          target:
-            entity_id: update.ap_lite_2nd_floor
-          confirmation:
-            text: "Update firmware for AP Lite (2nd Floor)?"
+          action: more-info
+        multiline_secondary: true
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: update.udmpro
+            primary: UDM Pro
+            secondary: >-
+              {%- if is_state('update.udmpro', 'on') -%}
+                Update available
+              {%- elif is_state('update.udmpro', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.udmpro', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.udmpro') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:router-network
+            icon_color: >-
+              {%- if is_state('update.udmpro', 'on') -%}
+                amber
+              {%- elif is_state('update.udmpro', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.udmpro
+              confirmation:
+                text: Update firmware for UDM Pro?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.usw_pro_max_16_poe
+            primary: USW Pro Max
+            secondary: >-
+              {%- if is_state('update.usw_pro_max_16_poe', 'on') -%}
+                Update available
+              {%- elif is_state('update.usw_pro_max_16_poe', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.usw_pro_max_16_poe', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.usw_pro_max_16_poe') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:switch
+            icon_color: >-
+              {%- if is_state('update.usw_pro_max_16_poe', 'on') -%}
+                amber
+              {%- elif is_state('update.usw_pro_max_16_poe', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.usw_pro_max_16_poe
+              confirmation:
+                text: Update firmware for USW Pro Max 16 PoE?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.usw_flex_xg
+            primary: USW Flex XG
+            secondary: >-
+              {%- if is_state('update.usw_flex_xg', 'on') -%}
+                Update available
+              {%- elif is_state('update.usw_flex_xg', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.usw_flex_xg', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.usw_flex_xg') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:switch
+            icon_color: >-
+              {%- if is_state('update.usw_flex_xg', 'on') -%}
+                amber
+              {%- elif is_state('update.usw_flex_xg', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.usw_flex_xg
+              confirmation:
+                text: Update firmware for USW Flex XG?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.usw_flex_mini_mediacenter
+            primary: USW Mini Media
+            secondary: >-
+              {%- if is_state('update.usw_flex_mini_mediacenter', 'on') -%}
+                Update available
+              {%- elif is_state('update.usw_flex_mini_mediacenter', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.usw_flex_mini_mediacenter', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.usw_flex_mini_mediacenter') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:switch
+            icon_color: >-
+              {%- if is_state('update.usw_flex_mini_mediacenter', 'on') -%}
+                amber
+              {%- elif is_state('update.usw_flex_mini_mediacenter', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.usw_flex_mini_mediacenter
+              confirmation:
+                text: Update firmware for USW Flex Mini Mediacenter?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.usw_flex_mini_heatpump
+            primary: USW Mini Heatpump
+            secondary: >-
+              {%- if is_state('update.usw_flex_mini_heatpump', 'on') -%}
+                Update available
+              {%- elif is_state('update.usw_flex_mini_heatpump', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.usw_flex_mini_heatpump', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.usw_flex_mini_heatpump') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:switch
+            icon_color: >-
+              {%- if is_state('update.usw_flex_mini_heatpump', 'on') -%}
+                amber
+              {%- elif is_state('update.usw_flex_mini_heatpump', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.usw_flex_mini_heatpump
+              confirmation:
+                text: Update firmware for USW Flex Mini Heatpump?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.ap_lr_ground_floor
+            primary: AP LR Ground
+            secondary: >-
+              {%- if is_state('update.ap_lr_ground_floor', 'on') -%}
+                Update available
+              {%- elif is_state('update.ap_lr_ground_floor', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.ap_lr_ground_floor', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.ap_lr_ground_floor') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:access-point
+            icon_color: >-
+              {%- if is_state('update.ap_lr_ground_floor', 'on') -%}
+                amber
+              {%- elif is_state('update.ap_lr_ground_floor', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.ap_lr_ground_floor
+              confirmation:
+                text: Update firmware for AP LR Ground Floor?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.ap_lite_1st_floor
+            primary: AP Lite 1F
+            secondary: >-
+              {%- if is_state('update.ap_lite_1st_floor', 'on') -%}
+                Update available
+              {%- elif is_state('update.ap_lite_1st_floor', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.ap_lite_1st_floor', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.ap_lite_1st_floor') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:access-point
+            icon_color: >-
+              {%- if is_state('update.ap_lite_1st_floor', 'on') -%}
+                amber
+              {%- elif is_state('update.ap_lite_1st_floor', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.ap_lite_1st_floor
+              confirmation:
+                text: Update firmware for AP Lite 1st Floor?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.ap_pro_2nd_floor
+            primary: AP Pro 2F
+            secondary: >-
+              {%- if is_state('update.ap_pro_2nd_floor', 'on') -%}
+                Update available
+              {%- elif is_state('update.ap_pro_2nd_floor', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.ap_pro_2nd_floor', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.ap_pro_2nd_floor') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:access-point
+            icon_color: >-
+              {%- if is_state('update.ap_pro_2nd_floor', 'on') -%}
+                amber
+              {%- elif is_state('update.ap_pro_2nd_floor', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.ap_pro_2nd_floor
+              confirmation:
+                text: Update firmware for AP Pro 2nd Floor?
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: update.ap_lite_outside
+            primary: AP Lite Outside
+            secondary: >-
+              {%- if is_state('update.ap_lite_outside', 'on') -%}
+                Update available
+              {%- elif is_state('update.ap_lite_outside', 'off') -%}
+                Up-to-date
+              {%- elif is_state('update.ap_lite_outside', 'unavailable') -%}
+                Unavailable
+              {%- else -%}
+                {{ states('update.ap_lite_outside') | replace('_', ' ') | title }}
+              {%- endif -%}
+            icon: mdi:access-point
+            icon_color: >-
+              {%- if is_state('update.ap_lite_outside', 'on') -%}
+                amber
+              {%- elif is_state('update.ap_lite_outside', 'off') -%}
+                green
+              {%- else -%}
+                grey
+              {%- endif -%}
+            fill_container: true
+            tap_action:
+              action: call-service
+              service: update.install
+              target:
+                entity_id: update.ap_lite_outside
+              confirmation:
+                text: Update firmware for AP Lite Outside?
+            hold_action:
+              action: more-info
+
+  - type: custom:collapsable-cards
+    title: UniFi Device Navigation
+    defaultOpen: false
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: ''
+            subtitle: Gateway / Switches
+            alignment: center
+
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: UniFi Dream Machine
+                secondary: Gateway / router
+                icon: mdi:router-network
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/998b24ec2cff3c9d633fc615ea121857
+
+              - type: custom:mushroom-template-card
+                primary: USW Pro Max 16 PoE
+                secondary: Main PoE switch
+                icon: mdi:switch
+                icon_color: amber
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/c1518229cb39e028d573c79fe9f035b4
+
+              - type: custom:mushroom-template-card
+                primary: USW-Flex-XG
+                secondary: 10 GbE switch
+                icon: mdi:switch
+                icon_color: purple
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/0cea0500771a7827a0ce408db6b60db0
+
+              - type: custom:mushroom-template-card
+                primary: USW Flex Mini Heatpump
+                secondary: Utility / heatpump switch
+                icon: mdi:switch
+                icon_color: green
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/07f1f4082ec78a8176b325d0357138d8
+
+              - type: custom:mushroom-template-card
+                primary: USW Flex Mini Mediacenter
+                secondary: Mediacenter switch
+                icon: mdi:switch
+                icon_color: green
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/a8f9c89d0c20a99a8e659b213ec1403e
+
+          - type: custom:mushroom-title-card
+            title: ''
+            subtitle: Access Points
+            alignment: center
+
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: U6 Pro 2nd Floor
+                secondary: Access point
+                icon: mdi:access-point
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/aab0b44112393bd79601a9d20dcce3af
+
+              - type: custom:mushroom-template-card
+                primary: U6-LR
+                secondary: Access point
+                icon: mdi:access-point
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/0fdd97d71d3a9fc34dd6dba5324a6a58
+
+              - type: custom:mushroom-template-card
+                primary: AP-Lite Outside
+                secondary: Outdoor access point
+                icon: mdi:access-point
+                icon_color: teal
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/09651def7877f53acd9f0973cb348ecd
+
+              - type: custom:mushroom-template-card
+                primary: AP-Lite 1st Floor
+                secondary: Access point
+                icon: mdi:access-point
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/4b844b21e0c9568cca266fdf22a29ebd
+
+          - type: custom:mushroom-title-card
+            title: ''
+            subtitle: Wi-Fi Networks
+            alignment: center
+
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: BlokmeisterWIFI
+                secondary: Main WLAN
+                icon: mdi:wifi
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/0247fe9ed95ed03fb92733dc5156b928
+
+              - type: custom:mushroom-template-card
+                primary: BlokmeisterWIFI_NoT
+                secondary: NoT WLAN
+                icon: mdi:wifi-lock
+                icon_color: amber
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/545ad445b3ebddb83c6edd51db6be944
+
+              - type: custom:mushroom-template-card
+                primary: BlokmeisterWIFI_IoT
+                secondary: IoT WLAN
+                icon: mdi:wifi-cog
+                icon_color: green
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/2a6742bfeb4e89c4c5123c6032d98b5a
+
+              - type: custom:mushroom-template-card
+                primary: BlokmeisterWIFI_Guest
+                secondary: Guest WLAN
+                icon: mdi:wifi-marker
+                icon_color: purple
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/3df63d1c531f4b48919ed3c246ede5b6
+
+          - type: custom:mushroom-title-card
+            title: ''
+            subtitle: Network Admin
+            alignment: center
+
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Port Forwarding
+                secondary: UniFi network forwarding rules
+                icon: mdi:lan-connect
+                icon_color: red
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/0d08550266c02da91d95844bc7d8fd69
+              
   - type: custom:apexcharts-card
     header:
       title: Wi-Fi Clients per Access Point
@@ -181,6 +688,306 @@ cards:
       - entity: sensor.blokmeisterwifi_not
         name: NoT
         color: '#FF4560'  # Red
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: USW Pro Max 16 PoE · Port Power
+        alignment: center
+
+      - type: grid
+        columns: 8
+        square: false
+        cards:
+          # Row 1: ports 1–8
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_1_poe_power
+            name: '1'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_2_poe_power
+            name: '2'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_3_poe_power
+            name: '3'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_4_poe_power
+            name: '4'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_5_poe_power
+            name: '5'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_6_poe_power
+            name: '6'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_7_poe_power
+            name: '7'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_8_poe_power
+            name: '8'
+
+          # Row 2: ports 9–16
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_9_poe_power
+            name: '9'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_10_poe_power
+            name: '10'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_11_poe_power
+            name: '11'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_12_poe_power
+            name: '12'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_13_poe_power
+            name: '13'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_14_poe_power
+            name: '14'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_15_poe_power
+            name: '15'
+          - type: custom:button-card
+            template: usw_poe_port_power
+            entity: sensor.usw_pro_max_16_poe_port_16_poe_power
+            name: '16'
+
+      - type: custom:collapsable-cards
+        title: UniFi Link Speeds
+        defaultOpen: desktop-only
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: ''
+                subtitle: USW Pro Max 16 PoE
+                alignment: center
+
+              - type: grid
+                columns: 8
+                square: false
+                cards:
+                  # RJ45 row 1: ports 1–8
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '1'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_1_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '2'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_2_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '3'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_3_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '4'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_4_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '5'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_5_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '6'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_6_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '7'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_7_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '8'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_8_link_speed
+                  # RJ45 row 2: ports 9–16
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '9'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_9_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '10'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_10_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '11'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_11_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '12'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_12_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '13'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_13_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '14'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_14_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '15'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_15_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '16'
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_port_16_link_speed
+              - type: grid
+                columns: 8
+                square: false
+                cards:
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: SFP+ 1
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_sfp_1_link_speed
+                      port_type: sfp
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: SFP+ 2
+                    variables:
+                      speed_entity: sensor.usw_pro_max_16_poe_sfp_2_link_speed
+                      port_type: sfp
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: ''
+                subtitle: USW-Flex-XG
+                alignment: center
+              - type: grid
+                columns: 5
+                square: false
+                cards:
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '1'
+                    variables:
+                      speed_entity: sensor.usw_flex_xg_port_1_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '2'
+                    variables:
+                      speed_entity: sensor.usw_flex_xg_port_2_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '3'
+                    variables:
+                      speed_entity: sensor.usw_flex_xg_port_3_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '4'
+                    variables:
+                      speed_entity: sensor.usw_flex_xg_port_4_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '5'
+                    variables:
+                      speed_entity: sensor.usw_flex_xg_port_5_link_speed
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: ''
+                subtitle: USW Flex Mini Heatpump
+                alignment: center
+              - type: grid
+                columns: 5
+                square: false
+                cards:
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '1'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_heatpump_port_1_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '2'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_heatpump_port_2_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '3'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_heatpump_port_3_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '4'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_heatpump_port_4_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '5'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_heatpump_port_5_link_speed
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: ''
+                subtitle: USW Flex Mini Mediacenter
+                alignment: center
+
+              - type: grid
+                columns: 5
+                square: false
+                cards:
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '1'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_mediacenter_port_1_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '2'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_mediacenter_port_2_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '3'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_mediacenter_port_3_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '4'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_mediacenter_port_4_link_speed
+                  - type: custom:button-card
+                    template: unifi_link_speed_port
+                    name: '5'
+                    variables:
+                      speed_entity: sensor.usw_flex_mini_mediacenter_port_5_link_speed
+
   - type: custom:apexcharts-card
     header:
       title: PoE Power Budget
@@ -257,64 +1064,83 @@ cards:
 
   - type: vertical-stack
     cards:
-    - title: Router status
-      type: glance
-      columns: 4
-      entities:
-        - entity: sensor.unifi_dream_machine_data_received
-          icon: 'mdi:progress-download'
-          name: Down Daily
-        - entity: sensor.unifi_dream_machine_download_speed
-          icon: 'mdi:speedometer'
-          name: Down Speed
-        - entity: sensor.unifi_dream_machine_data_sent
-          icon: 'mdi:progress-upload'
-          name: Up Daily
-        - entity: sensor.unifi_dream_machine_upload_speed
-          icon: 'mdi:speedometer'
-          name: Up Speed
-        - entity: sensor.speedtest_download
-        - entity: sensor.speedtest_upload
-        - entity: sensor.speedtest_ping
-        - type: button
-          entity: sensor.speedtest_download
-          icon: mdi:reload
-          name: Reload
-          action_name: Reload Speedtest
-          tap_action:
-            action: call-service
-            service: homeassistant.reload_config_entry
-            service_data:
+      - type: custom:mushroom-title-card
+        title: ''
+        subtitle: Internet / WAN
+        alignment: center
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.unifi_dream_machine_download_speed
+            name: WAN download
+            icon: mdi:download-network
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.unifi_dream_machine_upload_speed
+            name: WAN upload
+            icon: mdi:upload-network
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.unifi_dream_machine_data_received
+            name: Data received
+            icon: mdi:progress-download
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.unifi_dream_machine_data_sent
+            name: Data sent
+            icon: mdi:progress-upload
+
+          - type: custom:mushroom-template-card
+            entity: sensor.speedtest_download
+            primary: Speedtest
+            secondary: >-
+              {{ states('sensor.speedtest_download') | float(0) | round(0) }} down
+              · {{ states('sensor.speedtest_upload') | float(0) | round(0) }} up
+              · {{ states('sensor.speedtest_ping') | float(0) | round(1) }} ms
+            icon: mdi:speedometer
+            icon_color: blue
+            multiline_secondary: true
+            tap_action:
+              action: more-info
+
+          - type: custom:mushroom-template-card
+            primary: Reload speedtest
+            secondary: Run integration reload
+            icon: mdi:reload
+            icon_color: amber
+            tap_action:
+              action: call-service
+              service: homeassistant.reload_config_entry
               target:
                 device_id: 5339147a29211a8fe30012ef2f3b9fe1
-      show_icon: true
-      show_name: true
-      show_state: true
-    - type: custom:mini-graph-card
-      entities:
-        - entity: sensor.speedtest_download
-          name: Down
-        - entity: sensor.speedtest_upload
-          name: Up
-        - entity: sensor.speedtest_ping
-          name: Ping
-          y_axis: 'secondary'
-      icon: mdi:swap-vertical-bold
-      name: Speedtest
-      hours_to_show: 48
-      points_per_hour: 1
-      hour24: true
-      font_size: 70
-      height: 250
-      line_width: 2.5
-      lower_bound: 300
-      upper_bound: 1000
-      lower_bound_secondary: 0
-      upper_bound_secondary: 20
-      show:
-        labels: true
-        average: true
-        labels_secondary: true
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.speedtest_download
+            name: Down
+          - entity: sensor.speedtest_upload
+            name: Up
+          - entity: sensor.speedtest_ping
+            name: Ping
+            y_axis: 'secondary'
+        icon: mdi:swap-vertical-bold
+        name: Speedtest
+        hours_to_show: 48
+        points_per_hour: 1
+        hour24: true
+        font_size: 70
+        height: 250
+        line_width: 2.5
+        lower_bound: 300
+        upper_bound: 1000
+        lower_bound_secondary: 0
+        upper_bound_secondary: 20
+        show:
+          labels: true
+          average: true
+          labels_secondary: true
 
   - type: custom:apexcharts-card
     header:
