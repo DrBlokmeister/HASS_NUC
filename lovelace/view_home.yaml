@@ -14,7 +14,7 @@ badges:
   - person.sander_blok
   - person.tamara
   - type: entity
-    entity: device_tracker.galaxy_s21_ultra_5g
+    entity: device_tracker.phone_toos
     name: Toos
     show_name: true
     show_state: false
@@ -22,7 +22,7 @@ badges:
     color: green
     visibility:
       - condition: state
-        entity: device_tracker.galaxy_s21_ultra_5g
+        entity: device_tracker.phone_toos
         state: home
   - type: entity
     entity: device_tracker.phone_eddy
@@ -64,28 +64,86 @@ cards:
         icon: mdi:delete-outline
         heading: Afval
         heading_style: subtitle
-      # Only shown when something is collected today
+      # Only shown when something is collected today or tomorrow
       - type: conditional
         conditions:
-          - condition: state
-            entity: sensor.afval_voor_today
-            state_not: "None"
-          - condition: state
-            entity: sensor.afval_voor_today
-            state_not: none
-          - condition: state
-            entity: sensor.afval_voor_today
-            state_not: unknown
-          - condition: state
-            entity: sensor.afval_voor_today
-            state_not: unavailable
+          - condition: or
+            conditions:
+              - condition: and
+                conditions:
+                  - condition: state
+                    entity: sensor.afval_voor_today
+                    state_not: "None"
+                  - condition: state
+                    entity: sensor.afval_voor_today
+                    state_not: none
+                  - condition: state
+                    entity: sensor.afval_voor_today
+                    state_not: unknown
+                  - condition: state
+                    entity: sensor.afval_voor_today
+                    state_not: unavailable
+              - condition: and
+                conditions:
+                  - condition: state
+                    entity: sensor.afval_voor_tomorrow
+                    state_not: "None"
+                  - condition: state
+                    entity: sensor.afval_voor_tomorrow
+                    state_not: none
+                  - condition: state
+                    entity: sensor.afval_voor_tomorrow
+                    state_not: unknown
+                  - condition: state
+                    entity: sensor.afval_voor_tomorrow
+                    state_not: unavailable
         card:
           type: custom:mushroom-template-card
           entity: sensor.afval_voor_today
-          primary: Vandaag
-          secondary: "{{ states('sensor.afval_voor_today') }}"
-          icon: mdi:alert-circle-outline
-          icon_color: red
+          primary: >-
+            {%- set today = states('sensor.afval_voor_today') -%}
+            {%- set tomorrow = states('sensor.afval_voor_tomorrow') -%}
+            {%- set bad = ['None', 'none', 'unknown', 'unavailable', ''] -%}
+            {%- set has_today = today not in bad -%}
+            {%- set has_tomorrow = tomorrow not in bad -%}
+            {%- if has_today and has_tomorrow -%}
+              Afval vandaag & morgen
+            {%- elif has_today -%}
+              Afval vandaag
+            {%- elif has_tomorrow -%}
+              Afval morgen
+            {%- else -%}
+              Afval
+            {%- endif -%}
+          secondary: >-
+            {%- set today = states('sensor.afval_voor_today') -%}
+            {%- set tomorrow = states('sensor.afval_voor_tomorrow') -%}
+            {%- set bad = ['None', 'none', 'unknown', 'unavailable', ''] -%}
+            {%- set lines = [] -%}
+            {%- if today not in bad -%}
+              {%- set lines = lines + ['Vandaag: ' ~ today] -%}
+            {%- endif -%}
+            {%- if tomorrow not in bad -%}
+              {%- set lines = lines + ['Morgen: ' ~ tomorrow] -%}
+            {%- endif -%}
+            {{- lines | join('\n') -}}
+          multiline_secondary: true
+          icon: >-
+            {%- set today = states('sensor.afval_voor_today') -%}
+            {%- set bad = ['None', 'none', 'unknown', 'unavailable', ''] -%}
+            {%- if today not in bad -%}
+              mdi:alert-circle-outline
+            {%- else -%}
+              mdi:calendar-alert
+            {%- endif -%}
+          icon_color: >-
+            {%- set today = states('sensor.afval_voor_today') -%}
+            {%- set bad = ['None', 'none', 'unknown', 'unavailable', ''] -%}
+            {%- if today not in bad -%}
+              red
+            {%- else -%}
+              orange
+            {%- endif -%}
           tap_action:
             action: more-info
           card_mod:
@@ -94,39 +152,10 @@ cards:
                 min-height: 58px;
                 --icon-size: 30px;
               }
-      # Only shown when something is collected tomorrow,
-      # but not if today already has waste.
-      - type: conditional
-        conditions:
-          - condition: state
-            entity: sensor.afval_voor_today
-            state: "None"
-          - condition: state
-            entity: sensor.afval_voor_tomorrow
-            state_not: "None"
-          - condition: state
-            entity: sensor.afval_voor_tomorrow
-            state_not: none
-          - condition: state
-            entity: sensor.afval_voor_tomorrow
-            state_not: unknown
-          - condition: state
-            entity: sensor.afval_voor_tomorrow
-            state_not: unavailable
-        card:
-          type: custom:mushroom-template-card
-          entity: sensor.afval_voor_tomorrow
-          primary: Morgen
-          secondary: "{{ states('sensor.afval_voor_tomorrow') }}"
-          icon: mdi:calendar-alert
-          icon_color: orange
-          tap_action:
-            action: more-info
-          card_mod:
-            style: |
-              ha-card {
-                min-height: 58px;
-                --icon-size: 30px;
+              mushroom-state-info {
+                --card-primary-font-size: 14px;
+                --card-secondary-font-size: 13px;
+                --card-secondary-line-height: 1.25;
               }
       - type: grid
         columns: 3
@@ -160,13 +189,15 @@ cards:
             card_mod:
               style: |
                 ha-card {
-                  min-height: 70px;
-                  padding: 8px !important;
-                  --icon-size: 24px;
+                  min-height: 58px;
+                  padding: 4px 6px !important;
+                  --icon-size: 22px;
                 }
                 mushroom-state-info {
-                  --card-primary-font-size: 13px;
-                  --card-secondary-font-size: 12px;
+                  --card-primary-font-size: 12px;
+                  --card-secondary-font-size: 11px;
+                  --card-primary-line-height: 1.1;
+                  --card-secondary-line-height: 1.1;
                 }
           - type: custom:mushroom-template-card
             entity: sensor.afval_voor_restafval
@@ -196,9 +227,9 @@ cards:
             card_mod:
               style: |
                 ha-card {
-                  min-height: 70px;
-                  padding: 8px !important;
-                  --icon-size: 24px;
+                  min-height: 58px;
+                  padding: 4px 6px !important;
+                  --icon-size: 22px;
                 }
                 mushroom-state-info {
                   --card-primary-font-size: 13px;
@@ -232,9 +263,9 @@ cards:
             card_mod:
               style: |
                 ha-card {
-                  min-height: 70px;
-                  padding: 8px !important;
-                  --icon-size: 24px;
+                  min-height: 58px;
+                  padding: 4px 6px !important;
+                  --icon-size: 22px;
                 }
                 mushroom-state-info {
                   --card-primary-font-size: 13px;
