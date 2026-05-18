@@ -19,23 +19,22 @@ class Printers(StrEnum):
     H2D = "H2D"
     H2DPRO = "H2DPRO"
     H2S = "H2S"
+    X2D = "X2D"
     X1E = "X1E"
     X1C = "X1C"
     X1 = "X1"
 
-class WikiPrinterTag(StrEnum):
-    A1 = "a1"
-    A1MINI = "a1-mini"
-    P1P = "p1"
-    P1S = "p1"
-    P2S = "p2"
-    H2C = "h2"
-    H2D = "h2"
-    H2DPRO = "h2"
-    H2S = "h2"
-    X1E = "x1"
-    X1C = "x1"
-    X1 = "x1"
+# Printers that use file:///sdcard/ URL format for print jobs.
+# All other printers default to ftp:/// format.
+LEGACY_SDCARD_PRINTERS = [
+    Printers.X1,
+    Printers.X1C,
+    Printers.X1E,
+    Printers.P1P,
+    Printers.P1S,
+    Printers.A1,
+    Printers.A1MINI,
+]
 
 class Features(IntEnum):
     AUX_FAN = 1,
@@ -151,6 +150,16 @@ CURRENT_STAGE_IDS = {
     64: "preparing_hotend",
     65: "calibrating_detection_nozzle_clumping",
     66: "purifying_chamber_air",
+    67: "measuring_rotary_attachment",
+    68: "moving_toolhead_above_purge_chute",
+    69: "cooling_nozzle",
+    70: "moving_toolhead_to_center_of_heatbed",
+    71: "active_arc_fitting",
+    72: "hotend_type_detection",
+    73: "build_plate_alignment_detection",
+    74: "heatbed_surface_foreign_object_detection",
+    75: "heatbed_underside_foreign_object_detection",
+    76: "pre_extrusion_before_printing",
     77: "preparing_ams",
     # X1 returns -1 for idle
     -1: "idle",  # DUPLICATED
