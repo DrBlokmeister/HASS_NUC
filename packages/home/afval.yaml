@@ -5,9 +5,12 @@ input_boolean:
   garbagereminder:
     name: Garbage Reminder
     icon: mdi:trash-can-outline
-  garbage_taken_out:
-    name: Garbage taken out
+
+input_text:
+  garbage_acknowledged_pickup_key:
+    name: Garbage acknowledged pickup key
     icon: mdi:trash-can-check
+    max: 255
 
 # afvalbeheer:
 #   - name: 'Afval Voor'
@@ -18,7 +21,7 @@ input_boolean:
 #       - papier
 #     postcode: !secret postal_code
 #     streetnumber: !secret street_number_nosuffix
-#     #suffix: !secret street_number_suffix
+#     # suffix: !secret street_number_suffix
 #     upcomingsensor: 1
 #     dateformat: '%d-%m-%Y'
 #     dateonly: 1
@@ -28,27 +31,32 @@ input_boolean:
 
 template:
   - sensor:
-    - name: "Days to GFT"
-      unique_id: yaml_template_sensor_days_to_gft
-      icon: mdi:leaf
-      unit_of_measurement: 'days'
-      state: >-
-        {{ (strptime(states('sensor.afval_voor_gft'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
-      availability: "{{ states('sensor.afval_voor_gft') not in ['unknown', 'unavailable', 'none'] }}"
-    - name: "Days to Papier"
-      unique_id: yaml_template_sensor_days_to_papier
-      icon: mdi:newspaper-variant
-      unit_of_measurement: 'days'
-      state: >-
-        {{ (strptime(states('sensor.afval_voor_papier'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
-      availability: "{{ states('sensor.afval_voor_papier') not in ['unknown', 'unavailable', 'none'] }}"
-    - name: "Days to Restafval"
-      unique_id: yaml_template_sensor_days_to_restafval
-      icon: mdi:delete
-      unit_of_measurement: 'days'
-      state: >-
-        {{ (strptime(states('sensor.afval_voor_restafval'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
-      availability: "{{ states('sensor.afval_voor_restafval') not in ['unknown', 'unavailable', 'none'] }}"
+      - name: "Days to GFT"
+        unique_id: yaml_template_sensor_days_to_gft
+        icon: mdi:leaf
+        unit_of_measurement: days
+        state: >-
+          {{ (strptime(states('sensor.afval_voor_gft'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
+        availability: >-
+          {{ states('sensor.afval_voor_gft') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
+
+      - name: "Days to Papier"
+        unique_id: yaml_template_sensor_days_to_papier
+        icon: mdi:newspaper-variant
+        unit_of_measurement: days
+        state: >-
+          {{ (strptime(states('sensor.afval_voor_papier'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
+        availability: >-
+          {{ states('sensor.afval_voor_papier') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
+
+      - name: "Days to Restafval"
+        unique_id: yaml_template_sensor_days_to_restafval
+        icon: mdi:delete
+        unit_of_measurement: days
+        state: >-
+          {{ (strptime(states('sensor.afval_voor_restafval'), '%d-%m-%Y', today_at()) | as_local - today_at()).days }}
+        availability: >-
+          {{ states('sensor.afval_voor_restafval') not in ['unknown', 'unavailable', 'none', 'None', ''] }}
 
 #################
 #    SENSORS    #
@@ -70,115 +78,134 @@ switch:
 #####################
 automation:
   - alias: "[afval|notify] Dismiss sticky garbage notification when acknowledged"
-    id: yaml_automation_misc_garbage_dismiss_sticky_garbage_notification_when_acknowledged
-    description: Clears the sticky garbage notification on all phones when either phone confirms it's out.
-    mode: single
+    id: yaml_automation_afval_notify_dismiss_sticky_garbage_notification_when_acknowledged
+    description: >-
+      Clears the matching sticky garbage notification and stores the exact
+      acknowledged pickup key, so consecutive pickup days do not block each other.
+    mode: queued
     trigger:
       - platform: event
         event_type: mobile_app_notification_action
         event_data:
-          action: GARBAGE_PUT_OUT
+          action: GARBAGE_TODAY_PUT_OUT
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: GARBAGE_TOMORROW_PUT_OUT
+    variables:
+      today_waste: >-
+        {{ states('sensor.afval_voor_today') | lower | trim }}
+      tomorrow_waste: >-
+        {{ states('sensor.afval_voor_tomorrow') | lower | trim }}
+      today_pickup_key: >-
+        {{ today_at().strftime('%Y-%m-%d') ~ '|' ~ today_waste }}
+      tomorrow_pickup_key: >-
+        {{ (today_at() + timedelta(days=1)).strftime('%Y-%m-%d') ~ '|' ~ tomorrow_waste }}
+      acknowledged_pickup_key: >-
+        {%- if trigger.event.data.action == 'GARBAGE_TODAY_PUT_OUT' -%}
+          {{ today_pickup_key }}
+        {%- else -%}
+          {{ tomorrow_pickup_key }}
+        {%- endif -%}
+      notification_tag: >-
+        {%- if trigger.event.data.action == 'GARBAGE_TODAY_PUT_OUT' -%}
+          garbage_pickup_today
+        {%- else -%}
+          garbage_pickup_tomorrow
+        {%- endif -%}
     action:
       - service: notify.sander_and_tamara_phones
         data:
-          message: "clear_notification"
+          message: clear_notification
           data:
             ttl: 0
             priority: high
-            tag: garbage_pickup
-      - service: input_boolean.turn_on
+            tag: "{{ notification_tag }}"
+      - service: input_text.set_value
         target:
-          entity_id: input_boolean.garbage_taken_out
+          entity_id: input_text.garbage_acknowledged_pickup_key
+        data:
+          value: "{{ acknowledged_pickup_key }}"
 
-  - alias: '[afval|notify]Herinnering afval morgen'
+  - alias: "[afval|notify] Herinnering afval morgen"
     id: yaml_automation_afval_notify_herinnering_afval_morgen
-    description: Send a sticky reminder the evening before pickup and reset the helper flag.
+    description: >-
+      Sends a sticky reminder the evening before pickup unless that exact pickup
+      was already acknowledged.
     mode: single
     trigger:
-      platform: time
-      at: '19:00:00'
+      - platform: time
+        at: "19:00:00"
+    variables:
+      tomorrow_waste: >-
+        {{ states('sensor.afval_voor_tomorrow') | lower | trim }}
+      tomorrow_pickup_key: >-
+        {{ (today_at() + timedelta(days=1)).strftime('%Y-%m-%d') ~ '|' ~ tomorrow_waste }}
     condition:
-      - or:
-          - condition: template
-            value_template: >-
-              {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 24)
-                  and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > 0) }}
-          - condition: template
-            value_template: >-
-              {% set up = state_attr('sensor.afval_voor_first_upcoming','Upcoming_day') %}
-              {% if up not in [none, 'unknown', 'unavailable', ''] %}
-                {% set d = strptime(up, '%d-%m-%Y') %}
-                {{ (d.date() - now().date()).days == 1 }}
-              {% else %}
-                false
-              {% endif %}
+      - condition: template
+        value_template: >-
+          {{ states('sensor.afval_voor_tomorrow') not in ['None', 'none', 'unknown', 'unavailable', ''] }}
+      - condition: template
+        value_template: >-
+          {{ states('input_text.garbage_acknowledged_pickup_key') != tomorrow_pickup_key }}
     action:
-      - service: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.garbage_taken_out
       - service: notify.sander_and_tamara_phones
         data:
-          title: "Afval morgen"
+          title: Afval morgen
           message: "Afval: {{ states('sensor.afval_voor_tomorrow') }}"
           data:
             sticky: true
             ttl: 0
             priority: high
-            tag: garbage_pickup
+            tag: garbage_pickup_tomorrow
             group: garbage
             channel: Garbage
             notification_icon: mdi:trash-can-outline
-            # icon_url: local/icons/trash-can-outline.png
             actions:
-              - action: GARBAGE_PUT_OUT
-                title: "I put it outside"
+              - action: GARBAGE_TOMORROW_PUT_OUT
+                title: I put it outside
 
-  - alias: '[afval|notify]Herinnering afval vandaag'
+  - alias: "[afval|notify] Herinnering afval vandaag"
     id: yaml_automation_afval_notify_herinnering_afval_vandaag
-    description: Send a single sticky notification on the morning of garbage pickup.
+    description: >-
+      Sends a sticky notification on the morning of pickup unless that exact
+      pickup was already acknowledged.
     mode: single
     trigger:
       - platform: time
-        at: '07:00:00'
+        at: "07:00:00"
       - platform: state
         entity_id: input_boolean.sleep_tracking_on
-        to: 'off'
-        for: '00:10:00'
+        to: "off"
+        for: "00:10:00"
+    variables:
+      today_waste: >-
+        {{ states('sensor.afval_voor_today') | lower | trim }}
+      today_pickup_key: >-
+        {{ today_at().strftime('%Y-%m-%d') ~ '|' ~ today_waste }}
     condition:
-      - or:
-          - condition: template
-            value_template: >-
-              {{ ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 < 0)
-                  and ((as_timestamp(state_attr('calendar.afvalbeheer_mijnafvalwijzer', 'start_time')) - as_timestamp(now()))/3600 > -12) }}
-          - condition: template
-            value_template: >-
-              {% set up = state_attr('sensor.afval_voor_first_upcoming','Upcoming_day') %}
-              {% if up not in [none, 'unknown', 'unavailable', ''] %}
-                {% set d = strptime(up, '%d-%m-%Y') %}
-                {{ (d.date() - now().date()).days == 0 }}
-              {% else %}
-                false
-              {% endif %}
-      - condition: state
-        entity_id: input_boolean.garbage_taken_out
-        state: "off"
+      - condition: template
+        value_template: >-
+          {{ states('sensor.afval_voor_today') not in ['None', 'none', 'unknown', 'unavailable', ''] }}
+      - condition: template
+        value_template: >-
+          {{ states('input_text.garbage_acknowledged_pickup_key') != today_pickup_key }}
     action:
       - service: notify.sander_and_tamara_phones
         data:
-          title: "Afval vandaag"
+          title: Afval vandaag
           message: "Afval voor: {{ states('sensor.afval_voor_today') }}"
           data:
             sticky: true
             ttl: 0
             priority: high
-            tag: garbage_pickup
+            tag: garbage_pickup_today
             group: garbage
             channel: Garbage
             notification_icon: mdi:trash-can-outline
-            #icon_url: local/icons/trash-can-outline.png
             actions:
-              - action: GARBAGE_PUT_OUT
-                title: "I put it outside"
+              - action: GARBAGE_TODAY_PUT_OUT
+                title: I put it outside
 
 ################
 #    SCENES    #
