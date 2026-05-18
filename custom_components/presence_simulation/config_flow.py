@@ -1,3 +1,4 @@
+from typing import Dict
 from homeassistant import config_entries
 from homeassistant.helpers.selector import (
     SelectSelector,
@@ -9,20 +10,26 @@ from homeassistant.helpers.selector import (
 import re
 import logging
 import voluptuous as vol
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_DELTA, DEFAULT_INTERVAL
 from .const import (
         SWITCH_PLATFORM
 )
 
 _LOGGER = logging.getLogger(__name__)
 
+DELTA_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=1, max=365))
+INTERVAL_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=5, max=3600))
+RANDOM_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=0, max=86400))
+BRIGHTNESS_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
+
+
 class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 5
-    data = None
-    async def async_create_flow(handler, context, data):
-            """Create flow."""
-    async def async_finish_flow(flow, result):
-            """Finish flow."""
+
+    def __init__(self):
+        super().__init__()
+        self.data: dict = {}
+
     async def async_step_user(self, info=None):
         errors: Dict[str, str] = {}
         all_entities = self.hass.states.async_entity_ids()
@@ -31,12 +38,12 @@ class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("switch", description={"suggested_value": "Choose a unique name"}): str,
             vol.Required("entities"): SelectSelector(SelectSelectorConfig(options=all_entities, multiple=True, mode=SelectSelectorMode.DROPDOWN)),
             vol.Required("labels"): LabelSelector(LabelSelectorConfig(multiple=True)),
-            vol.Required("delta", default=7): int,
-            vol.Required("interval", default=30): int,
+            vol.Required("delta", default=DEFAULT_DELTA): DELTA_VALIDATOR,
+            vol.Required("interval", default=DEFAULT_INTERVAL): INTERVAL_VALIDATOR,
             vol.Required("restore", default=False): bool,
-            vol.Required("random", default=0): int,
+            vol.Required("random", default=0): RANDOM_VALIDATOR,
             vol.Required("unavailable_as_off", default=False): bool,
-            vol.Required("brightness", default=0): int,
+            vol.Required("brightness", default=0): BRIGHTNESS_VALIDATOR,
         }
         if not info:
             return self.async_show_form(
@@ -68,55 +75,56 @@ class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(entry):
-        #_LOGGER.debug("entry %s", entry)
         return OptionsFlowHandler()
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    #def __init__(self, config_entry):
-        #self.config_entry = config_entry
-        #pass
 
     async def async_step_init(self, info=None):
         errors: Dict[str, str] = {}
         _LOGGER.debug("config flow init %s", info)
         all_entities = self.hass.states.async_entity_ids()
 
-        if "interval" in self.config_entry.data:
-            interval = self.config_entry.data["interval"]
+        if "interval" in self.config_entry.options:
+            interval = self.config_entry.options["interval"]
         else:
             interval = 30
-        if "restore" in self.config_entry.data:
-            restore = self.config_entry.data["restore"]
+        if "restore" in self.config_entry.options:
+            restore = self.config_entry.options["restore"]
         else:
             restore = 0
-        if "random" in self.config_entry.data:
-            random = self.config_entry.data["random"]
+        if "random" in self.config_entry.options:
+            random = self.config_entry.options["random"]
         else:
             random = 0
-        if "unavailable_as_off" in self.config_entry.data:
-            unavailable_as_off = self.config_entry.data["unavailable_as_off"]
+        if "unavailable_as_off" in self.config_entry.options:
+            unavailable_as_off = self.config_entry.options["unavailable_as_off"]
         else:
             unavailable_as_off = False
-        if "brightness" in self.config_entry.data:
-            brightness = self.config_entry.data["brightness"]
+        if "brightness" in self.config_entry.options:
+            brightness = self.config_entry.options["brightness"]
         else:
             brightness = 0
 
+        switch_val = self.config_entry.options.get("switch", self.config_entry.data["switch"])
+        entities_val = self.config_entry.options.get("entities", self.config_entry.data["entities"])
+        labels_val = self.config_entry.options.get("labels", self.config_entry.data.get("labels", []))
+        delta_val = self.config_entry.options.get("delta", self.config_entry.data["delta"])
+
         data_schema = {
-            vol.Required("switch", default=self.config_entry.data["switch"]): str,
-            vol.Required("entities", default=self.config_entry.data["entities"].split(",")): SelectSelector(SelectSelectorConfig(options=all_entities, multiple=True, mode=SelectSelectorMode.DROPDOWN)),
-            vol.Required("labels", default=self.config_entry.data["labels"]): LabelSelector(LabelSelectorConfig(multiple=True)),
-            vol.Required("delta", default=self.config_entry.data["delta"]): int,
-            vol.Required("interval", default=interval): int,
+            vol.Required("switch", default=switch_val): str,
+            vol.Required("entities", default=entities_val.split(",")): SelectSelector(SelectSelectorConfig(options=all_entities, multiple=True, mode=SelectSelectorMode.DROPDOWN)),
+            vol.Required("labels", default=labels_val): LabelSelector(LabelSelectorConfig(multiple=True)),
+            vol.Required("delta", default=delta_val): DELTA_VALIDATOR,
+            vol.Required("interval", default=interval): INTERVAL_VALIDATOR,
             vol.Required("restore", default=restore): bool,
-            vol.Required("random", default=random): int,
+            vol.Required("random", default=random): RANDOM_VALIDATOR,
             vol.Required("unavailable_as_off", default=unavailable_as_off): bool,
-            vol.Required("brightness", default=brightness): int,
+            vol.Required("brightness", default=brightness): BRIGHTNESS_VALIDATOR,
         }
         _LOGGER.debug("switch %s", self.config_entry.data["switch"])
         _LOGGER.debug("config_entry data %s", self.config_entry.data)
-        _LOGGER.debug("will async_show_form")
+        _LOGGER.debug("config_entry options %s", self.config_entry.options)
 
         if not info:
             return self.async_show_form(
@@ -132,4 +140,5 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
 
         info["entities"] = ",".join(info["entities"])
-        return self.async_create_entry(title="Simulation Presence", data=info)
+        self.hass.config_entries.async_update_entry(self.config_entry, options=info)
+        return self.async_abort(reason="")
