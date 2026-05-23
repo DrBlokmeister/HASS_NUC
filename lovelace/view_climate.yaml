@@ -29,6 +29,9 @@ cards:
           - entity: sensor.shelly_heat_pump_power
             name: Heat Pump Power
             icon: mdi:meter-electric-outline
+          - entity: sensor.blitzwolf_heatpump_power
+            name: Circulation Pump Power
+            icon: mdi:meter-electric-outline
       - type: custom:collapsable-cards
         title: Internal Heatpump Entities
         cards:
@@ -377,97 +380,284 @@ cards:
               - entity: binary_sensor.verdeler_2de_verdieping_4
                 name: 4
 
-      - type: custom:collapsable-cards
-        title: Heat Pump Temperatures
+  - type: custom:collapsable-cards
+    title: Heat Pump Temperatures
+    cards:
+      - type: grid
+        columns: 2
+        square: false
         cards:
-          - type: vertical-stack
-            cards:
-              - type: 'custom:mini-graph-card'
-                entities:
-                  - entity: sensor.heatpump_tapwater_temperature
-                    name: Current Temperature
-                    show_state: true
-                    show_fill: false
-                  - color: yellow
-                    entity: number.heatpump_tapwater_target_temperature
-                    name: Tapwater Target
-                    show_legend: false
-                    show_line: false
-                    show_points: false
-                    smoothing: false
-                hours_to_show: 12
-                hour24: true
-                font_size: 70
-                height: 250
-                line_width: 3
-                lower_bound: 30
-                upper_bound: 60
-                name: Tapwater Temperature
-                points_per_hour: 12
-                decimals: 1
-              - type: glance
-                entities:
-                  - entity: switch.heatpump_tapwater_power_saving_mode
-                    name: Power Saving
-                  - entity: switch.heatpump_tapwater_heatup_mode
-                    name: Quick Heatup
-          - cards:
-              - type: custom:mini-graph-card
-                entities:
-                  - entity: sensor.heatpump_flow_in_temperature
-                    name: Verwarming Aanvoer
-                    color: '#33ff61'
-                    show_fill: false
-                  - entity: sensor.heatpump_flow_out_temperature
-                    name: Verwarming Retour
-                    color: '#ffc733'
-                    show_fill: false
-                  - entity: sensor.heatpump_heat_source_output_temperature
-                    name: Bron Uitgang
-                    color: '#f8ff33'
-                    show_fill: false
-                  - entity: sensor.heatpump_heat_source_input_temperature
-                    name: Bron Ingang
-                    color: '#ff7a33'
-                    show_fill: false
-                hours_to_show: 24
-                points_per_hour: 5
-                hour24: true
-                font_size: 70
-                height: 250
-                line_width: 4
-                upper_bound: 30
-                lower_bound: 5
-                show:
-                  labels_secondary: false
-              - type: glance
-                entities:
-                  - entity: sensor.heatpump_flow_in_temperature
-                    name: Verwarming Aanvoer
-                  - entity: sensor.heatpump_flow_out_temperature
-                    name: Verwarming Retour
-                  - entity: sensor.heatpump_heat_source_output_temperature
-                    name: Bron Aanvoer
-                  - entity: sensor.heatpump_heat_source_input_temperature
-                    name: Bron Retour
-              - type: custom:mini-graph-card
-                entities:
-                  - entity: sensor.warmtebron_in_uit_delta
-                    name: Bron Delta
-                    color: '#33ff61'
-                    show_fill: false
-                  - entity: sensor.vloerverwarming_in_uit_delta
-                    name: Verwarming Delta
-                    color: '#ff7a33'
-                    show_fill: false
-                hours_to_show: 24
-                points_per_hour: 5
-                hour24: true
-                font_size: 70
-                height: 250
-                line_width: 4
-                upper_bound: 5
-                lower_bound: -5
-                show:
-                  labels_secondary: false
-            type: vertical-stack
+          - type: custom:mushroom-template-card
+            entity: sensor.heatpump_flow_in_temperature
+            primary: Verwarming aanvoer
+            secondary: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                Onbekend
+              {%- else -%}
+                {{ v | round(1) }} °C
+              {%- endif -%}
+            icon: mdi:arrow-up-bold-circle-outline
+            icon_color: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                grey
+              {%- elif v >= 55 -%}
+                red
+              {%- elif v >= 35 -%}
+                orange
+              {%- else -%}
+                blue
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 58px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.heatpump_flow_out_temperature
+            primary: Verwarming retour
+            secondary: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                Onbekend
+              {%- else -%}
+                {{ v | round(1) }} °C
+              {%- endif -%}
+            icon: mdi:arrow-down-bold-circle-outline
+            icon_color: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                grey
+              {%- elif v >= 55 -%}
+                red
+              {%- elif v >= 35 -%}
+                orange
+              {%- else -%}
+                blue
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 58px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.heatpump_heat_source_output_temperature
+            primary: Bron aanvoer
+            secondary: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                Onbekend
+              {%- else -%}
+                {{ v | round(1) }} °C
+              {%- endif -%}
+            icon: mdi:water-arrow-up
+            icon_color: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                grey
+              {%- elif v >= 25 -%}
+                green
+              {%- elif v >= 10 -%}
+                cyan
+              {%- else -%}
+                blue
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 58px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.heatpump_heat_source_input_temperature
+            primary: Bron retour
+            secondary: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                Onbekend
+              {%- else -%}
+                {{ v | round(1) }} °C
+              {%- endif -%}
+            icon: mdi:water-arrow-down
+            icon_color: >-
+              {%- set v = states(entity) | float(none) -%}
+              {%- if v is none -%}
+                grey
+              {%- elif v >= 25 -%}
+                green
+              {%- elif v >= 10 -%}
+                cyan
+              {%- else -%}
+                blue
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 58px;
+                }
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        hours_12: false
+        span:
+          end: hour
+        header:
+          show: true
+          title: Tapwater
+          show_states: true
+          colorize_states: true
+          title_actions:
+            tap_action:
+              action: navigate
+              navigation_path: >-
+                /history?entity_id=sensor.heatpump_tapwater_temperature,number.heatpump_tapwater_target_temperature
+        apex_config:
+          chart:
+            height: 220px
+            toolbar:
+              show: false
+          legend:
+            show: false
+          stroke:
+            curve: smooth
+          grid:
+            borderColor: rgba(128,128,128,0.2)
+        yaxis:
+          - min: ~40
+            max: ~60
+            decimals: 0
+            align_to: 5
+            apex_config:
+              forceNiceScale: True
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return `${value} °C`;
+                  }
+        all_series_config:
+          stroke_width: 2
+        series:
+          - entity: sensor.heatpump_tapwater_temperature
+            name: Temperature
+            color: "#ff9800"
+          - entity: number.heatpump_tapwater_target_temperature
+            name: Setpoint
+            color: "#ff9800"
+            type: area
+            stroke_width: 0
+            opacity: 0.4
+            group_by:
+              duration: 5min
+              func: avg
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        hours_12: false
+        span:
+          end: hour
+        header:
+          show: true
+          title: Verwarming
+          show_states: true
+          colorize_states: true
+          title_actions:
+            tap_action:
+              action: navigate
+              navigation_path: >-
+                /history?entity_id=sensor.heatpump_flow_in_temperature,sensor.heatpump_flow_out_temperature,sensor.heatpump_heat_source_output_temperature,sensor.heatpump_heat_source_input_temperature
+        apex_config:
+          chart:
+            height: 240px
+            toolbar:
+              show: false
+          legend:
+            show: false
+          stroke:
+            curve: smooth
+          grid:
+            borderColor: rgba(128,128,128,0.2)
+          yaxis:
+            min: 10
+            max: 70
+            decimalsInFloat: 0
+            labels:
+              formatter: |
+                EVAL:function(value) {
+                  return `${value} °C`;
+                }
+        all_series_config:
+          stroke_width: 2
+          group_by:
+            duration: 5min
+            func: avg
+        series:
+          - entity: sensor.heatpump_flow_in_temperature
+            name: Verwarming Aanvoer
+            color: "#f44336"
+          - entity: sensor.heatpump_flow_out_temperature
+            name: Verwarming Retour
+            color: "#2196f3"
+          - entity: sensor.heatpump_heat_source_output_temperature
+            name: Bron aanvoer
+            color: "#4caf50"
+          - entity: sensor.heatpump_heat_source_input_temperature
+            name: Bron retour
+            color: "#00bcd4"
+      - type: custom:apexcharts-card
+        graph_span: 24h
+        hours_12: false
+        span:
+          end: hour
+        header:
+          show: true
+          title: Temperature Deltas
+          show_states: true
+          colorize_states: true
+          title_actions:
+            tap_action:
+              action: navigate
+              navigation_path: >-
+                /history?entity_id=sensor.warmtebron_in_uit_delta,sensor.vloerverwarming_in_uit_delta
+        apex_config:
+          chart:
+            height: 220px
+            toolbar:
+              show: false
+          legend:
+            show: false
+          stroke:
+            curve: smooth
+          grid:
+            borderColor: rgba(128,128,128,0.2)
+          annotations:
+            yaxis:
+              - y: 0
+                borderColor: rgba(128,128,128,0.8)
+                strokeDashArray: 4
+          yaxis:
+            min: -5
+            max: 5
+            decimalsInFloat: 0
+            labels:
+              formatter: |
+                EVAL:function(value) {
+                  return `${value} °C`;
+                }
+        all_series_config:
+          stroke_width: 2
+          group_by:
+            duration: 5min
+            func: avg
+        series:
+          - entity: sensor.warmtebron_in_uit_delta
+            name: Verwarming ΔT
+            color: "#9c27b0"
+          - entity: sensor.vloerverwarming_in_uit_delta
+            name: Bron ΔT
+            color: "#607d8b"
