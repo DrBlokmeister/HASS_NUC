@@ -105,7 +105,7 @@ automation:
     mode: single
     trigger:
       - platform: state
-        entity_id: sensor.washer_washer_machine_state
+        entity_id: sensor.washer_machine_state
         from:
           - 'Stopped'
           - 'stop'
@@ -117,7 +117,7 @@ automation:
         id: home_assistant_start
     condition:
       - condition: state
-        entity_id: sensor.washer_washer_machine_state
+        entity_id: sensor.washer_machine_state
         state: 'run'
     action:
       - choose:
@@ -136,11 +136,11 @@ automation:
         repeat:
           while:
             - condition: state
-              entity_id: sensor.washer_washer_machine_state
+              entity_id: sensor.washer_machine_state
               state: "run"
           sequence:
             - variables:
-                end_time: "{{ as_datetime(states('sensor.washer_washer_completion_time')).astimezone() }}"
+                end_time: "{{ as_datetime(states('sensor.washer_completion_time')).astimezone() }}"
                 progress: >
                   {% set elapsed = (now() - as_datetime(states('input_datetime.washing_machine_start_datetime')).astimezone()).total_seconds() / 60 %}
                   {{ elapsed | round(0) }}
