@@ -151,7 +151,7 @@ rest:
       - name: "AirVPN Username"
         unique_id: "yaml_restful_airvpn_username"
         value_template: >-
-          {% if value_json is defined and value_json.user is defined %}
+          {% if value_json is defined and value_json.user and value_json.user.login is defined %}
             {{ value_json.user.login }}
           {% else %}
             'unavailable'
@@ -160,7 +160,7 @@ rest:
       - name: "AirVPN VPN IP"
         unique_id: "yaml_restful_airvpn_vpn_ip"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.vpn_ip is defined %}
             {{ value_json.connection.vpn_ip }}
           {% else %}
             'unavailable'
@@ -169,7 +169,7 @@ rest:
       - name: "AirVPN Exit IP"
         unique_id: "yaml_restful_airvpn_exit_ip"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.exit_ip is defined %}
             {{ value_json.connection.exit_ip }}
           {% else %}
             'unavailable'
@@ -178,7 +178,7 @@ rest:
       - name: "AirVPN Entry IP"
         unique_id: "yaml_restful_airvpn_entry_ip"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.entry_ip is defined %}
             {{ value_json.connection.entry_ip }}
           {% else %}
             'unavailable'
@@ -187,7 +187,7 @@ rest:
       - name: "AirVPN Server Name"
         unique_id: "yaml_restful_airvpn_server_name"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.server_name is defined %}
             {{ value_json.connection.server_name }}
           {% else %}
             'unavailable'
@@ -196,7 +196,7 @@ rest:
       - name: "AirVPN Server Country"
         unique_id: "yaml_restful_airvpn_server_country"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.server_country is defined %}
             {{ value_json.connection.server_country }}
           {% else %}
             'unavailable'
@@ -205,7 +205,7 @@ rest:
       - name: "AirVPN Data Uploaded"
         unique_id: "yaml_restful_airvpn_data_uploaded"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.bytes_read is defined %}
             {{ (value_json.connection.bytes_read/(1024*1024*1024))|round(2) }}
           {% else %}
             'unavailable'
@@ -216,7 +216,7 @@ rest:
       - name: "AirVPN Data Downloaded"
         unique_id: "yaml_restful_airvpn_data_downloaded"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.bytes_write is defined %}
             {{ (value_json.connection.bytes_write/(1024*1024*1024))|round(2) }}
           {% else %}
             'unavailable'
@@ -227,7 +227,7 @@ rest:
       - name: "AirVPN Connected Since"
         unique_id: "yaml_restful_airvpn_connected_since"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.connected_since_unix is defined %}
             {{ as_datetime(value_json.connection.connected_since_unix) }}
           {% else %}
             'unavailable'
@@ -237,7 +237,7 @@ rest:
       - name: "AirVPN Upload Speed"
         unique_id: "yaml_restful_airvpn_upload_speed"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.speed_read is defined %}
             {{ (value_json.connection.speed_read/(1024*1024))|round(2) }}
           {% else %}
             'unavailable'
@@ -248,7 +248,7 @@ rest:
       - name: "AirVPN Download Speed"
         unique_id: "yaml_restful_airvpn_download_speed"
         value_template: >-
-          {% if value_json is defined and value_json.connection is defined %}
+          {% if value_json is defined and value_json.connection and value_json.connection.speed_write is defined %}
             {{ (value_json.connection.speed_write/(1024*1024))|round(2) }}
           {% else %}
             'unavailable'
@@ -565,22 +565,22 @@ automation:
     trigger:
       - platform: numeric_state
         entity_id:
-          - sensor.unraid_parity_temperature
-          - sensor.unraid_disk_1_temperature
-          - sensor.unraid_disk_2_temperature
-          - sensor.unraid_disk_3_temperature
-          - sensor.unraid_disk_4_temperature
-          - sensor.unraid_disk_5_temperature
+          - sensor.tower_disk_parity_temperature
+          - sensor.tower_disk_disk1_temperature
+          - sensor.tower_disk_disk2_temperature
+          - sensor.tower_disk_disk3_temperature
+          - sensor.tower_disk_disk4_temperature
+          - sensor.tower_disk_disk5_temperature
         above: 50
         id: critical
       - platform: numeric_state
         entity_id:
-          - sensor.unraid_parity_temperature
-          - sensor.unraid_disk_1_temperature
-          - sensor.unraid_disk_2_temperature
-          - sensor.unraid_disk_3_temperature
-          - sensor.unraid_disk_4_temperature
-          - sensor.unraid_disk_5_temperature
+          - sensor.tower_disk_parity_temperature
+          - sensor.tower_disk_disk1_temperature
+          - sensor.tower_disk_disk2_temperature
+          - sensor.tower_disk_disk3_temperature
+          - sensor.tower_disk_disk4_temperature
+          - sensor.tower_disk_disk5_temperature
         above: 45
         for:
           minutes: 30
@@ -589,17 +589,17 @@ automation:
     action:
       - variables:
           disks:
-            - entity_id: sensor.unraid_parity_temperature
+            - entity_id: sensor.tower_disk_parity_temperature
               name: Parity Disk
-            - entity_id: sensor.unraid_disk_1_temperature
+            - entity_id: sensor.tower_disk_disk1_temperature
               name: Disk 1
-            - entity_id: sensor.unraid_disk_2_temperature
+            - entity_id: sensor.tower_disk_disk2_temperature
               name: Disk 2
-            - entity_id: sensor.unraid_disk_3_temperature
+            - entity_id: sensor.tower_disk_disk3_temperature
               name: Disk 3
-            - entity_id: sensor.unraid_disk_4_temperature
+            - entity_id: sensor.tower_disk_disk4_temperature
               name: Disk 4
-            - entity_id: sensor.unraid_disk_5_temperature
+            - entity_id: sensor.tower_disk_disk5_temperature
               name: Disk 5
       - repeat:
           sequence:
@@ -731,47 +731,6 @@ automation:
             group: "unraid_cache_usage_high"
             notification_icon: "mdi:harddisk-check"
 
-  - alias: "[system|nas] Log Unraid notification event data"
-    id: yaml_automation_system_nas_log_unraid_notification_event_data
-    description: >
-      Writes all available Unraid notification event entity data to the Home
-      Assistant log whenever a new notification_created event is emitted.
-    mode: queued
-    trigger:
-      - platform: state
-        entity_id: event.tower_notifications
-        # not_from:
-        #   - unavailable
-        #   - unknown
-        # not_to:
-        #   - unavailable
-        #   - unknown
-    condition:
-      - condition: template
-        value_template: >
-          {{ trigger.to_state.attributes.event_type == 'notification_created' }}
-    action:
-      - service: system_log.write
-        data:
-          level: info
-          logger: homeassistant.components.automation.unraid_notification_event
-          message: >-
-            Unraid notification event received.
-            Entity: {{ trigger.entity_id }};
-            From state: {{ trigger.from_state.state if trigger.from_state else 'none' }};
-            To state: {{ trigger.to_state.state }};
-            Event type: {{ trigger.to_state.attributes.event_type | default('none') }};
-            Notification ID: {{ trigger.to_state.attributes.notification_id | default('none') }};
-            Title: {{ trigger.to_state.attributes.title | default('none') }};
-            Subject: {{ trigger.to_state.attributes.subject | default('none') }};
-            Description: {{ trigger.to_state.attributes.description | default('none') }};
-            Timestamp: {{ trigger.to_state.attributes.timestamp | default('none') }};
-            Formatted timestamp: {{ trigger.to_state.attributes.formatted_timestamp | default('none') }};
-            Importance: {{ trigger.to_state.attributes.importance | default('none') }};
-            Type: {{ trigger.to_state.attributes.notification_type | default('none') }};
-            Link: {{ trigger.to_state.attributes.link | default('none') }};
-            All attributes: {{ trigger.to_state.attributes | to_json }}
-
   - alias: "[system|nas] Notify phone on Unraid warning notification"
     id: yaml_automation_system_nas_notify_phone_on_unraid_warning_notification
     description: >
@@ -791,14 +750,31 @@ automation:
       - condition: template
         value_template: >
           {{ trigger.to_state.attributes.event_type == 'notification_created' }}
-      - condition: template
-        value_template: >
-          {% set importance = trigger.to_state.attributes.importance | default('', true) | upper %}
-          {{ importance in ['WARNING', 'WARN', 'ALERT', 'CRITICAL', 'ERROR'] }}
+      # - condition: template
+      #   value_template: >
+      #     {% set importance = trigger.to_state.attributes.importance | default('', true) | upper %}
+      #     {{ importance in ['WARNING', 'WARN', 'ALERT', 'CRITICAL', 'ERROR'] }}
     action:
       - variables:
+          event_attributes: "{{ trigger.to_state.attributes }}"
+          event_json: >-
+            {{
+              {
+                "entity_id": trigger.entity_id,
+                "from_state": trigger.from_state.state if trigger.from_state else none,
+                "to_state": trigger.to_state.state,
+                "last_changed": trigger.to_state.last_changed.isoformat(),
+                "last_updated": trigger.to_state.last_updated.isoformat(),
+                "context": {
+                  "id": trigger.to_state.context.id,
+                  "parent_id": trigger.to_state.context.parent_id,
+                  "user_id": trigger.to_state.context.user_id
+                },
+                "attributes": trigger.to_state.attributes
+              } | to_json
+            }}
           importance: >
-            {{ trigger.to_state.attributes.importance | default('WARNING', true) | upper }}
+            {{ trigger.to_state.attributes.importance | default('', true) | upper }}
           title: >
             {{ trigger.to_state.attributes.title | default('Unraid notification', true) }}
           subject: >
@@ -810,13 +786,13 @@ automation:
           formatted_timestamp: >
             {{ trigger.to_state.attributes.formatted_timestamp | default('', true) }}
           notification_title: >-
-            {% if importance in ['CRITICAL', 'ERROR'] %}
+            {%- if importance in ['CRITICAL', 'ERROR'] -%}
               🚨 Unraid {{ importance }}: {{ title }}
-            {% elif importance == 'ALERT' %}
+            {%- elif importance == 'ALERT' -%}
               🚨 Unraid Alert: {{ title }}
-            {% else %}
+            {%- else -%}
               ⚠️ Unraid Warning: {{ title }}
-            {% endif %}
+            {%- endif -%}
           notification_message: >-
             {%- if subject -%}
               Subject: {{ subject }}
@@ -831,18 +807,25 @@ automation:
             {%- if formatted_timestamp %}
             Time: {{ formatted_timestamp }}
             {%- endif %}
-      - service: notify.mobile_app_blokmeisterp9pro
-        data:
-          title: "{{ notification_title }}"
-          message: "{{ notification_message }}"
-          data:
-            ttl: 0
-            priority: high
-            clickAction: /lovelace-default/server-monitor
-            group: unraid_notifications
-            tag: >-
-              unraid_notification_{{ notification_id | regex_replace('[^a-zA-Z0-9_-]', '_') }}
-            notification_icon: mdi:server-network
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ importance in ['WARNING', 'WARN', 'ALERT', 'CRITICAL', 'ERROR'] }}
+            sequence:
+              - service: notify.mobile_app_blokmeisterp9pro
+                data:
+                  title: "{{ notification_title }}"
+                  message: "{{ notification_message }}"
+                  data:
+                    ttl: 0
+                    priority: high
+                    clickAction: /lovelace-default/server-monitor
+                    group: unraid_notifications
+                    tag: >-
+                      unraid_notification_{{ notification_id | regex_replace('[^a-zA-Z0-9_-]', '_') }}
+                    notification_icon: mdi:server-network
+
 ################
 #    SCENES    #
 ################
@@ -861,13 +844,11 @@ group:
       - switch.docker_tower_diskspeed
       - switch.docker_tower_dupeguru
       - switch.docker_tower_firefox
-      - switch.docker_tower_frigate
       - switch.docker_tower_hddtemp
       - switch.docker_tower_immich
       - switch.docker_tower_iperf3
       - switch.docker_tower_ntp
       - switch.docker_tower_onedrive
-      - switch.docker_tower_photoprism
       - switch.docker_tower_plex
       - switch.docker_tower_qdirstat
       - switch.docker_tower_thelounge
@@ -880,13 +861,11 @@ group:
       - sensor.docker_tower_diskspeed_cpu
       - sensor.docker_tower_dupeguru_cpu
       - sensor.docker_tower_firefox_cpu
-      - sensor.docker_tower_frigate_cpu
       - sensor.docker_tower_hddtemp_cpu
       - sensor.docker_tower_immich_cpu
       - sensor.docker_tower_iperf3_cpu
       - sensor.docker_tower_ntp_cpu
       - sensor.docker_tower_onedrive_cpu
-      - sensor.docker_tower_photoprism_cpu
       - sensor.docker_tower_plex_cpu
       - sensor.docker_tower_qdirstat_cpu
       - sensor.docker_tower_thelounge_cpu
@@ -899,13 +878,12 @@ group:
       - sensor.docker_tower_diskspeed_memory
       - sensor.docker_tower_dupeguru_memory
       - sensor.docker_tower_firefox_memory
-      - sensor.docker_tower_frigate_memory
       - sensor.docker_tower_hddtemp_memory
       - sensor.docker_tower_immich_memory
       - sensor.docker_tower_iperf3_memory
       - sensor.docker_tower_ntp_memory
       - sensor.docker_tower_onedrive_memory
-      - sensor.docker_tower_photoprism_memory
+
       - sensor.docker_tower_plex_memory
       - sensor.docker_tower_qdirstat_memory
       - sensor.docker_tower_thelounge_memory
