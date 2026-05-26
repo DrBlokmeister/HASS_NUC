@@ -176,24 +176,34 @@ sensor:
     accuracy_decimals: 0
     unit_of_measurement: "%"
     lambda: |-
-      // Get the current and minimum humidity values
-      float current_humidity = id(ha_humidity_bathroom).state;
-      float min_humidity = id(ha_humidity_bathroom_min).state;
-
-      // Calculate the difference between the current humidity and the minimum humidity
-      float humidity_diff = current_humidity - min_humidity;
-
-      // Calculate the fan setting based on the difference
-      float fan_setting = 0.0;
-      if (humidity_diff >= 0.0) {
-        fan_setting = humidity_diff / (100.0 - min_humidity) * 100.0;
+      float bathroom_humidity = id(ha_humidity_bathroom).state;
+      float baseline_humidity = id(ha_home_mean_humidity_without_bathroom).state;
+      if (isnan(bathroom_humidity) || isnan(baseline_humidity)) {
+        return 0;
       }
-
-      // Set the fan setting to the nearest speed value
-      float rounded_fan_setting = round(fan_setting);
-
-      // Return the fan setting
-      return rounded_fan_setting;
+      float start_humidity = baseline_humidity + 10.0;
+      float target_humidity = 90.0;
+      float humidity_range = target_humidity - start_humidity;
+      if (humidity_range < 10.0) {
+        start_humidity = baseline_humidity;
+        target_humidity = 95.0;
+        humidity_range = target_humidity - start_humidity;
+      }
+      float ramp_end_humidity = start_humidity + (humidity_range / 2.0);
+      float fan_setting = 0.0;
+      if (bathroom_humidity > start_humidity) {
+        fan_setting = (
+          (bathroom_humidity - start_humidity) /
+          (ramp_end_humidity - start_humidity)
+        ) * 100.0;
+      }
+      if (fan_setting < 0.0) {
+        fan_setting = 0.0;
+      }
+      if (fan_setting > 100.0) {
+        fan_setting = 100.0;
+      }
+      return round(fan_setting);
 
   - platform: template
     name: "Ventilation Setting Humidity"
@@ -259,29 +269,40 @@ sensor:
   - platform: template
     name: "Fan Speed Setting"
     id: fan_speed_setting
-    lambda: |-
-      // Get the current values of the input sensors
-      float var_fan_setting_co2 = id(fan_setting_co2).state;
-      float var_fan_setting_humidity = id(fan_setting_humidity).state;
-      // Find the maximum value of the three sensors
-      float fan_setting = 0;
-      float fan_setting_1 = max(var_fan_setting_humidity, var_fan_setting_co2);
-
-      fan_setting = fan_setting_1;
-
-      // Return the maximum value
-      if (id(fan_speed_override).state) {
-        return id(override_fan_speed).state;
-      } else {
-        return fan_setting;
-      }
-    update_interval: 1s
+    update_interval: 10s
     accuracy_decimals: 0
     unit_of_measurement: "%"
+    lambda: |-
+      float var_fan_setting_co2 = id(fan_setting_co2).state;
+      float var_fan_setting_humidity = id(fan_setting_humidity).state;
+      float var_fan_setting_bathroom = id(fan_setting_bathroom_humidity).state;
+      if (isnan(var_fan_setting_co2)) {
+        var_fan_setting_co2 = 0;
+      }
+      if (isnan(var_fan_setting_humidity)) {
+        var_fan_setting_humidity = 0;
+      }
+      if (isnan(var_fan_setting_bathroom)) {
+        var_fan_setting_bathroom = 0;
+      }
+      float fan_setting = max(
+        max(var_fan_setting_co2, var_fan_setting_humidity),
+        var_fan_setting_bathroom
+      );
+      if (id(fan_speed_override).state) {
+        fan_setting = id(override_fan_speed).state;
+      }
+      if (fan_setting > 100.0) {
+        return 100;
+      }
+      if (fan_setting < 0.0) {
+        return 0;
+      }
+      return round(fan_setting);
     filters:
-      - sliding_window_moving_average:
-          window_size: 60
-          send_every: 60
+      - or:
+        - throttle_average: 60s
+        - delta: 10.0
     on_value:
       then:
         - fan.turn_on:
