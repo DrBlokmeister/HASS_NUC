@@ -131,16 +131,18 @@ cards:
           fill_raw: last
         series:
           - entity: sensor.weather_forecast_hourly
+            name: Forecast Now to Day End
             float_precision: 1
             type: line
-            color: '#ffad42'
+            color: '#e69537'
             data_generator: |
               return entity.attributes.forecast.map(item => {
                 return [new Date(item.datetime).getTime(), item.temperature];
               });
             show:
-              in_header: true
+              in_header: false
           - entity: sensor.weather_forecast_hourly
+            name: Forecast Tomorrow
             float_precision: 1
             offset: '+1d'
             type: line
@@ -154,6 +156,7 @@ cards:
             show:
               in_header: false
           - entity: sensor.weather_forecast_hourly
+            name: Forecast Current Temp
             float_precision: 1
             type: line
             color: '#ffad42'
@@ -174,32 +177,216 @@ cards:
             group_by:
               func: median
               duration: 10min
-  
+
   - type: vertical-stack
     cards:
-      - type: glance
-        title: CO2 Levels
-        show_name: true
-        columns: 4
-        entities:
-          - entity: sensor.bedroom_co2
-            name: Bedroom
+      - type: grid
+        columns: 3
+        square: false
+        card_mod:
+          style: |
+            #root {
+              gap: 4px !important;
+            }
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.bedroom_co2
+            primary: Bedroom
+            secondary: >-
+              {%- set v = states('sensor.bedroom_co2') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ v | float(0) | round(0) | int }} ppm
+              {%- endif -%}
             icon: mdi:bed
-          - entity: sensor.study_co2
-            name: Study
+            icon_color: >-
+              {%- set v = states('sensor.bedroom_co2') -%}
+              {%- set co2 = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 700 -%}
+                green
+              {%- elif co2 < 900 -%}
+                yellow
+              {%- elif co2 < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 56px;
+                  --icon-size: 28px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.study_co2
+            primary: Study
+            secondary: >-
+              {%- set v = states('sensor.study_co2') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ v | float(0) | round(0) | int }} ppm
+              {%- endif -%}
             icon: mdi:desktop-tower-monitor
-          - entity: sensor.living_room_co2
-            name: Living Room
+            icon_color: >-
+              {%- set v = states('sensor.study_co2') -%}
+              {%- set co2 = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 700 -%}
+                green
+              {%- elif co2 < 900 -%}
+                yellow
+              {%- elif co2 < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 56px;
+                  --icon-size: 28px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.living_room_co2
+            primary: Living Room
+            secondary: >-
+              {%- set v = states('sensor.living_room_co2') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ v | float(0) | round(0) | int }} ppm
+              {%- endif -%}
             icon: mdi:sofa
-          - entity: sensor.shed_co2
-            name: Shed
+            icon_color: >-
+              {%- set v = states('sensor.living_room_co2') -%}
+              {%- set co2 = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 700 -%}
+                green
+              {%- elif co2 < 900 -%}
+                yellow
+              {%- elif co2 < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 56px;
+                  --icon-size: 28px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.shed_co2
+            primary: Shed
+            secondary: >-
+              {%- set v = states('sensor.shed_co2') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ v | float(0) | round(0) | int }} ppm
+              {%- endif -%}
             icon: mdi:greenhouse
-          - entity: sensor.baby_room_co2
-            name: Baby Room
+            icon_color: >-
+              {%- set v = states('sensor.shed_co2') -%}
+              {%- set co2 = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 700 -%}
+                green
+              {%- elif co2 < 900 -%}
+                yellow
+              {%- elif co2 < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 56px;
+                  --icon-size: 28px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.baby_room_co2
+            primary: Baby Room
+            secondary: >-
+              {%- set v = states('sensor.baby_room_co2') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ v | float(0) | round(0) | int }} ppm
+              {%- endif -%}
             icon: mdi:baby-face
-          - entity: sensor.guest_room_co2
-            name: Guest Room
+            icon_color: >-
+              {%- set v = states('sensor.baby_room_co2') -%}
+              {%- set co2 = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 700 -%}
+                green
+              {%- elif co2 < 900 -%}
+                yellow
+              {%- elif co2 < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 56px;
+                  --icon-size: 28px;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.guest_room_co2
+            primary: Guest Room
+            secondary: >-
+              {%- set v = states('sensor.guest_room_co2') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ v | float(0) | round(0) | int }} ppm
+              {%- endif -%}
             icon: mdi:bed
+            icon_color: >-
+              {%- set v = states('sensor.guest_room_co2') -%}
+              {%- set co2 = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 700 -%}
+                green
+              {%- elif co2 < 900 -%}
+                yellow
+              {%- elif co2 < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 56px;
+                  --icon-size: 28px;
+                }
 
       - type: custom:apexcharts-card
         header:
@@ -649,17 +836,57 @@ cards:
             show:
               in_header: false
 
-      - type: glance
-        title: Home Ventilation
+      - type: entities
+        #title: Home Ventilation
+        show_header_toggle: false
+        state_color: true
         entities:
+          - type: button
+            name: Ventilation Controller
+            icon: mdi:cog-outline
+            tap_action:
+              action: url
+              url_path: http://10.0.0.252:8123/config/devices/device/209c2d1269e1d1cc27c0500352310ae1
+          - type: section
+            label: Current control
+          - entity: sensor.fan_speed_setting
+            name: Fan speed setting
+            icon: mdi:fan-speed-3
+          - type: custom:fold-entity-row
+            head:
+              entity: sensor.ventilation_determining_factor
+              name: Determining factor
+              icon: mdi:source-branch
+            entities:
+              - entity: sensor.ventilation_setting_bathroom_humidity
+                name: Bathroom humidity
+                icon: mdi:shower-head
+              - entity: sensor.ventilation_setting_co2
+                name: CO₂
+                icon: mdi:molecule-co2
+              - entity: sensor.ventilation_setting_humidity
+                name: Humidity
+                icon: mdi:water-percent
+
+          - entity: number.co2_fan_sensitivity
+            name: CO₂ sensitivity (%/ppm, 0.08 default)
+            icon: mdi:tune-variant
+          - entity: number.co2_offset
+            name: CO₂ offset (600ppm default)
+            icon: mdi:plus-minus-variant
+          - type: section
+            label: Manual override
+
           - entity: switch.fan_speed_override
-            name: Override
+            name: Override active
             icon: mdi:fan-alert
             tap_action:
               action: toggle
+
           - entity: number.override_fan_speed
-            name: Speed
+            name: Override speed
             icon: mdi:fan
+
           - entity: number.override_fan_duration
-            name: Duration
+            name: Override duration
             icon: mdi:fan-clock
