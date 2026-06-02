@@ -754,13 +754,14 @@ script:
     alias: "Update ESPHome Devices Group"
     description: >
       Sequentially updates ESPHome devices contained in a Home Assistant
-      group. Skips entities that are missing, not in the `update` domain, or
-      already up-to-date, and keeps going even if a single device fails.
+      group. Skips entities that are missing, not in the update domain, or
+      already up-to-date unless force_update is enabled. Keeps going even if a
+      single device fails.
     mode: single
     fields:
       group_entity:
         description: "The group entity that holds the update entities."
-        example: "group.shellies_updates"
+        example: "group.aqm_update_entities"
         required: true
         selector:
           entity:
@@ -771,71 +772,106 @@ script:
         selector:
           boolean:
     sequence:
-      # 1. Build a clean list of valid update entities
       - variables:
-          update_entities: >
-            {{ state_attr(group_entity, 'entity_id') | list }}
+          force_update: "{{ force_update | default(false) | bool }}"
+          update_entities: >-
+            {%- set raw = state_attr(group_entity, 'entity_id') or [] -%}
+            {{ raw
+              | select('match', '^update\.')
+              | reject('is_state', 'unknown')
+              | reject('is_state', 'unavailable')
+              | list }}
+          pending_entities: >-
+            {%- set raw = state_attr(group_entity, 'entity_id') or [] -%}
+            {{ raw
+              | select('match', '^update\.')
+              | select('is_state', 'on')
+              | list }}
+          entities_to_update: >-
+            {%- if force_update -%}
+              {{ update_entities }}
+            {%- else -%}
+              {{ pending_entities }}
+            {%- endif -%}
       - service: system_log.write
         data:
-          message: >
-            "[ESPHome updater] Starting update of {{ update_entities|length }}
-            entities from {{ group_entity }}."
           level: info
-      # 2. Iterate over each valid entity
-      - repeat:
-          for_each: "{{ update_entities }}"
-          sequence:
-            - variables:
-                current_update: "{{ repeat.item }}"
-            # Skip if nothing to do (unless force_update = true)
-            - condition: or
-              conditions:
-                - "{{ force_update }}"
-                - "{{ is_state(current_update, 'on') }}"
-              alias: "Needs update?"
-            # 2a. Install the update
-            - service: update.install
-              target:
-                entity_id: "{{ current_update }}"
-              continue_on_error: true
-            # 2b. Wait for completion
-            - wait_template: >
-                {{ is_state(current_update, 'off') or
-                   is_state(current_update, 'unavailable') }}
-              timeout: "00:10:00"
-              continue_on_timeout: true
-            # 2c. Evaluate result
-            - choose:
-                # Timeout or still 'on'  ⇒ warn + continue
-                - conditions: >
-                    {{ wait.completed == false or
-                       is_state(current_update, 'on') }}
-                  sequence:
-                    - service: system_log.write
-                      data:
-                        message: >
-                          "ESPHome update failed or timed-out for {{ current_update }} during running of updater script."
-                        level: warning
-                    - service: notify.mobile_app_blokmeisterp9pro
-                      data:
-                        title: "Firmware Update Problem"
-                        message: "Update failed or timed-out for {{ current_update }}."
-                        data:
-                          ttl: 0
-                          priority: high
-                          group: esphome
-                          tag: esphome_update_problem
-              default:
+          message: >-
+            [ESPHome updater] Starting update for {{ group_entity }}.
+            force_update={{ force_update }}.
+            valid={{ update_entities | count }},
+            pending={{ pending_entities | count }},
+            selected={{ entities_to_update | count }}.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ entities_to_update | count == 0 }}"
+            sequence:
+              - service: system_log.write
+                data:
+                  level: info
+                  message: >-
+                    [ESPHome updater] Nothing to update for {{ group_entity }}.
+        default:
+          - repeat:
+              for_each: "{{ entities_to_update }}"
+              sequence:
+                - variables:
+                    current_update: "{{ repeat.item }}"
+                    installed_version: "{{ state_attr(repeat.item, 'installed_version') }}"
+                    latest_version: "{{ state_attr(repeat.item, 'latest_version') }}"
                 - service: system_log.write
                   data:
-                    message: >
-                      "ESPHome update successful for {{ current_update }} during running of updater script."
                     level: info
-      # 3. All done
+                    message: >-
+                      [ESPHome updater] Installing {{ current_update }}
+                      {%- if installed_version and latest_version %}
+                      ({{ installed_version }} → {{ latest_version }})
+                      {%- endif -%}.
+                - service: update.install
+                  target:
+                    entity_id: "{{ current_update }}"
+                  continue_on_error: true
+                - wait_template: >-
+                    {{ is_state(current_update, 'off')
+                      or is_state(current_update, 'unavailable')
+                      or is_state_attr(current_update, 'in_progress', false) }}
+                  timeout: "00:10:00"
+                  continue_on_timeout: true
+                - choose:
+                    - conditions:
+                        - condition: template
+                          value_template: >-
+                            {{ wait.completed == false
+                              or is_state(current_update, 'on') }}
+                      sequence:
+                        - service: system_log.write
+                          data:
+                            level: warning
+                            message: >-
+                              [ESPHome updater] Update failed or timed out for
+                              {{ current_update }}.
+                        - service: notify.mobile_app_blokmeisterp9pro
+                          data:
+                            title: "Firmware Update Problem"
+                            message: >-
+                              Update failed or timed out for {{ current_update }}.
+                            data:
+                              ttl: 0
+                              priority: high
+                              group: esphome
+                              tag: esphome_update_problem
+                  default:
+                    - service: system_log.write
+                      data:
+                        level: info
+                        message: >-
+                          [ESPHome updater] Update completed for {{ current_update }}.
       - service: system_log.write
         data:
-          message: "ESPHome update finished processing group {{ group_entity }} after running of updater script."
           level: info
+          message: >-
+            [ESPHome updater] Finished processing {{ group_entity }}.
 
   run_profiler_every_minute:
     alias: "Run Profiler Every Minute"
