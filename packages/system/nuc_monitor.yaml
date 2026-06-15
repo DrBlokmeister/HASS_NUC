@@ -752,10 +752,10 @@ script:
   update_esphome_group:
     alias: "Update ESPHome Devices Group"
     description: >
-      Sequentially updates ESPHome devices contained in a Home Assistant
-      group. Skips entities that are missing, not in the update domain, or
-      already up-to-date unless force_update is enabled. Keeps going even if a
-      single device fails.
+      Sequentially updates ESPHome devices contained in a Home Assistant group.
+      Skips entities that are missing, not in the update domain, unavailable,
+      unknown, or already up-to-date unless force_update is enabled. Keeps going
+      even if a single device fails.
     mode: single
     fields:
       group_entity:
@@ -773,22 +773,32 @@ script:
     sequence:
       - variables:
           force_update: "{{ force_update | default(false) | bool }}"
+          group_members: >-
+            {{ state_attr(group_entity, 'entity_id') or [] }}
           update_entities: >-
-            {%- set raw = state_attr(group_entity, 'entity_id') or [] -%}
-            {{ raw
+            {{ group_members
               | select('match', '^update\.')
+              | list }}
+          available_update_entities: >-
+            {{ update_entities
               | reject('is_state', 'unknown')
               | reject('is_state', 'unavailable')
               | list }}
+          unavailable_update_entities: >-
+            {{ update_entities
+              | select('is_state', 'unavailable')
+              | list }}
+          unknown_update_entities: >-
+            {{ update_entities
+              | select('is_state', 'unknown')
+              | list }}
           pending_entities: >-
-            {%- set raw = state_attr(group_entity, 'entity_id') or [] -%}
-            {{ raw
-              | select('match', '^update\.')
+            {{ available_update_entities
               | select('is_state', 'on')
               | list }}
           entities_to_update: >-
             {%- if force_update -%}
-              {{ update_entities }}
+              {{ available_update_entities }}
             {%- else -%}
               {{ pending_entities }}
             {%- endif -%}
@@ -798,9 +808,37 @@ script:
           message: >-
             [ESPHome updater] Starting update for {{ group_entity }}.
             force_update={{ force_update }}.
-            valid={{ update_entities | count }},
+            group_members={{ group_members | count }},
+            update_entities={{ update_entities | count }},
+            available={{ available_update_entities | count }},
+            unavailable={{ unavailable_update_entities | count }},
+            unknown={{ unknown_update_entities | count }},
             pending={{ pending_entities | count }},
             selected={{ entities_to_update | count }}.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ unavailable_update_entities | count > 0 }}"
+            sequence:
+              - service: system_log.write
+                data:
+                  level: info
+                  message: >-
+                    [ESPHome updater] Skipping unavailable update entities in
+                    {{ group_entity }}:
+                    {{ unavailable_update_entities | join(', ') }}.
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ unknown_update_entities | count > 0 }}"
+            sequence:
+              - service: system_log.write
+                data:
+                  level: info
+                  message: >-
+                    [ESPHome updater] Skipping unknown update entities in
+                    {{ group_entity }}:
+                    {{ unknown_update_entities | join(', ') }}.
       - choose:
           - conditions:
               - condition: template
@@ -811,6 +849,14 @@ script:
                   level: info
                   message: >-
                     [ESPHome updater] Nothing to update for {{ group_entity }}.
+                    {%- if unavailable_update_entities | count > 0 %}
+                    Skipped {{ unavailable_update_entities | count }}
+                    unavailable update entities.
+                    {%- endif %}
+                    {%- if unknown_update_entities | count > 0 %}
+                    Skipped {{ unknown_update_entities | count }}
+                    unknown update entities.
+                    {%- endif %}
         default:
           - repeat:
               for_each: "{{ entities_to_update }}"
@@ -823,26 +869,43 @@ script:
                   data:
                     level: info
                     message: >-
-                      [ESPHome updater] Installing {{ current_update }}
+                      [ESPHome updater] Installing {{ current_update }}.
+                      state={{ states(current_update) }},
+                      in_progress={{ state_attr(current_update, 'in_progress') }}
                       {%- if installed_version and latest_version %}
-                      ({{ installed_version }} → {{ latest_version }})
+                      , version={{ installed_version }} → {{ latest_version }}
                       {%- endif -%}.
                 - service: update.install
                   target:
                     entity_id: "{{ current_update }}"
                   continue_on_error: true
+                # Give HA/ESPHome a few seconds to update the entity state.
+                # Without this, in_progress can still be false while the update
+                # has not really started yet. Computers. Wonderful.
+                - delay: "00:00:05"
+                - service: system_log.write
+                  data:
+                    level: info
+                    message: >-
+                      [ESPHome updater] Waiting for {{ current_update }}.
+                      state={{ states(current_update) }},
+                      in_progress={{ state_attr(current_update, 'in_progress') }}.
+                # Success criterion:
+                # The update entity should eventually become "off", meaning
+                # there is no pending update anymore.
+                #
+                # Do not use in_progress == false as success by itself. That can
+                # be false before HA has noticed that the update actually started.
                 - wait_template: >-
-                    {{ is_state(current_update, 'off')
-                      or is_state(current_update, 'unavailable')
-                      or is_state_attr(current_update, 'in_progress', false) }}
-                  timeout: "00:10:00"
+                    {{ is_state(current_update, 'off') }}
+                  timeout: "00:20:00"
                   continue_on_timeout: true
                 - choose:
                     - conditions:
                         - condition: template
                           value_template: >-
                             {{ wait.completed == false
-                              or is_state(current_update, 'on') }}
+                              or not is_state(current_update, 'off') }}
                       sequence:
                         - service: system_log.write
                           data:
@@ -850,11 +913,17 @@ script:
                             message: >-
                               [ESPHome updater] Update failed or timed out for
                               {{ current_update }}.
+                              state={{ states(current_update) }},
+                              in_progress={{ state_attr(current_update, 'in_progress') }},
+                              installed_version={{ state_attr(current_update, 'installed_version') }},
+                              latest_version={{ state_attr(current_update, 'latest_version') }}.
                         - service: notify.mobile_app_blokmeisterp9pro
                           data:
                             title: "Firmware Update Problem"
                             message: >-
                               Update failed or timed out for {{ current_update }}.
+                              Current state={{ states(current_update) }},
+                              in_progress={{ state_attr(current_update, 'in_progress') }}.
                             data:
                               ttl: 0
                               priority: high
@@ -866,11 +935,17 @@ script:
                         level: info
                         message: >-
                           [ESPHome updater] Update completed for {{ current_update }}.
+                          state={{ states(current_update) }},
+                          installed_version={{ state_attr(current_update, 'installed_version') }},
+                          latest_version={{ state_attr(current_update, 'latest_version') }}.
       - service: system_log.write
         data:
           level: info
           message: >-
             [ESPHome updater] Finished processing {{ group_entity }}.
+            selected={{ entities_to_update | count }},
+            skipped_unavailable={{ unavailable_update_entities | count }},
+            skipped_unknown={{ unknown_update_entities | count }}.
 
   run_profiler_every_minute:
     alias: "Run Profiler Every Minute"
