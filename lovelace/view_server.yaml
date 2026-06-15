@@ -807,32 +807,165 @@ cards:
         square: false
         columns: 3
         cards:
-          - type: button
-            entity: button.tower_start_parity_check
-            name: Start parity
-            tap_action:
-              action: toggle
-          - type: button
-            entity: button.tower_stop_parity_check
-            name: Stop parity
-            tap_action:
-              action: toggle
-          - type: button
-            entity: button.tower_resume_parity_check
-            name: Resume parity
-            tap_action:
-              action: toggle
-          - type: button
-            entity: button.tower_start_array
-            name: Start array
-            tap_action:
-              action: toggle
-          - type: button
-            entity: button.tower_stop_array
-            name: Stop array
-            tap_action:
-              action: toggle
+          ############################################################
+          # PARITY PAUSE / RESUME / CORRECTING BUTTONS
+          ############################################################
 
+          - type: custom:mushroom-template-card
+            entity: button.tower_pause_parity_check
+            primary: Pause parity
+            secondary: Pause running check
+            icon: mdi:pause-circle-outline
+            icon_color: amber
+            layout: vertical
+            fill_container: true
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.tower_pause_parity_check
+              confirmation:
+                text: Pause the currently running parity check?
+            hold_action:
+              action: more-info
+
+          - type: custom:mushroom-template-card
+            entity: button.tower_resume_parity_check
+            primary: Resume parity
+            secondary: Continue paused check
+            icon: mdi:play-circle-outline
+            icon_color: green
+            layout: vertical
+            fill_container: true
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.tower_resume_parity_check
+              confirmation:
+                text: Resume the paused parity check?
+            hold_action:
+              action: more-info
+
+          - type: custom:mushroom-template-card
+            entity: button.tower_parity_check_correcting
+            primary: Correct parity
+            secondary: Write corrections
+            icon: mdi:shield-sync-outline
+            icon_color: red
+            layout: vertical
+            fill_container: true
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.tower_parity_check_correcting
+              confirmation:
+                text: >-
+                  Start a CORRECTING parity check? This may WRITE corrections
+                  to the parity disk if sync errors are found.
+            hold_action:
+              action: more-info
+
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: switch.tower_parity_check
+                state: "off"
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.tower_parity_check
+              primary: Start parity
+              secondary: Non-correcting check
+              icon: mdi:shield-search
+              icon_color: red
+              layout: vertical
+              fill_container: true
+              tap_action:
+                action: perform-action
+                perform_action: switch.turn_on
+                target:
+                  entity_id: switch.tower_parity_check
+                confirmation:
+                  text: >-
+                    Start a NON-CORRECTING parity check? This will read all array
+                    disks and may heavily affect disk performance.
+              hold_action:
+                action: more-info
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: switch.tower_parity_check
+                state: "on"
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.tower_parity_check
+              primary: Stop parity
+              secondary: Cancel running check
+              icon: mdi:shield-off-outline
+              icon_color: green
+              layout: vertical
+              fill_container: true
+              tap_action:
+                action: perform-action
+                perform_action: switch.turn_off
+                target:
+                  entity_id: switch.tower_parity_check
+                confirmation:
+                  text: >-
+                    WARNING! This will STOP/CANCEL the running parity check,
+                    not pause it. Are you sure?
+              hold_action:
+                action: more-info
+
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: switch.tower_array
+                state: "off"
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.tower_array
+              primary: Start array
+              secondary: Bring array online
+              icon: mdi:nas
+              icon_color: red
+              layout: vertical
+              fill_container: true
+              tap_action:
+                action: perform-action
+                perform_action: switch.turn_on
+                target:
+                  entity_id: switch.tower_array
+                confirmation:
+                  text: Start the Unraid array?
+              hold_action:
+                action: more-info
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: switch.tower_array
+                state: "on"
+            card:
+              type: custom:mushroom-template-card
+              entity: switch.tower_array
+              primary: Stop array
+              secondary: Stops all array services
+              icon: mdi:nas
+              icon_color: green
+              layout: vertical
+              fill_container: true
+              tap_action:
+                action: perform-action
+                perform_action: switch.turn_off
+                target:
+                  entity_id: switch.tower_array
+                confirmation:
+                  text: >-
+                    WARNING! THIS WILL STOP THE ARRAY! Docker containers, shares,
+                    and array-backed services may go offline. Are you sure?
+              hold_action:
+                action: more-info
   ###########################################################################
   # STORAGE
   ###########################################################################
@@ -1093,34 +1226,6 @@ cards:
         fill_container: true
 
   - type: custom:collapsable-cards
-    title: Shares
-    cards:
-      - type: entities
-        title: Share usage
-        show_header_toggle: false
-        entities:
-          - entity: sensor.tower_share_appdata_usage
-            name: appdata
-          - entity: sensor.tower_share_domains_usage
-            name: domains
-          - entity: sensor.tower_share_isos_usage
-            name: isos
-          - entity: sensor.tower_share_rpi4omv_usage
-            name: RPI4OMV
-          - entity: sensor.tower_share_storage_usage
-            name: Storage
-          - entity: sensor.tower_share_storage2_usage
-            name: Storage2
-          - entity: sensor.tower_share_syslog_usage
-            name: syslog
-          - entity: sensor.tower_share_system_usage
-            name: system
-          - entity: sensor.tower_share_t_media_usage
-            name: T_Media
-          - entity: sensor.tower_share_unrarred_usage
-            name: unrarred
-
-  - type: custom:collapsable-cards
     title: Spin up / spin down controls
     cards:
       - type: grid
@@ -1235,6 +1340,23 @@ cards:
                   min-height: 64px;
                   --icon-size: 28px;
                 }
+      - type: history-graph
+        title: Disk spin state history
+        entities:
+          - entity: switch.tower_disk_disk1_spin
+            name: Disk 1
+          - entity: switch.tower_disk_disk2_spin
+            name: Disk 2
+          - entity: switch.tower_disk_disk3_spin
+            name: Disk 3
+          - entity: switch.tower_disk_disk4_spin
+            name: Disk 4
+          - entity: switch.tower_disk_disk5_spin
+            name: Disk 5
+          - entity: switch.tower_disk_parity_spin
+            name: Parity
+        hours_to_show: 24
+        refresh_interval: 300
 
   ###########################################################################
   # SYSTEM CHARTS
@@ -1737,10 +1859,10 @@ cards:
           stroke_width: 3
         yaxis:
           - min: 0
-            max: auto
+            max: ~50
             decimals: 0
+            align_to: 10
             apex_config:
-              forceNiceScale: true
               labels:
                 formatter: |
                   EVAL:function(value) {
@@ -1750,11 +1872,9 @@ cards:
           - entity: sensor.airvpn_download_speed
             name: Download
             color: '#1E88E5'
-            transform: 'return x / 1048576;'
           - entity: sensor.airvpn_upload_speed
             name: Upload
             color: '#43A047'
-            transform: 'return x / 1048576;'
 
   - type: custom:collapsable-cards
     title: PiKVM NAS
