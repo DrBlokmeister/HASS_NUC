@@ -232,12 +232,6 @@ script:
               - condition: template
                 value_template: "{{ click_count | int(1) == 1 }}"
             sequence:
-              - service: adaptive_lighting.set_manual_control
-                continue_on_error: true
-                data:
-                  lights:
-                    - "{{ light_entity }}"
-                  manual_control: false
               - service: light.toggle
                 data:
                   entity_id: "{{ light_entity }}"
@@ -246,6 +240,12 @@ script:
                   color_temp_kelvin: >
                     {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}
                   transition: "{{ transition_time | float(0) }}"
+              - service: adaptive_lighting.set_manual_control
+                continue_on_error: true
+                data:
+                  lights:
+                    - "{{ light_entity }}"
+                  manual_control: false
           # Double click:
           # - If off or not already full/cool: full brightness, cool-ish white.
           # - If already full/cool: reset to adaptive.
@@ -279,12 +279,6 @@ script:
                           color_temp_kelvin: 4200
                           transition: "{{ transition_time | float(0) }}"
                 default:
-                  - service: adaptive_lighting.set_manual_control
-                    continue_on_error: true
-                    data:
-                      lights:
-                        - "{{ light_entity }}"
-                      manual_control: false
                   - service: light.turn_on
                     data:
                       entity_id: "{{ light_entity }}"
@@ -293,6 +287,14 @@ script:
                       color_temp_kelvin: >
                         {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}
                       transition: "{{ transition_time | float(0) }}"
+                  - delay:
+                      seconds: 5
+                  - service: adaptive_lighting.set_manual_control
+                    continue_on_error: true
+                    data:
+                      lights:
+                        - "{{ light_entity }}"
+                      manual_control: false
           # Triple click:
           # - If off or not already low/warm: low warm light.
           # - If already low/warm: reset to adaptive.
@@ -326,12 +328,6 @@ script:
                           color_temp_kelvin: 2300
                           transition: "{{ transition_time | float(0) }}"
                 default:
-                  - service: adaptive_lighting.set_manual_control
-                    continue_on_error: true
-                    data:
-                      lights:
-                        - "{{ light_entity }}"
-                      manual_control: false
                   - service: light.turn_on
                     data:
                       entity_id: "{{ light_entity }}"
@@ -340,6 +336,14 @@ script:
                       color_temp_kelvin: >
                         {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}
                       transition: "{{ transition_time | float(0) }}"
+                  - delay:
+                      seconds: 5
+                  - service: adaptive_lighting.set_manual_control
+                    continue_on_error: true
+                    data:
+                      lights:
+                        - "{{ light_entity }}"
+                      manual_control: false
         default:
           - service: system_log.write
             data:
