@@ -218,6 +218,7 @@ from .const import (
     ATTR_DUST_COLLECTION_AVAILABLE,
     ATTR_ROOMS,
     ATTR_MAPS,
+    ATTR_MAP_COUNT,
     ATTR_CURRENT_SEGMENT,
     ATTR_SELECTED_MAP,
     ATTR_SELECTED_MAP_ID,
@@ -494,6 +495,7 @@ class DreameVacuumDevice:
         )
         if self._protocol.cloud:
             self._map_manager = DreameMapVacuumMapManager(self._protocol)
+            self._map_manager.set_capability(self.capability)
 
             self.listen(self._map_list_changed, DreameVacuumProperty.MAP_LIST)
             self.listen(self._recovery_map_list_changed, DreameVacuumProperty.RECOVERY_MAP_LIST)
@@ -633,8 +635,10 @@ class DreameVacuumDevice:
             else:
                 _LOGGER.debug("Property %s Not Available", DreameVacuumProperty(did).name)
 
-        if not self._ready:
+        if not self.capability.loaded:
             self.capability.load(json.loads(zlib.decompress(base64.b64decode(DEVICE_INFO), zlib.MAX_WBITS | 32)))
+            if self._map_manager:
+                self._map_manager.set_capability(self.capability)
 
         for callback in callbacks:
             callback[0](callback[1])
@@ -846,7 +850,7 @@ class DreameVacuumDevice:
                 not self.capability.new_state
                 and prop == DreameVacuumProperty.STATE
                 and int(value) > 18
-                and value in DreameVacuumState._value2member_map_
+                and value in DreameVacuumStateOld._value2member_map_
             ):
                 old_state = DreameVacuumStateOld[DreameVacuumState(value).name]
                 if old_state:
@@ -942,7 +946,10 @@ class DreameVacuumDevice:
         ## Latest generation vacuum app plugin uses this property to inform the device about app is visibile or not
         ## so that the device does not send unnecessary data to cloud but obviously we don't want that in Home Assistant
 
-        if self.get_property(DreameVacuumProperty.KEEP_ALIVE) == 0:
+        if (
+            self.get_property(DreameVacuumProperty.KEEP_ALIVE) == 0
+            and self.status.state != DreameVacuumState.UPGRADING
+        ):
             try:
                 ## App always sends 1 but the device returns total client count
                 self.set_property(DreameVacuumProperty.KEEP_ALIVE, 1)
@@ -1036,7 +1043,11 @@ class DreameVacuumDevice:
                     new_list.pop(DreameVacuumCleaningRoute.INTENSIVE)
                 self.status.cleaning_route_list = {v: k for k, v in new_list.items()}
 
-                if self.status.cleaning_route and self.status.cleaning_route not in self.status.cleaning_route_list:
+                if (
+                    not self.status.started
+                    and self.status.cleaning_route
+                    and self.status.cleaning_route not in self.status.cleaning_route_list
+                ):
                     self.set_auto_switch_property(
                         DreameVacuumAutoSwitchProperty.CLEANING_ROUTE,
                         DreameVacuumCleaningRoute.STANDARD.value,
@@ -1175,6 +1186,17 @@ class DreameVacuumDevice:
                             DreameVacuumAutoSwitchProperty.CLEANGENIUS, self._previous_cleangenius, False
                         )
                         self._previous_cleangenius = None
+
+                    if (
+                        self.capability.cleaning_route
+                        and not self.capability.cleaning_route_v2
+                        and self.status.cleaning_route
+                        and self.status.cleaning_route not in self.status.cleaning_route_list
+                    ):
+                        self.set_auto_switch_property(
+                            DreameVacuumAutoSwitchProperty.CLEANING_ROUTE,
+                            DreameVacuumCleaningRoute.STANDARD.value,
+                        )
             else:
                 self.status.cleanup_started = not (
                     self.status.fast_mapping
@@ -1324,6 +1346,17 @@ class DreameVacuumDevice:
                     )
                     self._previous_cleangenius = None
 
+                if (
+                    self.capability.cleaning_route
+                    and not self.capability.cleaning_route_v2
+                    and self.status.cleaning_route
+                    and self.status.cleaning_route not in self.status.cleaning_route_list
+                ):
+                    self.set_auto_switch_property(
+                        DreameVacuumAutoSwitchProperty.CLEANING_ROUTE,
+                        DreameVacuumCleaningRoute.STANDARD.value,
+                    )
+
                 did = DreameVacuumProperty.TASK_STATUS.value
                 if did in self._property_update_callback:
                     for callback in self._property_update_callback[did]:
@@ -1341,7 +1374,6 @@ class DreameVacuumDevice:
 
     def _faults_changed(self, previous_faults: Any = None) -> None:
         previous_faults = self.status.faults.copy()
-        self.status.faults = []
         faults = self.get_property(DreameVacuumProperty.FAULTS)
         if faults and faults != "" and faults != " " and faults != 0 and faults != "0":
             try:
@@ -1357,7 +1389,10 @@ class DreameVacuumDevice:
                     and (int(fault) != DreameVacuumErrorCode.REMOVE_MOP.value or not self.capability.self_wash_base)
                 ]
             except Exception as ex:
+                self.status.faults = []
                 _LOGGER.warning("Failed to parse faults: %s", ex)
+        else:
+            self.status.faults = []
 
         for fault in self.status.faults:
             if fault not in previous_faults:
@@ -1369,7 +1404,7 @@ class DreameVacuumDevice:
 
         if sorted(previous_faults) != sorted(self.status.faults):
             self.status._last_updated_time["faults"] = int(time.time())
-        self._property_changed(False)
+        self._property_changed()
 
     def _charging_status_changed(self, previous_charging_status: Any = None) -> None:
         self._remote_control = False
@@ -1580,25 +1615,28 @@ class DreameVacuumDevice:
     def _schedule_changed(self, previous_schedule: Any = None) -> None:
         schedule = self.get_property(DreameVacuumProperty.SCHEDULE)
         schedule_list = []
+
         if schedule and schedule != "":
             tasks = schedule.split(";")
             for task in tasks:
-                props = task.split("-")
-                if len(props) >= 9:
-                    schedule_list.append(
-                        ScheduledTask(
-                            id=int(props[0]),
-                            enabled=bool(props[1] == "1" or props[1] == "2"),
-                            invalid=bool(props[1] == "3"),
-                            time=props[2],
-                            repeats=props[3],
-                            once=bool(props[4] == "0"),
-                            map_id=props[5],
-                            suction_level=int(props[6]),
-                            water_volume=int(props[7]),
-                            options=props[8].split(",") if props[8] != "0" else None,
+                if "-" in task:
+                    props = task.split("-")
+                    if len(props) >= 9:
+                        schedule_list.append(
+                            ScheduledTask(
+                                id=int(props[0]),
+                                enabled=bool(props[1] in ["1", "2"]),
+                                invalid=bool(props[1] == "3"),
+                                time=props[2],
+                                repeats=props[3].zfill(7),
+                                once=bool(props[4] == "0"),
+                                map_id=props[5],
+                                suction_level=int(props[6]),
+                                water_volume=int(props[7]),
+                                options=props[8].split(",") if props[8] != "0" else None,
+                            )
                         )
-                    )
+
         if schedule_list and len(schedule_list) > 1:
             schedule_list.sort(
                 key=cmp_to_key(
@@ -1609,6 +1647,7 @@ class DreameVacuumDevice:
                     )
                 )
             )
+
         self.status.schedule = schedule_list
 
     def _stream_status_changed(self, previous_stream_status: Any = None) -> None:
@@ -2373,7 +2412,6 @@ class DreameVacuumDevice:
 
             if self.device_connected and self._protocol.cloud is not None and (not self._ready or not self.available):
                 if self._map_manager:
-                    self._map_manager.set_capability(self.capability)
                     self._map_manager.set_update_interval(self._map_update_interval)
                     self._map_manager.set_device_running(
                         self.status.running,
@@ -2488,6 +2526,7 @@ class DreameVacuumDevice:
                 DreameVacuumProperty.STATUS,
                 DreameVacuumProperty.STATE,
                 DreameVacuumProperty.TASK_STATUS,
+                DreameVacuumProperty.TASK_TYPE,
                 DreameVacuumProperty.CLEANING_TIME,
                 DreameVacuumProperty.CLEANED_AREA,
                 DreameVacuumProperty.CLEANING_PROGRESS,
@@ -3029,9 +3068,6 @@ class DreameVacuumDevice:
                 render_map_data.pixel_type = render_map_data.combined_pixel_type
                 render_map_data.dimensions = render_map_data.combined_dimensions
 
-            if render_map_data.wifi_map:
-                return render_map_data
-
             if self.capability.lidar_navigation:
                 ## Second generation vacuum plugins calculates offsets wrong due to a bug which causes objects to be rendered shifted according to map rotation
                 if self.capability.object_shift:
@@ -3048,25 +3084,8 @@ class DreameVacuumDevice:
                         render_map_data.dimensions.original_top - render_map_data.dimensions.offset
                     )
 
-            if render_map_data.furniture_version == 2 and self.capability.furnitures_v2:
-                if self.capability.mijia:
-                    render_map_data.furniture_version = 5
-                elif self.capability.furnitures_v3:
-                    render_map_data.furniture_version = 6
-                else:
-                    render_map_data.furniture_version = 4 if self.capability.extended_furnitures else 3
-
-            if not self.capability.cruising:
-                render_map_data.predefined_points = None
-
-            if not self.capability.floor_direction_cleaning:
-                render_map_data.virtual_thresholds = None
-
-            if not self.capability.auto_lds_lifting:
-                render_map_data.low_lying_areas = None
-
-            if self.capability.segment_visibility and render_map_data.hidden_segments is None:
-                render_map_data.hidden_segments = []
+            if render_map_data.wifi_map:
+                return render_map_data
 
             if self.capability.cleangenius_auto:
                 data = None
@@ -3082,123 +3101,82 @@ class DreameVacuumDevice:
                             if int(data.pixel_type[x, y]) == 250:
                                 data.pixel_type[x, y] = 249
 
-            if not render_map_data.history_map:
-                if self.status.started and not (
-                    self.status.zone_cleaning
-                    or self.status.go_to_zone
-                    or (
-                        render_map_data.active_areas
-                        and self.status.task_status is DreameVacuumTaskStatus.DOCKING_PAUSED
-                    )
-                ):
-                    # Map data always contains last active areas
-                    render_map_data.active_areas = None
+            if (
+                not (render_map_data.wifi_map or render_map_data.cleaning_map or render_map_data.history_map)
+                and not self.status.segment_cleaning
+            ):
+                # Map data always contains last active segments
+                render_map_data.active_segments = None
 
-                if self.status.started and not self.status.spot_cleaning:
-                    # Map data always contains last active points
-                    render_map_data.active_points = None
+            if (
+                not self.status.customized_cleaning
+                or self.status.cruising
+                or self.status.cleangenius_cleaning
+                or self.status.scheduled_clean
+                or self.status.shortcut_task
+            ):
+                # App does not render customized cleaning settings on saved map list
+                render_map_data.cleanset = None
+            elif (
+                not render_map_data.saved_map
+                and not render_map_data.recovery_map
+                and render_map_data.cleanset is None
+                and self.status.customized_cleaning
+                and not self.status.cleangenius_cleaning
+            ):
+                DreameVacuumMapDecoder.set_segment_cleanset(render_map_data, {}, self.capability)
+                render_map_data.cleanset = True
 
-                if not self.status.segment_cleaning:
-                    # Map data always contains last active segments
-                    render_map_data.active_segments = None
-
-                if not self.status.cruising:
-                    # Map data always contains last active path points
-                    render_map_data.active_cruise_points = None
-
-                if self.capability.cruising and render_map_data.predefined_points is None:
-                    render_map_data.predefined_points = []
-            else:
-                if not self.capability.cruising:
-                    if render_map_data.active_areas and len(render_map_data.active_areas) == 1:
-                        area = render_map_data.active_areas[0]
-                        size = render_map_data.dimensions.grid_size * 2
-                        if area.check_size(size):
-                            x = area.x0 + render_map_data.dimensions.grid_size
-                            y = area.y0 + render_map_data.dimensions.grid_size
-                            render_map_data.task_cruise_points = {
-                                1: Coordinate(
-                                    x,
-                                    y,
-                                    False,
-                                    0,
-                                )
-                            }
-
-                            if render_map_data.completed == False:
-                                if render_map_data.robot_position:
-                                    render_map_data.completed = bool(
-                                        render_map_data.robot_position.x >= x - size
-                                        and render_map_data.robot_position.x <= x + size
-                                        and render_map_data.robot_position.y >= y - size
-                                        and render_map_data.robot_position.y <= y + size
-                                    )
-                                else:
-                                    render_map_data.completed = True
-
-                            render_map_data.active_areas = None
-
-                if render_map_data.active_areas or render_map_data.active_points:
-                    render_map_data.zone_cleaning = True
-
-                if (
-                    render_map_data.customized_cleaning != 1
-                    or render_map_data.cleanup_method is None
-                    or render_map_data.cleanup_method != CleanupMethod.CUSTOMIZED_CLEANING
-                ):
-                    render_map_data.cleanset = None
-
-                if render_map_data.task_cruise_points:
-                    render_map_data.active_cruise_points = render_map_data.task_cruise_points.copy()
-                    render_map_data.task_cruise_points = True
-                    render_map_data.active_areas = None
-                    render_map_data.path = None
-                    render_map_data.no_mopping_areas = None
-                    render_map_data.cleanset = None
-                    if render_map_data.furnitures is not None:
-                        render_map_data.furnitures = {}
-
-                if render_map_data.segments and not render_map_data.zone_cleaning:
-                    for segment in render_map_data.segments.values():
-                        segment.calculate_coords(render_map_data.dimensions)
-
-                    if render_map_data.task_cruise_points or (
-                        render_map_data.cleanup_method is not None
-                        and (
-                            render_map_data.cleanup_method == CleanupMethod.CLEANGENIUS
-                            and not self.capability.cleangenius_mode
-                            and not self.capability.cleaning_sequence_v2
-                        )
-                    ):
-                        render_map_data.sequence = False
-                    elif render_map_data.active_segments:
-                        order = 1
-                        render_map_data.sequence = True
-                        for segment_id in list(
-                            sorted(
-                                render_map_data.segments,
-                                key=lambda segment_id: (
-                                    render_map_data.segments[segment_id].order
-                                    if render_map_data.segments[segment_id].order
-                                    else 99
-                                ),
+            render_map_data.cleaning_sequence = {}
+            if render_map_data.segments:
+                if render_map_data.active_segments:
+                    if render_map_data.version > 1 or not render_map_data.sequence:
+                        if len(render_map_data.active_segments) > 1:
+                            render_map_data.cleaning_sequence.update(
+                                {seg: i for i, seg in enumerate(render_map_data.active_segments, 1)}
                             )
-                        ):
-                            if (
-                                len(render_map_data.active_segments) > 1
-                                and render_map_data.segments[segment_id].order
-                                and segment_id in render_map_data.active_segments
-                            ):
-                                render_map_data.segments[segment_id].order = order
-                                order = order + 1
-                            else:
-                                render_map_data.segments[segment_id].order = None
+                    else:
 
-                    if self.capability.cleaning_route:
-                        for k, v in render_map_data.segments.items():
-                            render_map_data.segments[k].custom_mopping_route = None
+                        def get_sort_key(k):
+                            order = render_map_data.segments[k].order
+                            if not order:
+                                if k in render_map_data.active_segments:
+                                    order = 100 + render_map_data.active_segments.index(k)
+                                else:
+                                    order = 1000
 
+                            return order
+
+                        list_keys = list(render_map_data.segments.keys())
+                        list_keys.sort(key=get_sort_key)
+
+                        index = 0
+                        for k in list_keys:
+                            segment_id = int(k)
+                            if segment_id in render_map_data.active_segments:
+                                render_map_data.cleaning_sequence[segment_id] = index + 1
+                                index += 1
+                else:
+                    render_map_data.cleaning_sequence = {k: v.order for k, v in render_map_data.segments.items()}
+
+            if render_map_data.history_map:
                 return render_map_data
+
+            if self.status.started and not (
+                self.status.zone_cleaning
+                or self.status.go_to_zone
+                or (render_map_data.active_areas and self.status.task_status is DreameVacuumTaskStatus.DOCKING_PAUSED)
+            ):
+                # Map data always contains last active areas
+                render_map_data.active_areas = None
+
+            if self.status.started and not self.status.spot_cleaning:
+                # Map data always contains last active points
+                render_map_data.active_points = None
+
+            if not self.status.cruising:
+                # Map data always contains last active path points
+                render_map_data.active_cruise_points = None
 
             if not render_map_data.saved_map and not render_map_data.recovery_map:
                 if (
@@ -3274,19 +3252,6 @@ class DreameVacuumDevice:
                         )
                     )
 
-            if not self.status.customized_cleaning or self.status.cruising or self.status.cleangenius_cleaning:
-                # App does not render customized cleaning settings on saved map list
-                render_map_data.cleanset = None
-            elif (
-                not render_map_data.saved_map
-                and not render_map_data.recovery_map
-                and render_map_data.cleanset is None
-                and self.status.customized_cleaning
-                and not self.status.cleangenius_cleaning
-            ):
-                DreameVacuumMapDecoder.set_segment_cleanset(render_map_data, {}, self.capability)
-                render_map_data.cleanset = True
-
             if render_map_data.segments:
                 for segment in render_map_data.segments.values():
                     segment.calculate_coords(render_map_data.dimensions)
@@ -3339,7 +3304,11 @@ class DreameVacuumDevice:
                     render_map_data.docked = False
                     render_map_data.robot_position = None
 
-            if render_map_data.saved_map or render_map_data.recovery_map:
+            if (
+                not render_map_data.history_map
+                and not render_map_data.cleaning_map
+                and (render_map_data.saved_map or render_map_data.recovery_map)
+            ):
                 render_map_data.active_areas = None
                 render_map_data.active_points = None
                 render_map_data.active_segments = None
@@ -3437,6 +3406,40 @@ class DreameVacuumDevice:
         if self._map_manager and not self.status.running and now - self._last_map_list_request > 60:
             properties.extend([DreameVacuumProperty.MAP_LIST, DreameVacuumProperty.RECOVERY_MAP_LIST])
             self._last_map_list_request = time.time()
+
+        if (
+            self._protocol.dreame_cloud
+            and self.device_connected
+            and self.cloud_connected
+            and self.status.active
+            and not force_request_properties
+            and not self.status.map_backup_status
+            and not self.status.map_recovery_status
+            and not self._consumable_change
+            and not self.status.sleeping
+            and (
+                self.status.running
+                or self.status.started
+                or self.status.washing
+                or self.status.returning
+                or self.status.returning_to_wash
+                or self.status.auto_emptying
+                or self.status.returning_to_empty
+            )
+        ):
+            force_request_properties = True
+            properties = [
+                DreameVacuumProperty.CHARGING_STATUS,
+                DreameVacuumProperty.SELF_WASH_BASE_STATUS,
+                DreameVacuumProperty.AUTO_EMPTY_STATUS,
+                DreameVacuumProperty.DUST_BAG_DRYING_STATUS,
+                DreameVacuumProperty.STATE,
+                DreameVacuumProperty.STATUS,
+                DreameVacuumProperty.TASK_STATUS,
+                DreameVacuumProperty.TASK_TYPE,
+                DreameVacuumProperty.ERROR,
+                DreameVacuumProperty.FAULTS,
+            ]
 
         try:
             if self._protocol.dreame_cloud and (not self.device_connected or not self.cloud_connected):
@@ -3766,11 +3769,17 @@ class DreameVacuumDevice:
             self._update_property(DreameVacuumProperty.WATER_OUTLET_FILTER_DIRTY_LEFT, 100)
             self._update_property(DreameVacuumProperty.WATER_OUTLET_FILTER_DIRTY_TIME_LEFT, 30)
         elif action is DreameVacuumAction.START_AUTO_EMPTY:
-            properties = self.get_properties([DreameVacuumProperty.AUTO_EMPTY_STATUS])
-            self._update_property(
-                DreameVacuumProperty.AUTO_EMPTY_STATUS,
-                DreameVacuumAutoEmptyStatus.ACTIVE.value,
-            )
+            properties = self.get_properties([DreameVacuumProperty.AUTO_EMPTY_STATUS, DreameVacuumProperty.STATE])
+            if self.status.docked:
+                self._update_property(
+                    DreameVacuumProperty.AUTO_EMPTY_STATUS,
+                    DreameVacuumAutoEmptyStatus.ACTIVE.value,
+                )
+            else:
+                self._update_property(
+                    DreameVacuumProperty.STATE,
+                    DreameVacuumState.RETURNING_AUTO_EMPTY.value,
+                )
 
         # Update listeners
         if cleaning_action or self._consumable_change:
@@ -3824,7 +3833,7 @@ class DreameVacuumDevice:
         """Set volume."""
         result = self.set_property(DreameVacuumProperty.VOLUME, volume)
         if result:
-            self.call_action(DreameVacuumAction.TEST_SOUND)
+            self.call_action(DreameVacuumAction.PLAY_SOUND)
         return result
 
     def set_suction_level(self, suction_level: int) -> bool:
@@ -4235,6 +4244,7 @@ class DreameVacuumDevice:
         properties = self.get_status_properties()
         if self.status.fast_mapping_paused:
             self._update_status(DreameVacuumTaskStatus.FAST_MAPPING, DreameVacuumStatus.FAST_MAPPING)
+            self._update_property(DreameVacuumProperty.STATE, DreameVacuumState.BUILDING)
             response = self.start_custom(DreameVacuumStatus.FAST_MAPPING.value)
             if not response or response.get("code") != 0:
                 self._update_properties(properties)
@@ -4272,20 +4282,63 @@ class DreameVacuumDevice:
             self._update_property(DreameVacuumProperty.CLEANED_AREA, 0)
             if self.capability.cleaning_progress:
                 self._update_property(DreameVacuumProperty.CLEANING_PROGRESS, 0)
-        elif (
-            self.status.paused
-            and not self.status.cleaning_paused
-            and not self.status.cruising
-            and not self.status.scheduled_clean
-        ):
+        elif self.status.paused and not self.status.cruising:
             self._update_property(DreameVacuumProperty.STATUS, DreameVacuumStatus.CLEANING.value)
-            if self.status.task_status is not DreameVacuumTaskStatus.COMPLETED:
+
+            if (
+                self.status.task_status is not DreameVacuumTaskStatus.COMPLETED
+                and not self.status.scheduled_clean
+                and not self.status.shortcut_task
+            ):
                 new_state = DreameVacuumState.SWEEPING
                 if self.status.cleaning_mode is DreameVacuumCleaningMode.MOPPING:
                     new_state = DreameVacuumState.MOPPING
                 elif self.status.cleaning_mode is DreameVacuumCleaningMode.SWEEPING_AND_MOPPING:
                     new_state = DreameVacuumState.SWEEPING_AND_MOPPING
                 self._update_property(DreameVacuumProperty.STATE, new_state.value)
+
+        status_map = {
+            DreameVacuumTaskStatus.AUTO_CLEANING_PAUSED: DreameVacuumTaskStatus.AUTO_CLEANING.value,
+            DreameVacuumTaskStatus.ZONE_CLEANING_PAUSED: DreameVacuumTaskStatus.ZONE_CLEANING.value,
+            DreameVacuumTaskStatus.SEGMENT_CLEANING_PAUSED: DreameVacuumTaskStatus.SEGMENT_CLEANING.value,
+            DreameVacuumTaskStatus.SPOT_CLEANING_PAUSED: DreameVacuumTaskStatus.SPOT_CLEANING.value,
+            DreameVacuumTaskStatus.MAP_CLEANING_PAUSED: DreameVacuumTaskStatus.AUTO_CLEANING.value,
+            DreameVacuumTaskStatus.DOCKING_PAUSED: DreameVacuumTaskStatus.COMPLETED.value,
+            DreameVacuumTaskStatus.MOPPING_PAUSED: DreameVacuumTaskStatus.AUTO_CLEANING.value,
+            DreameVacuumTaskStatus.SEGMENT_MOPPING_PAUSED: DreameVacuumTaskStatus.SEGMENT_CLEANING.value,
+            DreameVacuumTaskStatus.ZONE_MOPPING_PAUSED: DreameVacuumTaskStatus.ZONE_CLEANING.value,
+            DreameVacuumTaskStatus.AUTO_MOPPING_PAUSED: DreameVacuumTaskStatus.AUTO_CLEANING.value,
+            DreameVacuumTaskStatus.AUTO_DOCKING_PAUSED: DreameVacuumTaskStatus.COMPLETED.value,
+            DreameVacuumTaskStatus.SEGMENT_DOCKING_PAUSED: DreameVacuumTaskStatus.SEGMENT_CLEANING.value,
+            DreameVacuumTaskStatus.ZONE_DOCKING_PAUSED: DreameVacuumTaskStatus.ZONE_CLEANING.value,
+            DreameVacuumTaskStatus.CRUISING_PATH_PAUSED: DreameVacuumTaskStatus.CRUISING_PATH.value,
+            DreameVacuumTaskStatus.CRUISING_POINT_PAUSED: DreameVacuumTaskStatus.CRUISING_POINT.value,
+            DreameVacuumTaskStatus.SUMMON_CLEAN_PAUSED: DreameVacuumTaskStatus.COMPLETED.value,
+            DreameVacuumTaskStatus.AUTO_CLEANING_WASHING_PAUSED: DreameVacuumTaskStatus.AUTO_CLEANING.value,
+            DreameVacuumTaskStatus.AREA_CLEANING_WASHING_PAUSED: DreameVacuumTaskStatus.SEGMENT_CLEANING.value,
+            DreameVacuumTaskStatus.CUSTOM_CLEANING_WASHING_PAUSED: DreameVacuumTaskStatus.AUTO_CLEANING.value,
+            DreameVacuumTaskStatus.PICKING_UP_ITEM_PAUSED: DreameVacuumTaskStatus.PICKING_UP_ITEM.value,
+            DreameVacuumTaskStatus.REMOTE_PICKUP_PAUSED: DreameVacuumTaskStatus.REMOTE_PICKUP_IN_PROGRESS.value,
+            DreameVacuumTaskStatus.PLACING_ITEM_PAUSED: DreameVacuumTaskStatus.PLACING_ITEM.value,
+        }
+        task_status = self.status.task_status
+        if task_status in status_map:
+            self._update_property(DreameVacuumProperty.TASK_STATUS, status_map[task_status])
+
+        if self.capability.task_type:
+            status_map = {
+                DreameVacuumTaskType.STANDARD_PAUSED: DreameVacuumTaskType.STANDARD.value,
+                DreameVacuumTaskType.CUSTOM_PAUSED: DreameVacuumTaskType.CUSTOM.value,
+                DreameVacuumTaskType.SHORTCUT_PAUSED: DreameVacuumTaskType.SHORTCUT.value,
+                DreameVacuumTaskType.SCHEDULED_PAUSED: DreameVacuumTaskType.SCHEDULED.value,
+                DreameVacuumTaskType.SMART_PAUSED: DreameVacuumTaskType.SMART.value,
+                DreameVacuumTaskType.PARTIAL_PAUSED: DreameVacuumTaskType.PARTIAL.value,
+                DreameVacuumTaskType.SUMMON_PAUSED: DreameVacuumTaskType.SUMMON.value,
+                DreameVacuumTaskType.WATER_STAIN_PAUSED: DreameVacuumTaskType.WATER_STAIN.value,
+            }
+            task_type = self.status.task_type
+            if task_type in status_map:
+                self._update_property(DreameVacuumProperty.TASK_TYPE, status_map[task_type])
 
         response = self.call_action(DreameVacuumAction.START)
         if not response or response.get("code") != 0:
@@ -4329,7 +4382,7 @@ class DreameVacuumDevice:
         if (
             self.status.station_cleaning
             and self.capability.washboard_cleaning_status
-            and self._get_property(DreameVacuumProperty.WASHBOARD_CLEANING_STATUS) == 1
+            and self.get_property(DreameVacuumProperty.WASHBOARD_CLEANING_STATUS) == 1
         ):
             self._update_property(DreameVacuumProperty.WASHBOARD_CLEANING_STATUS, 0)
             response = self.call_action(DreameVacuumAction.CHARGE)
@@ -4983,14 +5036,6 @@ class DreameVacuumDevice:
         status = DreameVacuumStatus.CLEANING.value
         if self.status.shortcuts and shortcut_id in self.status.shortcuts:
             shortcut = self.status.shortcuts[shortcut_id]
-            if (
-                shortcut.map_id
-                and self._map_manager
-                and (not self._map_manager.selected_map or shortcut.map_id != self._map_manager.selected_map.map_id)
-            ):
-                if not self.set_selected_map(shortcut.map_id):
-                    raise InvalidActionException("Failed to select map")
-
             current_map = copy.deepcopy(self.status.current_map)
             if current_map:
                 self._map_manager.editor.clear_path()
@@ -5049,12 +5094,14 @@ class DreameVacuumDevice:
         self.schedule_update(10, True)
         properties = self.get_status_properties()
         self._update_status(DreameVacuumTaskStatus.FAST_MAPPING, DreameVacuumStatus.FAST_MAPPING)
+        self._update_property(DreameVacuumProperty.STATE, DreameVacuumState.BUILDING)
         self._update_property(DreameVacuumProperty.CLEANING_TIME, 0)
         self._update_property(DreameVacuumProperty.CLEANED_AREA, 0)
 
-        current_map = copy.deepcopy(self.status.current_map)
-        if current_map:
-            self._map_manager.editor.reset_map()
+        if not self.status.started:
+            current_map = copy.deepcopy(self.status.current_map)
+            if current_map:
+                self._map_manager.editor.reset_map()
 
         response = self.start_custom(DreameVacuumStatus.FAST_MAPPING.value)
         if not response or response.get("code") != 0:
@@ -5074,9 +5121,10 @@ class DreameVacuumDevice:
         if self.capability.cleaning_progress:
             self._update_property(DreameVacuumProperty.CLEANING_PROGRESS, 0)
 
-        current_map = copy.deepcopy(self.status.current_map)
-        if current_map:
-            self._map_manager.editor.reset_map()
+        if not self.status.started:
+            current_map = copy.deepcopy(self.status.current_map)
+            if current_map:
+                self._map_manager.editor.reset_map()
 
         response = self.start_custom(DreameVacuumStatus.CLEANING.value, "3")
         if not response or response.get("code") != 0:
@@ -5109,7 +5157,7 @@ class DreameVacuumDevice:
 
     def start_washing(self) -> dict[str, Any] | None:
         """Start washing the mop if self-wash base is present."""
-        current = self.get_property(DreameVacuumProperty.SELF_WASH_BASE_STATUS)
+        current = self.get_properties([DreameVacuumProperty.STATE, DreameVacuumProperty.SELF_WASH_BASE_STATUS])
         if self.status.washing_paused:
             self._update_property(
                 DreameVacuumProperty.SELF_WASH_BASE_STATUS,
@@ -5117,39 +5165,58 @@ class DreameVacuumDevice:
             )
             if self.info and self.info.version <= 1037:
                 response = self.call_action(DreameVacuumAction.START)
-                if not response or response.get("code") != 0:
-                    self._update_property(DreameVacuumProperty.SELF_WASH_BASE_STATUS, current, False)
-                    raise InvalidActionException(f"Failed to send command!")
-                return response
-            response = self.start_self_wash_base("1,1")
-        if self.status.washing_available or self.status.returning_to_wash_paused:
-            self._update_property(
-                DreameVacuumProperty.SELF_WASH_BASE_STATUS,
-                DreameVacuumSelfWashBaseStatus.WASHING.value,
-            )
+            else:
+                response = self.start_self_wash_base("1,1")
+            if not response or response.get("code") != 0:
+                self._update_properties(current)
+                raise InvalidActionException(f"Failed to send command!")
+            return response
+
+        if self.status.washing_available:
+            if self.status.docked:
+                self._update_property(
+                    DreameVacuumProperty.SELF_WASH_BASE_STATUS,
+                    DreameVacuumSelfWashBaseStatus.WASHING.value,
+                )
+            else:
+                self._update_property(
+                    DreameVacuumProperty.SELF_WASH_BASE_STATUS,
+                    DreameVacuumSelfWashBaseStatus.RETURNING.value,
+                )
+                self._update_property(
+                    DreameVacuumProperty.STATE,
+                    DreameVacuumState.RETURNING_TO_WASH.value,
+                )
             response = self.start_self_wash_base("2,1")
-        if not response or response.get("code") != 0:
-            self._update_property(DreameVacuumProperty.SELF_WASH_BASE_STATUS, current, False)
-            raise InvalidActionException(f"Failed to send command!")
-        return response
+            if not response or response.get("code") != 0:
+                self._update_properties(current)
+                raise InvalidActionException(f"Failed to send command!")
+            return response
+        raise InvalidActionException(f"Washing unavailable!")
 
     def pause_washing(self) -> dict[str, Any] | None:
         """Pause washing the mop if self-wash base is present."""
         if self.status.washing:
-            current = self.get_property(DreameVacuumProperty.SELF_WASH_BASE_STATUS)
-            self._update_property(
-                DreameVacuumProperty.SELF_WASH_BASE_STATUS,
-                DreameVacuumSelfWashBaseStatus.PAUSED.value,
-            )
+            current = self.get_properties([DreameVacuumProperty.STATE, DreameVacuumProperty.SELF_WASH_BASE_STATUS])
+            if self.status.washing:
+                self._update_property(
+                    DreameVacuumProperty.SELF_WASH_BASE_STATUS, DreameVacuumSelfWashBaseStatus.PAUSED.value
+                )
+            elif self.status.returning_to_wash:
+                self._update_property(
+                    DreameVacuumProperty.STATE,
+                    DreameVacuumState.PAUSED.value,
+                )
+
             if self.info and self.info.version <= 1037:
                 response = self.call_action(DreameVacuumAction.PAUSE)
                 if not response or response.get("code") != 0:
-                    self._update_property(DreameVacuumProperty.SELF_WASH_BASE_STATUS, current, False)
+                    self._update_properties(current)
                     raise InvalidActionException(f"Failed to send command!")
                 return response
             response = self.start_self_wash_base("1,0")
             if not response or response.get("code") != 0:
-                self._update_property(DreameVacuumProperty.SELF_WASH_BASE_STATUS, current, False)
+                self._update_properties(current)
                 raise InvalidActionException(f"Failed to send command!")
             return response
 
@@ -5265,7 +5332,7 @@ class DreameVacuumDevice:
         ):
             if (
                 self.capability.washboard_cleaning_status
-                and self._get_property(DreameVacuumProperty.WASHBOARD_CLEANING_STATUS) == 1
+                and self.get_property(DreameVacuumProperty.WASHBOARD_CLEANING_STATUS) == 1
             ):
                 self._update_property(DreameVacuumProperty.WASHBOARD_CLEANING_STATUS, 0)
                 response = self.call_action(DreameVacuumAction.CHARGE)
@@ -5964,16 +6031,6 @@ class DreameVacuumDevice:
                         }
                     )
 
-    def set_multi_floor_map(self, enabled: bool) -> bool:
-        properties = {DreameVacuumProperty.MULTI_FLOOR_MAP: int(enabled)}
-        if (
-            self.capability.auto_switch_settings
-            and not enabled
-            and self.get_property(DreameVacuumProperty.INTELLIGENT_RECOGNITION) == 1
-        ):
-            properties[DreameVacuumProperty.INTELLIGENT_RECOGNITION] = 0
-        self.set_properties(properties)
-
     def rename_shortcut(self, shortcut_id: int, shortcut_name: str = "") -> dict[str, Any] | None:
         """Rename a shortcut"""
         shortcut_id = int(shortcut_id)
@@ -6078,28 +6135,33 @@ class DreameVacuumDevice:
         ):
             raise InvalidActionException("Obstacle ignore is not supported on this device")
 
-        found = False
-        obstacle_type = 142
+        obstacle = None
         for k, v in self.status.current_map.obstacles.items():
             if int(v.x) == int(x) and int(v.y) == int(y):
                 if v.ignore_status.value == 2:
                     raise InvalidActionException("Cannot ignore a dynamically ignored obstacle")
-                obstacle_type = v.type.value
-                found = True
+                obstacle = v
                 break
 
-        if not found:
+        if not obstacle:
             raise InvalidActionException("Obstacle not found")
 
         self._map_manager.editor.set_obstacle_ignore(x, y, obstacle_ignored)
         return self.update_map_data_async(
             {
-                "obstacleignore": [
-                    int(x),
-                    int(y),
-                    obstacle_type,
-                    1 if bool(obstacle_ignored) else 0,
-                ]
+                "obstacleignore": (
+                    [
+                        str(obstacle.key),
+                        1 if bool(obstacle_ignored) else 0,
+                    ]
+                    if self.capability.map_v2
+                    else [
+                        int(x),
+                        int(y),
+                        obstacle.type.value,
+                        1 if bool(obstacle_ignored) else 0,
+                    ]
+                )
             }
         )
 
@@ -6498,6 +6560,43 @@ class DreameVacuumDevice:
 
         return self.update_map_data_async({"spoint": predefined_points[:20], "tpoint": []})
 
+    def set_walls(self, walls, doors, map_id=None) -> dict[str, Any] | None:
+        """Set walls and doors on current saved map."""
+        if walls == "" or not walls:
+            raise InvalidActionException("Walls are required")
+
+        if doors == "" or doors is None:
+            raise InvalidActionException("Doors are required")
+
+        if not self.capability.walls:
+            raise InvalidActionException("Walls are not supported")
+
+        if self.status.started:
+            raise InvalidActionException("Cannot set walls while vacuum is running")
+
+        if self._map_manager:
+            if not map_id:
+                if not self.status.selected_map:
+                    raise InvalidActionException("Map ID is required")
+
+                map_id = self.status.selected_map.map_id
+
+            map_data_list = self.status.map_data_list
+            if not map_data_list or map_id not in map_data_list:
+                raise InvalidActionException(f"Map not found! ({map_id})")
+
+            if map_id != self._map_manager.selected_map.map_id:
+                if not self.set_selected_map(map_id):
+                    raise InvalidActionException("Failed to select map")
+
+            current_map = self.status.current_map
+            if current_map and (not self.status.has_saved_map or not current_map.segments or not current_map.walls):
+                raise InvalidActionException("Cannot edit walls on current map")
+
+            walls_info = self._map_manager.editor.set_walls(walls, doors, map_id)
+            if walls_info:
+                return self.update_map_data_async(walls_info)
+
     def set_selected_map(self, map_id: int) -> dict[str, Any] | None:
         """Change currently selected map when multi floor map is enabled."""
         if self._map_manager:
@@ -6675,8 +6774,17 @@ class DreameVacuumDevice:
 
             map_id = self.status.selected_map.map_id
 
-        if self.status.map_data_list and not (map_id in self.status.map_data_list):
-            raise InvalidActionException("Map not found")
+        map_data_list = self.status.map_data_list
+        if not map_data_list or map_id not in map_data_list:
+            raise InvalidActionException(f"Map not found! ({map_id})")
+
+        if map_id != self._map_manager.selected_map.map_id:
+            if not self.set_selected_map(map_id):
+                raise InvalidActionException("Failed to select map")
+
+        current_map = self.status.current_map
+        if current_map and (not self.status.has_saved_map or not current_map.segments or not current_map.walls):
+            raise InvalidActionException("Cannot backup current map")
 
         current = self.get_property(DreameVacuumProperty.MAP_BACKUP_STATUS)
         self._update_property(DreameVacuumProperty.MAP_BACKUP_STATUS, DreameVacuumMapBackupStatus.RUNNING.value)
@@ -6741,6 +6849,9 @@ class DreameVacuumDevice:
                     if not self.set_selected_map(map_id):
                         raise InvalidActionException("Failed to select map")
 
+                if len(self.status.segments) >= (29 if self.capability.map_v2 else 49):
+                    raise InvalidActionException("Maximum room count has been reached!")
+
             if not map_id and self.capability.lidar_navigation:
                 raise InvalidActionException("Map ID is required")
 
@@ -6763,11 +6874,16 @@ class DreameVacuumDevice:
         if cleaning_sequence == "" or not cleaning_sequence:
             cleaning_sequence = []
 
+        cleaning_sequence_v2 = (
+            bool(self.status.selected_map.version > 1)
+            if self.status.selected_map
+            else self.capability.cleaning_sequence_v2
+        )
         if self._map_manager:
             if not self.status.has_saved_map:
                 raise InvalidActionException("Cannot set cleaning sequence on current map")
 
-            if self.capability.cleaning_sequence_v2 and not cleaning_sequence:
+            if cleaning_sequence_v2 and not cleaning_sequence:
                 raise InvalidActionException("Cannot disable cleaning sequence on this device")
 
             if cleaning_sequence and self.status.segments:
@@ -6777,7 +6893,7 @@ class DreameVacuumDevice:
 
             map_data = self.status.current_map
             if map_data and map_data.segments and not map_data.temporary_map:
-                if not cleaning_sequence and not self.capability.cleaning_sequence_v2:
+                if not cleaning_sequence and not cleaning_sequence_v2:
                     current = self._map_manager.cleaning_sequence
                     if current and len(current):
                         self.status._previous_cleaning_sequence[map_data.map_id] = current
@@ -6787,7 +6903,7 @@ class DreameVacuumDevice:
                 cleaning_sequence = self._map_manager.editor.set_cleaning_sequence(cleaning_sequence)
             else:
                 raise InvalidActionException("Cannot set cleaning sequence on current map")
-        elif self.capability.cleaning_sequence_v2:
+        elif cleaning_sequence_v2:
             raise InvalidActionException("Cannot set cleaning sequence without map data on this device")
 
         if not cleaning_sequence:
@@ -6795,7 +6911,7 @@ class DreameVacuumDevice:
 
         return self.update_map_data_async(
             {"cleanareaorder": [{str(item): i} for i, item in enumerate(cleaning_sequence, 1)]}
-            if self.capability.cleaning_sequence_v2
+            if cleaning_sequence_v2
             else {"cleanOrder": cleaning_sequence}
         )
 
@@ -7174,6 +7290,7 @@ class DreameVacuumDevice:
                     raise InvalidActionException("Failed to select map")
 
             material_info, carpet_type = self._map_manager.editor.set_floor_material(material, map_id)
+
             data = {"nsm": material_info, "mapid": map_id}
             if carpet_type:
                 data["carpetmaterial"] = {"roomcpt": carpet_type}
@@ -7295,7 +7412,11 @@ class DreameVacuumDevice:
             cleaning_sequence = self._map_manager.editor.set_segment_order(segment_id, order)
             return self.update_map_data_async(
                 {"cleanareaorder": [{str(item): i} for i, item in enumerate(cleaning_sequence, 1)]}
-                if self.capability.cleaning_sequence_v2
+                if (
+                    bool(self.status.selected_map.version > 1)
+                    if self.status.selected_map
+                    else self.capability.cleaning_sequence_v2
+                )
                 else {"cleanOrder": cleaning_sequence}
             )
 
@@ -7630,13 +7751,20 @@ class DreameVacuumDeviceStatus:
     @property
     def battery_level(self) -> int:
         """Return battery level of the device."""
-        return self._get_property(DreameVacuumProperty.BATTERY_LEVEL)
+        battery_level = self._get_property(DreameVacuumProperty.BATTERY_LEVEL)
+        return int(battery_level) if battery_level else 100
 
     @property
     def battery_charge_level(self) -> int:
         """Return max battery charge level of the device."""
         battery_charge_level = self._get_property(DreameVacuumProperty.BATTERY_CHARGE_LEVEL)
-        return battery_charge_level if battery_charge_level else 100
+        return int(battery_charge_level) if battery_charge_level else 100
+
+    @property
+    def volume(self) -> int:
+        """Return sound volume level of the device."""
+        volume = self._get_property(DreameVacuumProperty.VOLUME)
+        return int(volume) if volume else 0
 
     @property
     def suction_level(self) -> DreameVacuumSuctionLevel:
@@ -7798,6 +7926,8 @@ class DreameVacuumDeviceStatus:
         """Return auto empty status of the device."""
         value = self._get_property(DreameVacuumProperty.AUTO_EMPTY_STATUS)
         if value is not None and value in DreameVacuumAutoEmptyStatus._value2member_map_:
+            if value is DreameVacuumAutoEmptyStatus.ACTIVE.value and not self.docked:
+                return DreameVacuumAutoEmptyStatus.IDLE
             return DreameVacuumAutoEmptyStatus(value)
         if value is not None:
             _LOGGER.debug("AUTO_EMPTY_STATUS not supported: %s", value)
@@ -8118,6 +8248,18 @@ class DreameVacuumDeviceStatus:
             if value is not None and value < 0:
                 value = 0
             if value is not None and value in DreameVacuumCleaningRoute._value2member_map_:
+                if (
+                    not self._capability.cleaning_route_v2
+                    and (
+                        value == DreameVacuumCleaningRoute.DEEP.value
+                        or value == DreameVacuumCleaningRoute.INTENSIVE.value
+                    )
+                    and (
+                        self.cleaning_mode == DreameVacuumCleaningMode.SWEEPING
+                        or self.cleaning_mode == DreameVacuumCleaningMode.SWEEPING_AND_MOPPING
+                    )
+                ):
+                    return DreameVacuumCleaningRoute.STANDARD
                 return DreameVacuumCleaningRoute(value)
             if value is not None:
                 _LOGGER.debug("CLEANING_ROUTE not supported: %s", value)
@@ -8932,22 +9074,45 @@ class DreameVacuumDeviceStatus:
         """Returns true when device has an active paused task."""
         status = self.status
         task_type = self.task_type
+        task_status = self.task_status
         return bool(
             self.cleaning_paused
             or self.cruising_paused
             or (
                 self.started
                 and (
-                    status is DreameVacuumStatus.PAUSED
+                    self.state is DreameVacuumState.PAUSED
                     or status is DreameVacuumStatus.SLEEPING
                     or status is DreameVacuumStatus.IDLE
                     or status is DreameVacuumStatus.STANDBY
                     or status is DreameVacuumStatus.REMOTE_CONTROL
                     or (
                         status is DreameVacuumStatus.ERROR
-                        and self.state is DreameVacuumState.ERROR
+                        and self._get_property(DreameVacuumProperty.STATE) == DreameVacuumState.ERROR.value
                         and not self.washing_paused
                     )
+                    or task_status is DreameVacuumTaskStatus.AUTO_CLEANING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.ZONE_CLEANING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.SEGMENT_CLEANING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.SPOT_CLEANING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.MAP_CLEANING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.DOCKING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.MOPPING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.SEGMENT_MOPPING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.ZONE_MOPPING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.AUTO_MOPPING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.AUTO_DOCKING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.SEGMENT_DOCKING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.ZONE_DOCKING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.CRUISING_PATH_PAUSED
+                    or task_status is DreameVacuumTaskStatus.CRUISING_POINT_PAUSED
+                    or task_status is DreameVacuumTaskStatus.SUMMON_CLEAN_PAUSED
+                    or task_status is DreameVacuumTaskStatus.AUTO_CLEANING_WASHING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.AREA_CLEANING_WASHING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.CUSTOM_CLEANING_WASHING_PAUSED
+                    or task_status is DreameVacuumTaskStatus.PICKING_UP_ITEM_PAUSED
+                    or task_status is DreameVacuumTaskStatus.REMOTE_PICKUP_PAUSED
+                    or task_status is DreameVacuumTaskStatus.PLACING_ITEM_PAUSED
                 )
             )
             or (
@@ -9302,6 +9467,11 @@ class DreameVacuumDeviceStatus:
         )
 
     @property
+    def returning_to_empty(self) -> bool:
+        """Returns true when the device returning to auto empty."""
+        return bool(self._capability.auto_emptying and (self.state is DreameVacuumState.RETURNING_AUTO_EMPTY))
+
+    @property
     def maximum_maps(self) -> int:
         return (
             1 if not self._capability.lidar_navigation or not self.multi_map else 4 if self._capability.wifi_map else 3
@@ -9458,7 +9628,7 @@ class DreameVacuumDeviceStatus:
         if self._capability.off_peak_charging:
             return bool(
                 self._capability.off_peak_charging
-                and len(self.off_peak_charging_config)
+                and self.off_peak_charging_config
                 and self.off_peak_charging_config.get("enable")
             )
 
@@ -9466,21 +9636,13 @@ class DreameVacuumDeviceStatus:
     def off_peak_charging_start(self) -> str | None:
         """Returns Off-Peak charging start time."""
         if self._capability.off_peak_charging:
-            return (
-                self.off_peak_charging_config.get("startTime")
-                if self.off_peak_charging_config and len(self.off_peak_charging_config)
-                else "22:00"
-            )
+            return self.off_peak_charging_config.get("startTime") if self.off_peak_charging_config else "22:00"
 
     @property
     def off_peak_charging_end(self) -> str | None:
         """Returns Off-Peak charging end time."""
         if self._capability.off_peak_charging:
-            return (
-                self.off_peak_charging_config.get("endTime")
-                if self.off_peak_charging_config and len(self.off_peak_charging_config)
-                else "08:00"
-            )
+            return self.off_peak_charging_config.get("endTime") if self.off_peak_charging_config else "08:00"
 
     @property
     def auto_water_refilling_enabled(self) -> bool:
@@ -9495,7 +9657,6 @@ class DreameVacuumDeviceStatus:
             and self.auto_water_refilling_enabled
             and not self.self_repairing
             and not self.draining
-            # and self.docked
             and not self.drying
             and not self.washing
             and not self.washing_paused
@@ -9763,26 +9924,21 @@ class DreameVacuumDeviceStatus:
     def drying_left_time(self) -> int:
         """Return drying left time calculated from progress."""
         progress = self._get_property(DreameVacuumProperty.DRYING_PROGRESS)
-        if progress:
-            return int(
-                (1 - (progress / 100))
-                * (
-                    int(self._capability.silent_drying_time)
-                    if self.silent_drying
-                    else (
-                        self._drying_time
-                        if self._drying_time
-                        else self._get_property(DreameVacuumProperty.DRYING_TIME)
-                    )
-                )
-                * 60
-            )
+        if progress is not None and progress >= 0 and self.drying:
+            drying_time = (
+                int(self._capability.silent_drying_time)
+                if self.silent_drying
+                else (self._drying_time if self._drying_time else self._get_property(DreameVacuumProperty.DRYING_TIME))
+            ) * 60
+            if progress == 0:
+                return drying_time
+            return int((1 - (progress / 100)) * drying_time)
         return 0
 
     @property
     def custom_order(self) -> bool:
         """Returns true when custom cleaning sequence is set."""
-        if self._capability.cleaning_sequence_v2:
+        if bool(self.selected_map.version > 1) if self.selected_map else self._capability.cleaning_sequence_v2:
             return True
         if self.cleangenius_cleaning and not self._capability.cleangenius_mode:
             return False
@@ -9888,7 +10044,7 @@ class DreameVacuumDeviceStatus:
         """Return the segments of current map"""
         current_map = self.current_map
         if current_map and current_map.segments and not current_map.empty_map:
-            return {k: v for k, v in current_map.segments.items() if v.visibility != False}
+            return {k: v for k, v in current_map.segments.items() if v.visibility != False and v.unmapped == False}
         return {}
 
     @property
@@ -10016,8 +10172,6 @@ class DreameVacuumDeviceStatus:
             (DreameVacuumProperty.NATION_MATCHED, False),
             (DreameVacuumProperty.TOTAL_RUNTIME, False),
             (DreameVacuumProperty.TOTAL_CRUISE_TIME, False),
-            (DreameVacuumProperty.CLEANING_PROGRESS, False),
-            (DreameVacuumProperty.INTELLIGENT_RECOGNITION, True),
             (DreameVacuumProperty.MULTI_FLOOR_MAP, True),
             (DreameVacuumProperty.SCHEDULED_CLEAN, False),
             (DreameVacuumProperty.VOICE_ASSISTANT, True),
@@ -10037,6 +10191,12 @@ class DreameVacuumDeviceStatus:
             (DreameVacuumProperty.BATTERY_CHARGE_LEVEL, False),
             (DreameVacuumProperty.RING_LIGHT_ALWAYS_ON, True),
         ]
+
+        if self._capability.cleaning_progress:
+            properties.append((DreameVacuumProperty.CLEANING_PROGRESS, False))
+
+        if self._capability.intelligent_recognition:
+            properties.append((DreameVacuumProperty.INTELLIGENT_RECOGNITION, True))
 
         if self._capability.deodorizer:
             properties.append((DreameVacuumProperty.DEODORIZER_LEFT, False))
@@ -10204,7 +10364,6 @@ class DreameVacuumDeviceStatus:
                     (DreameVacuumAutoSwitchProperty.AUTO_DRYING, True),
                     (DreameVacuumAutoSwitchProperty.COLLISION_AVOIDANCE, True),
                     (DreameVacuumAutoSwitchProperty.FILL_LIGHT, True),
-                    (DreameVacuumAutoSwitchProperty.STREAMING_VOICE_PROMPT, True),
                 ]
             )
 
@@ -10216,6 +10375,7 @@ class DreameVacuumDeviceStatus:
                     (DreameVacuumAIProperty.AI_OBSTACLE_PICTURE, True),
                     (DreameVacuumAIProperty.AI_OBSTACLE_IMAGE_UPLOAD, True),
                     (DreameVacuumAIProperty.PET_FOCUSED_DETECTION, True),
+                    (DreameVacuumAutoSwitchProperty.STREAMING_VOICE_PROMPT, True),
                 ]
             )
 
@@ -10224,6 +10384,9 @@ class DreameVacuumDeviceStatus:
 
         if self._capability.self_wash_base and self._capability.hot_washing and not self._capability.smart_mop_washing:
             properties.append((DreameVacuumAutoSwitchProperty.HOT_WASHING, True))
+
+        if self._capability.pet_furniture:
+            properties.append((DreameVacuumAutoSwitchProperty.PET_FOCUSED_CLEANING, True))
 
         if self._capability.max_suction_power:
             properties.append((DreameVacuumAutoSwitchProperty.MAX_SUCTION_POWER, True))
@@ -10656,6 +10819,10 @@ class DreameVacuumDeviceStatus:
         if self._capability.wetness_level:
             attributes[ATTR_WETNESS_LEVEL] = self.wetness_level
 
+        if self._map_manager:
+            map_list = self._map_manager.map_list
+            attributes[ATTR_MAP_COUNT] = len(self._map_manager.map_list) if map_list is not None else 0
+
         if self.map_list:
             attributes[ATTR_ACTIVE_SEGMENTS] = self.active_segments
             if self._capability.lidar_navigation:
@@ -10704,7 +10871,10 @@ class DreameVacuumDeviceStatus:
         attributes[ATTR_FIRMWARE_VERSION] = str(self._device.info.version)
         attributes[ATTR_AP] = self._device.info.ap
         attributes[ATTR_LAST_UPDATED_TIME] = self._last_updated_time
-        attributes[ATTR_CAPABILITIES] = self._capability.list
+        capability_list = self._capability.list
+        if self._capability.walls and "walls" not in capability_list:
+            capability_list.append("walls")
+        attributes[ATTR_CAPABILITIES] = capability_list
         return attributes
 
     def consumable_life_warning_description(self, consumable_property) -> str:
@@ -10718,11 +10888,12 @@ class DreameVacuumDeviceStatus:
 
     def segment_order_list(self, segment) -> list[int] | None:
         order = []
-        if self.current_segments:
+        segments = self.segments if self._capability.cleaning_sequence_v2 else self.current_segments
+        if segments:
             order = [
                 v.order
                 for k, v in sorted(
-                    self.current_segments.items(),
+                    segments.items(),
                     key=lambda s: s[1].order if s[1].order != None else 0,
                 )
                 if v.order

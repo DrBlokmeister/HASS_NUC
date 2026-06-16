@@ -8,6 +8,7 @@ from .dreame import DreameVacuumProperty, DreameVacuumAutoSwitchProperty, Dreame
 from .dreame.const import (
     ATTR_ROOMS,
     ATTR_MAPS,
+    ATTR_MAP_COUNT,
     ATTR_CURRENT_SEGMENT,
     ATTR_SELECTED_MAP,
     ATTR_SELECTED_MAP_ID,
@@ -90,6 +91,7 @@ CAMERA_UNRECORDED_ATTRIBUTES = {
     "entity_picture",
     ATTR_ROOMS,
     ATTR_MAPS,
+    ATTR_MAP_COUNT,
     ATTR_CALIBRATION,
     ATTR_SELECTED,
     ATTR_CLEANING_HISTORY_PICTURE,
@@ -166,6 +168,7 @@ VACUUM_UNRECORDED_ATTRIBUTES = {
     ATTR_FAULTS,
     ATTR_HAS_ERROR,
     ATTR_MAPS,
+    ATTR_MAP_COUNT,
     "fan_speed_list",
     "fan_speed",
     "battery_level",

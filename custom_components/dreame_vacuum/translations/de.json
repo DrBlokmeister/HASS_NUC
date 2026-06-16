@@ -13,7 +13,10 @@
       "wrong_captcha": "Falscher Captcha.",
       "credentials_incomplete": "Anmeldedaten unvollständig, bitte gib Benutzername, Passwort und das Land ein",
       "login_error": "Anmeldung nicht möglich, bitte die Anmeldedaten überprüfen.",
-      "no_devices": "In diesem Konto wurden für das ausgewählte Land keine unterstützten Geräte gefunden.{devices}"
+      "no_devices": "In diesem Konto wurden für das ausgewählte Land keine unterstützten Geräte gefunden.{devices}",
+      "2fa_send_failed": "Senden des Bestätigungscodes fehlgeschlagen. Bitte versuche es erneut.",
+      "2fa_limit_reached": "Das tägliche Limit für den Versand von Bestätigungscodes wurde erreicht. Bitte versuchen Sie es morgen erneut.",
+      "2fa_cooldown_active": "Zu viele aufeinanderfolgende Anfragen. Bitte warten Sie einige Minuten, bevor Sie es erneut versuchen."
     },
     "step": {
       "user": {
@@ -42,11 +45,11 @@
         "data": {
           "verification_code": "Zwei-Faktor-Authentifizierungscode"
         },
-        "description": "## Dieser Login erfordert eine Sicherheitsüberprüfung\nBitte öffnen Sie die Verifizierungsseite, um den mobilen E-Mail-Verifizierungscode zu senden. Nachdem Sie den Verifizierungscode erhalten haben, verifizieren Sie ihn nicht auf der Webseite. Kehren Sie zu HomeAssistant zurück und geben Sie ihn in das untenstehende Eingabefeld ein.\n### [Verifizierungscode senden]({url})"
+        "description": "## Sicherheitsüberprüfung erforderlich\nEin Bestätigungscode wurde an {dest} gesendet. Bitte geben Sie den Code unten ein."
       },
       "captcha": {
         "data": {
-          "code": "Code"
+          "code": "Bestätigungscode"
         },
         "description": "## Captcha-Überprüfung ist erforderlich.\n![captcha](data:image/jpeg;base64,{img})"
       },
@@ -88,7 +91,7 @@
       },
       "options": {
         "data": {
-          "name": "Name",
+          "name": "Bezeichnung",
           "color_scheme": "Farbschema der Karte",
           "icon_set": "Kartensymbol gesetzt",
           "notify": "Benachrichtigung",
@@ -209,7 +212,7 @@
         "name": "Wischpad-Schwingen",
         "state": {
           "off": "Aus",
-          "auto": "Auto",
+          "auto": "Automatisch",
           "daily": "Täglich",
           "weekly": "Wöchentlich"
         }
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Bearbeitungstyp",
         "state": {
+          "door": "Türen bearbeiten",
           "split": "Zimmer teilen",
           "merge": "Zimmer zusammenlegen",
           "visibility": "Zimmersichtbarkeit",
           "material": "Bodenmaterial",
-          "type": "Zimmername"
+          "type": "Zimmername",
+          "wall": "Wände bearbeiten"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Mopp wird gewechselt",
           "changing_mop_paused": "Moppwechsel pausiert",
           "floor_maintaining": "Bodenpflege",
-          "floor_maintaining_paused": "Bodenpflege pausiert"
+          "floor_maintaining_paused": "Bodenpflege pausiert",
+          "remote_pickup": "Fernabholung",
+          "arranging_items": "GegenstÃ¤nde anordnen",
+          "pet_guarding": "Haustier-Bewachung",
+          "pet_guarding_paused": "Haustier-Bewachung pausiert",
+          "installing_mop": "Wischmopp wird installiert",
+          "uninstalling_mop": "Wischmopp wird entfernt",
+          "intelligent_recharging": "Intelligentes Wiederaufladen",
+          "assisted_cleaning": "Unterstützte Reinigung",
+          "entering_dock": "Einfahren in die Station",
+          "leaving_dock": "Verlassen der Station",
+          "navigating_to_climber": "Navigieren zum Climber",
+          "docking_to_climber": "Andocken am Climber",
+          "climber_docked": "Climber angedockt",
+          "climber_navigating": "Climber navigiert",
+          "climbing_stairs": "Treppensteigen",
+          "climbing_stairs_completed": "Treppensteigen abgeschlossen",
+          "climber_at_dock": "Climber an der Station",
+          "climber_leaving_dock": "Climber verlÃ¤sst die Station"
         }
       },
       "status": {
@@ -652,13 +675,13 @@
           "fct": "FCT",
           "wifi_set": "WiFi einstellen",
           "power_off": "Power aus",
-          "factory": "Factory",
+          "factory": "Werkseinstellung",
           "error": "Fehler",
           "remote_control": "Ferngesteuert",
           "sleeping": "Schlafend",
           "self_test": "Selbsttest",
           "factory_test": "Werkstest",
-          "standby": "Standby",
+          "standby": "Bereitschaft",
           "room_cleaning": "Raumreinigung",
           "zone_cleaning": "Zonenreinigung",
           "fast_mapping": "Schnelles Mapping",
@@ -667,7 +690,11 @@
           "summon_clean": "Zur Reinigung rufen",
           "shortcut": "Verknüpfung",
           "person_follow": "Person folgen",
-          "water_check": "Wasserkontrolle"
+          "water_check": "Wasserkontrolle",
+          "pet_guarding": "Haustier-Bewachung",
+          "auto_arrangement": "Automatische Anordnung",
+          "smart_arrangement": "Intelligente Anordnung",
+          "zoned_arrangement": "Zonale Anordnung"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Haustierfindung",
           "auto_cleaning_washing_paused": "Automatisch Reinigung waschen im Pause",
           "area_cleaning_washing_paused": "Reinigungsreinigung waschen pausieren",
-          "custom_cleaning_washing_paused": "Custom Cleaning Wäsche pausiert"
+          "custom_cleaning_washing_paused": "Individuelle Reinigung/Wäsche pausiert",
+          "picking_up_item": "Gegenstand aufheben",
+          "picking_up_item_paused": "Aufheben pausiert",
+          "picking_up_item_success": "Gegenstand erfolgreich aufgehoben",
+          "remote_pickup_initializing": "Fernaufnahme initialisieren",
+          "remote_pickup_identifing": "Fernaufnahme identifizieren",
+          "manual_remote_pickup": "Manuelle Fernaufnahme",
+          "automatic_remote_pickup": "Automatische Fernaufnahme",
+          "remote_pickup_in_progress": "Fernaufnahme lÃ¤uft",
+          "remote_pickup_paused": "Fernaufnahme pausiert",
+          "placing_item": "Gegenstand platzieren",
+          "placing_item_paused": "Platzieren pausiert"
         }
       },
       "water_tank": {
@@ -736,7 +774,7 @@
         }
       },
       "auto_empty_status": {
-        "name": "Auto-Leer-Status",
+        "name": "Automatischer Leerungsstatus",
         "state": {
           "unknown": "Unbekannt",
           "idle": "Inaktiv",
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Der Schmutzwassertank des Roboters ist voll.",
           "mop_not_installed": "Mopp nicht installiert.",
           "fluffing_roller_error": "Fehler bei der Auflockerungsrolle.",
-          "blocked_by_obstacle": "Roboter durch Hindernis blockiert."
+          "blocked_by_obstacle": "Roboter durch Hindernis blockiert.",
+          "robotic_arm_stopped": "Roboterarm gestoppt",
+          "drainage_outlet_filter": "Abflussfilter verstopft",
+          "main_wheels_error": "Fehler der HauptrÃ¤der"
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Moppwechsel pausiert",
           "floor_maintaining": "Bodenpflege",
           "floor_maintaining_paused": "Bodenpflege pausiert",
-          "wood_floor_maintaining": "Holzbodenpflege"
+          "arranging_items": "GegenstÃ¤nde anordnen",
+          "arranging_items_paused": "Anordnen pausiert",
+          "intensive_hair_cleaning": "Intensive Haarreinigung",
+          "accessory_handling": "Zubehör-Handhabung",
+          "increased_drum_speed_cleaning": "Reinigung mit erhöhter Trommelgeschwindigkeit",
+          "pressurized_cleaning": "Druckreinigung",
+          "steam_cleaning": "Dampfreinigung",
+          "steam_cleaning_paused": "Dampfreinigung pausiert"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Nicht reinigbarer Fleck übersprungen",
           "cleaned_dried_stain": "Gereinigter getrockneter Fleck",
           "cleaned_large_particles": "Gereinigte große Partikel",
-          "pen": "Stift"
+          "hair": "Haare",
+          "paper": "Papier",
+          "cleaned_hair": "Haare gereinigt",
+          "sundry": "Sonstiges"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Haustierfokussierte Erkennung"
       },
+      "pet_focused_cleaning": {
+        "name": "Haustierfokussierte Reinigung"
+      },
       "ai_obstacle_picture": {
         "name": "Hindernisbilder"
       },
@@ -1473,7 +1527,7 @@
         "name": "Zimmername"
       },
       "shortcut_name": {
-        "name": "Shortcut-Name"
+        "name": "Shortcut-Bezeichnung"
       }
     }
   },
@@ -1520,17 +1574,18 @@
         "impassable_threshold": "Unpassierbare Schwelle",
         "job_details": "Auftragsdetails",
         "keep_disabled": "Deaktiviert lassen",
+        "map_display": "Kartenanzeige",
         "map_management": "Kartenverwaltung",
         "new_dnd": "Neue DnD-Aufgabe",
         "new_schedule": "Zeitplan erstellen",
-        "new_schortcut": "Shortcut erstellen",
+        "new_shortcut": "Neue Shortcut-Aufgabe",
         "next_job": "Nächster Auftrag",
         "no_go": "Sperrzone",
         "no_mop": "Nicht wischen",
         "objects": "Objekte",
         "override": "Überschreiben",
         "passable_threshold": "Passierbare Schwelle",
-        "pause": "Pause",
+        "pause": "Pausieren",
         "pause_washing": "Waschen pausieren",
         "previous_job": "Vorheriger Auftrag",
         "ramp": "Rampe",
@@ -1549,15 +1604,15 @@
         "round_carpet": "Runder Teppich",
         "save": "Speichern",
         "select_map": "Karte wählen",
-        "shortcuts": "Shortcuts",
+        "shortcuts": "Kurzbefehle",
         "square_carpet": "Eckiger Teppich",
-        "start": "Start",
+        "start": "Starten",
         "start_auto_empty": "Leeren starten",
         "start_bag_drying": "Beuteltrocknung st.",
         "start_drying": "Trocknen starten",
         "start_task": "Aufgabe starten",
         "start_washing": "Waschen starten",
-        "stop": "Stop",
+        "stop": "Stoppen",
         "stop_bag_drying": "Beuteltrocknung stop",
         "stop_drying": "Trocknen stop",
         "understood": "Ok",
@@ -1585,7 +1640,7 @@
         "card_object_saved_notification": "Speicher-Benachricht.",
         "card_object_shortcuts": "Kurzbefehle",
         "card_object_state": "Zustand",
-        "card_object_status": "Status",
+        "card_object_status": "Kartenstatus",
         "card_object_task_type": "Aufgabentyp",
         "card_object_title": "Titel",
         "card_object_warning_notification": "Warnbenachricht.",
@@ -1603,10 +1658,11 @@
         "disable_haptic": "Hapt. Feedback aus",
         "editable_objects": "Bearbeitbare Objekte",
         "font_size": "Schriftgröße",
+        "full_height": "Volle Höhe",
         "grid_size": "Rastergröße",
         "height": "Höhe",
-        "hidden_card_objects": "Verst. Kartenobjekte",
-        "hidden_objects": "Verstiekte Objekte",
+        "hidden_card_objects": "Versteckte Kartenobjekte",
+        "hidden_objects": "Versteckte Objekte",
         "hide_map_info": "Karteninfo ausblenden",
         "icon_set": "Ionenset",
         "icon_set_dreame": "Dreame",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuelle Wand",
         "map_color_wall": "Wand",
         "map_config": "Karten-Einst.",
+        "map_display": "Kartenanzeige",
+        "map_display_floor_plan": "Grundriss",
+        "map_display_floor_plan_only": "Nur Grundriss",
+        "map_display_floor_plan_without_texture": "Grundriss ohne Textur",
+        "map_display_standard": "Standard",
         "map_object_active_area": "Aktiver Bereich",
         "map_object_active_cruise_point": "Aktiver Fahrtpunkt",
         "map_object_active_point": "Aktiver Punkt",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Individuelle Reinig.",
         "map_object_deleted_carpet": "Gelöschter Teppich",
         "map_object_detected_carpet": "Erkannter Teppich",
+        "map_object_door": "Tür",
         "map_object_floor": "Boden",
         "map_object_floor_material": "Bodenmaterial",
         "map_object_furniture": "Möbel",
@@ -1688,8 +1750,8 @@
         "map_object_material": "Bodenmaterial",
         "map_object_mop_path": "Wischpfad",
         "map_object_mop_type": "Wischertyp",
-        "map_object_name": "Name",
-        "map_object_name_background": "Namenshintergrund",
+        "map_object_name": "Bezeichnung",
+        "map_object_name_background": "Hintergrund der Bezeichnung",
         "map_object_no_go": "Sperrzone",
         "map_object_no_mop": "Wischsperre",
         "map_object_object_option": "Objektoption",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Selbstpositionierung fehlgeschlagen!",
         "replace_map": "Karte ersetzen?",
         "reset_usage": "Statistik zurücksetzen?",
+        "reset_walls": "Wände zurücksetzen?",
         "restore_map": "%name% wiederherstellen?",
         "resume_cleaning": "Der Roboter setzt unvollständige Reinigungsaufgaben automatisch fort, nachdem der Akku auf 80 % aufgeladen wurde.",
         "resume_cleaning_not_performed": "Der Roboter setzt die Reinigung nach Ablauf der Nicht-stören-Zeit fort.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Auftrag wird gestoppt!",
         "unsaved_changes_present": "Nicht gesp. Änderungen gehen verloren!",
         "unsupported_browser": "Browser nicht unterstützt!",
-        "usage_will_reset": "Verschleiß von %name% wird zurückgas."
+        "usage_will_reset": "Verschleiß von %name% wird zurückgas.",
+        "walls_will_be_reset": "Wände werden an ihrem ursprünglich kartierten Standort wiederhergestellt!"
       }
     },
     "frontend_title": {
@@ -1873,13 +1937,14 @@
         "shortcut": "Kurzbefehl",
         "shortcut_list": "Kurzbefehle",
         "shortcut_map": "Kurzbefehl-Karte",
-        "shortcut_name_placeholder": "Shortcut %index%",
+        "shortcut_name_placeholder": "Verknüpfung %index%",
         "shortcut_task": "Kurzbefehl-Aufgabe",
         "task": "Aufgabe %index%",
         "task_placeholder": "Aufgabe %index%",
         "time_left": "%time% verbleibend",
         "unavailable": "Nicht verfügbar",
         "used_water_tank": "Schmutzwassertank",
+        "wall": "Wände",
         "wifi_map": "WLAN-Karte"
       }
     }
@@ -2073,7 +2138,7 @@
         },
         "map_name": {
           "name": "Kartenname",
-          "description": "Neuer Name der Karte."
+          "description": "Neue Bezeichnung der Karte."
         }
       }
     },
@@ -2138,7 +2203,7 @@
           "description": "ID der Karte."
         },
         "segment": {
-          "name": "Segment",
+          "name": "Abschnitt",
           "description": "Raum-ID."
         },
         "line": {
@@ -2157,7 +2222,7 @@
         },
         "segment_name": {
           "name": "Segmentname",
-          "description": "Neuer Name des Segments"
+          "description": "Neue Bezeichnung des Segments"
         }
       }
     },
@@ -2261,7 +2326,7 @@
         },
         "shortcut_name": {
           "name": "Verknüpfungsname",
-          "description": "Neuer Name der Verknüpfung."
+          "description": "Neue Bezeichnung der Verknüpfung."
         }
       }
     },

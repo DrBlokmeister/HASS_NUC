@@ -356,7 +356,7 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                 elif self.protocol.cloud.verification_url is not None:
                     return await self.async_step_2fa()
                 elif self.protocol.cloud.logged_in is False:
-                    errors["base"] = "login_error"
+                    errors["base"] = self.protocol.cloud.login_error or "login_error"
                 elif self.protocol.cloud.logged_in:
                     return await self.async_step_devices()
             else:
@@ -391,7 +391,7 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                     return await self.async_step_mi(user_input=None, error="login_error")
                 return await self.async_step_devices()
             else:
-                errors["base"] = "2fa_failed"
+                errors["base"] = self.protocol.cloud.login_error or "2fa_failed"
         else:
             errors = {}
 
@@ -402,7 +402,7 @@ class DreameVacuumFlowHandler(ConfigFlow, domain=DOMAIN):
                     vol.Required("verification_code"): str,
                 }
             ),
-            description_placeholders={"url": self.protocol.cloud.verification_url},
+            description_placeholders={"dest": self.protocol.cloud.verification_dest},
             errors=errors,
         )
 

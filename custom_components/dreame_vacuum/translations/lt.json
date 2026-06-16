@@ -13,7 +13,10 @@
       "wrong_captcha": "Neteisingas vaizdo kodas.",
       "credentials_incomplete": "Kredencialai neišsamūs, prašome įvesti naudotojo vardą, slaptažodį ir šalį.",
       "login_error": "Nepavyko prisijungti, patikrinkite kredencialus.",
-      "no_devices": "Šioje paskyroje pasirinktoje šalyje nerasta palaikomų įrenginių.{devices}"
+      "no_devices": "Šioje paskyroje pasirinktoje šalyje nerasta palaikomų įrenginių.{devices}",
+      "2fa_send_failed": "Nepavyko išsiûsti patvirtinimo kodo. Bandykite dar kartą.",
+      "2fa_limit_reached": "Viršytas dienos patvirtinimo kodų siuntimo limitas. Bandykite dar kartą rytoj.",
+      "2fa_cooldown_active": "Per daug iš eilės einančių užklausų. Prieš bandydami dar kartą, palaukite kelias minutes."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Dviejų veiksmų patvirtinimo kodas"
         },
-        "description": "## Šiam prisijungimui reikia saugos patvirtinimo\nAtidarykite patvirtinimo puslapį, kad išsiųstumėte mobiliojo telefono / el. pašto patvirtinimo kodą. Gavę patvirtinimo kodą, netikrinkite jo internetiniame puslapyje. Grįžkite į „HomeAssistant“ ir įveskite jį žemiau esančiame įvesties laukelyje.\n### [Siųsti patvirtinimo kodą]({url})"
+        "description": "## Reikalingas saugos patvirtinimas\nPatvirtinimo kodas išsiųstas adresu / numeriu {dest}. Įveskite kodą žemiau."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Redagavimo tipas",
         "state": {
+          "door": "Redaguoti duris",
           "split": "Padalinti kambarius",
           "merge": "Sujungti kambarius",
           "visibility": "Kambario matomumas",
           "material": "Grindų danga",
-          "type": "Kambario pavadinimas"
+          "type": "Kambario pavadinimas",
+          "wall": "Redaguoti sienas"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Keičiama šluostė",
           "changing_mop_paused": "Šluostės keitimas pristabdytas",
           "floor_maintaining": "Grindų priežiūra",
-          "floor_maintaining_paused": "Grindų priežiūra pristabdyta"
+          "floor_maintaining_paused": "Grindų priežiūra pristabdyta",
+          "remote_pickup": "Nuotolinis paėmimas",
+          "arranging_items": "Daiktų tvarkymas",
+          "pet_guarding": "Naminių gyvūnų apsauga",
+          "pet_guarding_paused": "Naminių gyvūnų apsauga sustabdyta",
+          "installing_mop": "Mopo montavimas",
+          "uninstalling_mop": "Mopo nuėmimas",
+          "intelligent_recharging": "Išmanusis įkrovimas",
+          "assisted_cleaning": "Asistuotas valymas",
+          "entering_dock": "Įvažiavimas į stotelę",
+          "leaving_dock": "Išvažiavimas iš stotelės",
+          "navigating_to_climber": "Navigacija į kopečias",
+          "docking_to_climber": "Jungimasis prie kopečių",
+          "climber_docked": "Kopečios prijungtos",
+          "climber_navigating": "Kopečios naviguoja",
+          "climbing_stairs": "Lipimas laiptais",
+          "climbing_stairs_completed": "Lipimas laiptais baigtas",
+          "climber_at_dock": "Kopečios stotelėje",
+          "climber_leaving_dock": "Kopečios išvažiuoja iš stotelės"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Iškviesti išvalyti",
           "shortcut": "Nuoroda",
           "person_follow": "Asmens sekimas",
-          "water_check": "Vandens tikrinimas"
+          "water_check": "Vandens tikrinimas",
+          "pet_guarding": "Naminių gyvūnų apsauga",
+          "auto_arrangement": "Automatinis tvarkymas",
+          "smart_arrangement": "Išmanusis tvarkymas",
+          "zoned_arrangement": "Zoninis tvarkymas"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Gyvūno radimas",
           "auto_cleaning_washing_paused": "Automatinio valymo plovimas pristabdytas",
           "area_cleaning_washing_paused": "Zoninio valymo plovimas pristabdytas",
-          "custom_cleaning_washing_paused": "Pasirinktinio valymo plovimas pristabdytas"
+          "custom_cleaning_washing_paused": "Pasirinktinio valymo plovimas pristabdytas",
+          "picking_up_item": "Daikto paėmimas",
+          "picking_up_item_paused": "Daikto paėmimas sustabdytas",
+          "picking_up_item_success": "Daiktas sėkmingai paimtas",
+          "remote_pickup_initializing": "Nuotolinio paėmimo inicializacija",
+          "remote_pickup_identifing": "Nuotolinio paėmimo identifikavimas",
+          "manual_remote_pickup": "Rankinis nuotolinis paėmimas",
+          "automatic_remote_pickup": "Automatinis nuotolinis paėmimas",
+          "remote_pickup_in_progress": "Vyksta nuotolinis paėmimas",
+          "remote_pickup_paused": "Nuotolinis paėmimas sustabdytas",
+          "placing_item": "Daikto padėjimas",
+          "placing_item_paused": "Daikto padėjimas sustabdytas"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Roboto panaudoto vandens dėžė pilna.",
           "mop_not_installed": "Šluostė neįdėta.",
           "fluffing_roller_error": "Pūkų ritinėlio klaida.",
-          "blocked_by_obstacle": "Robotas užblokuotas kliūties."
+          "blocked_by_obstacle": "Robotas užblokuotas kliūties.",
+          "robotic_arm_stopped": "Robotizuota ranka sustojo.",
+          "drainage_outlet_filter": "Roboto nuotekų išleidimo filtras užsikimšęs.",
+          "main_wheels_error": "Pagrindinių ratų klaida."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Šluostės keitimas pristabdytas",
           "floor_maintaining": "Grindų priežiūra",
           "floor_maintaining_paused": "Grindų priežiūra pristabdyta",
-          "wood_floor_maintaining": "Medinių grindų priežiūra"
+          "arranging_items": "Daiktų tvarkymas",
+          "arranging_items_paused": "Daiktų tvarkymas sustabdytas",
+          "intensive_hair_cleaning": "Intensyvus plaukų valymas",
+          "accessory_handling": "Priedų tvarkymas",
+          "increased_drum_speed_cleaning": "Valymas padidintu būgno greičiu",
+          "pressurized_cleaning": "Slėginis valymas",
+          "steam_cleaning": "Garų valymas",
+          "steam_cleaning_paused": "Garų valymas sustabdytas"
         }
       },
       "dust_bag_drying_status": {
@@ -1063,7 +1111,7 @@
           "other": "Kitas",
           "default": "Numatytasis",
           "customized": "Pasirinktinis",
-          "cleangenius": "Cleangenius",
+          "cleangenius": "CleanGenius",
           "water_stain": "Vandens dėmė",
           "unknown": "Nežinoma"
         }
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Praleista nevaloma dėmė",
           "cleaned_dried_stain": "Išvalyta išdžiūvusi dėmė",
           "cleaned_large_particles": "Išvalytos didelės dalelės",
-          "pen": "Rašiklis"
+          "hair": "Plaukai",
+          "paper": "Popierius",
+          "cleaned_hair": "Išvalyti plaukai",
+          "sundry": "Įvairūs"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Gyvūnams skirtas aptikimas"
       },
+      "pet_focused_cleaning": {
+        "name": "Gyvūnams skirtas valymas"
+      },
       "ai_obstacle_picture": {
         "name": "Kliūčių nuotraukos"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Nepervažiuojamas slenkstis",
         "job_details": "Užduoties informacija",
         "keep_disabled": "Palikti išjungtą",
+        "map_display": "Žemėlapio rodymas",
         "map_management": "Žemėlapių valdymas",
         "new_dnd": "Nauja DnD užduotis",
         "new_schedule": "Nauja suplanuota užduotis",
-        "new_schortcut": "Nauja nuoroda",
+        "new_shortcut": "Nauja nuorodos užduotis",
         "next_job": "Kitas darbas",
         "no_go": "Draudžiama eiti",
         "no_mop": "Draudžiama plauti",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Išjungti haptinį atsaką",
         "editable_objects": "Redaguojami objektai",
         "font_size": "Šrifto dydis",
+        "full_height": "Visas aukštis",
         "grid_size": "Tinklelio dydis",
         "height": "Aukštis",
         "hidden_card_objects": "Paslėpti kortelių objektai",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuali siena",
         "map_color_wall": "Siena",
         "map_config": "Žemėlapio konfigūracija",
+        "map_display": "Žemėlapio rodymas",
+        "map_display_floor_plan": "Aukšto planas",
+        "map_display_floor_plan_only": "Tik aukšto planas",
+        "map_display_floor_plan_without_texture": "Aukšto planas be tekstūros",
+        "map_display_standard": "Standartinis",
         "map_object_active_area": "Aktyvi sritis",
         "map_object_active_cruise_point": "Aktyvus kelionės taškas",
         "map_object_active_point": "Aktyvus taškas",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Pasirinktinis valymas",
         "map_object_deleted_carpet": "Ištrintas kilimas",
         "map_object_detected_carpet": "Aptiktas kilimas",
+        "map_object_door": "Durys",
         "map_object_floor": "Grindys",
         "map_object_floor_material": "Grindų medžiaga",
         "map_object_furniture": "Baldai",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Nepavyko nustatyti pozicijos!",
         "replace_map": "Pakeisti naują žemėlapį?",
         "reset_usage": "Atstatyti naudojimą?",
+        "reset_walls": "Atstatyti sienas?",
         "restore_map": "Atkurti %name%?",
         "resume_cleaning": "Robotas automatiškai tęs nebaigtas valymo užduotis įkrovęs bateriją iki 80%.",
         "resume_cleaning_not_performed": "Robotas pratęs valymą pasibaigus netrukdymo rėžimui.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Dabartinė užduotis bus sustabdyta!",
         "unsaved_changes_present": "Turite neišsaugotų pakeitimų, kurie bus prarasti!",
         "unsupported_browser": "Nepalaikoma naršyklė!",
-        "usage_will_reset": "%name% naudojimas bus atstatytas!"
+        "usage_will_reset": "%name% naudojimas bus atstatytas!",
+        "walls_will_be_reset": "Sienos bus atkurtos į pradinę sumapintą vietą!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Liko %time%",
         "unavailable": "Nepasiekiamas",
         "used_water_tank": "Panaudoto vandens bakas",
+        "wall": "Sienos",
         "wifi_map": "WiFi Žemėlapis"
       }
     }

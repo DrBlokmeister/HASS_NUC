@@ -107,13 +107,14 @@ SENSORS: tuple[DreameVacuumSensorEntityDescription, ...] = (
             "mdi:water-pump-off" if not device.status.water_tank_or_mop_installed else "mdi:water-pump"
         ),
         exists_fn=lambda description, device: not device.capability.self_wash_base
+        and not device.capability.washless_base
         and not device.capability.embedded_tank
         and DreameVacuumEntityDescription().exists_fn(description, device),
     ),
     DreameVacuumSensorEntityDescription(
         key="mop_pad",
         icon="mdi:google-circles-communities",
-        exists_fn=lambda description, device: device.capability.self_wash_base,
+        exists_fn=lambda description, device: device.capability.self_wash_base or device.capability.washless_base,
     ),
     DreameVacuumSensorEntityDescription(
         property_key=DreameVacuumProperty.DUST_COLLECTION,
@@ -590,6 +591,7 @@ SENSORS: tuple[DreameVacuumSensorEntityDescription, ...] = (
         property_key=DreameVacuumProperty.CLEANING_PROGRESS,
         icon="mdi:home-percent",
         native_unit_of_measurement=UNIT_PERCENT,
+        exists_fn=lambda description, device: device.capability.cleaning_progress,
         entity_category=None,
     ),
     DreameVacuumSensorEntityDescription(

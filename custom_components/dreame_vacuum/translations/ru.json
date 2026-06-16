@@ -13,7 +13,10 @@
       "wrong_captcha": "Неверный captcha.",
       "credentials_incomplete": "Данные учётной записи не введены, пожалуйста заполните имя пользователя, пароль и регион",
       "login_error": "Не удается подключиться, проверьте свои учетные данные",
-      "no_devices": "В аккаунте для этого региона не найдено поддерживаемых устройств{devices}"
+      "no_devices": "В аккаунте для этого региона не найдено поддерживаемых устройств{devices}",
+      "2fa_send_failed": "Не удалось отправить код подтверждения. Пожалуйста, попробуйте еще раз.",
+      "2fa_limit_reached": "Достигнут суточный лимит отправки кодов подтверждения. Пожалуйста, попробуйте еще раз завтра.",
+      "2fa_cooldown_active": "Слишком много последовательных запросов. Пожалуйста, подождите несколько минут перед следующей попыткой."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Код двухфакторной аутентификации"
         },
-        "description": "## Для входа требуется проверка безопасности\nОткройте страницу подтверждения, чтобы отправить код подтверждения на мобильный телефон или электронную почту. После получения кода не вводите его на веб-странице. Вернитесь в HomeAssistant и введите его в поле ниже.\n### [Отправить код подтверждения]({url})"
+        "description": "## Требуется проверка безопасности\nКод подтверждения был отправлен на {dest}. Пожалуйста, введите код ниже."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Тип правки",
         "state": {
+          "door": "Изменить двери",
           "split": "Разделить комнаты",
           "merge": "Объединить комнаты",
           "visibility": "Видимость комнаты",
           "material": "Материал пола",
-          "type": "Название комнаты"
+          "type": "Название комнаты",
+          "wall": "Изменить стены"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Замена швабры",
           "changing_mop_paused": "Замена швабры приостановлена",
           "floor_maintaining": "Уход за полом",
-          "floor_maintaining_paused": "Уход за полом приостановлен"
+          "floor_maintaining_paused": "Уход за полом приостановлен",
+          "remote_pickup": "Удаленный подбор",
+          "arranging_items": "Расстановка предметов",
+          "pet_guarding": "Охрана животных",
+          "pet_guarding_paused": "Охрана животных приостановлена",
+          "installing_mop": "Установка швабры",
+          "uninstalling_mop": "Снятие швабры",
+          "intelligent_recharging": "Интеллектуальная подзарядка",
+          "assisted_cleaning": "Вспомогательная очистка",
+          "entering_dock": "Вход в док-станции",
+          "leaving_dock": "Выход из док-станции",
+          "navigating_to_climber": "Навигация к подъемнику",
+          "docking_to_climber": "Стыковка с подъемником",
+          "climber_docked": "Подъемник пристыкован",
+          "climber_navigating": "Подъемник перемещается",
+          "climbing_stairs": "Подъем по лестнице",
+          "climbing_stairs_completed": "Подъем по лестнице завершен",
+          "climber_at_dock": "Подъемник в доке",
+          "climber_leaving_dock": "Подъемник покидает док"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Вызов на очистку",
           "shortcut": "Ярлык",
           "person_follow": "Следование за человеком",
-          "water_check": "Проверка воды"
+          "water_check": "Проверка воды",
+          "pet_guarding": "Охрана домашних животных",
+          "auto_arrangement": "Автоматическая расстановка",
+          "smart_arrangement": "Умная расстановка",
+          "zoned_arrangement": "Зональная расстановка"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Обнаружение домашних животных",
           "auto_cleaning_washing_paused": "Автоматическая очистка/промывка приостановлена",
           "area_cleaning_washing_paused": "Зональная очистка/промывка приостановлена",
-          "custom_cleaning_washing_paused": "Пользовательская очистка/промывка приостановлена"
+          "custom_cleaning_washing_paused": "Пользовательская очистка/промывка приостановлена",
+          "picking_up_item": "Поднятие предмета",
+          "picking_up_item_paused": "Поднятие предмета приостановлено",
+          "picking_up_item_success": "Предмет успешно поднят",
+          "remote_pickup_initializing": "Инициализация удаленного подбора",
+          "remote_pickup_identifing": "Идентификация удаленного подбора",
+          "manual_remote_pickup": "Ручной удаленный подбор",
+          "automatic_remote_pickup": "Автоматический удаленный подбор",
+          "remote_pickup_in_progress": "Удаленный подбор выполняется",
+          "remote_pickup_paused": "Удаленный подбор приостановлен",
+          "placing_item": "Размещение предмета",
+          "placing_item_paused": "Размещение предмета приостановлено"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Бак для грязной воды робота полон.",
           "mop_not_installed": "Швабра не установлена.",
           "fluffing_roller_error": "Ошибка ворсистого ролика.",
-          "blocked_by_obstacle": "Робот заблокирован препятствием."
+          "blocked_by_obstacle": "Робот заблокирован препятствием.",
+          "robotic_arm_stopped": "Роботизированная рука остановлена.",
+          "drainage_outlet_filter": "Фильтр сливного отверстия робота засорен.",
+          "main_wheels_error": "Ошибка основных колес."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Замена швабры приостановлена",
           "floor_maintaining": "Уход за полом",
           "floor_maintaining_paused": "Уход за полом приостановлен",
-          "wood_floor_maintaining": "Уход за деревянным полом"
+          "arranging_items": "Расстановка предметов",
+          "arranging_items_paused": "Расстановка предметов приостановлена",
+          "intensive_hair_cleaning": "Интенсивная очистка волос",
+          "accessory_handling": "Работа с аксессуарами",
+          "increased_drum_speed_cleaning": "Очистка с повышенной скоростью барабана",
+          "pressurized_cleaning": "Очистка под давлением",
+          "steam_cleaning": "Паровая очистка",
+          "steam_cleaning_paused": "Паровая очистка приостановлена"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Пятно пропущено",
           "cleaned_dried_stain": "Пятно очищено",
           "cleaned_large_particles": "Частицы очищены",
-          "pen": "Ручка"
+          "hair": "Волосы",
+          "paper": "Бумага",
+          "cleaned_hair": "Очищенные волосы",
+          "sundry": "Разное"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Обнаружение животных"
       },
+      "pet_focused_cleaning": {
+        "name": "Уборка за животными"
+      },
       "ai_obstacle_picture": {
         "name": "Фотографии препятствий"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Непроход. порог",
         "job_details": "Детали задания",
         "keep_disabled": "Оставить откл.",
+        "map_display": "Отображение карты",
         "map_management": "Список карт",
         "new_dnd": "Новый режим Не беспокоить",
         "new_schedule": "Создать расписание",
-        "new_schortcut": "Создать ярлык",
+        "new_shortcut": "Новая задача-быстрая команда",
         "next_job": "След. уборка",
         "no_go": "Запрет. зона",
         "no_mop": "Без влаж. уборки",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Откл. тактильное подтв.",
         "editable_objects": "Редакт. объекты",
         "font_size": "Размер шрифта",
+        "full_height": "Полная высота",
         "grid_size": "Размер сетки",
         "height": "Высота",
         "hidden_card_objects": "Скр. объекты карточки",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Вирт. стена",
         "map_color_wall": "Стена",
         "map_config": "Настройки карты",
+        "map_display": "Отображение карты",
+        "map_display_floor_plan": "План этажа",
+        "map_display_floor_plan_only": "Только план этажа",
+        "map_display_floor_plan_without_texture": "План этажа без текстуры",
+        "map_display_standard": "Стандартно",
         "map_object_active_area": "Активная зона",
         "map_object_active_cruise_point": "Акт. точка марш.",
         "map_object_active_point": "Активная точка",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Настр. уборка",
         "map_object_deleted_carpet": "Удаленный ковер",
         "map_object_detected_carpet": "Обнаруж. ковер",
+        "map_object_door": "Дверь",
         "map_object_floor": "Пол",
         "map_object_floor_material": "Материал пола",
         "map_object_furniture": "Мебель",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Ошибка самопозиционирования!",
         "replace_map": "Заменить новую карту?",
         "reset_usage": "Сбросить статистику?",
+        "reset_walls": "Сбросить стены?",
         "restore_map": "Восстановить %name%?",
         "resume_cleaning": "Робот автоматически возобновит незаконченные задачи по уборке после зарядки аккумулятора до 80%.",
         "resume_cleaning_not_performed": "Робот возобновит уборку после окончания периода DND.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Текущая задача будет остановлена!",
         "unsaved_changes_present": "Несохраненные изменения будут потеряны!",
         "unsupported_browser": "Браузер не поддерживается!",
-        "usage_will_reset": "Статистика %name% будет сброшена."
+        "usage_will_reset": "Статистика %name% будет сброшена.",
+        "walls_will_be_reset": "Стены будут восстановлены в их первоначально нанесенное на карту место!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Осталось %time%",
         "unavailable": "Недоступно",
         "used_water_tank": "Бак грязной воды",
+        "wall": "Стены",
         "wifi_map": "Карта Wi-Fi"
       }
     }

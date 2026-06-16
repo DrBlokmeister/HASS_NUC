@@ -13,7 +13,10 @@
       "wrong_captcha": "Väärä captcha.",
       "credentials_incomplete": "Tunnistetiedot puutteelliset, täytä käyttäjänimi, salasana ja maa.",
       "login_error": "Kirjautuminen epäonnistui, tarkista tunnistetiedot.",
-      "no_devices": "Tältä tililtä ei löytynyt tuettuja laitteita valitussa maassa.{devices}"
+      "no_devices": "Tältä tililtä ei löytynyt tuettuja laitteita valitussa maassa.{devices}",
+      "2fa_send_failed": "Vahvistuskoodin lähettäminen epäonnistui. Yritä uudelleen.",
+      "2fa_limit_reached": "Vahvistuskoodien lähetyksen päivittäinen raja on saavutettu. Yritä uudelleen huomenna.",
+      "2fa_cooldown_active": "Liian monta peräkkäistä pyyntöä. Odota muutama minuutti ennen kuin yrität uudelleen."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Kaksivaiheinen vahvistuskoodi"
         },
-        "description": "## Tämä sisäänkirjautuminen vaatii turvallisuustarkistuksen\nAvaa vahvistussivu lähettääksesi matkapuhelin-/sähköpostivahvistuskoodin. Kun olet saanut vahvistuskoodin, älä vahvista sitä verkkosivulla. Palaa HomeAssistantiin ja syötä se alla olevaan kenttään.\n### [Lähetä vahvistuskoodi]({url})"
+        "description": "## Turvatarkistus vaaditaan\nVahvistuskoodi on lähetetty osoitteeseen/numeroon {dest}. Kirjoita koodi alle."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Muokkaustyyppi",
         "state": {
+          "door": "Muokkaa ovia",
           "split": "Jaa huoneita",
           "merge": "Yhdistä huoneita",
           "visibility": "Huoneen näkyvyys",
           "material": "Lattiamateriaali",
-          "type": "Huoneen nimi"
+          "type": "Huoneen nimi",
+          "wall": "Muokkaa seiniä"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Moppia vaihdetaan",
           "changing_mop_paused": "Mopin vaihto keskeytetty",
           "floor_maintaining": "Lattian hoito",
-          "floor_maintaining_paused": "Lattian hoito keskeytetty"
+          "floor_maintaining_paused": "Lattian hoito keskeytetty",
+          "remote_pickup": "Etänouto",
+          "arranging_items": "Tavaroiden järjestäminen",
+          "pet_guarding": "Lemmikkivahti",
+          "pet_guarding_paused": "Lemmikkivahti tauolla",
+          "installing_mop": "Mopin asennus",
+          "uninstalling_mop": "Mopin irrotus",
+          "intelligent_recharging": "Älykäs lataus",
+          "assisted_cleaning": "Avustettu puhdistus",
+          "entering_dock": "Siirtyminen telakkaan",
+          "leaving_dock": "Poistuminen telakasta",
+          "navigating_to_climber": "Navigointi kiipeilijälle",
+          "docking_to_climber": "Telakoituminen kiipeilijään",
+          "climber_docked": "Kiipeilijä telakoitu",
+          "climber_navigating": "Kiipeilijä navigoi",
+          "climbing_stairs": "Kiipeää portaita",
+          "climbing_stairs_completed": "Portaiden kiipeäminen valmis",
+          "climber_at_dock": "Kiipeilijä telakassa",
+          "climber_leaving_dock": "Kiipeilijä poistuu telakasta"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Kutsu siivoamaan",
           "shortcut": "Pikakuvake",
           "person_follow": "Seuraa ihmistä",
-          "water_check": "Veden tarkistus"
+          "water_check": "Veden tarkistus",
+          "pet_guarding": "Lemmikkivahti",
+          "auto_arrangement": "Automaattinen järjestely",
+          "smart_arrangement": "Älykäs järjestely",
+          "zoned_arrangement": "Vyöhykejärjestely"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Lemmikin etsintä",
           "auto_cleaning_washing_paused": "Automaattinen pesupuhdistus keskeytetty",
           "area_cleaning_washing_paused": "Aluekohtainen pesupuhdistus keskeytetty",
-          "custom_cleaning_washing_paused": "Räätälöity pesupuhdistus keskeytetty"
+          "custom_cleaning_washing_paused": "Räätälöity pesupuhdistus keskeytetty",
+          "picking_up_item": "Poimii esinettä",
+          "picking_up_item_paused": "Eseen poiminta tauolla",
+          "picking_up_item_success": "Esine poimittu onnistuneesti",
+          "remote_pickup_initializing": "Etänoudon alustus",
+          "remote_pickup_identifing": "Etänoudon tunnistus",
+          "manual_remote_pickup": "Manuaalinen etänouto",
+          "automatic_remote_pickup": "Automaattinen etänouto",
+          "remote_pickup_in_progress": "Etänouto käynnissä",
+          "remote_pickup_paused": "Etänouto tauolla",
+          "placing_item": "Asettaa esinettä",
+          "placing_item_paused": "Eseen asettaminen tauolla"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Robotin likavesisäiliö on täynnä.",
           "mop_not_installed": "Moppia ei ole asennettu.",
           "fluffing_roller_error": "Nöyhtärullan virhe.",
-          "blocked_by_obstacle": "Estetty esteen takia."
+          "blocked_by_obstacle": "Estetty esteen takia.",
+          "robotic_arm_stopped": "Robottivarsi pysähtynyt.",
+          "drainage_outlet_filter": "Robotin poistovesiaukon suodatin on tukossa.",
+          "main_wheels_error": "Pääpyörien virhe."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Mopin vaihto keskeytetty",
           "floor_maintaining": "Lattian hoito",
           "floor_maintaining_paused": "Lattian hoito keskeytetty",
-          "wood_floor_maintaining": "Puulattian hoito"
+          "arranging_items": "Tavaroiden järjestäminen",
+          "arranging_items_paused": "Tavaroiden järjestäminen tauolla",
+          "intensive_hair_cleaning": "Tehostettu hiusten puhdistus",
+          "accessory_handling": "Lisävarusteiden käsittely",
+          "increased_drum_speed_cleaning": "Puhdistus suuremmalla rummun nopeudella",
+          "pressurized_cleaning": "Paineistettu puhdistus",
+          "steam_cleaning": "Höyrypuhdistus",
+          "steam_cleaning_paused": "Höyrypuhdistus tauolla"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Sivuutettiin puhdistamattomat tahra",
           "cleaned_dried_stain": "Puhdistettu kuivanut tahra",
           "cleaned_large_particles": "Puhdistettu suuria hiukkasia",
-          "pen": "Kynä"
+          "hair": "Hiukset",
+          "paper": "Paperi",
+          "cleaned_hair": "Puhdistetut hiukset",
+          "sundry": "Sekalaista"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Lemmikkiin keskittyvä tunnistus"
       },
+      "pet_focused_cleaning": {
+        "name": "Lemmikkiin keskittyvä siivous"
+      },
       "ai_obstacle_picture": {
         "name": "Kuvat esteistä"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Läpipääsemätön kynnys",
         "job_details": "Työn tiedot",
         "keep_disabled": "Pidä pois käytöstä",
+        "map_display": "Kartan näyttö",
         "map_management": "Kartan hallinta",
         "new_dnd": "Uusi DnD-tehtävä",
         "new_schedule": "Uusi ajastettu tehtävä",
-        "new_schortcut": "Uusi pikakuvaketehtävä",
+        "new_shortcut": "Uusi pikakuvaketehtävä",
         "next_job": "Seuraava työ",
         "no_go": "Ei pääsyä",
         "no_mop": "Ei moppausta",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Poista haptinen palaute käytöstä",
         "editable_objects": "Muokattavat objektit",
         "font_size": "Fonttikoko",
+        "full_height": "Täysi korkeus",
         "grid_size": "Ruudukon koko",
         "height": "Korkeus",
         "hidden_card_objects": "Piilotetut korttiobjektit",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuaaliseinä",
         "map_color_wall": "Seinä",
         "map_config": "Kartan asetukset",
+        "map_display": "Kartan näyttö",
+        "map_display_floor_plan": "Pohjapiirros",
+        "map_display_floor_plan_only": "Vain pohjapiirros",
+        "map_display_floor_plan_without_texture": "Pohjapiirros ilman tekstuuria",
+        "map_display_standard": "Vakio",
         "map_object_active_area": "Aktiivinen alue",
         "map_object_active_cruise_point": "Aktiivinen kiertopiste (cruise point)",
         "map_object_active_point": "Aktiivinen piste",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Mukautettu siivous",
         "map_object_deleted_carpet": "Poistettu matto",
         "map_object_detected_carpet": "Havaittu matto",
+        "map_object_door": "Ovi",
         "map_object_floor": "Lattia",
         "map_object_floor_material": "Lattiamateriaali",
         "map_object_furniture": "Huonekalu",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Sijainnin asettaminen epäonnistui!",
         "replace_map": "Korvaa uusi kartta?",
         "reset_usage": "Nollaa käyttö?",
+        "reset_walls": "Nollaa seinät?",
         "restore_map": "Palauta %name%?",
         "resume_cleaning": "Robotti jatkaa automaattisesti kesken jääneitä siivoustehtäviä ladattuaan akkunsa 80 %:iin.",
         "resume_cleaning_not_performed": "Robotti jatkaa puhdistusta DnD-jakson (älä-häiritse tilan) päätyttyä.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Nykyinen tehtävä pysäytetään!",
         "unsaved_changes_present": "Sinulla on tallentamattomia muutoksia, jotka menetetään!",
         "unsupported_browser": "Selainta Ei Tueta!",
-        "usage_will_reset": "%name% käyttö (tilastot) nollataan!"
+        "usage_will_reset": "%name% käyttö (tilastot) nollataan!",
+        "walls_will_be_reset": "Seinät palautetaan niiden alkuperäiselle kartoitetulle sijainnille!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Aikaa jäljellä: %time%",
         "unavailable": "Ei Saatavilla",
         "used_water_tank": "Likavesisäiliö",
+        "wall": "Seinät",
         "wifi_map": "WiFi Kartta"
       }
     }

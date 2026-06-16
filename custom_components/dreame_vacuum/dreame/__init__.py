@@ -1,4 +1,4 @@
-VERSION = "v2.0.0b23"
+VERSION = "v2.0.0b24"
 
 from .types import (
     DreameVacuumProperty,

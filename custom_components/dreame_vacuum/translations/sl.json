@@ -13,7 +13,10 @@
       "wrong_captcha": "Napačen captcha.",
       "credentials_incomplete": "Nepravilni podatki za prijavo, prosimo izpolnite uporabniško ime, geslo in državo",
       "login_error": "Prijava ni uspela, preverite podatke za prijavo.",
-      "no_devices": "V tem računu v izbrani državi ni bilo najdenih podprtih naprav.{devices}"
+      "no_devices": "V tem računu v izbrani državi ni bilo najdenih podprtih naprav.{devices}",
+      "2fa_send_failed": "Pošiljanje potrditvene kode ni uspelo. Poskusite znova.",
+      "2fa_limit_reached": "Dosežena je dnevna omejitev za pošiljanje potrditvenih kod. Prosimo, poskusite znova jutri.",
+      "2fa_cooldown_active": "Preveč zaporednih zahtev. Prosimo, počakajte na nekaj minut, preden poskusite znova."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Dvofaktorska potrditvena koda"
         },
-        "description": "## Za prijavo je potrebna varnostna preverba\nOdprite stran za preverjanje in pošljite potrditveno kodo na mobilni telefon ali e-pošto. Ko prejmete kodo, je ne preverjajte na spletni strani. Vrnite se v HomeAssistant in jo vnesite v spodnje vnosno polje.\n### [Pošlji potrditveno kodo]({url})"
+        "description": "## Zahtevano je varnostno preverjanje\nPotrditvena koda je bila poslana na {dest}. Vnesite kodo spodaj."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Vrsta urejanja",
         "state": {
+          "door": "Uredi vrata",
           "split": "Razdeli sobe",
           "merge": "Združi sobe",
           "visibility": "Vidnost sobe",
           "material": "Material tal",
-          "type": "Ime sobe"
+          "type": "Ime sobe",
+          "wall": "Uredi stene"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Menjava krpe",
           "changing_mop_paused": "Menjava krpe začasno ustavljena",
           "floor_maintaining": "Vzdrževanje tal",
-          "floor_maintaining_paused": "Vzdrževanje tal začasno ustavljeno"
+          "floor_maintaining_paused": "Vzdrževanje tal začasno ustavljeno",
+          "remote_pickup": "Oddaljeno pobiranje",
+          "arranging_items": "Urejanje predmetov",
+          "pet_guarding": "Varovanje ljubljenčkov",
+          "pet_guarding_paused": "Varovanje ljubljenčkov zaustavljeno",
+          "installing_mop": "Nameščanje krpe",
+          "uninstalling_mop": "Odstranjevanje krpe",
+          "intelligent_recharging": "Inteligentno ponovno polnjenje",
+          "assisted_cleaning": "Asistirano čiščenje",
+          "entering_dock": "Vstop v postajo",
+          "leaving_dock": "Izstop iz postaje",
+          "navigating_to_climber": "Navigacija do plezalca",
+          "docking_to_climber": "Priklop na plezalca",
+          "climber_docked": "Plezač priklopljen",
+          "climber_navigating": "Plezač navigira",
+          "climbing_stairs": "Vzpon po stopnicah",
+          "climbing_stairs_completed": "Vzpon po stopnicah zaključen",
+          "climber_at_dock": "Plezač pri postaji",
+          "climber_leaving_dock": "Plezač zapušča postajo"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Klicanje za čiščenje",
           "shortcut": "Bližnjica",
           "person_follow": "Sledenje osebi",
-          "water_check": "Preverjanje vode"
+          "water_check": "Preverjanje vode",
+          "pet_guarding": "Varovanje hišnih ljubljenčkov",
+          "auto_arrangement": "Samodejna razporeditev",
+          "smart_arrangement": "Pametna razporeditev",
+          "zoned_arrangement": "Conska razporeditev"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Iskanje hišnih ljubljenčkov",
           "auto_cleaning_washing_paused": "Samodejno čiščenje pranje",
           "area_cleaning_washing_paused": "Območje čiščenja pranje je bilo zaustavljeno",
-          "custom_cleaning_washing_paused": "Čiščenje po meri začasno"
+          "custom_cleaning_washing_paused": "Čiščenje po meri začasno",
+          "picking_up_item": "Pobiranje predmeta",
+          "picking_up_item_paused": "Pobiranje predmeta zaustavljeno",
+          "picking_up_item_success": "Predmet uspešno pobran",
+          "remote_pickup_initializing": "Iniciaizacija oddaljenega pobiranja",
+          "remote_pickup_identifing": "Identifikacija oddaljenega pobiranja",
+          "manual_remote_pickup": "Ročno oddaljeno pobiranje",
+          "automatic_remote_pickup": "Samodejno oddaljeno pobiranje",
+          "remote_pickup_in_progress": "Oddaljeno pobiranje v teku",
+          "remote_pickup_paused": "Oddaljeno pobiranje zaustavljeno",
+          "placing_item": "Postavljanje predmeta",
+          "placing_item_paused": "Postavljanje predmeta zaustavljeno"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Rezervoar za umazano vodo robota je poln.",
           "mop_not_installed": "Krpa ni nameščena.",
           "fluffing_roller_error": "Napaka valja.",
-          "blocked_by_obstacle": "Robot blokiran z oviro."
+          "blocked_by_obstacle": "Robot blokiran z oviro.",
+          "robotic_arm_stopped": "Robotska roka se je ustavila.",
+          "drainage_outlet_filter": "Filter odtočne odprtine robota je zamašen.",
+          "main_wheels_error": "Napaka glavnih koles."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Menjava krpe začasno ustavljena",
           "floor_maintaining": "Vzdrževanje tal",
           "floor_maintaining_paused": "Vzdrževanje tal začasno ustavljeno",
-          "wood_floor_maintaining": "Vzdrževanje lesenih tal"
+          "arranging_items": "Urejanje predmetov",
+          "arranging_items_paused": "Urejanje predmetov zaustavljeno",
+          "intensive_hair_cleaning": "Intenzivno čiščenje las",
+          "accessory_handling": "Ravnanje z dodatki",
+          "increased_drum_speed_cleaning": "Čiščenje s povečano hitrostjo bobna",
+          "pressurized_cleaning": "Čiščenje pod pritiskom",
+          "steam_cleaning": "Čiščenje s paro",
+          "steam_cleaning_paused": "Čiščenje s paro zaustavljeno"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,14 +1193,17 @@
           "skipped_uncleanable_stain": "Preskočen madež",
           "cleaned_dried_stain": "Očiščen suh madež",
           "cleaned_large_particles": "Očiščeni veliki delci",
-          "pen": "Pisalo"
+          "hair": "Lasje",
+          "paper": "Papir",
+          "cleaned_hair": "Očiščeni lasje",
+          "sundry": "Razno"
         }
       },
       "obstacle_reason": {
         "name": "Razlog za oviro",
         "state": {
           "blocked_by_virtual_wall": "Blokirano z navidezno steno",
-          "blocked_by_door": "Blokirano z vrati" ,
+          "blocked_by_door": "Blokirano z vrati",
           "blocked_by_threshold": "Blokirano s pragom",
           "blocked_by_obstacle": "Blokirano z oviro",
           "blocked_by_carpet": "Blokirano s preprogo",
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Zaznavanje osredotočeno na ljubljenčke"
       },
+      "pet_focused_cleaning": {
+        "name": "Čiščenje osredotočeno na ljubljenčke"
+      },
       "ai_obstacle_picture": {
         "name": "Slike ovir"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Neprehoden prag",
         "job_details": "Podrobnosti opravila",
         "keep_disabled": "Pusti onemogočeno",
+        "map_display": "Prikaz zemljevida",
         "map_management": "Upravljanje zemljevidov",
         "new_dnd": "Novo Ne moti opravilo",
         "new_schedule": "Ustvari urnik",
-        "new_schortcut": "Ustvari bližnjico",
+        "new_shortcut": "Novo opravilo bližnjice",
         "next_job": "Naslednje opravilo",
         "no_go": "Prepovedano območje",
         "no_mop": "Brez brisanja",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Onemogoči haptiko",
         "editable_objects": "Uredljivi objekti",
         "font_size": "Velikost pisave",
+        "full_height": "Polna višina",
         "grid_size": "Velikost mreže",
         "height": "Višina",
         "hidden_card_objects": "Skriti objekti kartice",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Navidezni zid",
         "map_color_wall": "Zid",
         "map_config": "Nastavitve zemljevida",
+        "map_display": "Prikaz zemljevida",
+        "map_display_floor_plan": "Tloris",
+        "map_display_floor_plan_only": "Samo tloris",
+        "map_display_floor_plan_without_texture": "Tloris brez teksture",
+        "map_display_standard": "Standardno",
         "map_object_active_area": "Aktivno območje",
         "map_object_active_cruise_point": "Aktivna točka poti",
         "map_object_active_point": "Aktivna točka",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Prilagojeno čiščenje",
         "map_object_deleted_carpet": "Izbrisana preproga",
         "map_object_detected_carpet": "Zaznana preproga",
+        "map_object_door": "Vrata",
         "map_object_floor": "Tla",
         "map_object_floor_material": "Material tal",
         "map_object_furniture": "Pohištvo",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Samopozicioniranje ni uspelo!",
         "replace_map": "Zamenjaj nov zemljevid?",
         "reset_usage": "Ponastavi statistiko?",
+        "reset_walls": "Ponastaviti stene?",
         "restore_map": "Obnovi %name%?",
         "resume_cleaning": "Robot bo samodejno nadaljeval nedokončana čistilna opravila po polnjenju baterije na 80 %.",
         "resume_cleaning_not_performed": "Robot bo nadaljeval s čiščenjem po koncu obdobja Ne moti.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Trenutno opravilo bo ustavljeno!",
         "unsaved_changes_present": "Neshranjene spremembe bodo izgubljene!",
         "unsupported_browser": "Brskalnik ni podprt!",
-        "usage_will_reset": "Statistika za %name% bo ponastavljena."
+        "usage_will_reset": "Statistika za %name% bo ponastavljena.",
+        "walls_will_be_reset": "Stene bodo obnovljene na njihovo prvotno preslikano lokacijo!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Preostalo %time%",
         "unavailable": "Ni na voljo",
         "used_water_tank": "Rezervoar za umazano vodo",
+        "wall": "Stene",
         "wifi_map": "Wifi zemljevid"
       }
     }

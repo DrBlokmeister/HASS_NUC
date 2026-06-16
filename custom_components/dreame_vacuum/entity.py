@@ -42,7 +42,7 @@ def remove_entities(hass, entry, coordinator, domain, descriptions):
         entity_id = entry.entity_id
         if (
             entity_id.startswith(f"{domain}.")
-            and "_map_" not in entity_id
+            and ("_map_" not in entity_id or domain == "button")
             and "_room_" not in entity_id
             and "_shortcut_" not in entity_id
         ):

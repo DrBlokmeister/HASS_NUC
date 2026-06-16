@@ -64,7 +64,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Dreame Vacuum config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         coordinator: DreameVacuumDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        if coordinator._unsub_dispatcher:
+            coordinator._unsub_dispatcher()
+            coordinator._unsub_dispatcher = None
         coordinator._device.listen(None)
+        coordinator._device.listen_error(None)
         coordinator._device.disconnect()
         del coordinator._device
         coordinator._device = None

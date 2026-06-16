@@ -13,7 +13,10 @@
       "wrong_captcha": "間違ったキャプチャ。",
       "credentials_incomplete": "資格情報が不完全です。ユーザー名、パスワード、国を入力してください。",
       "login_error": "ログインできませんでした。資格情報を確認してください。",
-      "no_devices": "選択した国のこのアカウントにサポートされているデバイスが見つかりません。{devices}"
+      "no_devices": "選択した国のこのアカウントにサポートされているデバイスが見つかりません。{devices}",
+      "2fa_send_failed": "認証コードの送信に失敗しました。もう一度お試しください。",
+      "2fa_limit_reached": "認証コードの1日の送信制限に達しました。明日もう一度お試しください。",
+      "2fa_cooldown_active": "連続したリクエストが多すぎます。再試行する前に数分間お待ちください。"
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "2段階認証コード"
         },
-        "description": "## このログインにはセキュリティ認証が必要です\n認証ページを開いて、携帯電話/メールの認証コードを送信してください。認証コードを受け取ったら、Webページで認証しないでください。HomeAssistantに戻り、下の入力ボックスに入力します。\n### [認証コードを送信]({url})"
+        "description": "## セキュリティ認証が必要です\n認証コードが {dest} に送信されました。以下にコードを入力してください。"
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "編集タイプ",
         "state": {
+          "door": "ドアを編集",
           "split": "部屋の分割",
           "merge": "部屋の結合",
           "visibility": "部屋の表示",
           "material": "床の素材",
-          "type": "部屋の名前"
+          "type": "部屋の名前",
+          "wall": "壁を編集"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "モップ交換中",
           "changing_mop_paused": "モップ交換一時停止",
           "floor_maintaining": "床メンテナンス中",
-          "floor_maintaining_paused": "床メンテナンス一時停止"
+          "floor_maintaining_paused": "床メンテナンス一時停止",
+          "remote_pickup": "リモートピックアップ",
+          "arranging_items": "アイテム整理",
+          "pet_guarding": "ペット見守り",
+          "pet_guarding_paused": "ペット見守り一時停止",
+          "installing_mop": "モップ取り付け中",
+          "uninstalling_mop": "モップ取り外し中",
+          "intelligent_recharging": "インテリジェント充電",
+          "assisted_cleaning": "アシスト清掃",
+          "entering_dock": "ドックに進入中",
+          "leaving_dock": "ドックから退出中",
+          "navigating_to_climber": "クライマーへ移動中",
+          "docking_to_climber": "クライマーにドッキング中",
+          "climber_docked": "クライマーにドッキング済み",
+          "climber_navigating": "クライマーがナビゲート中",
+          "climbing_stairs": "階段を昇っています",
+          "climbing_stairs_completed": "階段昇り完了",
+          "climber_at_dock": "クライマーがドックにいます",
+          "climber_leaving_dock": "クライマーがドックを離れています"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "呼び寄せ清掃",
           "shortcut": "ショートカット",
           "person_follow": "人に追従",
-          "water_check": "水量チェック中"
+          "water_check": "水量チェック中",
+          "pet_guarding": "ペット見守り",
+          "auto_arrangement": "自動整理",
+          "smart_arrangement": "スマート整理",
+          "zoned_arrangement": "ゾーン整理"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "ペット探索中",
           "auto_cleaning_washing_paused": "自動清掃洗浄一時停止",
           "area_cleaning_washing_paused": "エリア清掃洗浄一時停止",
-          "custom_cleaning_washing_paused": "カスタム清掃洗浄一時停止"
+          "custom_cleaning_washing_paused": "カスタム清掃洗浄一時停止",
+          "picking_up_item": "アイテムを拾っています",
+          "picking_up_item_paused": "アイテム拾い一時停止",
+          "picking_up_item_success": "アイテムを正常に拾いました",
+          "remote_pickup_initializing": "リモートピックアップ初期化中",
+          "remote_pickup_identifing": "リモートピックアップ識別中",
+          "manual_remote_pickup": "手動リモートピックアップ",
+          "automatic_remote_pickup": "自動リモートピックアップ",
+          "remote_pickup_in_progress": "リモートピックアップ進行中",
+          "remote_pickup_paused": "リモートピックアップ一時停止",
+          "placing_item": "アイテムを置いています",
+          "placing_item_paused": "アイテム置き一時停止"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "ロボットの汚水タンクがいっぱいです。",
           "mop_not_installed": "モップ未装着。",
           "fluffing_roller_error": "起毛ローラーエラー。",
-          "blocked_by_obstacle": "障害物で塞がれています。"
+          "blocked_by_obstacle": "障害物で塞がれています。",
+          "robotic_arm_stopped": "ロボットアームが停止しました。",
+          "drainage_outlet_filter": "ロボットの排水口フィルターが詰まっています。",
+          "main_wheels_error": "メインホイールエラー。"
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "モップ交換一時停止",
           "floor_maintaining": "床のメンテナンス",
           "floor_maintaining_paused": "床メンテナンス一時停止",
-          "wood_floor_maintaining": "フローリングのメンテナンス"
+          "arranging_items": "アイテム整理",
+          "arranging_items_paused": "アイテム整理一時停止",
+          "intensive_hair_cleaning": "強力ヘアクリーニング",
+          "accessory_handling": "アクセサリー処理",
+          "increased_drum_speed_cleaning": "ドラム回転速度を上げた清掃",
+          "pressurized_cleaning": "加圧清掃",
+          "steam_cleaning": "スチーム清掃",
+          "steam_cleaning_paused": "スチーム清掃一時停止"
         }
       },
       "dust_bag_drying_status": {
@@ -1063,7 +1111,7 @@
           "other": "その他",
           "default": "デフォルト",
           "customized": "カスタマイズ",
-          "cleangenius": "Cleangenius",
+          "cleangenius": "CleanGenius",
           "water_stain": "水垢",
           "unknown": "不明"
         }
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "スキップされた清掃不可能な汚れ",
           "cleaned_dried_stain": "清掃された乾いた汚れ",
           "cleaned_large_particles": "清掃された大きな粒子",
-          "pen": "ペン"
+          "hair": "髪の毛",
+          "paper": "紙",
+          "cleaned_hair": "清掃済みの髪の毛",
+          "sundry": "雑多物"
         }
       },
       "obstacle_reason": {
@@ -1249,7 +1300,7 @@
         "name": "排水口フィルター清掃"
       },
       "wheel_dirty_left": {
-        "name": "Wheel Cleaning"
+        "name": "ホイールクリーニング"
       }
     },
     "toggle": {
@@ -1384,6 +1435,9 @@
       },
       "pet_focused_detection": {
         "name": "ペット集中検知"
+      },
+      "pet_focused_cleaning": {
+        "name": "ペット集中清掃"
       },
       "ai_obstacle_picture": {
         "name": "障害物の写真"
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "通行不可の段差",
         "job_details": "タスク詳細",
         "keep_disabled": "無効のままにする",
+        "map_display": "マップ表示",
         "map_management": "マップ管理",
         "new_dnd": "新規おやすみタスク",
         "new_schedule": "新規スケジュールタスク",
-        "new_schortcut": "新規スケジュールタスク",
+        "new_shortcut": "新規ショートカットタスク",
         "next_job": "次のタスク",
         "no_go": "進入禁止",
         "no_mop": "水拭き禁止",
@@ -1555,7 +1610,7 @@
         "start_auto_empty": "自動ゴミ収集を開始",
         "start_bag_drying": "バッグ乾燥を開始",
         "start_drying": "乾燥開始",
-        "start_task": "タスクを開​​始",
+        "start_task": "タスクを開始",
         "start_washing": "洗浄を開始",
         "stop": "停止",
         "stop_bag_drying": "バッグ乾燥を停止",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "触覚フィードバックを無効化",
         "editable_objects": "編集可能なオブジェクト",
         "font_size": "フォントサイズ",
+        "full_height": "全高",
         "grid_size": "グリッドサイズ",
         "height": "高さ",
         "hidden_card_objects": "非表示のカードオブジェクト",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "仮想壁",
         "map_color_wall": "壁",
         "map_config": "マップ構成",
+        "map_display": "マップ表示",
+        "map_display_floor_plan": "間取り",
+        "map_display_floor_plan_only": "間取りのみ",
+        "map_display_floor_plan_without_texture": "テクスチャなしの間取り",
+        "map_display_standard": "標準",
         "map_object_active_area": "アクティブエリア",
         "map_object_active_cruise_point": "アクティブ巡回ポイント",
         "map_object_active_point": "アクティブポイント",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "カスタマイズ清掃",
         "map_object_deleted_carpet": "削除されたカーペット",
         "map_object_detected_carpet": "検出されたカーペット",
+        "map_object_door": "ドア",
         "map_object_floor": "床",
         "map_object_floor_material": "床の素材",
         "map_object_furniture": "家具",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "自己位置推定に失敗しました！",
         "replace_map": "新しいマップに置き換えますか？",
         "reset_usage": "使用状況をリセットしますか？",
+        "reset_walls": "壁をリセットしますか？",
         "restore_map": "%name%を復元しますか？",
         "resume_cleaning": "ロボットはバッテリーを80%まで充電した後、未完了の清掃タスクを自動的に再開します。",
         "resume_cleaning_not_performed": "ロボットはおやすみ期間が終了した後に清掃を再開します。",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "現在のタスクは停止します！",
         "unsaved_changes_present": "保存されていない変更があり、失われます！",
         "unsupported_browser": "サポートされていないブラウザです！",
-        "usage_will_reset": "%name%の使用状況はリセットされます！"
+        "usage_will_reset": "%name%の使用状況はリセットされます！",
+        "walls_will_be_reset": "壁は最初にマッピングされた位置に復元されます！"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "残り %time%",
         "unavailable": "利用不可",
         "used_water_tank": "汚水タンク",
+        "wall": "壁",
         "wifi_map": "Wi-Fiマップ"
       }
     }
@@ -2013,11 +2078,11 @@
         },
         "md5": {
           "name": "MD5",
-          "description": "MD5 checksum of the language pack."
+          "description": "言語パックのMD5チェックサム。"
         },
         "size": {
-          "name": "Size",
-          "description": "Size of the language pack in bytes."
+          "name": "サイズ",
+          "description": "言語パックのサイズ（バイト）。"
         }
       }
     },

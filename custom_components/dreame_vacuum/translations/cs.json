@@ -13,7 +13,10 @@
       "wrong_captcha": "Špatný captcha.",
       "credentials_incomplete": "Přihlašovací údaje jsou neúplné, vyplňte prosím uživatelské jméno, heslo a zemi",
       "login_error": "Nepodařilo se přihlásit, zkontrolujte přihlašovací údaje.",
-      "no_devices": "Na tomto účtu v zvolené zemi nebyla nalezena žádná podporovaná zařízení.{devices}"
+      "no_devices": "Na tomto účtu v zvolené zemi nebyla nalezena žádná podporovaná zařízení.{devices}",
+      "2fa_send_failed": "Zaslání ověřovacího kódu selhalo. Zkuste to prosím znovu.",
+      "2fa_limit_reached": "Byl dosažen denní limit pro zasílání ověřovacích kódů. Zkuste to prosím znovu zítra.",
+      "2fa_cooldown_active": "Příliš mnoho po sobě jdoucích požadavků. Před dalším pokusem počkejte několik minut."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Kód pro dvoufázové ověření"
         },
-        "description": "## Tento přístup vyžaduje bezpečnostní ověření\nOtevřete ověřovací stránku a pošlete ověřovací kód na mobilní telefon nebo e-mail. Po obdržení kódu jej neověřujte na webové stránce. Vraťte se zpět do HomeAssistant a zadejte jej do níže uvedeného vstupního pole.\n### [Odeslat ověřovací kód]({url})"
+        "description": "## Vyžaduje se bezpečnostní ověření\nOvěřovací kód byl zaslán na {dest}. Zadejte kód níže."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Typ úpravy",
         "state": {
+          "door": "Upravit dveře",
           "split": "Rozdělit místnosti",
           "merge": "Sloučit místnosti",
           "visibility": "Viditelnost místnosti",
           "material": "Materiál podlahy",
-          "type": "Název místnosti"
+          "type": "Název místnosti",
+          "wall": "Upravit zdi"
         }
       },
       "map_type": {
@@ -634,11 +639,29 @@
           "changing_mop": "Výměna mopu",
           "changing_mop_paused": "Výměna mopu pozastavena",
           "floor_maintaining": "Údržba podlahy",
-          "floor_maintaining_paused": "Údržba podlahy pozastavena"
+          "floor_maintaining_paused": "Údržba podlahy pozastavena",
+          "remote_pickup": "Vzdálené vyzvednutí",
+          "arranging_items": "Uspořádání položek",
+          "pet_guarding": "Hlídání domácích mazlíčků",
+          "pet_guarding_paused": "Hlídání domácích mazlíčků pozastaveno",
+          "installing_mop": "Instalace mopu",
+          "uninstalling_mop": "Odinstalace mopu",
+          "intelligent_recharging": "Inteligentní dobíjení",
+          "assisted_cleaning": "Asistovaný úklid",
+          "entering_dock": "Vjezd do stanice",
+          "leaving_dock": "Výjezd ze stanice",
+          "navigating_to_climber": "Navigace k lezci",
+          "docking_to_climber": "Dokování k lezci",
+          "climber_docked": "Lezec zadokován",
+          "climber_navigating": "Lezec naviguje",
+          "climbing_stairs": "Stoupání do schodů",
+          "climbing_stairs_completed": "Stoupání do schodů dokončeno",
+          "climber_at_dock": "Lezec u stanice",
+          "climber_leaving_dock": "Lezec opouští stanici"
         }
       },
       "status": {
-        "name": "Status",
+        "name": "Stav",
         "state": {
           "unknown": "Neznámý",
           "idle": "Nečinný",
@@ -667,7 +690,11 @@
           "summon_clean": "Přivolat k úklidu",
           "shortcut": "Zkratka",
           "person_follow": "Sledování osoby",
-          "water_check": "Kontrola vody"
+          "water_check": "Kontrola vody",
+          "pet_guarding": "Hlídání domácích mazlíčků",
+          "auto_arrangement": "Automatické uspořádání",
+          "smart_arrangement": "Chytré uspořádání",
+          "zoned_arrangement": "Zónové uspořádání"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Hledání mazlíčka",
           "auto_cleaning_washing_paused": "Automatické čištění a mytí pozastaveno",
           "area_cleaning_washing_paused": "Čištění oblasti a mytí pozastaveno",
-          "custom_cleaning_washing_paused": "Vlastní čištění a mytí pozastaveno"
+          "custom_cleaning_washing_paused": "Vlastní čištění a mytí pozastaveno",
+          "picking_up_item": "Vyzvedávání položky",
+          "picking_up_item_paused": "Vyzvedávání položky pozastaveno",
+          "picking_up_item_success": "Položka úspěšně vyzvednuta",
+          "remote_pickup_initializing": "Inicializace vzdáleného vyzvednutí",
+          "remote_pickup_identifing": "Identifikace vzdáleného vyzvednutí",
+          "manual_remote_pickup": "Ruční vzdálené vyzvednutí",
+          "automatic_remote_pickup": "Automatické vzdálené vyzvednutí",
+          "remote_pickup_in_progress": "Probíhá vzdálené vyzvednutí",
+          "remote_pickup_paused": "Vzdálené vyzvednutí pozastaveno",
+          "placing_item": "Umísťování položky",
+          "placing_item_paused": "Umísťování položky pozastaveno"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Nádrž na špinavou vodu v robotovi je plná.",
           "mop_not_installed": "Mop není nainstalován.",
           "fluffing_roller_error": "Chyba načechrávacího válce.",
-          "blocked_by_obstacle": "Robot je blokován překážkou."
+          "blocked_by_obstacle": "Robot je blokován překážkou.",
+          "robotic_arm_stopped": "Robotické rameno se zastavilo.",
+          "drainage_outlet_filter": "Filtr odpadní vody robota je ucpaný.",
+          "main_wheels_error": "Chyba hlavních kol."
         }
       },
       "charging_status": {
@@ -916,8 +957,8 @@
         "state": {
           "unknown": "Neznámý",
           "idle": "Nečinný",
-          "video": "Video",
-          "audio": "Audio",
+          "video": "Videozáznam",
+          "audio": "Zvukový záznam",
           "recording": "Nahrávání"
         }
       },
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Výměna mopu pozastavena",
           "floor_maintaining": "Údržba podlahy",
           "floor_maintaining_paused": "Údržba podlahy pozastavena",
-          "wood_floor_maintaining": "Údržba dřevěné podlahy"
+          "arranging_items": "Uspořádání položek",
+          "arranging_items_paused": "Pozastaveno uspořádávání položek",
+          "intensive_hair_cleaning": "Intenzivní čištění vlasů",
+          "accessory_handling": "Manipulace s příslušenstvím",
+          "increased_drum_speed_cleaning": "Čištění se zvýšenou rychlostí bubnu",
+          "pressurized_cleaning": "Tlakové čištění",
+          "steam_cleaning": "Parní čištění",
+          "steam_cleaning_paused": "Parní čištění pozastaveno"
         }
       },
       "dust_bag_drying_status": {
@@ -1063,7 +1111,7 @@
           "other": "Ostatní",
           "default": "Výchozí",
           "customized": "Vlastní",
-          "cleangenius": "Cleangenius",
+          "cleangenius": "CleanGenius",
           "water_stain": "Vodní skvrna",
           "unknown": "Neznámý"
         }
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Vynechaná skvrna",
           "cleaned_dried_stain": "Vyčištěná zaschlá skvrna",
           "cleaned_large_particles": "Vyčištěné velké částice",
-          "pen": "Pero"
+          "hair": "Vlasy",
+          "paper": "Papír",
+          "cleaned_hair": "Vyčištěné vlasy",
+          "sundry": "Různé"
         }
       },
       "obstacle_reason": {
@@ -1183,7 +1234,7 @@
         "name": "MAC adresa"
       },
       "model": {
-        "name": "Model"
+        "name": "Model vysavače"
       },
       "rssi": {
         "name": "RSSI"
@@ -1204,7 +1255,7 @@
         "name": "Deodorizér"
       },
       "detergent_left": {
-        "name": "Detergent"
+        "name": "Saponát"
       },
       "dirty_water_channel_left": {
         "name": "Kanál na špinavou vodu"
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Detekce zaměřená na mazlíčky"
       },
+      "pet_focused_cleaning": {
+        "name": "Čištění zaměřené na mazlíčky"
+      },
       "ai_obstacle_picture": {
         "name": "Obrázky překážek"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Neprůchodný práh",
         "job_details": "Podrobnosti úlohy",
         "keep_disabled": "Ponechat zakázané",
+        "map_display": "Zobrazení mapy",
         "map_management": "Správa map",
         "new_dnd": "Nové Nerušit",
         "new_schedule": "Vytvořit rozvrh",
-        "new_schortcut": "Vytvořit zkratku",
+        "new_shortcut": "Nová úloha zkratky",
         "next_job": "Další úloha",
         "no_go": "Zakázaná zóna",
         "no_mop": "Bez mopování",
@@ -1551,13 +1606,13 @@
         "select_map": "Vybrat mapu",
         "shortcuts": "Zkratky",
         "square_carpet": "Čtvercový koberec",
-        "start": "Start",
+        "start": "Spustit",
         "start_auto_empty": "Spustit vyprazdňování",
         "start_bag_drying": "Sušit sáček",
         "start_drying": "Spustit sušení",
         "start_task": "Spustit úlohu",
         "start_washing": "Spustit praní",
-        "stop": "Stop",
+        "stop": "Zastavit",
         "stop_bag_drying": "Zastavit sušení sáčku",
         "stop_drying": "Zastavit sušení",
         "understood": "Rozumím",
@@ -1580,12 +1635,12 @@
         "card_object_information_notification": "Info oznámení",
         "card_object_low_water_notification": "Oznámení vody",
         "card_object_map_change_confirmation": "Potvrzení změny mapy",
-        "card_object_menu": "Menu",
+        "card_object_menu": "Nabídka",
         "card_object_progress_bar": "Indikátor průběhu",
         "card_object_saved_notification": "Uložená oznámení",
         "card_object_shortcuts": "Zkratky",
         "card_object_state": "Stav",
-        "card_object_status": "Status",
+        "card_object_status": "Stav",
         "card_object_task_type": "Typ úlohy",
         "card_object_title": "Titulek",
         "card_object_warning_notification": "Varování",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Vypnout haptiku",
         "editable_objects": "Editovatelné objekty",
         "font_size": "Velikost písma",
+        "full_height": "Plná výška",
         "grid_size": "Velikost mřížky",
         "height": "Výška",
         "hidden_card_objects": "Skryté objekty karty",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuální zeď",
         "map_color_wall": "Zeď",
         "map_config": "Konfig. mapy",
+        "map_display": "Zobrazení mapy",
+        "map_display_floor_plan": "Půdorys",
+        "map_display_floor_plan_only": "Pouze půdorys",
+        "map_display_floor_plan_without_texture": "Půdorys bez textury",
+        "map_display_standard": "Standardní",
         "map_object_active_area": "Aktivní oblast",
         "map_object_active_cruise_point": "Akt. bod trasy",
         "map_object_active_point": "Aktivní bod",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Vlastní úklid",
         "map_object_deleted_carpet": "Smazaný koberec",
         "map_object_detected_carpet": "Detekovaný koberec",
+        "map_object_door": "Dveře",
         "map_object_floor": "Podlaha",
         "map_object_floor_material": "Materiál podlahy",
         "map_object_furniture": "Nábytek",
@@ -1702,7 +1764,7 @@
         "map_object_pet": "Zvíře",
         "map_object_predefined_point": "Předdef. body",
         "map_object_ramp": "Rampa",
-        "map_object_router": "Router",
+        "map_object_router": "Směrovač",
         "map_object_segment": "Místnost",
         "map_object_segment_type": "Typ místnosti",
         "map_object_selected_segments": "Vybrané místnosti",
@@ -1727,10 +1789,10 @@
         "selected_map_config": "Nastavení %name%",
         "show_map_info": "Info mapy",
         "top": "Nahoře",
-        "url": "Url",
+        "url": "URL",
         "viewport": "Zorné pole",
         "width": "Šířka",
-        "zoom": "Zoom"
+        "zoom": "Zvětšení"
       }
     },
     "frontend_message": {
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Zjišťování polohy selhalo!",
         "replace_map": "Nahradit novou mapu?",
         "reset_usage": "Resetovat statistiky?",
+        "reset_walls": "Obnovit zdi?",
         "restore_map": "Obnovit %name%?",
         "resume_cleaning": "Robot po nabití baterie na 80 % automaticky obnoví nedokončené úklidové úkoly.",
         "resume_cleaning_not_performed": "Robot obnoví úklid po skončení období Nerušit.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Současná úloha bude zastavena!",
         "unsaved_changes_present": "Neuložené změny budou ztraceny!",
         "unsupported_browser": "Nepodporovaný prohlížeč!",
-        "usage_will_reset": "Statistiky pro %name% budou resetovány."
+        "usage_will_reset": "Statistiky pro %name% budou resetovány.",
+        "walls_will_be_reset": "Zdi budou obnoveny na své původně zmapované místo!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Zbývá %time%",
         "unavailable": "Nedostupné",
         "used_water_tank": "Nádrž na použitou vodu",
+        "wall": "Zdi",
         "wifi_map": "Wifi mapa"
       }
     }
@@ -1890,7 +1955,7 @@
       "description": "Spustit operaci uklízení ve vybraných místnostech.",
       "fields": {
         "segments": {
-          "name": "Segmenty",
+          "name": "Místnosti",
           "description": "Seznam místností k uklízení. Pouze znak místnosti nebo pole znaků místnosti, počet uklízení, rychlost ventilátoru a režim mopu pro přepsání výchozích hodnot pro každou místnost."
         },
         "repeats": {
@@ -2124,7 +2189,7 @@
           "description": "ID mapy."
         },
         "segments": {
-          "name": "Segmenty",
+          "name": "Místnosti",
           "description": "ID místností."
         }
       }
@@ -2138,7 +2203,7 @@
           "description": "ID mapy."
         },
         "segment": {
-          "name": "Segment",
+          "name": "Úsek",
           "description": "ID místnosti."
         },
         "line": {
@@ -2328,16 +2393,16 @@
       }
     },
     "vacuum_set_router_position": {
-      "name": "Nastavit pozici routeru",
-      "description": "Nastavit pozici routeru na aktuální mapě. (Pouze na vysavačích s funkcí WiFi mapy)",
+      "name": "Nastavit pozici směrovaču",
+      "description": "Nastavit pozici směrovaču na aktuální mapě. (Pouze na vysavačích s funkcí WiFi mapy)",
       "fields": {
         "x": {
           "name": "X",
-          "description": "X souřadnice routeru."
+          "description": "X souřadnice směrovaču."
         },
         "y": {
           "name": "Y",
-          "description": "Y souřadnice routeru."
+          "description": "Y souřadnice směrovaču."
         }
       }
     },

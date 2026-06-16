@@ -13,7 +13,10 @@
       "wrong_captcha": "잘못된 캡차 코드입니다.",
       "credentials_incomplete": "계정 정보가 누락되었습니다. 사용자 이름, 비밀번호, 지역을 모두 입력해 주세요.",
       "login_error": "로그인할 수 없습니다. 계정 정보를 확인해 주세요.",
-      "no_devices": "선택한 지역의 해당 계정에서 지원되는 기기를 찾을 수 없습니다.{devices}"
+      "no_devices": "선택한 지역의 해당 계정에서 지원되는 기기를 찾을 수 없습니다.{devices}",
+      "2fa_send_failed": "인증 코드 전송 실패. 다시 시도하십시오.",
+      "2fa_limit_reached": "인증 코드 일일 전송 한도에 도달했습니다. 내일 다시 시도해 주세요.",
+      "2fa_cooldown_active": "연속 요청이 너무 많습니다. 다시 시도하기 전에 몇 분 동안 기다려 주십시오."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "2단계 인증 코드"
         },
-        "description": "## 보안 확인이 필요한 로그인입니다\n인증 페이지를 열어 모바일/이메일 인증 코드를 발송하세요. 인증 코드를 받은 후 웹페이지에서 바로 인증하지 마시고, Home Assistant로 돌아와 아래 입력창에 코드를 입력해 주세요.\n### [인증 코드 발송하기]({url})"
+        "description": "## 보안 확인이 필요합니다\n인증 코드가 {dest} (으)로 전송되었습니다. 아래에 코드를 입력하세요."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "편집 유형",
         "state": {
+          "door": "문 편집",
           "split": "방 분할",
           "merge": "방 병합",
           "visibility": "방 가시성",
           "material": "바닥 재질",
-          "type": "방 이름"
+          "type": "방 이름",
+          "wall": "벽 편집"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "걸레 교체 중",
           "changing_mop_paused": "걸레 교체 일시 정지됨",
           "floor_maintaining": "바닥 관리 중",
-          "floor_maintaining_paused": "바닥 관리 일시 정지됨"
+          "floor_maintaining_paused": "바닥 관리 일시 정지됨",
+          "remote_pickup": "원격 집기 중",
+          "arranging_items": "물건 정리 중",
+          "pet_guarding": "반려동물 가드 중",
+          "pet_guarding_paused": "반려동물 가드 일시 정지됨",
+          "installing_mop": "걸레 장착 중",
+          "uninstalling_mop": "걸레 탈거 중",
+          "intelligent_recharging": "지능형 재충전 중",
+          "assisted_cleaning": "보조 청소 중",
+          "entering_dock": "도크 진입 중",
+          "leaving_dock": "도크 이탈 중",
+          "navigating_to_climber": "클라이머로 이동 중",
+          "docking_to_climber": "클라이머에 도킹 중",
+          "climber_docked": "클라이머 도킹됨",
+          "climber_navigating": "클라이머 이동 중",
+          "climbing_stairs": "계단 오르는 중",
+          "climbing_stairs_completed": "계단 오르기 완료",
+          "climber_at_dock": "클라이머 도크에 있음",
+          "climber_leaving_dock": "클라이머 도크 이탈 중"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "호출 청소",
           "shortcut": "단축 명령",
           "person_follow": "사람 추종",
-          "water_check": "수위 확인"
+          "water_check": "수위 확인",
+          "pet_guarding": "반려동물 가드",
+          "auto_arrangement": "자동 배치",
+          "smart_arrangement": "스마트 배치",
+          "zoned_arrangement": "영역 배치"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "반려동물 찾기 중",
           "auto_cleaning_washing_paused": "자동 청소 중 세척 일시 정지됨",
           "area_cleaning_washing_paused": "영역 청소 중 세척 일시 정지됨",
-          "custom_cleaning_washing_paused": "사용자 지정 청소 중 세척 일시 정지됨"
+          "custom_cleaning_washing_paused": "사용자 지정 청소 중 세척 일시 정지됨",
+          "picking_up_item": "물건 집는 중",
+          "picking_up_item_paused": "물건 집기 일시 정지됨",
+          "picking_up_item_success": "물건 집기 성공",
+          "remote_pickup_initializing": "원격 집기 초기화 중",
+          "remote_pickup_identifing": "원격 집기 확인 중",
+          "manual_remote_pickup": "수동 원격 집기",
+          "automatic_remote_pickup": "자동 원격 집기",
+          "remote_pickup_in_progress": "원격 집기 진행 중",
+          "remote_pickup_paused": "원격 집기 일시 정지됨",
+          "placing_item": "물건 놓는 중",
+          "placing_item_paused": "물건 놓기 일시 정지됨"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "로봇 내부 오수통이 가득 찼습니다.",
           "mop_not_installed": "걸레 패드가 장착되지 않았습니다.",
           "fluffing_roller_error": "플러핑 롤러 오류입니다.",
-          "blocked_by_obstacle": "장애물에 의해 로봇이 가로막혔습니다."
+          "blocked_by_obstacle": "장애물에 의해 로봇이 가로막혔습니다.",
+          "robotic_arm_stopped": "로봇 암 정지됨",
+          "drainage_outlet_filter": "로봇 배수구 필터가 막혔습니다.",
+          "main_wheels_error": "메인 바퀴 오류"
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "걸레 교체 일시 정지됨",
           "floor_maintaining": "바닥 관리 중",
           "floor_maintaining_paused": "바닥 관리 일시 정지됨",
-          "wood_floor_maintaining": "마루 바닥 전용 유지 관리"
+          "arranging_items": "물건 정리 중",
+          "arranging_items_paused": "물건 정리 일시 정지됨",
+          "intensive_hair_cleaning": "집중 머리카락 청소",
+          "accessory_handling": "액세서리 조작",
+          "increased_drum_speed_cleaning": "드럼 속도 향상 청소",
+          "pressurized_cleaning": "가압 청소",
+          "steam_cleaning": "스팀 청소",
+          "steam_cleaning_paused": "스팀 청소 일시 정지됨"
         }
       },
       "dust_bag_drying_status": {
@@ -1024,7 +1072,7 @@
         "state": {
           "idle": "대기 중",
           "drying": "건조 중",
-          "paused": "일시 정지됨"        
+          "paused": "일시 정지됨"
         }
       },
       "nation_matched": {
@@ -1088,7 +1136,7 @@
           "brush_entangled_by_object": "브러시가 물체에 걸림",
           "brush_entangled_by_obstacle": "브러시가 장애물에 걸림",
           "cannot_find_base_station": "베이스 스테이션을 찾을 수 없음",
-          "cliff_sensor_error": "낙하 방지 센서 오류" ,
+          "cliff_sensor_error": "낙하 방지 센서 오류",
           "laser_distance_sensor_error": "레이저 거리 센서 오류",
           "mop_pad_abnormally_removed": "걸레 패드가 비정상적으로 제거됨",
           "mop_pad_fallen_off": "걸레 패드가 떨어짐",
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "청소 불가능한 얼룩 건너뜀",
           "cleaned_dried_stain": "청소된 마른 얼룩",
           "cleaned_large_particles": "청소된 큰 입자",
-          "pen": "펜"
+          "hair": "머리카락",
+          "paper": "종이",
+          "cleaned_hair": "청소된 머리카락",
+          "sundry": "잡화/기타"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "반려동물 집중 감지"
       },
+      "pet_focused_cleaning": {
+        "name": "반려동물 집중 청소"
+      },
       "ai_obstacle_picture": {
         "name": "장애물 사진"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "통과 불가 문턱",
         "job_details": "작업 상세",
         "keep_disabled": "비활성 유지",
+        "map_display": "지도 표시",
         "map_management": "지도 관리",
         "new_dnd": "새 DND",
         "new_schedule": "예약 추가",
-        "new_schortcut": "단축어 생성",
+        "new_shortcut": "새 단축어 작업",
         "next_job": "다음 작업",
         "no_go": "진입 금지",
         "no_mop": "물걸레 금지",
@@ -1585,7 +1640,7 @@
         "card_object_saved_notification": "저장 알림",
         "card_object_shortcuts": "단축어",
         "card_object_state": "상태",
-        "card_object_status": "Status",
+        "card_object_status": "상태",
         "card_object_task_type": "작업 유형",
         "card_object_title": "제목",
         "card_object_warning_notification": "경고 알림",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "진동 피드백 비활성화",
         "editable_objects": "편집 가능 개체",
         "font_size": "글자 크기",
+        "full_height": "전체 높이",
         "grid_size": "그리드 크기",
         "height": "높이",
         "hidden_card_objects": "숨겨진 카드 개체",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "가상벽",
         "map_color_wall": "벽",
         "map_config": "지도 설정",
+        "map_display": "지도 표시",
+        "map_display_floor_plan": "평면도",
+        "map_display_floor_plan_only": "평면도만",
+        "map_display_floor_plan_without_texture": "텍스처 없는 평면도",
+        "map_display_standard": "표준",
         "map_object_active_area": "활성 영역",
         "map_object_active_cruise_point": "활성 크루즈 포인트",
         "map_object_active_point": "활성 포인트",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "사용자 지정 청소",
         "map_object_deleted_carpet": "삭제된 카펫",
         "map_object_detected_carpet": "감지된 카펫",
+        "map_object_door": "문",
         "map_object_floor": "바닥",
         "map_object_floor_material": "바닥 재질",
         "map_object_furniture": "가구",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "자가 포지셔닝 실패!",
         "replace_map": "지도를 교체하시겠습니까?",
         "reset_usage": "사용량을 초기화하시겠습니까?",
+        "reset_walls": "벽 초기화하시겠습니까?",
         "restore_map": "%name% 지도를 복구하시겠습니까?",
         "resume_cleaning": "로봇이 배터리를 80%까지 충전한 후 완료되지 않은 청소 작업을 자동으로 재개합니다.",
         "resume_cleaning_not_performed": "로봇은 방해 금지 기간이 끝나면 청소를 재개합니다.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "현재 작업이 중단됩니다!",
         "unsaved_changes_present": "저장되지 않은 변경 사항이 사라집니다!",
         "unsupported_browser": "지원되지 않는 브라우저입니다!",
-        "usage_will_reset": "%name% 사용량이 초기화됩니다!"
+        "usage_will_reset": "%name% 사용량이 초기화됩니다!",
+        "walls_will_be_reset": "벽이 초기에 매핑된 위치로 복구됩니다!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "%time% 남음",
         "unavailable": "사용 불가",
         "used_water_tank": "오수 탱크",
+        "wall": "벽",
         "wifi_map": "신호 지도"
       }
     }

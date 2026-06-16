@@ -13,7 +13,10 @@
       "wrong_captcha": "Captcha salah.",
       "credentials_incomplete": "Kredensial tidak lengkap, silakan isi nama pengguna, kata sandi, dan negara.",
       "login_error": "Tidak dapat masuk, periksa kredensial.",
-      "no_devices": "Tidak ada perangkat yang didukung ditemukan pada akun ini di negara yang dipilih.{devices}"
+      "no_devices": "Tidak ada perangkat yang didukung ditemukan pada akun ini di negara yang dipilih.{devices}",
+      "2fa_send_failed": "Gagal mengirim kode verifikasi. Silakan coba lagi.",
+      "2fa_limit_reached": "Batas harian untuk mengirim kode verifikasi telah tercapai. Silakan coba lagi besok.",
+      "2fa_cooldown_active": "Terlalu banyak permintaan berturut-turut. Silakan tunggu beberapa menit sebelum mencoba lagi."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Kode verifikasi dua langkah"
         },
-        "description": "## Masuk ini memerlukan verifikasi keamanan\nSilakan buka halaman verifikasi untuk mengirim kode verifikasi ponsel/email. Setelah menerima kode verifikasi, jangan verifikasi di halaman web. Kembali ke HomeAssistant dan masukkan di kotak masukan di bawah.\n### [Kirim Kode Verifikasi]({url})"
+        "description": "## Verifikasi keamanan diperlukan\nKode verifikasi telah dikirim ke {dest}. Silakan masukkan kode di bawah ini."
       },
       "captcha": {
         "data": {
@@ -250,13 +253,13 @@
         "name": "Tekanan Pel",
         "state": {
           "light": "Ringan",
-          "normal": "Normal"
+          "normal": "Sedang"
         }
       },
       "mop_temperature": {
         "name": "Suhu Pel",
         "state": {
-          "normal": "Normal",
+          "normal": "Sedang",
           "warm": "Hangat"
         }
       },
@@ -369,7 +372,7 @@
       "water_temperature": {
         "name": "Suhu Air",
         "state": {
-          "normal": "Normal",
+          "normal": "Sedang",
           "mild": "Ringan",
           "warm": "Hangat",
           "hot": "Panas",
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Tipe Edit",
         "state": {
+          "door": "Edit pintu",
           "split": "Pisahkan ruangan",
           "merge": "Gabungkan ruangan",
           "visibility": "Visibilitas ruangan",
           "material": "Material lantai",
-          "type": "Nama ruangan"
+          "type": "Nama ruangan",
+          "wall": "Edit dinding"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Mengganti pel",
           "changing_mop_paused": "Penggantian pel dijeda",
           "floor_maintaining": "Memelihara lantai",
-          "floor_maintaining_paused": "Pemeliharaan lantai dijeda"
+          "floor_maintaining_paused": "Pemeliharaan lantai dijeda",
+          "remote_pickup": "Penjemputan jarak jauh",
+          "arranging_items": "Menata barang",
+          "pet_guarding": "Penjaga hewan peliharaan",
+          "pet_guarding_paused": "Penjaga hewan peliharaan dijeda",
+          "installing_mop": "Memasang pel",
+          "uninstalling_mop": "Melepas pel",
+          "intelligent_recharging": "Pengisian daya cerdas",
+          "assisted_cleaning": "Pembersihan berbantuan",
+          "entering_dock": "Memasuki dok",
+          "leaving_dock": "Meninggalkan dok",
+          "navigating_to_climber": "Navigasi ke pemanjat",
+          "docking_to_climber": "Berlabuh ke pemanjat",
+          "climber_docked": "Pemanjat berlabuh",
+          "climber_navigating": "Pemanjat menavigasi",
+          "climbing_stairs": "Menaiki tangga",
+          "climbing_stairs_completed": "Selesai menaiki tangga",
+          "climber_at_dock": "Pemanjat di dok",
+          "climber_leaving_dock": "Pemanjat meninggalkan dok"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Panggil untuk membersihkan",
           "shortcut": "Pintasan",
           "person_follow": "Mengikuti orang",
-          "water_check": "Memeriksa air"
+          "water_check": "Periksa air",
+          "pet_guarding": "Penjaga hewan peliharaan",
+          "auto_arrangement": "Penataan otomatis",
+          "smart_arrangement": "Penataan cerdas",
+          "zoned_arrangement": "Penataan zona"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Menemukan hewan peliharaan",
           "auto_cleaning_washing_paused": "Pencucian otomatis dijeda",
           "area_cleaning_washing_paused": "Pencucian area dijeda",
-          "custom_cleaning_washing_paused": "Pencucian kustom dijeda"
+          "custom_cleaning_washing_paused": "Pencucian pembersihan kustom dijeda",
+          "picking_up_item": "Mengambil barang",
+          "picking_up_item_paused": "Mengambil barang dijeda",
+          "picking_up_item_success": "Berhasil mengambil barang",
+          "remote_pickup_initializing": "Inisialisasi penjemputan jarak jauh",
+          "remote_pickup_identifing": "Identifikasi penjemputan jarak jauh",
+          "manual_remote_pickup": "Penjemputan jarak jauh manual",
+          "automatic_remote_pickup": "Penjemputan jarak jauh otomatis",
+          "remote_pickup_in_progress": "Penjemputan jarak jauh sedang berlangsung",
+          "remote_pickup_paused": "Penjemputan jarak jauh dijeda",
+          "placing_item": "Menempatkan barang",
+          "placing_item_paused": "Menempatkan barang dijeda"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Tangki air kotor internal robot penuh.",
           "mop_not_installed": "Bantalan pel tidak terpasang.",
           "fluffing_roller_error": "Kesalahan pada rol pembersih.",
-          "blocked_by_obstacle": "Robot terhalang oleh rintangan."
+          "blocked_by_obstacle": "Terhalang oleh rintangan",
+          "robotic_arm_stopped": "Lengan robot berhenti.",
+          "drainage_outlet_filter": "Filter saluran air limbah robot tersumbat.",
+          "main_wheels_error": "Kesalahan roda utama."
         }
       },
       "charging_status": {
@@ -916,8 +957,8 @@
         "state": {
           "unknown": "Tidak diketahui",
           "idle": "Diam",
-          "video": "Video",
-          "audio": "Audio",
+          "video": "Rekaman video",
+          "audio": "Rekaman suara",
           "recording": "Merekam"
         }
       },
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Penggantian pel dijeda",
           "floor_maintaining": "Pemeliharaan lantai",
           "floor_maintaining_paused": "Pemeliharaan lantai dijeda",
-          "wood_floor_maintaining": "Pemeliharaan lantai kayu"
+          "arranging_items": "Menata barang",
+          "arranging_items_paused": "Menata barang dijeda",
+          "intensive_hair_cleaning": "Pembersihan rambut intensif",
+          "accessory_handling": "Penanganan aksesori",
+          "increased_drum_speed_cleaning": "Pembersihan dengan kecepatan drum ditingkatkan",
+          "pressurized_cleaning": "Pembersihan bertekanan",
+          "steam_cleaning": "Pembersihan uap",
+          "steam_cleaning_paused": "Pembersihan uap dijeda"
         }
       },
       "dust_bag_drying_status": {
@@ -1063,7 +1111,7 @@
           "other": "Lainnya",
           "default": "Bawaan",
           "customized": "Disesuaikan",
-          "cleangenius": "Cleangenius",
+          "cleangenius": "CleanGenius",
           "water_stain": "Noda air",
           "unknown": "Tidak diketahui"
         }
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Melewati noda yang tidak dapat dibersihkan",
           "cleaned_dried_stain": "Bersihkan noda kering",
           "cleaned_large_particles": "Partikel besar dibersihkan",
-          "pen": "Pena"
+          "hair": "Rambut",
+          "paper": "Kertas",
+          "cleaned_hair": "Rambut yang dibersihkan",
+          "sundry": "Lain-lain"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Deteksi Fokus Hewan Peliharaan"
       },
+      "pet_focused_cleaning": {
+        "name": "Pembersihan Fokus Hewan Peliharaan"
+      },
       "ai_obstacle_picture": {
         "name": "Gambar Rintangan"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Ambang batas tidak dapat dilewati",
         "job_details": "Rincian tugas",
         "keep_disabled": "Tetap Nonaktifkan",
+        "map_display": "Tampilan Peta",
         "map_management": "Manajemen peta",
         "new_dnd": "Jadwal DnD baru",
         "new_schedule": "Jadwal baru",
-        "new_schortcut": "Pintasan baru",
+        "new_shortcut": "Tugas pintasan baru",
         "next_job": "Tugas berikutnya",
         "no_go": "Zona Dilarang-Masuk",
         "no_mop": "Area Tanpa-Pel",
@@ -1538,7 +1593,7 @@
         "rename": "Ganti nama",
         "repeats": "Pengulangan",
         "replace": "Timpa",
-        "reset": "Reset",
+        "reset": "Atur ulang",
         "restore": "Pulihkan",
         "restore_map": "Pulihkan Peta",
         "resume": "Lanjutkan",
@@ -1584,7 +1639,7 @@
         "card_object_progress_bar": "Bilah kemajuan",
         "card_object_saved_notification": "Pemberitahuan tersimpan",
         "card_object_shortcuts": "Jalan pintas",
-        "card_object_state": "Status",
+        "card_object_state": "State",
         "card_object_status": "Status",
         "card_object_task_type": "Tipe tugas",
         "card_object_title": "Judul",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Nonaktifkan getaran sentuhan",
         "editable_objects": "Objek yang Dapat Diedit",
         "font_size": "Ukuran Huruf",
+        "full_height": "Tinggi Penuh",
         "grid_size": "Ukuran Kisi",
         "height": "Tinggi",
         "hidden_card_objects": "Sembunyikan objek kartu",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Dinding Virtual",
         "map_color_wall": "Dinding",
         "map_config": "Konfigurasi Peta",
+        "map_display": "Tampilan Peta",
+        "map_display_floor_plan": "Denah Lantai",
+        "map_display_floor_plan_only": "Hanya Denah Lantai",
+        "map_display_floor_plan_without_texture": "Denah Lantai tanpa tekstur",
+        "map_display_standard": "Standar",
         "map_object_active_area": "Area Aktif",
         "map_object_active_cruise_point": "Titik Jelajah Aktif",
         "map_object_active_point": "Titik Aktif",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Pembersihan Kustom",
         "map_object_deleted_carpet": "Karpet Terhapus",
         "map_object_detected_carpet": "Karpet Terdeteksi",
+        "map_object_door": "Pintu",
         "map_object_floor": "Lantai",
         "map_object_floor_material": "Material Lantai",
         "map_object_furniture": "Furnitur",
@@ -1730,7 +1792,7 @@
         "url": "URL",
         "viewport": "Viewport",
         "width": "Lebar",
-        "zoom": "Zoom"
+        "zoom": "Perbesar"
       }
     },
     "frontend_message": {
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Relokasi gagal!",
         "replace_map": "Ganti dengan peta baru?",
         "reset_usage": "Atur ulang penggunaan?",
+        "reset_walls": "Atur Ulang Dinding?",
         "restore_map": "Pulihkan %name%?",
         "resume_cleaning": "Robot akan melanjutkan pembersihan otomatis setelah baterai mencapai 80%.",
         "resume_cleaning_not_performed": "Robot akan melanjutkan pembersihan setelah periode DnD berakhir.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Tugas saat ini akan dihentikan!",
         "unsaved_changes_present": "Ada perubahan belum disimpan yang akan hilang!",
         "unsupported_browser": "Browser tidak didukung!",
-        "usage_will_reset": "Penggunaan %name% akan diatur ulang!"
+        "usage_will_reset": "Penggunaan %name% akan diatur ulang!",
+        "walls_will_be_reset": "Dinding akan dikembalikan ke lokasi yang dipetakan pada awalnya!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Tersisa %time%",
         "unavailable": "Tidak Tersedia",
         "used_water_tank": "Tangki Air Bekas",
+        "wall": "Dinding",
         "wifi_map": "Peta WiFi"
       }
     }

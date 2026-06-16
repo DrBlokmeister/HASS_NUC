@@ -781,6 +781,7 @@ class DreameVacuumDreameHomeCloudProtocol:
         self._connected = False
         self._logged_in = False
         self._auth_failed = False
+        self._reconnect_timer_cancel()
         if self._client is not None:
             self._client.disconnect()
             self._client.loop_stop()
@@ -836,6 +837,8 @@ class DreameVacuumMiHomeCloudProtocol:
         self._locale = locale.getdefaultlocale()[0]
         self._v3 = False
         self.verification_url = None
+        self.verification_dest = None
+        self.login_error = None
         self.captcha_img = None
         self._fail_count = 0
         self._connected = False
@@ -1011,9 +1014,10 @@ class DreameVacuumMiHomeCloudProtocol:
                         return True
 
                     if "notificationUrl" in data:
-                        self.verification_url = data["notificationUrl"]
-                        if self.verification_url[:4] != "http":
-                            self.verification_url = f"https://account.xiaomi.com{self.verification_url}"
+                        verification_url = data["notificationUrl"]
+                        if verification_url[:4] != "http":
+                            verification_url = f"https://account.xiaomi.com{verification_url}"
+                        self.send_2fa_code(verification_url)
 
                     if "captchaUrl" in data:
                         url = data["captchaUrl"]
@@ -1052,6 +1056,8 @@ class DreameVacuumMiHomeCloudProtocol:
         return False
 
     def login(self) -> bool:
+        self.login_error = None
+        self.verification_dest = None
         self._session.close()
         self._session = requests.session()
         self._session.cookies.set("sdkVersion", "3.8.6", domain="mi.com")
@@ -1073,18 +1079,114 @@ class DreameVacuumMiHomeCloudProtocol:
 
         return self._logged_in
 
+    def send_2fa_code(self, verification_url) -> bool:
+        if verification_url:
+            path = "fe/service/identity/authStart"
+            if path in verification_url:
+                self.login_error = "2fa_send_failed"
+                self.verification_dest = None
+                try:
+                    response = self._session.get(
+                        verification_url.replace(path, "identity/list"),
+                        timeout=5,
+                    )
+                    if response and response.status_code == 200:
+                        identity_session = response.cookies.get("identity_session")
+                        if identity_session:
+                            data = self.to_json(response.text)
+                            options = data.get("options", [])
+                            if 4 in options:
+                                flag = 4
+                            elif 8 in options:
+                                flag = 8
+                            else:
+                                flag = data.get("flag", 4)
+
+                            key = "Phone" if flag == 4 else "Email"
+                            verify_response = self._session.get(
+                                verification_url.replace(path, f"identity/auth/verify{key}"),
+                                cookies={"identity_session": identity_session},
+                                params={"_flag": flag, "_json": "true"},
+                                timeout=10,
+                            )
+                            if not verify_response or verify_response.status_code != 200:
+                                return False
+
+                            verify_data = self.to_json(verify_response.text)
+                            code = verify_data.get("code")
+                            if code != 0:
+                                desc = verify_data.get("description") or ""
+                                msg = verify_data.get("message") or ""
+                                if (
+                                    "frequent" in desc.lower()
+                                    or "frequent" in msg.lower()
+                                    or "seconds" in desc.lower()
+                                    or "seconds" in msg.lower()
+                                ):
+                                    self.login_error = "2fa_cooldown_active"
+                                elif code == 70022 or "limit" in desc.lower() or "limit" in msg.lower():
+                                    self.login_error = "2fa_limit_reached"
+                                else:
+                                    self.login_error = desc or msg or "2fa_send_failed"
+                                return False
+
+                            send_response = self._session.post(
+                                verification_url.replace(path, f"identity/auth/send{key}Ticket"),
+                                data={"retry": 0, "icode": "", "_json": "true"},
+                                cookies={"identity_session": identity_session},
+                                timeout=10,
+                            )
+                            if not send_response or send_response.status_code != 200:
+                                return False
+
+                            send_data = self.to_json(send_response.text)
+                            code = send_data.get("code")
+                            if code != 0:
+                                desc = send_data.get("description") or ""
+                                msg = send_data.get("message") or ""
+                                if (
+                                    "frequent" in desc.lower()
+                                    or "frequent" in msg.lower()
+                                    or "seconds" in desc.lower()
+                                    or "seconds" in msg.lower()
+                                ):
+                                    self.login_error = "2fa_cooldown_active"
+                                elif code == 70022 or "limit" in desc.lower() or "limit" in msg.lower():
+                                    self.login_error = "2fa_limit_reached"
+                                else:
+                                    self.login_error = desc or msg or "2fa_send_failed"
+                                return False
+
+                            self.login_error = None
+                            self.verification_url = verification_url
+                            self.verification_dest = (
+                                verify_data.get("maskedPhone") or verify_data.get("maskedEmail") or "*****"
+                            )
+                            return True
+                except Exception as ex:
+                    _LOGGER.warning("Failed to send 2FA code: %s", ex)
+        return False
+
     def verify_code(self, code) -> bool:
         path = "fe/service/identity/authStart"
         if code and self.verification_url and self._session and path in self.verification_url:
             try:
                 response = self._session.get(
                     self.verification_url.replace(path, "identity/list"),
-                    timeout=5,
+                    timeout=10,
                 )
                 if response and response.status_code == 200:
                     identity_session = response.cookies.get("identity_session")
                     if identity_session:
-                        flag = self.to_json(response.text).get("flag", 4)
+                        data = self.to_json(response.text)
+                        options = data.get("options", [])
+                        if 4 in options:
+                            flag = 4
+                        elif 8 in options:
+                            flag = 8
+                        else:
+                            flag = data.get("flag", 4)
+
                         response = self._session.post(
                             self.verification_url.replace(
                                 path,
@@ -1102,7 +1204,7 @@ class DreameVacuumMiHomeCloudProtocol:
                             cookies={
                                 "identity_session": identity_session,
                             },
-                            timeout=5,
+                            timeout=10,
                         )
 
                         if response and response.status_code == 200:
@@ -1111,7 +1213,7 @@ class DreameVacuumMiHomeCloudProtocol:
                                 response = self._session.get(
                                     data["location"],
                                     allow_redirects=True,
-                                    timeout=5,
+                                    timeout=10,
                                 )
                                 if response and response.status_code == 200:
                                     self.verification_url = None
@@ -1123,6 +1225,7 @@ class DreameVacuumMiHomeCloudProtocol:
                                         self._connected = True
                                     return True
                             else:
+                                self.login_error = data.get("description") or data.get("message") or "2fa_failed"
                                 _LOGGER.warning("2FA Verification Failed! %s", response.text)
             except Exception as ex:
                 raise DeviceException("2FA Verification Failed! %s", ex) from None

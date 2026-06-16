@@ -13,7 +13,10 @@
       "wrong_captcha": "Невірний captcha.",
       "credentials_incomplete": "Неповні облікові дані, будь ласка, введіть ім'я користувача, пароль та країну",
       "login_error": "Не вдається ввійти, перевірте свої облікові дані",
-      "no_devices": "В обліковому записі для цього регіону не знайдено підтримуваних пристроїв{devices}"
+      "no_devices": "В обліковому записі для цього регіону не знайдено підтримуваних пристроїв{devices}",
+      "2fa_send_failed": "Не вдалося надіслати код підтвердження. Будь ласка, спробуйте ще раз.",
+      "2fa_limit_reached": "Досягнуто добового ліміту відправки кодів підтвердження. Будь ласка, спробуйте ще раз завтра.",
+      "2fa_cooldown_active": "Занадто багато послідовних запитів. Будь ласка, зачекайте кілька хвилин перед наступною спробою."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Код двофакторної перевірки"
         },
-        "description": "## Для входу потрібна перевірка безпеки\nВідкрийте сторінку перевірки, щоб надіслати код підтвердження на мобільний телефон або електронну пошту. Після отримання коду не підтверджуйте його на веб-сторінці. Поверніться до HomeAssistant і введіть його в поле нижче.\n### [Надіслати код підтвердження]({url})"
+        "description": "## Потрібна перевірка безпеки\nКод підтвердження надіслано на {dest}. Будь ласка, введіть код нижче."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Тип редагування",
         "state": {
+          "door": "Змінити двері",
           "split": "Розділити кімнати",
           "merge": "Об'єднати кімнати",
           "visibility": "Видимість кімнати",
           "material": "Матеріал підлоги",
-          "type": "Назва кімнати"
+          "type": "Назва кімнати",
+          "wall": "Змінити стіни"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Заміна швабри",
           "changing_mop_paused": "Заміна швабры призупинена",
           "floor_maintaining": "Догляд за підлогою",
-          "floor_maintaining_paused": "Догляд за підлогою призупинено"
+          "floor_maintaining_paused": "Догляд за підлогою призупинено",
+          "remote_pickup": "Дистанційний підбір",
+          "arranging_items": "Розстановка предметів",
+          "pet_guarding": "Охорона домашніх тварин",
+          "pet_guarding_paused": "Охорона домашніх тварин призупинена",
+          "installing_mop": "Встановлення швабри",
+          "uninstalling_mop": "Зняття швабри",
+          "intelligent_recharging": "Інтелектуальне заряджання",
+          "assisted_cleaning": "Допоміжне прибирання",
+          "entering_dock": "Вхід у док-станцію",
+          "leaving_dock": "Вихід з док-станції",
+          "navigating_to_climber": "Навігація до скелелаза",
+          "docking_to_climber": "Стикуваня зі скелелазом",
+          "climber_docked": "Скелелаз пристикований",
+          "climber_navigating": "Навігація скелелаза",
+          "climbing_stairs": "Підйом по сходах",
+          "climbing_stairs_completed": "Підйом по сходах завершено",
+          "climber_at_dock": "Скелелаз у доку",
+          "climber_leaving_dock": "Скелелаз виходить з доку"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Викликати на очищення",
           "shortcut": "Шорткат",
           "person_follow": "Слідкування за особою",
-          "water_check": "Перевірка води"
+          "water_check": "Перевірка води",
+          "pet_guarding": "Охорона домашніх тварин",
+          "auto_arrangement": "Автоматична розстановка",
+          "smart_arrangement": "Розумна розстановка",
+          "zoned_arrangement": "Зональна розстановка"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Виявлення домашніх тварин",
           "auto_cleaning_washing_paused": "Автоматичне очищення прання призупинене",
           "area_cleaning_washing_paused": "Очищення області прибирання призупинено",
-          "custom_cleaning_washing_paused": "Спеціальна миття прибирання зробив паузу"
+          "custom_cleaning_washing_paused": "Спеціальна миття прибирання зробив паузу",
+          "picking_up_item": "Підняття предмета",
+          "picking_up_item_paused": "Підняття предмета призупинено",
+          "picking_up_item_success": "Предмет успішно піднято",
+          "remote_pickup_initializing": "Ініціалізація дистанційного підбору",
+          "remote_pickup_identifing": "Ідентифікація дистанційного підбору",
+          "manual_remote_pickup": "Ручний дистанційний підбір",
+          "automatic_remote_pickup": "Автоматичний дистанційний підбір",
+          "remote_pickup_in_progress": "Дистанційний підбір триває",
+          "remote_pickup_paused": "Дистанційний підбір призупинено",
+          "placing_item": "Розміщення предмета",
+          "placing_item_paused": "Розміщення предмета призупинено"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Бак для брудної води робота повний.",
           "mop_not_installed": "Швабра не встановлена.",
           "fluffing_roller_error": "Помилка ворсистого ролика.",
-          "blocked_by_obstacle": "Робот заблокований перешкодою."
+          "blocked_by_obstacle": "Робот заблокований перешкодою.",
+          "robotic_arm_stopped": "Роботизована рука зупинилася.",
+          "drainage_outlet_filter": "Фільтр зливного отвору робота засмічений.",
+          "main_wheels_error": "Помилка головних коліс."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Заміна швабры призупинена",
           "floor_maintaining": "Догляд за підлогою",
           "floor_maintaining_paused": "Догляд за підлогою призупинено",
-          "wood_floor_maintaining": "Догляд за дерев'яною підлогою"
+          "arranging_items": "Розстановка предметів",
+          "arranging_items_paused": "Розстановка предметів призупинена",
+          "intensive_hair_cleaning": "Інтенсивне прибирання волосся",
+          "accessory_handling": "Обробка аксесуарів",
+          "increased_drum_speed_cleaning": "Прибирання з підвищеною швидкістю барабана",
+          "pressurized_cleaning": "Прибирання під тиском",
+          "steam_cleaning": "Парове прибирання",
+          "steam_cleaning_paused": "Парове прибирання призупинено"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Пляму пропущено",
           "cleaned_dried_stain": "Пляму очищено",
           "cleaned_large_particles": "Частки очищено",
-          "pen": "Ручка"
+          "hair": "Волосся",
+          "paper": "Папір",
+          "cleaned_hair": "Прибране волосся",
+          "sundry": "Різне"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Виявлення тварин"
       },
+      "pet_focused_cleaning": {
+        "name": "Прибирання за тваринами"
+      },
       "ai_obstacle_picture": {
         "name": "Фотографії перешкод"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Непрохідний поріг",
         "job_details": "Деталі завдання",
         "keep_disabled": "Залишити вимкненим",
+        "map_display": "Відображення карти",
         "map_management": "Керування картами",
         "new_dnd": "Нове завд. Не турбувати",
         "new_schedule": "Створити розклад",
-        "new_schortcut": "Створити ярлик",
+        "new_shortcut": "Нове завдання швидкої команди",
         "next_job": "Наступне завдання",
         "no_go": "Заборонена зона",
         "no_mop": "Без вологого прибирання",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Вимкнути тактил. відгук",
         "editable_objects": "Редагування об'єктів",
         "font_size": "Розмір шрифту",
+        "full_height": "Повна висота",
         "grid_size": "Розмір сітки",
         "height": "Висота",
         "hidden_card_objects": "Приховані об'єкти картки",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Віртуальна стіна",
         "map_color_wall": "Стіна",
         "map_config": "Налаштування карти",
+        "map_display": "Відображення карти",
+        "map_display_floor_plan": "План поверху",
+        "map_display_floor_plan_only": "Тільки план поверху",
+        "map_display_floor_plan_without_texture": "План поверху без текстури",
+        "map_display_standard": "Стандартно",
         "map_object_active_area": "Активна зона",
         "map_object_active_cruise_point": "Активна точка маршр.",
         "map_object_active_point": "Активна точка",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Налаштов. прибирання",
         "map_object_deleted_carpet": "Видалений килим",
         "map_object_detected_carpet": "Виявлений килим",
+        "map_object_door": "Двері",
         "map_object_floor": "Підлога",
         "map_object_floor_material": "Матеріал підлоги",
         "map_object_furniture": "Меблі",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Помилка самопозиціонування!",
         "replace_map": "Замінити нову карту?",
         "reset_usage": "Скинути статистику?",
+        "reset_walls": "Скинути стіни?",
         "restore_map": "Відновити %name%?",
         "resume_cleaning": "Робот автоматично відновить незавершені завдання після заряджання батареї до 80 %.",
         "resume_cleaning_not_performed": "Робот відновить прибирання після закінчення періоду «Не турбувати».",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Поточне завдання буде зупинено!",
         "unsaved_changes_present": "Незбережені зміни буде втрачено!",
         "unsupported_browser": "Браузер не підтримується!",
-        "usage_will_reset": "Статистику %name% буде скинуто."
+        "usage_will_reset": "Статистику %name% буде скинуто.",
+        "walls_will_be_reset": "Стіни будуть відновлені до їх початково нанесеного на карту місця!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Залишилося %time%",
         "unavailable": "Недоступно",
         "used_water_tank": "Бак брудної води",
+        "wall": "Стіни",
         "wifi_map": "Карта Wi-Fi"
       }
     }

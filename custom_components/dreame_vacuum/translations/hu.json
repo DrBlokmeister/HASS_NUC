@@ -13,7 +13,10 @@
       "wrong_captcha": "Hibás captcha.",
       "credentials_incomplete": "A hitelesítési adatok hiányosak, kérjük, töltse ki a felhasználónevét, jelszavát és a szerver régiót",
       "login_error": "Nem sikerült bejelentkezni, ellenőrizze a hitelesítési adatokat.",
-      "no_devices": "Nincs támogatott eszköz ezen a fiókon a választott szerver régióban.{devices}"
+      "no_devices": "Nincs támogatott eszköz ezen a fiókon a választott szerver régióban.{devices}",
+      "2fa_send_failed": "Nem sikerült elküldeni a biztonsági kódot. Kérjük, próbálja újra.",
+      "2fa_limit_reached": "Elérte a megerősítő kódok küldésének napi limitjét. Kérjük, próbálja meg újra holnap.",
+      "2fa_cooldown_active": "Túl sok egymást követő kérés. Kérjük, várjon néhány percet, mielőtt újra megpróbálná."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Kéttényezős hitelesítési kód"
         },
-        "description": "## Ez a bejelentkezés biztonsági ellenőrzést igényel\nKérjük, nyissa meg az ellenőrzési oldalt a mobil/email ellenőrző kód elküldéséhez. Miután megkapta az ellenőrző kódot, ne ellenőrizze azt a weboldalon. Térjen vissza a HomeAssistantba, és adja meg az alábbi bemeneti mezőbe.\n### [Ellenőrző kód küldése]({url})"
+        "description": "## Biztonsági ellenőrzés szükséges\nA biztonsági kódot elküldtük a(z) {dest} címre/számra. Kérjük, adja meg a kódot alább."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Szerkesztés típusa",
         "state": {
+          "door": "Ajtók szerkesztése",
           "split": "Szobák bontása",
           "merge": "Szobák összevonása",
           "visibility": "Szoba láthatósága",
           "material": "Padló anyaga",
-          "type": "Szoba neve"
+          "type": "Szoba neve",
+          "wall": "Falak szerkesztése"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Felmosó cseréje",
           "changing_mop_paused": "Felmosócsere szüneteltetve",
           "floor_maintaining": "Padlókarbantartás",
-          "floor_maintaining_paused": "Padlókarbantartás szüneteltetve"
+          "floor_maintaining_paused": "Padlókarbantartás szüneteltetve",
+          "remote_pickup": "Távoli felvétel",
+          "arranging_items": "Tárgyak elrendezése",
+          "pet_guarding": "Kisállat őrzés",
+          "pet_guarding_paused": "Kisállat őrzés szüneteltetve",
+          "installing_mop": "Felmosó felszerelése",
+          "uninstalling_mop": "Felmosó leszerelése",
+          "intelligent_recharging": "Intelligens újratöltés",
+          "assisted_cleaning": "Segített tisztítás",
+          "entering_dock": "Belépés a dokkolóba",
+          "leaving_dock": "Elhagyja a dokkolót",
+          "navigating_to_climber": "Navigálás a mászóhoz",
+          "docking_to_climber": "Dokkolás a mászóhoz",
+          "climber_docked": "Mászó dokkolva",
+          "climber_navigating": "Mászó navigál",
+          "climbing_stairs": "Lépcsőmászás",
+          "climbing_stairs_completed": "Lépcsőmászás befejezve",
+          "climber_at_dock": "Mászó a dokkolónál",
+          "climber_leaving_dock": "Mászó elhagyja a dokkolót"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Takarításra hívás",
           "shortcut": "Gyorsindítás",
           "person_follow": "Személy követése",
-          "water_check": "Vízellenőrzés"
+          "water_check": "Vízellenőrzés",
+          "pet_guarding": "Kisállat őrzés",
+          "auto_arrangement": "Automatikus elrendezés",
+          "smart_arrangement": "Intelligens elrendezés",
+          "zoned_arrangement": "Zónás elrendezés"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Kedvtelésből tartott állatok megtalálása",
           "auto_cleaning_washing_paused": "Automatikus tisztítás szüneteltetés",
           "area_cleaning_washing_paused": "A terület tisztítása mosott szünetet tartva",
-          "custom_cleaning_washing_paused": "Egyéni tisztítás mosás szünetet tartott"
+          "custom_cleaning_washing_paused": "Egyéni tisztítás mosás szünetet tartott",
+          "picking_up_item": "Tárgy felvétele",
+          "picking_up_item_paused": "Tárgy felvétele szüneteltetve",
+          "picking_up_item_success": "Tárgy felvétele sikeres",
+          "remote_pickup_initializing": "Távoli felvétel inicializálása",
+          "remote_pickup_identifing": "Távoli felvétel azonosítása",
+          "manual_remote_pickup": "Kézi távoli felvétel",
+          "automatic_remote_pickup": "Automatikus távoli felvétel",
+          "remote_pickup_in_progress": "Távoli felvétel folyamatban",
+          "remote_pickup_paused": "Távoli felvétel szüneteltetve",
+          "placing_item": "Tárgy elhelyezése",
+          "placing_item_paused": "Tárgy elhelyezése szüneteltetve"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "A robot piszkosvíz-tartálya megtelt.",
           "mop_not_installed": "A felmosó nincs felszerelve.",
           "fluffing_roller_error": "Bolyhosító henger hiba.",
-          "blocked_by_obstacle": "A robotot akadály blokkolja."
+          "blocked_by_obstacle": "A robotot akadály blokkolja.",
+          "robotic_arm_stopped": "Robotkar leállt.",
+          "drainage_outlet_filter": "A robot szennyvízkimeneti szűrője eltömődött.",
+          "main_wheels_error": "Főkerekek hibája."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Felmosócsere szüneteltetve",
           "floor_maintaining": "Padlókarbantartás",
           "floor_maintaining_paused": "Padlókarbantartás szüneteltetve",
-          "wood_floor_maintaining": "Fapadló karbantartása"
+          "arranging_items": "Tárgyak elrendezése",
+          "arranging_items_paused": "Tárgyak elrendezése szüneteltetve",
+          "intensive_hair_cleaning": "Intenzív hajtisztítás",
+          "accessory_handling": "Tartozékkezelés",
+          "increased_drum_speed_cleaning": "Tisztítás növelt dobtempóval",
+          "pressurized_cleaning": "Nyomás alatti tisztítás",
+          "steam_cleaning": "Gőztisztítás",
+          "steam_cleaning_paused": "Gőztisztítás szüneteltetve"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Kihagyott folt",
           "cleaned_dried_stain": "Megtisztított száraz folt",
           "cleaned_large_particles": "Megtisztított nagy részecskék",
-          "pen": "Toll"
+          "hair": "Haj",
+          "paper": "Papír",
+          "cleaned_hair": "Tisztított haj",
+          "sundry": "Vegyes"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Kisállatközpontú felismerés"
       },
+      "pet_focused_cleaning": {
+        "name": "Kisállatközpontú takarítás"
+      },
       "ai_obstacle_picture": {
         "name": "Akadályfotók"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Átjárhatatlan küszöb",
         "job_details": "Feladat részletei",
         "keep_disabled": "Maradjon letiltva",
+        "map_display": "Térkép megjelenítése",
         "map_management": "Térképek kezelése",
         "new_dnd": "Új Ne zavarjanak",
         "new_schedule": "Ütemezés létrehozása",
-        "new_schortcut": "Parancsikon létrehozása",
+        "new_shortcut": "Új parancsikon feladat",
         "next_job": "Következő feladat",
         "no_go": "Tiltott zóna",
         "no_mop": "Nincs felmosás",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Érintési visszajelzés ki",
         "editable_objects": "Szerkeszthető objektumok",
         "font_size": "Betűméret",
+        "full_height": "Teljes magasság",
         "grid_size": "Rácsméret",
         "height": "Magasság",
         "hidden_card_objects": "Rejtett kártyaobjektumok",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuális fal",
         "map_color_wall": "Fal",
         "map_config": "Térkép konfig",
+        "map_display": "Térkép megjelenítése",
+        "map_display_floor_plan": "Alaprajz",
+        "map_display_floor_plan_only": "Csak alaprajz",
+        "map_display_floor_plan_without_texture": "Alaprajz textúra nélkül",
+        "map_display_standard": "Normál",
         "map_object_active_area": "Aktív terület",
         "map_object_active_cruise_point": "Aktív útvonalpont",
         "map_object_active_point": "Aktív pont",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Egyéni takarítás",
         "map_object_deleted_carpet": "Törölt szőnyeg",
         "map_object_detected_carpet": "Érzékelt szőnyeg",
+        "map_object_door": "Ajtó",
         "map_object_floor": "Padló",
         "map_object_floor_material": "Padló anyaga",
         "map_object_furniture": "Bútor",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Az önpozicionálás sikertelen!",
         "replace_map": "Lecseréli az új térképet?",
         "reset_usage": "Visszaállítja a statisztikákat?",
+        "reset_walls": "Falak visszaállítása?",
         "restore_map": "Visszaállítja a következőt: %name%?",
         "resume_cleaning": "A robot automatikusan folytatja a befejezetlen takarítási feladatokat, miután az akkumulátorát 80%-ra feltöltötte.",
         "resume_cleaning_not_performed": "A robot a Ne zavarjanak időszak vége után folytatja a takarítást.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "A jelenlegi feladat le lesz állítva!",
         "unsaved_changes_present": "A nem mentett változtatások elvesznek!",
         "unsupported_browser": "Nem támogatott böngésző!",
-        "usage_will_reset": "%name% statisztikái visszaállnak."
+        "usage_will_reset": "%name% statisztikái visszaállnak.",
+        "walls_will_be_reset": "A falak visszaállnak az eredetileg feltérképezett helyükre!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "%time% van hátra",
         "unavailable": "Nem elérhető",
         "used_water_tank": "Használt víz tartály",
+        "wall": "Falak",
         "wifi_map": "Wifi térkép"
       }
     }

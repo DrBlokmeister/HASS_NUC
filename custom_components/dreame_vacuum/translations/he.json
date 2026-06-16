@@ -13,7 +13,10 @@
       "wrong_captcha": "קאפצ'ה שגויה.",
       "credentials_incomplete": "אישורים חסרים, אנא מלאו שם משתמש, סיסמה ומדינה.",
       "login_error": "לא ניתן להתחבר, בדקו את האישורים.",
-      "no_devices": "לא נמצאו מכשירים נתמכים בחשבון זה במדינה שנבחרה.{devices}"
+      "no_devices": "לא נמצאו מכשירים נתמכים בחשבון זה במדינה שנבחרה.{devices}",
+      "2fa_send_failed": "שליחת קוד האימות נכשלה. נא לנות שנית.",
+      "2fa_limit_reached": "הגעת למגבלה היומית לשליחת קודי אימות. אנא נסה שoub מחר.",
+      "2fa_cooldown_active": "יותר מדי בקשות רצופות. אנ아 המתן מספר דקות לפני שתנסה שוב."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "קוד אימות דו-שלבי"
         },
-        "description": "## התחברות זו דורשת אימות אבטחה\nאנא פתחו את דף האימות כדי לשלוח את קוד האימות לנייד/לאימייל. לאחר קבלת קוד האימות, אל תאמתו אותו בדף האינטרנט. חזרו ל-HomeAssistant והזינו אותו בתיבת הקלט למטה.\n### [שלח קוד אימות]({url})"
+        "description": "## נדרש אימות אבטחה\nקוד אימות נשלח אל {dest}. נא להזין את הקود להלן."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "סוג עריכה",
         "state": {
+          "door": "ערוך דלתות",
           "split": "פיצול חדרים",
           "merge": "מיזוג חדרים",
           "visibility": "נראות החדר",
           "material": "חומר הרצפה",
-          "type": "שם חדר"
+          "type": "שם חדר",
+          "wall": "ערוך קירות"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "מחליף מגב",
           "changing_mop_paused": "החלפת מגב הושהתה",
           "floor_maintaining": "תחזוקת רצפה",
-          "floor_maintaining_paused": "תחזוקת רצפה הושהתה"
+          "floor_maintaining_paused": "תחזוקת רצפה הושהתה",
+          "remote_pickup": "איסוף מרחוק",
+          "arranging_items": "סידור פריטים",
+          "pet_guarding": "שמירה על חיות מחמד",
+          "pet_guarding_paused": "שמירה על חיות מחמד הושהתה",
+          "installing_mop": "מתקין מגב",
+          "uninstalling_mop": "מסיר מגב",
+          "intelligent_recharging": "טעינה חכמה",
+          "assisted_cleaning": "ניקוי בסיוע",
+          "entering_dock": "נכנס לתחנה",
+          "leaving_dock": "יוצא מהתחנה",
+          "navigating_to_climber": "מנווט למטפס",
+          "docking_to_climber": "מתחבר למטפס",
+          "climber_docked": "מטפס מחובר",
+          "climber_navigating": "מטפס מנווט",
+          "climbing_stairs": "עולה במדרגות",
+          "climbing_stairs_completed": "עליית מדרגות הושלמה",
+          "climber_at_dock": "מטפס בתחנה",
+          "climber_leaving_dock": "מטפס יוצא מהתחנה"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "זומן לניקוי",
           "shortcut": "קיצור דרך",
           "person_follow": "מעקב אחר אדם",
-          "water_check": "בדיקת מים"
+          "water_check": "בדיקת מים",
+          "pet_guarding": "שמירה על חיות מחמד",
+          "auto_arrangement": "סידור אוטומטי",
+          "smart_arrangement": "סידור חכם",
+          "zoned_arrangement": "סידור לפי אזורים"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "איתור חיית מחמד",
           "auto_cleaning_washing_paused": "שטיפה בניקוי אוטומטי הושהתה",
           "area_cleaning_washing_paused": "שטיפה בניקוי שטח הושהתה",
-          "custom_cleaning_washing_paused": "שטיפה בניקוי מותאם אישית הושהתה"
+          "custom_cleaning_washing_paused": "שטיפה בניקוי מותאם אישית הושהתה",
+          "picking_up_item": "אוסף פריט",
+          "picking_up_item_paused": "איסוף פריט הושהה",
+          "picking_up_item_success": "פריט נאסף בהצלחה",
+          "remote_pickup_initializing": "מאתחל איסוף מרחוק",
+          "remote_pickup_identifing": "מזהה איסוף מרחוק",
+          "manual_remote_pickup": "איסוף מרחוק ידני",
+          "automatic_remote_pickup": "איסוף מרחוק אוטומטי",
+          "remote_pickup_in_progress": "איסוף מרחוק בתהליך",
+          "remote_pickup_paused": "איסוף מרחוק הושהה",
+          "placing_item": "מניח פריט",
+          "placing_item_paused": "הנחת פריט הושהתה"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "קופסת המים המשומשים של הרובוט מלאה.",
           "mop_not_installed": "המגב אינו מותקן.",
           "fluffing_roller_error": "שגיאת גליל פלנל/ריפוד.",
-          "blocked_by_obstacle": "הרובוט נחסם על ידי מכשול."
+          "blocked_by_obstacle": "הרובוט נחסם על ידי מכשול.",
+          "robotic_arm_stopped": "הזרוע הרובוטית נעצרה.",
+          "drainage_outlet_filter": "מסנן מוצא השפכים של הרובוט סתום.",
+          "main_wheels_error": "שגיאה בגלגלים הראשיים."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "החלפת מגב הושהתה",
           "floor_maintaining": "תחזוקת רצפה",
           "floor_maintaining_paused": "תחזוקת רצפה הושהתה",
-          "wood_floor_maintaining": "תחזוקת רצפת עץ"
+          "arranging_items": "סידור פריטים",
+          "arranging_items_paused": "סידור פריטים הושהה",
+          "intensive_hair_cleaning": "ניקוי שיער אינטנסיבי",
+          "accessory_handling": "טיפול באביזרים",
+          "increased_drum_speed_cleaning": "ניקוי במהירות תוף מוגברת",
+          "pressurized_cleaning": "ניקוי בלחץ",
+          "steam_cleaning": "ניקוי בקיטור",
+          "steam_cleaning_paused": "ניקוי בקיטור הושהה"
         }
       },
       "dust_bag_drying_status": {
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "דילג על כתם שלא ניתן לנקות",
           "cleaned_dried_stain": "נוקה כתם מיובש",
           "cleaned_large_particles": "נוקו חלקיקים גדולים",
-          "pen": "עט"
+          "hair": "שיער",
+          "paper": "נייר",
+          "cleaned_hair": "שיער שנוקה",
+          "sundry": "שונות"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "זיהוי ממוקד חיות מחמד"
       },
+      "pet_focused_cleaning": {
+        "name": "ניקוי ממוקד חיות מחמד"
+      },
       "ai_obstacle_picture": {
         "name": "תמונות מכשולים"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "סף עביר בלתי אפשרי",
         "job_details": "פרטי משימה",
         "keep_disabled": "שמור על השבתה",
+        "map_display": "תצוגת מפה",
         "map_management": "ניהול מפות",
         "new_dnd": "משימת נא לא להפריע חדשה",
         "new_schedule": "משימה מתוזמנת חדשה",
-        "new_schortcut": "משימה מתוזמנת חדשה (קיצור)",
+        "new_shortcut": "משימת קיצור דרך חדשה",
         "next_job": "המשימה הבאה",
         "no_go": "אזור אסור",
         "no_mop": "אזור ללא ניגוב",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "השבתת משוב רטט (Haptic)",
         "editable_objects": "אובייקטים הניתנים לעריכה",
         "font_size": "גודל גופן",
+        "full_height": "גובה מלא",
         "grid_size": "גודל רשת",
         "height": "גובה",
         "hidden_card_objects": "אובייקטי כרטיס מוסתרים",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "קיר וירטואלי",
         "map_color_wall": "קיר",
         "map_config": "הגדרת מפה",
+        "map_display": "תצוגת מפה",
+        "map_display_floor_plan": "תוכנית קומה",
+        "map_display_floor_plan_only": "תוכנית קומה בלבד",
+        "map_display_floor_plan_without_texture": "תוכנית קומה ללא טקסטורה",
+        "map_display_standard": "רגיל",
         "map_object_active_area": "אזור פעיל",
         "map_object_active_cruise_point": "נקודת שיוט פעילה",
         "map_object_active_point": "נקודה פעילה",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "ניקוי מותאם אישית",
         "map_object_deleted_carpet": "שטיח נמחק",
         "map_object_detected_carpet": "שטיח שזוהה",
+        "map_object_door": "דלת",
         "map_object_floor": "רצפה",
         "map_object_floor_material": "חומר הרצפה",
         "map_object_furniture": "רהיטים",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "ההתמקמות (Self-Positioning) נכשלה!",
         "replace_map": "להחליף למפה חדשה?",
         "reset_usage": "לאפס את נתוני השימוש?",
+        "reset_walls": "לאפס קירות?",
         "restore_map": "לשחזר את %name%?",
         "resume_cleaning": "הרובוט ימשיך אוטומטית את משימת הניקוי מהנקודה בה עצר לאחר שהסוללה תיטען ל-80%.",
         "resume_cleaning_not_performed": "הרובוט ימשיך בניקוי לאחר תום תקופת ה-DND (נא לא להפריע).",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "המשימה הנוכחית תיעצר!",
         "unsaved_changes_present": "יש לכם שינויים שלא נשמרו ויאבדו!",
         "unsupported_browser": "דפדפן שאינו נתמך!",
-        "usage_will_reset": "השימוש ב-%name% יאופס!"
+        "usage_will_reset": "השימוש ב-%name% יאופס!",
+        "walls_will_be_reset": "הקירות ישוחזרו למיקומם המקורי במפה!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "נותרו %time%",
         "unavailable": "לא זמין",
         "used_water_tank": "מכל מים משומשים",
+        "wall": "קירות",
         "wifi_map": "מפת WiFi"
       }
     }

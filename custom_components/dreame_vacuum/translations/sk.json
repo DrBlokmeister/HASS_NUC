@@ -13,7 +13,10 @@
       "wrong_captcha": "Nesprávna captcha.",
       "credentials_incomplete": "Prihlasovacie údaje sú neúplné, vyplňte prosím užívateľské meno, heslo a krajinu.",
       "login_error": "Nepodarilo sa prihlásiť, skontrolujte prihlasovacie údaje.",
-      "no_devices": "V tomto účte vo vybranej krajine sa nenašli žiadne podporované zariadenia.{devices}"
+      "no_devices": "V tomto účte vo vybranej krajine sa nenašli žiadne podporované zariadenia.{devices}",
+      "2fa_send_failed": "Odoslanie overovacieho kódu zlyhalo. Skúste to prosím znova.",
+      "2fa_limit_reached": "Bol dosiahnutý denný limit na odosielanie overovacích kódov. Skúste to znova zajtra.",
+      "2fa_cooldown_active": "Príliš veľa po sebe nasledujúcich požiadaviek. Pred opätovným pokusom počkajte niekoľko minút."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Dvojfaktorový overovací kód"
         },
-        "description": "## Toto prihlásenie vyžaduje bezpečnostné overenie\nOtvorte overovaciu stránku a odošlite overovací kód na mobil/e-mail. Po prijatí overovacieho kódu ho neoverujte na webovej stránke. Vráťte sa do HomeAssistanta a zadajte ho do vstupného poľa nižšie.\n### [Odoslať overovací kód]({url})"
+        "description": "## Vyžaduje sa bezpečnostné overenie\nOverovací kód bol odoslaný na {dest}. Zadajte kód níže."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Typ úpravy",
         "state": {
+          "door": "Upraviť dvere",
           "split": "Rozdelenie miestností",
           "merge": "Zlúčenie miestností",
           "visibility": "Viditeľnosť miestnosti",
           "material": "Materiál podlahy",
-          "type": "Meno miestnosti"
+          "type": "Meno miestnosti",
+          "wall": "Upraviť steny"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Výmena mopu",
           "changing_mop_paused": "Výmena mopu pozastavená",
           "floor_maintaining": "Údržba podlahy",
-          "floor_maintaining_paused": "Údržba podlahy pozastavená"
+          "floor_maintaining_paused": "Údržba podlahy pozastavená",
+          "remote_pickup": "Vzdialené vyzdvihnutie",
+          "arranging_items": "Usporiadanie položiek",
+          "pet_guarding": "Stráženie domácich miláčikov",
+          "pet_guarding_paused": "Stráženie domácich miláčikov pozastavené",
+          "installing_mop": "Inštalácia mopu",
+          "uninstalling_mop": "Odinštalovanie mopu",
+          "intelligent_recharging": "Inteligentné dobíjanie",
+          "assisted_cleaning": "Asistované čistenie",
+          "entering_dock": "Vjazd do stanice",
+          "leaving_dock": "Výjazd zo stanice",
+          "navigating_to_climber": "Navigácia k lezcovi",
+          "docking_to_climber": "Dokovanie k lezcovi",
+          "climber_docked": "Lezec zadokovaný",
+          "climber_navigating": "Lezec naviguje",
+          "climbing_stairs": "Stúpanie do schodov",
+          "climbing_stairs_completed": "Stúpanie do schodov dokončené",
+          "climber_at_dock": "Lezec pri stanici",
+          "climber_leaving_dock": "Lezec opúšťa stanicu"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Privolanie na čistenie",
           "shortcut": "Skratka",
           "person_follow": "Sledovanie osoby",
-          "water_check": "Kontrola vody"
+          "water_check": "Kontrola vody",
+          "pet_guarding": "Stráženie domácich miláčikov",
+          "auto_arrangement": "Automatické usporiadanie",
+          "smart_arrangement": "Inteligentné usporiadanie",
+          "zoned_arrangement": "Zónové usporiadanie"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Hľadanie domáceho maznáčika",
           "auto_cleaning_washing_paused": "Automatické čistenie a umývanie pozastavené",
           "area_cleaning_washing_paused": "Čistenie plochy a umývanie pozastavené",
-          "custom_cleaning_washing_paused": "Vlastné čistenie a umývanie pozastavené"
+          "custom_cleaning_washing_paused": "Vlastné čistenie a umývanie pozastavené",
+          "picking_up_item": "Vyzdvihovanie položky",
+          "picking_up_item_paused": "Vyzdvihovanie položky pozastavené",
+          "picking_up_item_success": "Položka úspešne vyzdvihnutá",
+          "remote_pickup_initializing": "Inicializácia vzdialeného vyzdvihnutia",
+          "remote_pickup_identifing": "Identifikácia vzdialeného vyzdvihnutia",
+          "manual_remote_pickup": "Ručné vzdialené vyzdvihnutie",
+          "automatic_remote_pickup": "Automatické vzdialené vyzdvihnutie",
+          "remote_pickup_in_progress": "Prebieha vzdialené vyzdvihnutie",
+          "remote_pickup_paused": "Vzdialené vyzdvihnutie pozastavené",
+          "placing_item": "Umiestňovanie položky",
+          "placing_item_paused": "Umiestňovanie položky pozastavené"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Nádrž na použitú vodu robota je plná.",
           "mop_not_installed": "Mop nie je nainštalovaný.",
           "fluffing_roller_error": "Chyba valca na našuchorenie.",
-          "blocked_by_obstacle": "Robot je blokovaný prekážkou."
+          "blocked_by_obstacle": "Robot je blokovaný prekážkou.",
+          "robotic_arm_stopped": "Robotické rameno sa zastavilo.",
+          "drainage_outlet_filter": "Filter odpadovej vody robota je upchatý.",
+          "main_wheels_error": "Chyba hlavných kolies."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Výmena mopu pozastavená",
           "floor_maintaining": "Údržba podlahy",
           "floor_maintaining_paused": "Údržba podlahy pozastavená",
-          "wood_floor_maintaining": "Údržba drevenej podlahy"
+          "arranging_items": "Usporiadanie položiek",
+          "arranging_items_paused": "Usporiadanie položiek pozastavené",
+          "intensive_hair_cleaning": "Intenzívne čistenie vlasov",
+          "accessory_handling": "Manipulácia s príslušenstvom",
+          "increased_drum_speed_cleaning": "Čistenie so zvýšenou rýchlosťou bubna",
+          "pressurized_cleaning": "Tlakové čistenie",
+          "steam_cleaning": "Parné čistenie",
+          "steam_cleaning_paused": "Parné čistenie pozastavené"
         }
       },
       "dust_bag_drying_status": {
@@ -1063,7 +1111,7 @@
           "other": "Iná",
           "default": "Predvolená",
           "customized": "Prispôsobená",
-          "cleangenius": "Cleangenius",
+          "cleangenius": "CleanGenius",
           "water_stain": "Vodná škvrna",
           "unknown": "Neznáme"
         }
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Vynechaná nevyčistiteľná škvrna",
           "cleaned_dried_stain": "Vyčistená zaschnutá škvrna",
           "cleaned_large_particles": "Vyčistené veľké častice",
-          "pen": "Pero"
+          "hair": "Vlasy",
+          "paper": "Papier",
+          "cleaned_hair": "Vyčistené vlasy",
+          "sundry": "Rôzne"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Detekcia zameraná na domáce zvieratá"
       },
+      "pet_focused_cleaning": {
+        "name": "Čistenie zamerané na domáce zvieratá"
+      },
       "ai_obstacle_picture": {
         "name": "Obrázky prekážok"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Neprekonateľný prah",
         "job_details": "Detaily úlohy",
         "keep_disabled": "Ponechať zakázané",
+        "map_display": "Zobrazenie mapy",
         "map_management": "Správa máp",
         "new_dnd": "Nová úloha DnD",
         "new_schedule": "Nová naplánovaná úloha",
-        "new_schortcut": "Nová naplánovaná úloha",
+        "new_shortcut": "Nová úloha skratky",
         "next_job": "Nasledujúca úloha",
         "no_go": "Zakázaná zóna",
         "no_mop": "Zóna bez mopu",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Zakázať haptickú odozvu",
         "editable_objects": "Upraviteľné objekty",
         "font_size": "Veľkosť písma",
+        "full_height": "Plná výška",
         "grid_size": "Veľkosť mriežky",
         "height": "Výška",
         "hidden_card_objects": "Skryté objekty karty",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuálna stena",
         "map_color_wall": "Stena",
         "map_config": "Konfigurácia mapy",
+        "map_display": "Zobrazenie mapy",
+        "map_display_floor_plan": "Pôdorys",
+        "map_display_floor_plan_only": "Iba pôdorys",
+        "map_display_floor_plan_without_texture": "Pôdorys bez textúry",
+        "map_display_standard": "Štandardné",
         "map_object_active_area": "Aktívna oblasť",
         "map_object_active_cruise_point": "Aktívny bod plavby",
         "map_object_active_point": "Aktívny bod",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Prispôsobené čistenie",
         "map_object_deleted_carpet": "Odstránený koberec",
         "map_object_detected_carpet": "Zistený koberec",
+        "map_object_door": "Dvere",
         "map_object_floor": "Podlaha",
         "map_object_floor_material": "Materiál podlahy",
         "map_object_furniture": "Nábytok",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Samopolohovanie zlyhalo!",
         "replace_map": "Nahradiť novú mapu?",
         "reset_usage": "Resetovať používanie?",
+        "reset_walls": "Obnoviť steny?",
         "restore_map": "Obnoviť %name%?",
         "resume_cleaning": "Robot automaticky obnoví nedokončené úlohy čistenia po nabití batérie na 80 %.",
         "resume_cleaning_not_performed": "Robot obnoví čistenie po skončení obdobia Nerušiť.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Aktuálna úloha bude zastavená!",
         "unsaved_changes_present": "Máte neuložené zmeny, ktoré sa stratia!",
         "unsupported_browser": "Nepodporovaný prehliadač!",
-        "usage_will_reset": "Používanie %name% bude resetované!"
+        "usage_will_reset": "Používanie %name% bude resetované!",
+        "walls_will_be_reset": "Steny budú obnovené na svoje pôvodne zmapované miesto!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Zostáva %time%",
         "unavailable": "Nedostupné",
         "used_water_tank": "Nádrž na použitú vodu",
+        "wall": "Steny",
         "wifi_map": "WiFi mapa"
       }
     }
@@ -2138,7 +2203,7 @@
           "description": "ID mapy."
         },
         "segment": {
-          "name": "Segment",
+          "name": "Izba",
           "description": "ID miestnosti."
         },
         "line": {

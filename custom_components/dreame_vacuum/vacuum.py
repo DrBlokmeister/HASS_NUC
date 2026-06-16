@@ -63,6 +63,7 @@ from .const import (
     INPUT_URL,
     INPUT_VELOCITY,
     INPUT_WALL_ARRAY,
+    INPUT_DOOR_ARRAY,
     INPUT_WATER_VOLUME,
     INPUT_ZONE,
     INPUT_ZONE_ARRAY,
@@ -137,6 +138,7 @@ from .const import (
     SERVICE_DELETE_SHORTCUT,
     SERVICE_SET_OBSTACLE_IGNORE,
     SERVICE_SET_ROUTER_POSITION,
+    SERVICE_SET_WALLS,
     CONSUMABLE_MAIN_BRUSH,
     CONSUMABLE_SIDE_BRUSH,
     CONSUMABLE_FILTER,
@@ -970,6 +972,35 @@ async def async_setup_entry(
     )
 
     platform.async_register_entity_service(
+        SERVICE_SET_WALLS,
+        {
+            vol.Optional(INPUT_WALL_ARRAY): vol.Any(dict[str, list[int]]),
+            vol.Optional(INPUT_DOOR_ARRAY): vol.All(
+                list,
+                [
+                    vol.ExactSequence(
+                        [
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                            vol.Coerce(int),
+                        ]
+                    )
+                ],
+            ),
+            vol.Optional(INPUT_MAP_ID): vol.Coerce(int),
+        },
+        DreameVacuum.async_set_walls.__name__,
+    )
+
+    platform.async_register_entity_service(
         SERVICE_SET_PROPERTY,
         {
             vol.Required(INPUT_KEY): cv.string,
@@ -1697,3 +1728,8 @@ class DreameVacuum(DreameVacuumEntity, StateVacuumEntity):
                 x,
                 y,
             )
+
+    async def async_set_walls(self, walls, doors, map_id=None) -> None:
+        """Set walls and doors"""
+        if (walls is not None and walls != "") or (doors is not None and doors != ""):
+            await self._try_command("Unable to call set_walls: %s", self.device.set_walls, walls, doors, map_id)

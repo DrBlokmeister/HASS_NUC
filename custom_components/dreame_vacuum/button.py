@@ -293,6 +293,14 @@ BUTTONS: tuple[ButtonEntityDescription, ...] = (
         action_fn=lambda device: device.reload_shortcuts(),
         exists_fn=lambda description, device: device.capability.shortcuts,
     ),
+    DreameVacuumButtonEntityDescription(
+        key="backup_saved_map",
+        icon="mdi:cloud-upload",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        available_fn=lambda device: not device.status.started and not device.status.map_backup_status and device.status.has_saved_map,
+        action_fn=lambda device: device.backup_map(),
+        exists_fn=lambda description, device: device.capability.backup_map and device.capability.map,
+    ),
 )
 
 
@@ -311,8 +319,8 @@ async def async_setup_entry(
         if description.exists_fn(description, coordinator.device)
     )
 
-    if coordinator.device.capability.shortcuts or coordinator.device.capability.backup_map:
-        update_buttons = partial(async_update_buttons, coordinator, {}, {}, async_add_entities)
+    if coordinator.device.capability.shortcuts:
+        update_buttons = partial(async_update_buttons, coordinator, {}, async_add_entities)
         coordinator.async_add_listener(update_buttons)
         update_buttons()
 
@@ -321,7 +329,6 @@ async def async_setup_entry(
 def async_update_buttons(
     coordinator: DreameVacuumDataUpdateCoordinator,
     current_shortcut: dict[str, list[DreameVacuumShortcutButtonEntity]],
-    current_map: dict[str, list[DreameVacuumMapButtonEntity]],
     async_add_entities,
 ) -> None:
     new_entities = []
@@ -352,29 +359,6 @@ def async_update_buttons(
                 )
             ]
             new_entities = new_entities + current_shortcut[shortcut_id]
-
-    if coordinator.device.capability.backup_map:
-        new_indexes = set([k for k in range(1, len(coordinator.device.status.map_list) + 1)])
-        current_ids = set(current_map)
-
-        for map_index in current_ids - new_indexes:
-            async_remove_buttons(map_index, coordinator, current_map)
-
-        for map_index in new_indexes - current_ids:
-            current_map[map_index] = [
-                DreameVacuumMapButtonEntity(
-                    coordinator,
-                    DreameVacuumButtonEntityDescription(
-                        key="backup",
-                        icon="mdi:content-save",
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        available_fn=lambda device: not device.status.started and not device.status.map_backup_status,
-                    ),
-                    map_index,
-                )
-            ]
-
-            new_entities = new_entities + current_map[map_index]
 
     if new_entities:
         async_add_entities(new_entities)
@@ -493,55 +477,4 @@ class DreameVacuumShortcutButtonEntity(DreameVacuumEntity, ButtonEntity):
             "Unable to call %s",
             self.device.start_shortcut,
             self.shortcut_id,
-        )
-
-
-class DreameVacuumMapButtonEntity(DreameVacuumEntity, ButtonEntity):
-    """Defines a Dreame Vacuum Map Button entity."""
-
-    def __init__(
-        self,
-        coordinator: DreameVacuumDataUpdateCoordinator,
-        description: DreameVacuumButtonEntityDescription,
-        map_index: int,
-    ) -> None:
-        """Initialize a Dreame Vacuum Map Button entity."""
-        self.map_index = map_index
-        map_data = coordinator.device.get_map(self.map_index)
-        self._map_name = map_data.custom_name if map_data else None
-        super().__init__(coordinator, description)
-        self._set_id()
-        self._attr_unique_id = f"{self.device.mac}_backup_map_{self.map_index}"
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT, f"{self.device.name}_backup_map_{self.map_index}", hass=self.coordinator.hass
-        )
-
-    def _set_id(self) -> None:
-        """Set name of the entity"""
-        name = (
-            f"{self.map_index}"
-            if self._map_name is None
-            else f"{self._map_name.replace('_', ' ').replace('-', ' ').title()}"
-        )
-        self._attr_name = f"Backup Saved Map {name}"
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        if self.device:
-            map_data = self.device.get_map(self.map_index)
-            if map_data and self._map_name != map_data.custom_name:
-                self._map_name = map_data.custom_name
-                self._set_id()
-
-        self.async_write_ha_state()
-
-    async def async_press(self, **kwargs: Any) -> None:
-        """Press the button."""
-        if not self.available:
-            raise HomeAssistantError("Entity unavailable")
-
-        await self._try_command(
-            "Unable to call %s",
-            self.device.backup_map,
-            self.device.get_map().map_id,
         )

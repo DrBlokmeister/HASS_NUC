@@ -13,7 +13,10 @@
       "wrong_captcha": "Грешна капча.",
       "credentials_incomplete": "Данните за вход са непълни, моля попълнете потребителско име, парола и държава.",
       "login_error": "Неуспешно влизане, проверете данните.",
-      "no_devices": "Няма намерени поддържани устройства в този акаунт за избраната държава.{devices}"
+      "no_devices": "Няма намерени поддържани устройства в този акаунт за избраната държава.{devices}",
+      "2fa_send_failed": "Неуспешно изпращане на кода за потвърждение. Моля, опитайте отново.",
+      "2fa_limit_reached": "Дневният лимит за изпращане на кодове за потвърждение е достигнат. Моля, опитайте отново утре.",
+      "2fa_cooldown_active": "Твърде много последователни заявки. Моля, изчакайте няколко минути, преди да опитате отново."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Код за двуфакторна проверка"
         },
-        "description": "## Този вход изисква проверка за сигурност\nМоля, отворете страницата за проверка, за да изпратите кода за проверка на мобилен телефон/имейл. След като получите кода за проверка, не го потвърждавайте на уеб страницата. Върнете се в HomeAssistant и го въведете в полето по-долу.\n### [Изпращане на код за проверка]({url})"
+        "description": "## Изисква се проверка за сигурност\nКодът за потвърждение е изпратен до {dest}. Моля, въведете кода по-долу."
       },
       "captcha": {
         "data": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Тип редакция",
         "state": {
+          "door": "Редактиране на врати",
           "split": "Разделяне на стаи",
           "merge": "Обединяване на стаи",
           "visibility": "Видимост на стаята",
           "material": "Материал на пода",
-          "type": "Име на стаята"
+          "type": "Име на стаята",
+          "wall": "Редактиране на стени"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Смяна на мопа",
           "changing_mop_paused": "Смяната на мопа е на пауза",
           "floor_maintaining": "Поддръжка на пода",
-          "floor_maintaining_paused": "Поддръжката на пода е на пауза"
+          "floor_maintaining_paused": "Поддръжката на пода е на пауза",
+          "remote_pickup": "Дистанционно взимане",
+          "arranging_items": "Подреждане на вещи",
+          "pet_guarding": "Охрана на домашен любимец",
+          "pet_guarding_paused": "Охраната на домашен любимец е на пауза",
+          "installing_mop": "Поставяне на мопа",
+          "uninstalling_mop": "Премахване на мопа",
+          "intelligent_recharging": "Интелигентно презареждане",
+          "assisted_cleaning": "Асистирано почистване",
+          "entering_dock": "Влизане в дока",
+          "leaving_dock": "Излизане от дока",
+          "navigating_to_climber": "Навигация към катерача",
+          "docking_to_climber": "Скачване с катерача",
+          "climber_docked": "Катерачът е скачен",
+          "climber_navigating": "Катерачът навигира",
+          "climbing_stairs": "Изкачване на стълби",
+          "climbing_stairs_completed": "Изкачването на стълби завърши",
+          "climber_at_dock": "Катерачът е на дока",
+          "climber_leaving_dock": "Катерачът напуска дока"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Привикване за почистване",
           "shortcut": "Пряк път",
           "person_follow": "Следване на човек",
-          "water_check": "Проверка на водата"
+          "water_check": "Проверка на водата",
+          "pet_guarding": "Охрана на домашен любимец",
+          "auto_arrangement": "Автоматично подреждане",
+          "smart_arrangement": "Интелигентно подреждане",
+          "zoned_arrangement": "Зонално подреждане"
         }
       },
       "task_status": {
@@ -702,7 +729,18 @@
           "pet_finding": "Търсене на домашен любимец",
           "auto_cleaning_washing_paused": "Автоматичното почистване и измиване е на пауза",
           "area_cleaning_washing_paused": "Почистването на площ и измиване е на пауза",
-          "custom_cleaning_washing_paused": "Персонализираното почистване и измиване е на пауза"
+          "custom_cleaning_washing_paused": "Персонализираното почистване и измиване е на пауза",
+          "picking_up_item": "Взимане на вещ",
+          "picking_up_item_paused": "Взимането на вещ е на пауза",
+          "picking_up_item_success": "Взимането на вещ е успешно",
+          "remote_pickup_initializing": "Инициализиране на дистанционно взимане",
+          "remote_pickup_identifing": "Идентифициране за дистанционно взимане",
+          "manual_remote_pickup": "Ръчно дистанционно взимане",
+          "automatic_remote_pickup": "Автоматично дистанционно взимане",
+          "remote_pickup_in_progress": "Дистанционното взимане е в ход",
+          "remote_pickup_paused": "Дистанционното взимане е на пауза",
+          "placing_item": "Поставяне на вещ",
+          "placing_item_paused": "Поставянето на вещ е на пауза"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Собственият резервоар за мръсна вода на робота е пълен.",
           "mop_not_installed": "Мопът не е инсталиран.",
           "fluffing_roller_error": "Грешка в ролката за раздухване.",
-          "blocked_by_obstacle": "Роботът е блокиран от препятствие."
+          "blocked_by_obstacle": "Роботът е блокиран от препятствие.",
+          "robotic_arm_stopped": "Роботизираната ръка спря.",
+          "drainage_outlet_filter": "Филтърът на изхода за отпадни води на робота е запушен.",
+          "main_wheels_error": "Грешка в основните колела."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Смяната на мопа е на пауза",
           "floor_maintaining": "Поддръжка на пода",
           "floor_maintaining_paused": "Поддръжката на пода е на пауза",
-          "wood_floor_maintaining": "Поддръжка на дървен под"
+          "arranging_items": "Подреждане на вещи",
+          "arranging_items_paused": "Подреждането на вещи е на пауза",
+          "intensive_hair_cleaning": "Интензивно почистване на косми",
+          "accessory_handling": "Работа с аксесоари",
+          "increased_drum_speed_cleaning": "Почистване с повишена скорост на барабана",
+          "pressurized_cleaning": "Почистване под налягане",
+          "steam_cleaning": "Почистване с пара",
+          "steam_cleaning_paused": "Почистването с пара е на пауза"
         }
       },
       "dust_bag_drying_status": {
@@ -1063,7 +1111,7 @@
           "other": "Друг",
           "default": "По подразбиране",
           "customized": "Персонализиран",
-          "cleangenius": "Cleangenius",
+          "cleangenius": "CleanGenius",
           "water_stain": "Петно от вода",
           "unknown": "Неизвестен"
         }
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Пропуснато непочистваемо петно",
           "cleaned_dried_stain": "Почистено засъхнало петно",
           "cleaned_large_particles": "Почистени големи частици",
-          "pen": "Химикал"
+          "hair": "Косми",
+          "paper": "Хартия",
+          "cleaned_hair": "Почистени косми",
+          "sundry": "Разни"
         }
       },
       "obstacle_reason": {
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Фокусирано засичане на домашни любимци"
       },
+      "pet_focused_cleaning": {
+        "name": "Фокусирано почистване на домашни любимци"
+      },
       "ai_obstacle_picture": {
         "name": "Снимки на препятствия"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Непроходим праг",
         "job_details": "Подробности за задачата",
         "keep_disabled": "Запазване на деактивирането",
+        "map_display": "Показване на картата",
         "map_management": "Управление на карти",
         "new_dnd": "Нова задача \"Не ме безпокойте\"",
         "new_schedule": "Нова планирана задача",
-        "new_schortcut": "Нова планирана задача",
+        "new_shortcut": "Нова задача за пряк път",
         "next_job": "Следваща задача",
         "no_go": "Забранена зона",
         "no_mop": "Зона без миене",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Деактивиране на тактилната обратна връзка",
         "editable_objects": "Редактируеми обекти",
         "font_size": "Размер на шрифта",
+        "full_height": "Пълна височина",
         "grid_size": "Размер на мрежата",
         "height": "Височина",
         "hidden_card_objects": "Скрити обекти на картата",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Виртуална стена",
         "map_color_wall": "Стена",
         "map_config": "Конфигурация на картата",
+        "map_display": "Показване на картата",
+        "map_display_floor_plan": "Етажен план",
+        "map_display_floor_plan_only": "Само етажен план",
+        "map_display_floor_plan_without_texture": "Етажен план без текстура",
+        "map_display_standard": "Стандартно",
         "map_object_active_area": "Активна зона",
         "map_object_active_cruise_point": "Активна точка за обиколка",
         "map_object_active_point": "Активна точка",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Персонализирано почистване",
         "map_object_deleted_carpet": "Изтрит килим",
         "map_object_detected_carpet": "Засечен килим",
+        "map_object_door": "Врата",
         "map_object_floor": "Под",
         "map_object_floor_material": "Материал на пода",
         "map_object_furniture": "Мебели",
@@ -1727,7 +1789,7 @@
         "selected_map_config": "Конфигурация %name%",
         "show_map_info": "Показване на информация за картата",
         "top": "Горе",
-        "url": "Url",
+        "url": "URL",
         "viewport": "Изглед",
         "width": "Ширина",
         "zoom": "Мащабиране"
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Самопозиционирането е неуспешно!",
         "replace_map": "Замяна с нова карта?",
         "reset_usage": "Нулиране на употребата?",
+        "reset_walls": "Нулиране на стените?",
         "restore_map": "Възстановяване на %name%?",
         "resume_cleaning": "Роботът автоматично ще възобнови недовършените задачи за почистване, след като зареди батерията си до 80%.",
         "resume_cleaning_not_performed": "Роботът ще възобнови почистването след края на периода \"Не ме безпокойте\".",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Текущата задача ще бъде спряна!",
         "unsaved_changes_present": "Имате незапазени промени, които ще бъдат загубени!",
         "unsupported_browser": "Неподдържан браузър!",
-        "usage_will_reset": "Употребата на %name% ще бъде нулирана!"
+        "usage_will_reset": "Употребата на %name% ще бъде нулирана!",
+        "walls_will_be_reset": "Стените ще бъдат възстановени на първоначално картографираното им местоположение!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "Остават %time%",
         "unavailable": "Недостъпно",
         "used_water_tank": "Резервоар за мръсна вода",
+        "wall": "Стени",
         "wifi_map": "WiFi карта"
       }
     }

@@ -13,7 +13,10 @@
       "wrong_captcha": "Felaktig captcha.",
       "credentials_incomplete": "Inkompletta inloggningsuppgifter, fyll i användarnamn, lösenord och land",
       "login_error": "Kunde inte logga in på Xiaomi Miio Cloud, se över inloggningsuppgifter.",
-      "no_devices": "Hittade inga enheter som stöds på detta Xiaomi Miio Cloud konto under valt land.{devices}"
+      "no_devices": "Hittade inga enheter som stöds på detta Xiaomi Miio Cloud konto under valt land.{devices}",
+      "2fa_send_failed": "Det gick inte att skicka verifieringskoden. Försök igen.",
+      "2fa_limit_reached": "Den dagliga gränsen för att skicka verifieringskoder har uppnåtts. Försök igen i morgon.",
+      "2fa_cooldown_active": "För många på varandra följande begäranden. Vänta några minuter innan du försöker igen."
     },
     "step": {
       "user": {
@@ -42,7 +45,7 @@
         "data": {
           "verification_code": "Tvåfaktorsverifieringskod"
         },
-        "description": "## Denna inloggning kräver säkerhetsverifiering\nÖppna verifieringssidan för att skicka verifieringskoden via mobil/e-post. Efter att du fått koden, verifiera den inte på webbsidan. Gå tillbaka till HomeAssistant och ange den i fältet nedan.\n### [Skicka verifieringskod]({url})"
+        "description": "## Säkerhetsverifiering krävs\nEn verifieringskod har skickats till {dest}. Ange koden nedan."
       },
       "captcha": {
         "data": {
@@ -331,7 +334,7 @@
         "name": "Golvriktning",
         "state": {
           "vertical": "Vertikal",
-          "horizontal": "Horizontal"
+          "horizontal": "Horisontell"
         }
       },
       "visibility": {
@@ -460,11 +463,13 @@
       "edit_type": {
         "name": "Redigeringstyp",
         "state": {
+          "door": "Redigera dörrar",
           "split": "Dela rum",
           "merge": "Slå ihop rum",
           "visibility": "Rums synlighet",
           "material": "Golvmaterial",
-          "type": "Rumsnamn"
+          "type": "Rumsnamn",
+          "wall": "Redigera väggar"
         }
       },
       "map_type": {
@@ -634,7 +639,25 @@
           "changing_mop": "Byter mopp",
           "changing_mop_paused": "Moppbyte pausat",
           "floor_maintaining": "Golvunderhåll",
-          "floor_maintaining_paused": "Golvunderhåll pausat"
+          "floor_maintaining_paused": "Golvunderhåll pausat",
+          "remote_pickup": "Fjärrhämtning",
+          "arranging_items": "Ordnar föremål",
+          "pet_guarding": "Husdjursvakt",
+          "pet_guarding_paused": "Husdjursvakt pausad",
+          "installing_mop": "Monterar mopp",
+          "uninstalling_mop": "Tar bort mopp",
+          "intelligent_recharging": "Intelligent återladdning",
+          "assisted_cleaning": "Assisterad rengöring",
+          "entering_dock": "Går i docka",
+          "leaving_dock": "Lämnar docka",
+          "navigating_to_climber": "Navigerar till klättrare",
+          "docking_to_climber": "Dockar till klättrare",
+          "climber_docked": "Klättrare dockad",
+          "climber_navigating": "Klättrare navigerar",
+          "climbing_stairs": "Klättrar i trappor",
+          "climbing_stairs_completed": "Trappklättring slutförd",
+          "climber_at_dock": "Klättrare vid docka",
+          "climber_leaving_dock": "Klättrare lämnar docka"
         }
       },
       "status": {
@@ -667,7 +690,11 @@
           "summon_clean": "Kalla för att städa",
           "shortcut": "Genväg",
           "person_follow": "Följ människa",
-          "water_check": "Vattenkontroll"
+          "water_check": "Vattenkontroll",
+          "pet_guarding": "Husdjursvakt",
+          "auto_arrangement": "Automatisk ordning",
+          "smart_arrangement": "Smart ordning",
+          "zoned_arrangement": "Zonindelad ordning"
         }
       },
       "task_status": {
@@ -700,9 +727,20 @@
           "returning_to_remove_mop": "Återgår för att lämna mopp",
           "station_cleaning": "Stationstädning",
           "pet_finding": "Husdjursuppträdande",
-          "auto_cleaning_washing_paused": "Auto Cleaning Washing paused",
-          "area_cleaning_washing_paused": "Area Rengöring av tvätt pausade",
-          "custom_cleaning_washing_paused": "Anpassad rengöring av tvätt pausade"
+          "auto_cleaning_washing_paused": "Automatisk städning och tvätt pausad",
+          "area_cleaning_washing_paused": "Zonstädning och tvätt pausad",
+          "custom_cleaning_washing_paused": "Anpassad städning och tvätt pausad",
+          "picking_up_item": "Plockar upp föremål",
+          "picking_up_item_paused": "Upplockning av föremål pausad",
+          "picking_up_item_success": "Upplockning av föremål lyckades",
+          "remote_pickup_initializing": "Fjärrhämtning initialiseras",
+          "remote_pickup_identifing": "Fjärrhämtning identifieras",
+          "manual_remote_pickup": "Manuell fjärrhämtning",
+          "automatic_remote_pickup": "Automatisk fjärrhämtning",
+          "remote_pickup_in_progress": "Fjärrhämtning pågår",
+          "remote_pickup_paused": "Fjärrhämtning pausad",
+          "placing_item": "Placerar föremål",
+          "placing_item_paused": "Placering av föremål pausad"
         }
       },
       "water_tank": {
@@ -864,7 +902,10 @@
           "onboard_dirty_water_tank_full": "Robotens smutsvattentank är full.",
           "mop_not_installed": "Mopp ej installerad.",
           "fluffing_roller_error": "Fel på fluffvals.",
-          "blocked_by_obstacle": "Robot blockerad av hinder."
+          "blocked_by_obstacle": "Robot blockerad av hinder.",
+          "robotic_arm_stopped": "Robotarm har stannat.",
+          "drainage_outlet_filter": "Robotens utloppsfilter för avloppsvatten är igensatt.",
+          "main_wheels_error": "Fel på huvudhjulen."
         }
       },
       "charging_status": {
@@ -1016,7 +1057,14 @@
           "changing_mop_paused": "Moppbyte pausat",
           "floor_maintaining": "Golvunderhåll",
           "floor_maintaining_paused": "Golvunderhåll pausat",
-          "wood_floor_maintaining": "Trägolvsunderhåll"
+          "arranging_items": "Ordnar föremål",
+          "arranging_items_paused": "Ordnar föremål pausat",
+          "intensive_hair_cleaning": "Intensiv hårrengöring",
+          "accessory_handling": "Tillbehörshantering",
+          "increased_drum_speed_cleaning": "Rengöring med ökad trumhastighet",
+          "pressurized_cleaning": "Tryckrengöring",
+          "steam_cleaning": "Ångrengöring",
+          "steam_cleaning_paused": "Ångrengöring pausad"
         }
       },
       "dust_bag_drying_status": {
@@ -1040,7 +1088,7 @@
         "name": "Startad av",
         "state": {
           "button": "Knapp",
-          "app": "App",
+          "app": "Applikation",
           "scheduled": "Schemalagd",
           "voice": "Röst",
           "second_cleaning": "Andra städning",
@@ -1135,7 +1183,7 @@
           "detected_stain": "Upptäckt fläck",
           "blocked_room": "Blockerat rum",
           "easy_to_stuck_furniture": "Riskfylld möbel",
-          "uncleanable_stain": "Icke-rengörbar fläck" ,
+          "uncleanable_stain": "Icke-rengörbar fläck",
           "leg": "Ben",
           "large_particles": "Stora partiklar",
           "dried_stain": "Torkad fläck",
@@ -1145,7 +1193,10 @@
           "skipped_uncleanable_stain": "Hoppat över fläck",
           "cleaned_dried_stain": "Rengjord torkad fläck",
           "cleaned_large_particles": "Rengjorda stora partiklar",
-          "pen": "Penna"
+          "hair": "Hår",
+          "paper": "Papper",
+          "cleaned_hair": "Rengjort hår",
+          "sundry": "Diverse"
         }
       },
       "obstacle_reason": {
@@ -1201,7 +1252,7 @@
         "name": "Röstpaket"
       },
       "deodorizer_left": {
-        "name": "Deodorizer"
+        "name": "Luftfräschare"
       },
       "detergent_left": {
         "name": "Rengöringsmedel"
@@ -1210,7 +1261,7 @@
         "name": "Smutsvattenkanal"
       },
       "filter_left": {
-        "name": "Filter"
+        "name": "Filterenhet"
       },
       "fluffing_roller_dirty_left": {
         "name": "Rullrengöring"
@@ -1240,7 +1291,7 @@
         "name": "Silverjon"
       },
       "squeegee_left": {
-        "name": "Squeegee"
+        "name": "Gummiskrapa"
       },
       "tank_filter_left": {
         "name": "Tankfilter"
@@ -1385,6 +1436,9 @@
       "pet_focused_detection": {
         "name": "Husdjursfokuserad detektering"
       },
+      "pet_focused_cleaning": {
+        "name": "Husdjursfokuserad städning"
+      },
       "ai_obstacle_picture": {
         "name": "Hinderfoton"
       },
@@ -1520,10 +1574,11 @@
         "impassable_threshold": "Opasserbar tröskel",
         "job_details": "Jobbinformation",
         "keep_disabled": "Håll inaktiverad",
+        "map_display": "Kartvisning",
         "map_management": "Karthantering",
         "new_dnd": "Ny DnD-uppgift",
         "new_schedule": "Skapa schema",
-        "new_schortcut": "Skapa genväg",
+        "new_shortcut": "Ny genvägsuppgift",
         "next_job": "Nästa uppgift",
         "no_go": "No-go-zon",
         "no_mop": "Ingen moppning",
@@ -1603,6 +1658,7 @@
         "disable_haptic": "Inaktivera haptik",
         "editable_objects": "Redigerbara objekt",
         "font_size": "Teckenstorlek",
+        "full_height": "Full höjd",
         "grid_size": "Rutnätsstorlek",
         "height": "Höjd",
         "hidden_card_objects": "Dolda kortobjekt",
@@ -1661,6 +1717,11 @@
         "map_color_virtual_wall": "Virtuell vägg",
         "map_color_wall": "Vägg",
         "map_config": "Kartinställningar",
+        "map_display": "Kartvisning",
+        "map_display_floor_plan": "Planlösning",
+        "map_display_floor_plan_only": "Endast planlösning",
+        "map_display_floor_plan_without_texture": "Planlösning utan struktur",
+        "map_display_standard": "Standard",
         "map_object_active_area": "Aktivt område",
         "map_object_active_cruise_point": "Aktiv ruttpunkt",
         "map_object_active_point": "Aktiv punkt",
@@ -1675,6 +1736,7 @@
         "map_object_customized_cleaning": "Anpassad städning",
         "map_object_deleted_carpet": "Borttagen matta",
         "map_object_detected_carpet": "Detekterad matta",
+        "map_object_door": "Dörr",
         "map_object_floor": "Golv",
         "map_object_floor_material": "Golvmaterial",
         "map_object_furniture": "Möbel",
@@ -1799,6 +1861,7 @@
         "relocating_failed": "Självpositionering misslyckades!",
         "replace_map": "Ersätt ny karta?",
         "reset_usage": "Återställ statistik?",
+        "reset_walls": "Återställ väggar?",
         "restore_map": "Återställ %name%?",
         "resume_cleaning": "Roboten återupptar automatiskt oavslutade städuppgifter efter att batteriet har laddats till 80 %.",
         "resume_cleaning_not_performed": "Robot kommer återuppta städningen efter att Stör Ej-perioden har slutat.",
@@ -1820,7 +1883,8 @@
         "task_will_stopped": "Aktuell uppgift stoppas!",
         "unsaved_changes_present": "Osparade ändringar går förlorade!",
         "unsupported_browser": "Webbläsaren stöds ej!",
-        "usage_will_reset": "Statistik för %name% återställs."
+        "usage_will_reset": "Statistik för %name% återställs.",
+        "walls_will_be_reset": "Väggarna kommer att återställas till sin ursprungligen kartlagda plats!"
       }
     },
     "frontend_title": {
@@ -1880,6 +1944,7 @@
         "time_left": "%time% kvar",
         "unavailable": "Ej tillgänglig",
         "used_water_tank": "Smutsvattentank",
+        "wall": "Väggar",
         "wifi_map": "Wifi-karta"
       }
     }
@@ -1890,7 +1955,7 @@
       "description": "Börja städa i valda rum.",
       "fields": {
         "segments": {
-          "name": "Segment",
+          "name": "Rum",
           "description": "Lista över rum som ska städas. Endast rumssymbol eller en lista av rumssymboler, städtid, sugnivå och moppläge för att åsidosätta standardlägen för varje rum."
         },
         "repeats": {
@@ -2124,7 +2189,7 @@
           "description": "ID för kartan."
         },
         "segments": {
-          "name": "Segment",
+          "name": "Rum",
           "description": "Rums ID."
         }
       }
@@ -2138,7 +2203,7 @@
           "description": "ID för kartan."
         },
         "segment": {
-          "name": "Segment",
+          "name": "Rum",
           "description": "Rums ID."
         },
         "line": {
