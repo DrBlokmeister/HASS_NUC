@@ -2,22 +2,63 @@ substitutions:
   device_name: "Fan Controller NAS"
   espname: "fan-controller-nas"
 
+  # Final PCB pin mapping
+  fan1_pwm_pin: GPIO39
+  fan1_tach_pin: GPIO40
+
+  fan2_pwm_pin: GPIO37
+  fan2_tach_pin: GPIO38
+
+  fan3_pwm_pin: GPIO35
+  fan3_tach_pin: GPIO36
+
+  fan4_pwm_pin: GPIO33
+  fan4_tach_pin: GPIO34
+
+  fan5_pwm_pin: GPIO21
+  fan5_tach_pin: GPIO1
+
+  fan6_pwm_pin: GPIO2
+  fan6_tach_pin: GPIO3
+
+  temp_sens_pin: GPIO4
+  v12_sense_pin: GPIO17
+
+  i2c_sda_pin: GPIO13
+  i2c_scl_pin: GPIO14
+
 esphome:
-  name: '${espname}'
-  friendly_name: ${device_name}
-  comment: 'ESP32S2'
+  name: "${espname}"
+  friendly_name: "${device_name}"
+  comment: "ESP32-S2 6x PWM fan controller"
   platformio_options:
     board_build.f_flash: 40000000L
     board_build.flash_mode: dio
     board_build.flash_size: 4MB
     board_build.extra_flags:
-      - "-DARDUINO_USB_CDC_ON_BOOT=0"  # Override, defaults to '-DARDUINO_USB_CDC_ON_BOOT=1'
-  on_boot:
-    priority: -100
-    then:
-      - fan.turn_on:
-          id: speedfan
-          speed: 60
+      - "-DARDUINO_USB_CDC_ON_BOOT=0"
+  # on_boot:
+  #   priority: -100
+  #   then:
+  #     - fan.turn_on:
+  #         id: fan_1
+  #         speed: 60
+  #     - fan.turn_on:
+  #         id: fan_2
+  #         speed: 60
+  #     - fan.turn_on:
+  #         id: fan_3
+  #         speed: 60
+  #     - fan.turn_on:
+  #         id: fan_4
+  #         speed: 60
+  #     - fan.turn_on:
+  #         id: fan_5
+  #         speed: 60
+  #     - fan.turn_on:
+  #         id: fan_6
+  #         speed: 60
+
 esp32:
   board: lolin_s2_mini
   variant: ESP32S2
@@ -32,118 +73,308 @@ packages:
 # wifi:
 #   use_address: 10.0.30.111
 
-status_led:
-  pin: GPIO15
+# Disabled intentionally:
+# GPIO15 is one of the XTAL_32K-labelled pins on the Wemos S2 Mini.
+# If you really want the onboard/status LED and accept using GPIO15, enable this again.
+#
+# status_led:
+#   pin: GPIO15
+
+i2c:
+  sda: ${i2c_sda_pin}
+  scl: ${i2c_scl_pin}
+  scan: true
+
+one_wire:
+  - platform: gpio
+    id: one_wire_bus
+    pin: ${temp_sens_pin}
 
 sensor:
+  # ---------------------------------------------------------------------------
+  # Fan tachometer inputs
+  #
+  # Most PC fans output 2 tach pulses per revolution.
+  # ESPHome pulse_counter reports pulses/minute, so multiply by 0.5 => RPM.
+  # ---------------------------------------------------------------------------
+
   - platform: pulse_counter
     name: "NAS Fan 1 Speed"
+    id: fanspeed_sensor_1
     pin:
-      number: GPIO39
-      mode: INPUT_PULLUP
-    unit_of_measurement: 'RPM'
+      number: ${fan1_tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
     update_interval: 1s
     accuracy_decimals: 0
-    id: fanspeed_sensor_1
     filters:
       - multiply: 0.5
       - or:
-        - throttle_average: 60s
-        - delta: 100
+          - throttle_average: 60s
+          - delta: 100
+
   - platform: pulse_counter
     name: "NAS Fan 2 Speed"
+    id: fanspeed_sensor_2
     pin:
-      number: GPIO37
-      mode: INPUT_PULLUP
-    unit_of_measurement: 'RPM'
+      number: ${fan2_tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
     update_interval: 1s
     accuracy_decimals: 0
-    id: fanspeed_sensor_2
     filters:
       - multiply: 0.5
       - or:
-        - throttle_average: 60s
-        - delta: 100
+          - throttle_average: 60s
+          - delta: 100
+
   - platform: pulse_counter
     name: "NAS Fan 3 Speed"
+    id: fanspeed_sensor_3
     pin:
-      number: GPIO35
-      mode: INPUT_PULLUP
-    unit_of_measurement: 'RPM'
+      number: ${fan3_tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
     update_interval: 1s
     accuracy_decimals: 0
-    id: fanspeed_sensor_3
     filters:
       - multiply: 0.5
       - or:
-        - throttle_average: 60s
-        - delta: 100
+          - throttle_average: 60s
+          - delta: 100
+
   - platform: pulse_counter
     name: "NAS Fan 4 Speed"
+    id: fanspeed_sensor_4
     pin:
-      number: GPIO33
-      mode: INPUT_PULLUP
-    unit_of_measurement: 'RPM'
+      number: ${fan4_tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
     update_interval: 1s
     accuracy_decimals: 0
-    id: fanspeed_sensor_4
     filters:
       - multiply: 0.5
       - or:
-        - throttle_average: 60s
-        - delta: 100
+          - throttle_average: 60s
+          - delta: 100
+
   - platform: pulse_counter
     name: "NAS Fan 5 Speed"
+    id: fanspeed_sensor_5
     pin:
-      number: GPIO18
-      mode: INPUT_PULLUP
-    unit_of_measurement: 'RPM'
+      number: ${fan5_tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
     update_interval: 1s
     accuracy_decimals: 0
-    id: fanspeed_sensor_5
     filters:
       - multiply: 0.5
       - or:
-        - throttle_average: 60s
-        - delta: 100
+          - throttle_average: 60s
+          - delta: 100
+
   - platform: pulse_counter
     name: "NAS Fan 6 Speed"
+    id: fanspeed_sensor_6
     pin:
-      number: GPIO16
-      mode: INPUT_PULLUP
-    unit_of_measurement: 'RPM'
+      number: ${fan6_tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
     update_interval: 1s
     accuracy_decimals: 0
-    id: fanspeed_sensor_6
     filters:
       - multiply: 0.5
       - or:
-        - throttle_average: 60s
-        - delta: 100
+          - throttle_average: 60s
+          - delta: 100
+
+  # ---------------------------------------------------------------------------
+  # 12V rail monitor
+  #
+  # Hardware divider assumed:
+  #   +12V -> 91k -> ADC node -> 10k -> GND
+  #
+  # Divider ratio:
+  #   (91k + 10k) / 10k = 10.1
+  #
+  # ESPHome reports ADC pin voltage, so multiply by 10.1.
+  # Calibrated on 20260620 with adapter to 11.1
+  # ---------------------------------------------------------------------------
+
+  - platform: adc
+    name: "NAS Fan Controller 12V Rail"
+    id: v12_rail_voltage
+    pin: ${v12_sense_pin}
+    attenuation: 6db
+    update_interval: 5s
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 11.1
+      - or:
+          - throttle_average: 60s
+          - delta: 1
+    
+  # ---------------------------------------------------------------------------
+  # DS18B20 temperature sensors
+  #
+  # First boot tip:
+  # Leave these commented, flash once, connect sensors, and check the ESPHome log.
+  # The one_wire bus will scan and print the addresses it finds.
+  #
+  # Then uncomment and replace the addresses below.
+  # ---------------------------------------------------------------------------
+
+  # - platform: dallas_temp
+  #   one_wire_id: one_wire_bus
+  #   address: 0x0000000000000000
+  #   name: "NAS Fan Controller Temperature 1"
+  #   update_interval: 30s
+  #
+  # - platform: dallas_temp
+  #   one_wire_id: one_wire_bus
+  #   address: 0x0000000000000000
+  #   name: "NAS Fan Controller Temperature 2"
+  #   update_interval: 30s
+  #
+  # - platform: dallas_temp
+  #   one_wire_id: one_wire_bus
+  #   address: 0x0000000000000000
+  #   name: "NAS Fan Controller Temperature 3"
+  #   update_interval: 30s
 
 output:
+  # PWM is inverted because the PCB uses an NMOS open-drain driver:
+  # ESP GPIO high  -> MOSFET on  -> fan PWM line low
+  # ESP GPIO low   -> MOSFET off -> fan PWM line pulled high by fan
+  #
+  # So ESPHome's logical 60% needs to become 60% fan-side high duty.
+
   - platform: ledc
     id: fan_output_1
-    pin: GPIO03
-    frequency: "25000 Hz"
-    min_power: 1%
-    max_power: 100%
+    pin: ${fan1_pwm_pin}
+    channel: 0
+    frequency: 25000 Hz
+    inverted: true
+    zero_means_zero: true
+
   - platform: ledc
     id: fan_output_2
-    pin: GPIO05
-    frequency: "25000 Hz"
-    min_power: 1%
-    max_power: 100%
+    pin: ${fan2_pwm_pin}
+    channel: 1
+    frequency: 25000 Hz
+    inverted: true
+    zero_means_zero: true
+
   - platform: ledc
     id: fan_output_3
-    pin: GPIO07
-    frequency: "25000 Hz"
-    min_power: 1%
-    max_power: 100%
+    pin: ${fan3_pwm_pin}
+    channel: 2
+    frequency: 25000 Hz
+    inverted: true
+    zero_means_zero: true
+
+  - platform: ledc
+    id: fan_output_4
+    pin: ${fan4_pwm_pin}
+    channel: 3
+    frequency: 25000 Hz
+    inverted: true
+    zero_means_zero: true
+
+  - platform: ledc
+    id: fan_output_5
+    pin: ${fan5_pwm_pin}
+    channel: 4
+    frequency: 25000 Hz
+    inverted: true
+    zero_means_zero: true
+
+  - platform: ledc
+    id: fan_output_6
+    pin: ${fan6_pwm_pin}
+    channel: 5
+    frequency: 25000 Hz
+    inverted: true
+    zero_means_zero: true
 
 fan:
   - platform: speed
     output: fan_output_1
-    id: speedfan
-    name: "NUC External Fan"
+    id: fan_1
+    name: "NAS Fan 1"
+    speed_count: 100
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: speed
+    output: fan_output_2
+    id: fan_2
+    name: "NAS Fan 2"
+    speed_count: 100
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: speed
+    output: fan_output_3
+    id: fan_3
+    name: "NAS Fan 3"
+    speed_count: 100
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: speed
+    output: fan_output_4
+    id: fan_4
+    name: "NAS Fan 4"
+    speed_count: 100
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: speed
+    output: fan_output_5
+    id: fan_5
+    name: "NAS Fan 5"
+    speed_count: 100
+    restore_mode: RESTORE_DEFAULT_ON
+
+  - platform: speed
+    output: fan_output_6
+    id: fan_6
+    name: "NAS Fan 6"
+    speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
