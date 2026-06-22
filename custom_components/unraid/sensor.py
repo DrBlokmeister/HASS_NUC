@@ -2813,8 +2813,10 @@ class ParitySpeedSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
             speed_val = float(speed)
         except (TypeError, ValueError):
             return None
-        # Convert from bytes/s to MiB/s
-        return round(speed_val / (1024 * 1024), 1)
+        # Unraid GraphQL API returns parityCheckStatus.speed already as
+        # MB/s-ish value, e.g. "164" for 164 MB/s.
+        # Do not divide by 1024 * 1024 here.
+        return round(speed_val, 1)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
