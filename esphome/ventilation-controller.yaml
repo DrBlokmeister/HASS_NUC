@@ -55,6 +55,20 @@ text_sensor:
         return {"Bathroom Humidity"};
       }
 
+binary_sensor:
+  - platform: template
+    name: "Humidity Ventilation Allowed"
+    id: humidity_ventilation_allowed
+    icon: mdi:fan-check
+    lambda: |-
+      const float drying_potential = id(humidity_drying_potential).state;
+
+      if (isnan(drying_potential)) {
+        return false;
+      }
+
+      return drying_potential > 0.5;
+
 sensor:
   # ADC sensors
   - platform: adc
@@ -94,7 +108,38 @@ sensor:
       - or:
         - throttle_average: 60s
         - delta: 0.5
-  # HA sensors
+
+  # ---------------------------------------------------------------------------
+  # Outdoor / reference climate sensors
+  # ---------------------------------------------------------------------------
+  - platform: homeassistant
+    name: "Shed AQM Temperature"
+    entity_id: sensor.shed_aqm_temperature
+    id: ha_shed_aqm_temperature
+    device_class: "temperature"
+  - platform: homeassistant
+    name: "Shed AQM Humidity"
+    entity_id: sensor.shed_aqm_humidity
+    id: ha_shed_aqm_humidity
+    device_class: "humidity"
+
+  # ---------------------------------------------------------------------------
+  # Indoor temperature sensors
+  # ---------------------------------------------------------------------------
+  - platform: homeassistant
+    name: "Home Mean Room Temperature"
+    entity_id: sensor.home_mean_room_temperature
+    id: ha_home_mean_room_temperature
+    device_class: "temperature"
+  - platform: homeassistant
+    name: "Home Median Room Temperature"
+    entity_id: sensor.home_median_room_temperature
+    id: ha_home_median_room_temperature
+    device_class: "temperature"
+
+  # ---------------------------------------------------------------------------
+  # Indoor humidity sensors
+  # ---------------------------------------------------------------------------
   - platform: homeassistant
     name: "Home Max Humidity"
     entity_id: sensor.home_max_humidity
@@ -116,22 +161,9 @@ sensor:
     id: ha_home_median_humidity
     device_class: "humidity"
 
-  - platform: homeassistant
-    name: "Home Max CO2"
-    entity_id: sensor.home_max_co2
-    id: ha_home_max_co2
-    device_class: "carbon_dioxide"
-  - platform: homeassistant
-    name: "Home Mean CO2"
-    entity_id: sensor.home_mean_co2
-    id: ha_home_mean_co2
-    device_class: "carbon_dioxide"
-  - platform: homeassistant
-    name: "Home Median CO2"
-    entity_id: sensor.home_median_co2
-    id: ha_home_median_co2
-    device_class: "carbon_dioxide"
-
+  # ---------------------------------------------------------------------------
+  # Bathroom humidity sensors
+  # ---------------------------------------------------------------------------
   - platform: homeassistant
     name: "Bathroom Humidity"
     entity_id: sensor.humidity_bathroom
@@ -147,34 +179,74 @@ sensor:
     entity_id: sensor.humidity_bathroom_max
     id: ha_humidity_bathroom_max
     device_class: "humidity"
+
+  # ---------------------------------------------------------------------------
+  # Indoor CO₂ sensors
+  # ---------------------------------------------------------------------------
+  - platform: homeassistant
+    name: "Home Max CO2"
+    entity_id: sensor.home_max_co2
+    id: ha_home_max_co2
+    device_class: "carbon_dioxide"
+  - platform: homeassistant
+    name: "Home Mean CO2"
+    entity_id: sensor.home_mean_co2
+    id: ha_home_mean_co2
+    device_class: "carbon_dioxide"
+  - platform: homeassistant
+    name: "Home Median CO2"
+    entity_id: sensor.home_median_co2
+    id: ha_home_median_co2
+    device_class: "carbon_dioxide"
   - platform: homeassistant
     name: "Bedroom CO2 Concentration"
     entity_id: sensor.bedroom_co2
-    device_class: "carbon_dioxide"
     id: ha_co2_bedroom
+    device_class: "carbon_dioxide"
   - platform: homeassistant
     name: "Bedroom CO2 Concentration Min"
     entity_id: sensor.co2_value_bedroom_min
-    device_class: "carbon_dioxide"
     id: ha_co2_bedroom_min
+    device_class: "carbon_dioxide"
   - platform: homeassistant
     name: "Study CO2 Concentration"
     entity_id: sensor.study_co2
-    device_class: "carbon_dioxide"
     id: ha_co2_study
+    device_class: "carbon_dioxide"
   - platform: homeassistant
     name: "Livingroom CO2 Concentration"
     entity_id: sensor.living_room_co2
-    device_class: "carbon_dioxide"
     id: ha_co2_livingroom
+    device_class: "carbon_dioxide"
+
+  # ---------------------------------------------------------------------------
+  # Indoor PM2.5 sensors
+  # ---------------------------------------------------------------------------
+  - platform: homeassistant
+    name: "Home Max PM2.5 Concentration"
+    entity_id: sensor.home_max_pm2_5_concentration
+    id: ha_home_max_pm2_5_concentration
+    device_class: "pm25"
+  - platform: homeassistant
+    name: "Home Mean PM2.5 Concentration"
+    entity_id: sensor.home_mean_pm2_5_concentration
+    id: ha_home_mean_pm2_5_concentration
+    device_class: "pm25"
+  - platform: homeassistant
+    name: "Home Median PM2.5 Concentration"
+    entity_id: sensor.home_median_pm2_5_concentration
+    id: ha_home_median_pm2_5_concentration
+    device_class: "pm25"
 
   # Template sensors:
   - platform: template
     name: "Ventilation Setting Bathroom Humidity"
     id: fan_setting_bathroom_humidity
-    update_interval: 10s
+    update_interval: 5s
     accuracy_decimals: 0
     unit_of_measurement: "%"
+    filters:
+      - throttle_average: 60s
     lambda: |-
       float bathroom_humidity = id(ha_humidity_bathroom).state;
       float baseline_humidity = id(ha_home_mean_humidity_without_bathroom).state;
@@ -204,6 +276,98 @@ sensor:
         fan_setting = 100.0;
       }
       return round(fan_setting);
+
+  # ---------------------------------------------------------------------------
+  # Absolute humidity diagnostics
+  # ---------------------------------------------------------------------------
+  - platform: template
+    name: "Indoor Absolute Humidity"
+    id: indoor_absolute_humidity
+    icon: mdi:water-percent
+    unit_of_measurement: "g/m³"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - throttle_average: 60s
+    lambda: |-
+      const float temperature_c = id(ha_home_mean_room_temperature).state;
+      const float relative_humidity = id(ha_home_mean_humidity_without_bathroom).state;
+
+      if (isnan(temperature_c) || isnan(relative_humidity)) {
+        return NAN;
+      }
+
+      if (relative_humidity < 0.0 || relative_humidity > 100.0) {
+        return NAN;
+      }
+
+      // Saturation vapor pressure in hPa.
+      const float saturation_vapor_pressure =
+        6.112 * exp((17.67 * temperature_c) / (temperature_c + 243.5));
+
+      // Actual vapor pressure in hPa.
+      const float vapor_pressure =
+        saturation_vapor_pressure * relative_humidity / 100.0;
+
+      // Absolute humidity in g/m³.
+      const float absolute_humidity =
+        216.7 * vapor_pressure / (temperature_c + 273.15);
+
+      return absolute_humidity;
+
+  - platform: template
+    name: "Outdoor Absolute Humidity"
+    id: outdoor_absolute_humidity
+    icon: mdi:water-percent
+    unit_of_measurement: "g/m³"
+    accuracy_decimals: 2
+    update_interval: 5s
+    filters:
+      - throttle_average: 60s
+    lambda: |-
+      const float temperature_c = id(ha_shed_aqm_temperature).state;
+      const float relative_humidity = id(ha_shed_aqm_humidity).state;
+
+      if (isnan(temperature_c) || isnan(relative_humidity)) {
+        return NAN;
+      }
+
+      if (relative_humidity < 0.0 || relative_humidity > 100.0) {
+        return NAN;
+      }
+
+      // Saturation vapor pressure in hPa.
+      const float saturation_vapor_pressure =
+        6.112 * exp((17.67 * temperature_c) / (temperature_c + 243.5));
+
+      // Actual vapor pressure in hPa.
+      const float vapor_pressure =
+        saturation_vapor_pressure * relative_humidity / 100.0;
+
+      // Absolute humidity in g/m³.
+      const float absolute_humidity =
+        216.7 * vapor_pressure / (temperature_c + 273.15);
+
+      return absolute_humidity;
+
+  - platform: template
+    name: "Humidity Drying Potential"
+    id: humidity_drying_potential
+    icon: mdi:water-minus
+    unit_of_measurement: "g/m³"
+    accuracy_decimals: 2
+    update_interval: 10s
+    filters:
+      - throttle_average: 60s
+    lambda: |-
+      const float indoor_ah = id(indoor_absolute_humidity).state;
+      const float outdoor_ah = id(outdoor_absolute_humidity).state;
+
+      if (isnan(indoor_ah) || isnan(outdoor_ah)) {
+        return NAN;
+      }
+
+      return indoor_ah - outdoor_ah;
 
   - platform: template
     name: "Ventilation Setting Humidity"
@@ -269,9 +433,13 @@ sensor:
   - platform: template
     name: "Fan Speed Setting"
     id: fan_speed_setting
-    update_interval: 10s
+    update_interval: 5s
     accuracy_decimals: 0
     unit_of_measurement: "%"
+    filters:
+      - or:
+        - throttle_average: 60s
+        - delta: 10.0
     lambda: |-
       float var_fan_setting_co2 = id(fan_setting_co2).state;
       float var_fan_setting_humidity = id(fan_setting_humidity).state;
@@ -299,10 +467,6 @@ sensor:
         return 0;
       }
       return round(fan_setting);
-    filters:
-      - or:
-        - throttle_average: 60s
-        - delta: 10.0
     on_value:
       then:
         - fan.turn_on:
