@@ -20,6 +20,7 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from unraid_api import ServerInfo, UnraidClient
@@ -31,6 +32,7 @@ from unraid_api.exceptions import (
     UnraidTimeoutError,
 )
 
+from .cleanup import async_cleanup_stale_entities
 from .const import (
     CONF_IGNORE_SSL,
     DEFAULT_PORT,
@@ -215,6 +217,7 @@ def _create_coordinators(
     api_client: UnraidClient,
     server_name: str,
     entry: UnraidConfigEntry,
+    server_info: ServerInfo,
 ) -> tuple[
     UnraidSystemCoordinator,
     UnraidStorageCoordinator,
@@ -226,6 +229,7 @@ def _create_coordinators(
         api_client=api_client,
         server_name=server_name,
         config_entry=entry,
+        server_info=server_info,
     )
     storage_coordinator = UnraidStorageCoordinator(
         hass=hass,
@@ -299,6 +303,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bo
         api_client,
         server_name,
         entry,
+        info,
     )
 
     # Fetch initial data
@@ -313,6 +318,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bo
     websocket_manager = UnraidWebSocketManager(
         api_client=api_client,
         system_coordinator=system_coordinator,
+        storage_coordinator=storage_coordinator,
         server_name=server_name,
     )
 
@@ -343,12 +349,53 @@ async def async_setup_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bo
         )
     )
 
+    # Register cleanup listeners on each coordinator so stale entities are
+    # pruned automatically after every successful refresh cycle.  The cleanup
+    # runs on both the system and storage coordinators so that a refresh of
+    # either one triggers the check (important because containers live in the
+    # system coordinator and disks/shares in the storage coordinator).
+    server_uuid = server_info["uuid"]
+
+    def _run_cleanup(_: object = None) -> None:
+        async_cleanup_stale_entities(
+            hass,
+            entry.entry_id,
+            server_uuid,
+            system_coordinator,
+            storage_coordinator,
+        )
+
+    entry.async_on_unload(system_coordinator.async_add_listener(_run_cleanup))
+    entry.async_on_unload(storage_coordinator.async_add_listener(_run_cleanup))
+
+    # Run an initial cleanup pass now that platforms have been set up and the
+    # entity registry contains whatever was persisted from the last run.
+    _run_cleanup()
+
     _LOGGER.info(
         "Unraid integration setup complete for %s",
         server_name,
     )
 
     return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,  # noqa: ARG001
+    entry: UnraidConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """
+    Return whether a device can be removed from the UI.
+
+    Returning ``True`` enables the *Delete* button in the device UI so that
+    users can manually clean up orphaned devices.  The main Unraid server
+    device (identified by its UUID) cannot be removed this way because it
+    is the parent device for all integration entities and would be
+    re-created on the next coordinator refresh.
+    """
+    server_uuid = entry.runtime_data.server_info.get("uuid", "unknown")
+    return (DOMAIN, server_uuid) not in device_entry.identifiers
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: UnraidConfigEntry) -> bool:

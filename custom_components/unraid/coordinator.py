@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -13,7 +14,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.storage import Store
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    TimestampDataUpdateCoordinator,
+    UpdateFailed,
+)
 from unraid_api import (
     ServerInfo,
     SystemMetrics,
@@ -33,6 +37,7 @@ from unraid_api.models import (
     Connect,
     DockerContainer,
     Network,
+    NetworkMetrics,
     NotificationOverview,
     ParityCheck,
     ParityHistoryEntry,
@@ -46,6 +51,7 @@ from unraid_api.models import (
 )
 
 from .const import (
+    DOCKER_POLL_INTERVAL,
     DOMAIN,
     INFRA_POLL_INTERVAL,
     STORAGE_POLL_INTERVAL,
@@ -69,6 +75,7 @@ class UnraidSystemData:
     notification_overview: NotificationOverview | None = None
     notifications_unread: int = 0
     mover_active: bool | None = None
+    network_metrics: list[NetworkMetrics] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -136,7 +143,7 @@ class UnraidStorageData:
         return self.array.caches
 
 
-class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
+class UnraidSystemCoordinator(TimestampDataUpdateCoordinator[UnraidSystemData]):
     """Coordinator for Unraid system data (polls every 30 seconds)."""
 
     def __init__(
@@ -145,6 +152,7 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
         api_client: UnraidClient,
         server_name: str,
         config_entry: ConfigEntry,
+        server_info: ServerInfo,
     ) -> None:
         """
         Initialize the system coordinator.
@@ -154,6 +162,9 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
             api_client: Unraid API client (from unraid_api library)
             server_name: Server name for logging
             config_entry: The config entry for this coordinator
+            server_info: Server identification data fetched once at setup. This
+                is static (UUID, model, CPU, OS, versions) so it is reused on
+                every poll instead of re-querying it every 30 seconds.
 
         """
         super().__init__(
@@ -166,6 +177,15 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
         self.api_client = api_client
         self._server_name = server_name
         self._previously_unavailable = False
+        # Static server info captured at setup; never re-queried on the hot path.
+        self._server_info = server_info
+        # Docker container list is polled at DOCKER_POLL_INTERVAL rather than on
+        # every system poll. Between fetches the last result is reused so docker
+        # entities stay populated. async_request_docker_refresh() forces an
+        # immediate re-fetch after a container control action.
+        self._cached_containers: list[DockerContainer] = []
+        self._last_docker_refresh: float = 0.0
+        self._force_docker_refresh: bool = False
         self._event_listeners: dict[
             str, list[Callable[[UnraidNotificationEventData], None]]
         ] = {}
@@ -297,9 +317,15 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
     async def _async_get_unread_notifications(self) -> list[Any]:
         """Fetch unread notifications via available API wrapper methods."""
         _LOGGER.debug("Polling unread notifications for %s", self._server_name)
+        # Duck-typed lookup: typed_get_notifications is a future unraid-api
+        # API; current releases expose get_notifications. getattr keeps the
+        # fallback chain explicit for the type checker.
+        typed_get_notifications = getattr(
+            self.api_client, "typed_get_notifications", None
+        )
         try:
-            if hasattr(self.api_client, "typed_get_notifications"):
-                response = await self.api_client.typed_get_notifications(
+            if typed_get_notifications is not None:
+                response = await typed_get_notifications(
                     notification_type="UNREAD",
                     offset=0,
                     limit=200,
@@ -492,9 +518,17 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
             await self._async_save_seen_notification_ids()
 
     async def _query_optional_docker(self) -> list[DockerContainer]:
-        """Query Docker containers (fails gracefully if Docker not enabled)."""
+        """
+        Query Docker containers (fails gracefully if Docker not enabled).
+
+        Uses the lightweight typed_get_containers_safe() variant: the full
+        query's sizeRootFs/sizeRw/sizeLog fields make the Docker daemon
+        compute writable-layer sizes on every poll, causing multi-second CPU
+        spikes on the Unraid server (#237). The safe variant returns every
+        field this integration consumes.
+        """
         try:
-            return await self.api_client.typed_get_containers()
+            return await self.api_client.typed_get_containers_safe()
         except UnraidAuthenticationError:
             raise
         except (UnraidAPIError, UnraidConnectionError, UnraidTimeoutError) as err:
@@ -521,6 +555,22 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
             _LOGGER.debug("UPS data not available: %s", err)
             return []
 
+    async def _query_optional_network_metrics(self) -> list[NetworkMetrics]:
+        """
+        Query per-interface network metrics (fails gracefully).
+
+        Requires Unraid API 4.35.0+ (metrics.network); older servers raise
+        UnraidAPIError from the library's capability check, which is cheap
+        after the first call because capabilities are cached.
+        """
+        try:
+            return await self.api_client.get_network_metrics()
+        except UnraidAuthenticationError:
+            raise
+        except (UnraidAPIError, UnraidConnectionError, UnraidTimeoutError) as err:
+            _LOGGER.debug("Network metrics not available: %s", err)
+            return []
+
     async def _query_optional_mover_status(self) -> bool | None:
         """Query mover active status (fails gracefully)."""
         try:
@@ -533,6 +583,17 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
         except (UnraidAPIError, UnraidConnectionError, UnraidTimeoutError) as err:
             _LOGGER.debug("Mover status data not available: %s", err)
             return None
+
+    async def async_request_docker_refresh(self) -> None:
+        """
+        Request a refresh that also re-fetches the Docker container list.
+
+        Docker data is normally throttled to DOCKER_POLL_INTERVAL, but container
+        control actions (start/stop/update) need the new state reflected
+        immediately, so this bypasses the throttle for the next update.
+        """
+        self._force_docker_refresh = True
+        await self.async_request_refresh()
 
     # Action wrappers for entity control operations
     async def async_start_container(self, container_id: str) -> None:
@@ -550,6 +611,14 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
     async def async_update_container(self, container_id: str) -> None:
         """Update a Docker container to its latest image."""
         await self.api_client.update_container(container_id)
+
+    async def async_update_all_containers(self) -> None:
+        """Update every container with a pending image update (API 4.35+)."""
+        await self.api_client.update_all_containers()
+
+    async def async_refresh_docker_digests(self) -> None:
+        """Force a re-check of remote image digests (the WebGUI 'check for updates')."""
+        await self.api_client.refresh_docker_digests()
 
     async def async_start_vm(self, vm_id: str) -> None:
         """Start a virtual machine."""
@@ -604,19 +673,46 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
             # NOTE: We use get_system_metrics_safe() instead of
             # get_system_metrics() to avoid querying metrics.temperature.sensors
             # which triggers smartctl disk reads and wakes sleeping disks.
-            info, metrics, notifications = await asyncio.gather(
-                self.api_client.get_server_info(),
+            # Server info is static and captured once at setup, so it is not
+            # re-queried here.
+            metrics, notifications = await asyncio.gather(
                 self.api_client.get_system_metrics_safe(),
                 self.api_client.get_notification_overview(),
             )
+            info = self._server_info
 
-            # Phase 2: Optional services — run concurrently; each fails gracefully
-            containers, vms, ups_devices, mover_active = await asyncio.gather(
-                self._query_optional_docker(),
-                self._query_optional_vms(),
-                self._query_optional_ups(),
-                self._query_optional_mover_status(),
+            # Phase 2: Optional services — run concurrently; each fails gracefully.
+            # The Docker container list is the most expensive query on the
+            # Unraid server, so it is throttled to DOCKER_POLL_INTERVAL and the
+            # previous result reused in between to avoid periodic CPU spikes.
+            fetch_docker = self._force_docker_refresh or (
+                time.monotonic() - self._last_docker_refresh >= DOCKER_POLL_INTERVAL
             )
+            if fetch_docker:
+                (
+                    containers,
+                    vms,
+                    ups_devices,
+                    mover_active,
+                    network_metrics,
+                ) = await asyncio.gather(
+                    self._query_optional_docker(),
+                    self._query_optional_vms(),
+                    self._query_optional_ups(),
+                    self._query_optional_mover_status(),
+                    self._query_optional_network_metrics(),
+                )
+                self._cached_containers = containers
+                self._last_docker_refresh = time.monotonic()
+                self._force_docker_refresh = False
+            else:
+                vms, ups_devices, mover_active, network_metrics = await asyncio.gather(
+                    self._query_optional_vms(),
+                    self._query_optional_ups(),
+                    self._query_optional_mover_status(),
+                    self._query_optional_network_metrics(),
+                )
+                containers = self._cached_containers
 
             # Log recovery if previously unavailable
             if self._previously_unavailable:
@@ -651,6 +747,7 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
                 if notifications.unread
                 else 0,
                 mover_active=mover_active,
+                network_metrics=network_metrics,
             )
 
         except UnraidAuthenticationError as err:
@@ -671,7 +768,7 @@ class UnraidSystemCoordinator(DataUpdateCoordinator[UnraidSystemData]):
             raise UpdateFailed(msg) from err
 
 
-class UnraidStorageCoordinator(DataUpdateCoordinator[UnraidStorageData]):
+class UnraidStorageCoordinator(TimestampDataUpdateCoordinator[UnraidStorageData]):
     """Coordinator for Unraid storage data (polls every 5 minutes)."""
 
     def __init__(
@@ -825,7 +922,7 @@ class UnraidInfraData:
     network: Network | None = None
 
 
-class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
+class UnraidInfraCoordinator(TimestampDataUpdateCoordinator[UnraidInfraData]):
     """
     Coordinator for Unraid infrastructure data (polls every 15 minutes).
 
@@ -976,25 +1073,25 @@ class UnraidInfraCoordinator(DataUpdateCoordinator[UnraidInfraData]):
         """
         _LOGGER.debug("Starting infrastructure data update")
         try:
-            # All sub-queries are optional — run all concurrently
+            # All sub-queries are optional — run all concurrently.
+            # Nested gathers keep the result tuples fully typed (typeshed's
+            # asyncio.gather overloads only cover up to six awaitables).
             (
-                services,
-                registration,
-                cloud,
-                connect,
-                remote_access,
-                vars_data,
-                installed_plugins,
-                network,
+                (services, registration, cloud, connect),
+                (remote_access, vars_data, installed_plugins, network),
             ) = await asyncio.gather(
-                self._query_optional_services(),
-                self._query_optional_registration(),
-                self._query_optional_cloud(),
-                self._query_optional_connect(),
-                self._query_optional_remote_access(),
-                self._query_optional_vars(),
-                self._query_installed_plugins(),
-                self._query_optional_network(),
+                asyncio.gather(
+                    self._query_optional_services(),
+                    self._query_optional_registration(),
+                    self._query_optional_cloud(),
+                    self._query_optional_connect(),
+                ),
+                asyncio.gather(
+                    self._query_optional_remote_access(),
+                    self._query_optional_vars(),
+                    self._query_installed_plugins(),
+                    self._query_optional_network(),
+                ),
             )
 
             services = services or []
