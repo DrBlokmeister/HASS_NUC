@@ -6,10 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from packaging.version import Version
 from typing import Any
-
-from luxtronik import Calculations, Parameters, Visibilities
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.climate import (
@@ -19,14 +16,19 @@ from homeassistant.components.climate import (
 )
 from homeassistant.components.date import DateEntityDescription
 from homeassistant.components.number import NumberEntityDescription, NumberMode
+from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
-from homeassistant.components.update import UpdateEntityDescription, UpdateDeviceClass
-from homeassistant.components.water_heater import WaterHeaterEntityFeature
-
+from homeassistant.components.update import UpdateDeviceClass, UpdateEntityDescription
+from homeassistant.components.water_heater import (
+    WaterHeaterEntityDescription,
+    WaterHeaterEntityFeature,
+)
 from homeassistant.const import Platform, UnitOfTemperature
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.typing import StateType
+from luxtronik import Calculations, Parameters, Visibilities
+from packaging.version import Version
 
 from .const import (
     UPDATE_INTERVAL_VERY_SLOW,
@@ -39,16 +41,6 @@ from .const import (
     SensorAttrFormat,
     SensorAttrKey,
 )
-
-# fix breaking change due to typo in WaterHeaterEntityDescription (#132888)
-WaterHeaterEntityDescription = None
-
-try:
-    from homeassistant.components.water_heater import WaterHeaterEntityDescription
-except ImportError:
-    from homeassistant.components.water_heater import (
-        WaterHeaterEntityEntityDescription as WaterHeaterEntityDescription,
-    )
 
 # endregion Imports
 
@@ -73,11 +65,10 @@ class LuxtronikEntityAttributeDescription:
     restore_on_startup: bool = False
 
 
-@dataclass
-class LuxtronikEntityDescription(EntityDescription):
+class LuxtronikEntityDescription(EntityDescription, frozen_or_thawed=True):
     """Class describing Luxtronik entities."""
 
-    has_entity_name = True
+    has_entity_name: bool = True
 
     # Bug in python: Have to assign a value:
     platform = Platform.AIR_QUALITY
@@ -86,8 +77,9 @@ class LuxtronikEntityDescription(EntityDescription):
     icon_by_state: dict[StateType | date | datetime | Decimal, str] | None = None
     device_key: DeviceKey = DeviceKey.heatpump
     luxtronik_key: LuxParameter | LuxCalculation = LuxParameter.UNSET
+    translation_key: str | None = None
     translation_key_name: str | None = None
-    visibility: LuxVisibility = LuxVisibility.UNSET
+    visibility: LuxVisibility | LuxParameter = LuxVisibility.UNSET
     invisible_if_value: Any | None = None
     min_firmware_version_minor: Version | None = None
     max_firmware_version_minor: Version | None = None
@@ -95,13 +87,14 @@ class LuxtronikEntityDescription(EntityDescription):
     max_firmware_version: Version | None = None
 
     extra_attributes: tuple[LuxtronikEntityAttributeDescription, ...] = ()
+    entity_registry_enabled_default: bool = True
     state_class: str | None = None
 
 
-@dataclass
-class LuxtronikSensorDescription(
+class LuxtronikSensorDescription(  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
     LuxtronikEntityDescription,
     SensorEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik sensor entities."""
 
@@ -110,34 +103,34 @@ class LuxtronikSensorDescription(
     native_precision: int | None = None
 
 
-@dataclass
-class LuxtronikIndexSensorDescription(
+class LuxtronikIndexSensorDescription(  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
     LuxtronikSensorDescription,
     SensorEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik index sensor entities."""
 
     luxtronik_key_timestamp: LuxParameter | LuxCalculation = LuxParameter.UNSET
 
 
-@dataclass
 class LuxtronikNumberDescription(
     LuxtronikEntityDescription,
     NumberEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik number sensor entities."""
 
     platform = Platform.NUMBER
-    update_interval = UPDATE_INTERVAL_VERY_SLOW
+    update_interval: timedelta | None = UPDATE_INTERVAL_VERY_SLOW
     factor: float | None = None
     native_precision: int | None = None
     mode: NumberMode = NumberMode.AUTO
 
 
-@dataclass
 class LuxtronikBinarySensorEntityDescription(
     LuxtronikEntityDescription,
     BinarySensorEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik binary sensor entities."""
 
@@ -145,28 +138,28 @@ class LuxtronikBinarySensorEntityDescription(
     on_state: str | bool = True
     on_states: list[str] | None = None
     off_state: str | bool = False
-    inverted = False
+    inverted: bool = False
 
 
-@dataclass
 class LuxtronikSwitchDescription(
     LuxtronikEntityDescription,
     SwitchEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik switch entities."""
 
     platform = Platform.SWITCH
-    update_interval = UPDATE_INTERVAL_VERY_SLOW
+    update_interval: timedelta = UPDATE_INTERVAL_VERY_SLOW
     on_state: str | bool = True
     on_states: list[str] | None = None
     off_state: str | bool = False
-    inverted = False
+    inverted: bool = False
 
 
-@dataclass
 class LuxtronikClimateDescription(
     LuxtronikEntityDescription,
     ClimateEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik climate entities."""
 
@@ -182,6 +175,8 @@ class LuxtronikClimateDescription(
     luxtronik_key_target_temperature: LuxParameter | LuxCalculation = LuxParameter.UNSET
     luxtronik_key_correction_factor: LuxParameter = LuxParameter.UNSET
     luxtronik_key_correction_target: LuxParameter = LuxParameter.UNSET
+    min_temp: float | None = None
+    max_temp: float | None = None
     temperature_unit: str = UnitOfTemperature.CELSIUS
 
 
@@ -195,9 +190,10 @@ def metaclass_resolver(*classes):
     return metaclass("_".join(cls.__name__ for cls in classes), classes, {})
 
 
-@dataclass
 class LuxtronikWaterHeaterDescription(
-    metaclass_resolver(LuxtronikEntityDescription, WaterHeaterEntityDescription)
+    LuxtronikEntityDescription,
+    WaterHeaterEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik water heater entities."""
 
@@ -213,10 +209,10 @@ class LuxtronikWaterHeaterDescription(
     temperature_unit: str = UnitOfTemperature.CELSIUS
 
 
-@dataclass
 class LuxtronikUpdateEntityDescription(
     LuxtronikEntityDescription,
     UpdateEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik update entities."""
 
@@ -224,11 +220,21 @@ class LuxtronikUpdateEntityDescription(
     platform = Platform.UPDATE
 
 
-@dataclass
 class LuxtronikDateEntityDescription(
     LuxtronikEntityDescription,
     DateEntityDescription,
+    frozen_or_thawed=True,
 ):
     """Class describing Luxtronik date entities."""
 
     platform = Platform.DATE
+
+
+class LuxtronikSelectEntityDescription(
+    LuxtronikEntityDescription,
+    SelectEntityDescription,
+    frozen_or_thawed=True,
+):
+    """Class describing Luxtronik date entities."""
+
+    platform = Platform.SELECT

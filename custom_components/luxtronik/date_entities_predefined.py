@@ -1,4 +1,4 @@
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import EntityCategory
 
 from .const import (
     DeviceKey,
@@ -8,7 +8,6 @@ from .const import (
 from .model import (
     LuxtronikDateEntityDescription,
 )
-
 
 CALENDAR_ENTITIES: list[LuxtronikDateEntityDescription] = [
     LuxtronikDateEntityDescription(

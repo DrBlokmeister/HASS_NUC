@@ -3,36 +3,34 @@
 # region Imports
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import LuxtronikConfigEntry
 from .base import LuxtronikEntity
 from .binary_sensor_entities_predefined import BINARY_SENSORS
 from .common import get_sensor_data, key_exists
-from .const import CONF_COORDINATOR, CONF_HA_SENSOR_PREFIX, DOMAIN, DeviceKey, LOGGER
+from .const import CONF_HA_SENSOR_PREFIX, LOGGER, DeviceKey, SensorKey
 from .coordinator import LuxtronikCoordinator, LuxtronikCoordinatorData
 from .model import LuxtronikBinarySensorEntityDescription
 
 # endregion Imports
 
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: LuxtronikConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Luxtronik binary sensors dynamically through Luxtronik discovery."""
 
-    data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
-    if not data or CONF_COORDINATOR not in data:
-        raise ConfigEntryNotReady
-
-    coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
-
-    # Ensure coordinator has valid data before adding entities
-    if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
+    coordinator = entry.runtime_data
 
     unavailable_keys = [
         i.luxtronik_key
@@ -40,7 +38,9 @@ async def async_setup_entry(
         if not key_exists(coordinator.data, i.luxtronik_key)
     ]
     if unavailable_keys:
-        LOGGER.warning("Not present in Luxtronik data, skipping: %s", unavailable_keys)
+        # Not all models/firmware versions support every parameter;
+        # missing keys are expected and not an error.
+        LOGGER.debug("Not present in Luxtronik data, skipping: %s", unavailable_keys)
 
     async_add_entities(
         [
@@ -57,10 +57,11 @@ async def async_setup_entry(
     )
 
 
-class LuxtronikBinarySensorEntity(LuxtronikEntity, BinarySensorEntity):
+class LuxtronikBinarySensorEntity(  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+    LuxtronikEntity[LuxtronikBinarySensorEntityDescription], BinarySensorEntity
+):
     """Luxtronik Binary Sensor Entity."""
 
-    entity_description: LuxtronikBinarySensorEntityDescription
     _coordinator: LuxtronikCoordinator
 
     def __init__(
@@ -103,3 +104,78 @@ class LuxtronikBinarySensorEntity(LuxtronikEntity, BinarySensorEntity):
         #    LOGGER.info('on_state=%s',descr.on_state)
 
         super()._handle_coordinator_update()
+
+    def compute_is_on(self, state: Any) -> bool:  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+        """Compute the is_on state, with special handling for shared registers.
+
+        Special handling for DISTURBANCE_OUTPUT (C0049 / ID_WEB_ZW2SSTout):
+        This register is shared between ZWE2 (Additional Heat Generator 2) activation
+        and SST (Collective Fault Signal). To disambiguate:
+        - If disturbance_output is ON and error_reason changed at the same time or after,
+          it's a real fault
+        - If disturbance_output is ON but error_reason hasn't changed, it's just ZWE2
+          activation noise (e.g., during thermal disinfection cycles)
+
+        See: https://github.com/BenPru/luxtronik/issues/532
+        """
+        descr = self.entity_description
+
+        # Special handling for DISTURBANCE_OUTPUT (C0049 / ID_WEB_ZW2SSTout)
+        if descr.key == SensorKey.DISTURBANCE_OUTPUT and state is True:
+            LOGGER.debug("Entering special handling for DISTURBANCE_OUTPUT")
+            # Get entity IDs for cross-reference checks
+            disturbance_entity_id = self.entity_id
+            # Construct error_reason entity ID using same prefix pattern
+            error_reason_entity_id = disturbance_entity_id.replace(
+                f"_{SensorKey.DISTURBANCE_OUTPUT.value}",
+                f"_{SensorKey.ERROR_REASON.value}",
+            )
+
+            # Get state objects to check last_changed timestamps
+            disturbance_state = self.hass.states.get(disturbance_entity_id)
+            error_state = self.hass.states.get(error_reason_entity_id)
+            LOGGER.debug(
+                "Disturbance state: %s, Error state: %s", disturbance_state, error_state
+            )
+
+            if disturbance_state and error_state:
+                LOGGER.debug("Both states are available for DISTURBANCE_OUTPUT")
+                try:
+                    disturbance_changed = disturbance_state.last_changed
+                    error_changed = error_state.last_changed
+                    LOGGER.debug(
+                        "Disturbance changed: %s, Error changed: %s",
+                        disturbance_changed,
+                        error_changed,
+                    )
+
+                    # If error_reason changed BEFORE disturbance_output,
+                    # then the disturbance output is just ZWE2 noise, not a fault
+                    if (
+                        disturbance_changed
+                        and error_changed
+                        and error_changed < disturbance_changed
+                    ):
+                        LOGGER.debug(
+                            "DISTURBANCE_OUTPUT active but error_reason hasn't changed "
+                            "since output activation (error: %s, disturbance: %s), "
+                            "treating as ZWE2 operation, not a fault",
+                            error_changed,
+                            disturbance_changed,
+                        )
+                        return False
+                except (AttributeError, TypeError) as e:
+                    LOGGER.debug(
+                        "Could not compare timestamps for DISTURBANCE_OUTPUT fault detection: %s",
+                        e,
+                    )
+
+        # Default computation
+        if isinstance(descr.on_state, bool) and state is not None:  # pyright: ignore[reportAttributeAccessIssue]
+            state = bool(state)
+
+        is_on = bool(
+            state == descr.on_state or (descr.on_states and state in descr.on_states)  # pyright: ignore[reportAttributeAccessIssue]
+        )
+
+        return not is_on if getattr(descr, "inverted", False) else is_on

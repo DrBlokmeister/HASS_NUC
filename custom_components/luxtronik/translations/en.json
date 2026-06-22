@@ -126,6 +126,9 @@
             "release_second_heat_generator": {
                 "name": "Release second heat generator"
             },
+            "release_time_second_heat_generator": {
+                "name": "Release time second heat generator"
+            },
             "pump_optimization": {
                 "name": "Pump optimization"
             },
@@ -137,8 +140,7 @@
             },
             "thermal_power_limitation_water": {
                 "name": "Thermal power limit: Water"
-            }
-            ,
+            },
             "thermal_power_limitation_cooling": {
                 "name": "Thermal power limit: Cooling"
             },
@@ -208,6 +210,9 @@
             "dhw_hysteresis": {
                 "name": "Hysteresis"
             },
+            "dhw_manual_frequency": {
+                "name": "DHW target frequency"
+            },
             "heating_room_temperature_impact_factor": {
                 "name": "Room temperature impact factor"
             },
@@ -247,11 +252,29 @@
             "cooling_target_temperature_mk3": {
                 "name": "Cooling target temperature"
             },
+            "cooling_min_flow_out_temperature": {
+                "name": "Cooling minimum flow temperature"
+            },
             "heat_source_input_temperature_min": {
                 "name": "Heat source input minimum"
             },
+            "heating_flow_out_temperature_target": {
+                "name": "Manual target flow out temperature"
+            },
             "pump_vent_timer_h": {
                 "name": "Venting runtime"
+            },
+            "extra_dhw_target_temperature": {
+                "name": "Extra DHW target temperature"
+            },
+            "extra_dhw_duration": {
+                "name": "Extra DHW duration"
+            },
+            "heating_threshold_temperature": {
+                "name": "Heating threshold temperature"
+            },
+            "pump_optimization_time": {
+                "name": "Pump optimization time"
             }
         },
         "sensor": {
@@ -266,14 +289,6 @@
                     "heating_external_source": "Heating external source",
                     "cooling": "Cooling",
                     "no_request": "Idle (no request)"
-                },
-                "state_attributes": {
-                    "evu_text": {
-                        "state": {
-                            "evu_until": "{evu_time} minutes more locktime.",
-                            "evu_in": "Locktime in {evu_time} minutes."
-                        }
-                    }
                 }
             },
             "smart_grid_status": {
@@ -625,14 +640,90 @@
         },
         "select": {
             "thermal_desinfection_day": {
-                "name": "Thermal Desinfection Day"
+                "name": "Thermal Desinfection Day",
+                "state": {
+                    "none": "None",
+                    "monday": "Monday",
+                    "tuesday": "Tuesday",
+                    "wednesday": "Wednesday",
+                    "thursday": "Thursday",
+                    "friday": "Friday",
+                    "saturday": "Saturday",
+                    "sunday": "Sunday",
+                    "continuous": "Continuous"
+                }
+            },
+            "heating_control_circuit_mode": {
+                "name": "Heating circuit control mode",
+                "state": {
+                    "0": "heating curve control - Controlled by outside temperature",
+                    "1": "Manual set temperature",
+                    "2": "Analog in"
+                }
+            },
+            "pv_mode_selector": {
+                "name": "PV Mode",
+                "state": {
+                    "automatic": "Automatic",
+                    "pv_off": "PV Off",
+                    "pool_off": "Pool Off",
+                    "pool_party": "Pool Party",
+                    "pool_holidays": "Pool Holidays"
+                }
+            },
+            "heating_mode": {
+                "name": "Heating mode",
+                "state": {
+                    "off": "Off",
+                    "automatic": "Automatic",
+                    "second_heatsource": "Second heatsource",
+                    "party": "Party",
+                    "holidays": "Holidays"
+                }
+            },
+            "dhw_mode": {
+                "name": "DHW mode",
+                "state": {
+                    "off": "Off",
+                    "automatic": "Automatic",
+                    "second_heatsource": "Second heatsource",
+                    "party": "Party",
+                    "holidays": "Holidays"
+                }
+            },
+            "heating_mode_mk1": {
+                "name": "Heating mode MK1",
+                "state": {
+                    "off": "Off",
+                    "automatic": "Automatic",
+                    "party": "Party",
+                    "holidays": "Holidays"
+                }
+            },
+            "heating_mode_mk2": {
+                "name": "Heating mode MK2",
+                "state": {
+                    "off": "Off",
+                    "automatic": "Automatic",
+                    "party": "Party",
+                    "holidays": "Holidays"
+                }
+            },
+            "heating_mode_mk3": {
+                "name": "Heating mode MK3",
+                "state": {
+                    "off": "Off",
+                    "automatic": "Automatic",
+                    "party": "Party",
+                    "holidays": "Holidays"
+                }
             }
         },
         "climate": {
-            "heating": {
+            "heating_controller": {
                 "name": "Heating"
             },
-            "cooling": {
+            "cooling_controller": {
                 "name": "Cooling"
             }
         },
@@ -646,6 +737,8 @@
         "abort": {
             "cannot_connect": "Failed to connect to Luxtronik at {host}.\\nError: {connect_error}",
             "already_configured": "This device is already configured.",
+            "reconfigure_successful": "Configuration updated successfully.",
+            "unique_id_mismatch": "The device at the new address has a different identity than the currently configured device.",
             "already_in_progress": "The configuration flow is already in progress.",
             "devices_configured": "All selected devices are already configured.",
             "options_error": "An error occurred while loading the options.",
@@ -656,6 +749,7 @@
         "error": {
             "address": "Invalid remote-address insert. The address has to be an IP address or a resolvable hostname.",
             "address_in_use": "The chosen listen port is already in use on this system.",
+            "cannot_connect": "Failed to connect. Please check the host and port.",
             "unknown": "Unexpected error"
         },
         "step": {
@@ -681,7 +775,7 @@
             },
             "select_devices": {
                 "title": "Select Devices to Configure",
-                "description": "Select one or more devices to add. Already configured devices: {configured}",               
+                "description": "Select one or more devices to add. Already configured devices: {configured}",
                 "data": {
                     "select_device_to_configure": "Select the device you want to configure"
                 }
@@ -698,6 +792,22 @@
                     "control_mode_home_assistant": "When the Home Assistant Thermostat is in the Idle state, the Off state is reported to Luxtronik and Luxtronik cannot start this item.",
                     "ha_sensor_prefix": "Important if several heat pumps are used.\nIn the case of a single one, 'luxtronik' can simply be used."
                 }
+            },
+            "reconfigure": {
+                "title": "Reconfigure Luxtronik connection",
+                "description": "Update the connection settings for the Luxtronik heat pump.",
+                "data": {
+                    "host": "Host",
+                    "port": "Network Port",
+                    "timeout": "Network socket timeout (Sec.)",
+                    "max_data_length": "Max data package length"
+                },
+                "data_description": {
+                    "host": "Hostname or IP address",
+                    "port": "Normally 8889 or 8888",
+                    "timeout": "If the network or the heatpump is slow, you can fine-tune the timeout.",
+                    "max_data_length": "If the network or the heatpump is slow, you can fine-tune the data package length."
+                }
             }
         }
     },
@@ -707,16 +817,26 @@
                 "title": "Configure options for {name}",
                 "description": "Settings for the Luxtronik heat pump {name}.",
                 "data": {
-                    "ha_sensor_indoor_temperature": "Sensor ID for the indoor temperature",
-                    "control_mode_home_assistant": "Experimental!: Control thermostat on/off status by Home Assistant.",
-                    "ha_sensor_prefix": "Prefix entity IDs"
+                    "ha_sensor_indoor_temperature": "Sensor ID for the indoor temperature"
                 },
                 "data_description": {
-                    "ha_sensor_indoor_temperature": "A thermostat for heating control is created in Home Assistant. The actual temperature for this is set by a Home Assistant sensor.\nIf Luxtronik is connected to a hardware room thermostat, then this field should be left empty.",
-                    "control_mode_home_assistant": "When the Home Assistant Thermostat is in the Idle state, the Off state is reported to Luxtronik and Luxtronik cannot start this item.",
-                    "ha_sensor_prefix": "Important if several heat pumps are used.\nIn the case of a single one, 'luxtronik' can simply be used."
+                    "ha_sensor_indoor_temperature": "A thermostat for heating control is created in Home Assistant. The actual temperature for this is set by a Home Assistant sensor.\nIf Luxtronik is connected to a hardware room thermostat, then this field should be left empty."
                 }
             }
+        }
+    },
+    "exceptions": {
+        "invalid_parameter_name": {
+            "message": "Invalid parameter name: {parameter}"
+        },
+        "parameter_not_writable": {
+            "message": "Parameter {parameter} rejected \u2014 only parameters with prefixes {prefixes} are writable"
+        }
+    },
+    "issues": {
+        "connection_failed": {
+            "title": "Cannot connect to Luxtronik heat pump",
+            "description": "The integration could not connect to the Luxtronik heat pump at **{host}:{port}**.\n\nError: `{error}`\n\nPlease check that the heat pump is powered on, the network connection is working, and the host/port are correct. You can update the connection settings via the **Reconfigure** option in the integration menu."
         }
     }
 }

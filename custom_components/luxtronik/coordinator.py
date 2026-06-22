@@ -4,44 +4,50 @@
 from __future__ import annotations
 
 import asyncio
-import re
-
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
+from datetime import timedelta
 from functools import wraps
-from packaging.version import Version, InvalidVersion
+import re
 from types import MappingProxyType
-from typing import Any, Concatenate, TypeVar
-from typing_extensions import ParamSpec
+from typing import Any, Concatenate, ParamSpec, TypeVar
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_TIMEOUT
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import EntityPlatform
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.exceptions import ConfigEntryNotReady
+from packaging.version import InvalidVersion, Version
 
-from .common import correct_key_value
+from .common import normalize_sensor_value
 from .const import (
     CONF_CALCULATIONS,
     CONF_MAX_DATA_LENGTH,
     CONF_PARAMETERS,
+    CONF_UPDATE_INTERVAL,
     CONF_VISIBILITIES,
     DEFAULT_MAX_DATA_LENGTH,
-    DEFAULT_TIMEOUT,
     DEFAULT_PORT,
+    DEFAULT_TIMEOUT,
+    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     LOGGER,
     LUX_PARAMETER_MK_SENSORS,
-    UPDATE_INTERVAL_NORMAL,
+    UPDATE_INTERVAL_OPTIONS,
     DeviceKey,
     LuxCalculation as LC,
     LuxMkTypes,
     LuxParameter as LP,
+    LuxRoomThermostatType,
     LuxVisibility as LV,
 )
 from .lux_helper import Luxtronik, get_manufacturer_by_model
+from .lux_overrides import (
+    isolate_instance_data,
+    update_Luxtronik_HeatpumpCodes,
+    update_Luxtronik_Parameters,
+)
 from .model import LuxtronikCoordinatorData, LuxtronikEntityDescription
 
 # endregion Imports
@@ -87,24 +93,43 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         self._config = config
         self.device_infos = dict[str, DeviceInfo]()
         self.update_reason_write = False
+
+        update_interval: timedelta = DEFAULT_UPDATE_INTERVAL
+        raw = config.get(CONF_UPDATE_INTERVAL)
+        if isinstance(raw, str) and raw in UPDATE_INTERVAL_OPTIONS:
+            update_interval = UPDATE_INTERVAL_OPTIONS[raw]
+
         super().__init__(
             hass,
             LOGGER,
             name=DOMAIN,
             update_method=self._async_update_data,
-            update_interval=UPDATE_INTERVAL_NORMAL,
+            update_interval=update_interval,
+        )
+
+        LOGGER.info(
+            "Coordinator update interval=%s s",
+            self.update_interval.total_seconds()
+            if self.update_interval is not None
+            else None,
         )
 
     async def _async_update_data(self) -> LuxtronikCoordinatorData:
         async with self._lock:
             try:
                 await self.hass.async_add_executor_job(self.client.read)
-                LOGGER.debug("_async_update_data")
+                LOGGER.debug(
+                    "Update coordinator data  (Async, interval=%s s)",
+                    self.update_interval.total_seconds()
+                    if self.update_interval is not None
+                    else None,
+                )
                 self.data = LuxtronikCoordinatorData(
                     parameters=self.client.parameters,
                     calculations=self.client.calculations,
                     visibilities=self.client.visibilities,
                 )
+
                 return self.data
             except Exception as err:
                 raise UpdateFailed(f"Error fetching data: {err}") from err
@@ -136,14 +161,9 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         except Exception as err:
             raise UpdateFailed(f"Write error: {err}") from err
 
-    def write(self, parameter, value) -> LuxtronikCoordinatorData:
-        """Write a parameter to the Luxtronik heatpump."""
-        LOGGER.info("Coordinator.write used, should not happen!")
-        return False
-
     @staticmethod
-    async def connect(
-        hass: HomeAssistant, config_entry: ConfigEntry | dict
+    async def connect(  # pragma: no cover
+        hass: HomeAssistant, config_entry: ConfigEntry | dict[str, Any]
     ) -> LuxtronikCoordinator:
         """Connect to heatpump."""
         config: dict[Any, Any] | MappingProxyType[str, Any] | None = None
@@ -154,12 +174,8 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
 
         host = config[CONF_HOST]
         port = config[CONF_PORT]
-        timeout = config[CONF_TIMEOUT] if CONF_TIMEOUT in config else DEFAULT_TIMEOUT
-        max_data_length = (
-            config[CONF_MAX_DATA_LENGTH]
-            if CONF_MAX_DATA_LENGTH in config
-            else DEFAULT_MAX_DATA_LENGTH
-        )
+        timeout = config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+        max_data_length = config.get(CONF_MAX_DATA_LENGTH, DEFAULT_MAX_DATA_LENGTH)
 
         client = Luxtronik(
             host=host,
@@ -189,8 +205,12 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
     ) -> DeviceInfo:
         if key not in self.device_infos:
             self._create_device_infos(self.hass, self._config, platform)
-        device_info: DeviceInfo = self.device_infos.get(key)
-        if device_info["name"] == key:
+        device_info = self.device_infos.get(key)
+        if device_info is None:
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"{self.unique_id}_{key.value}".lower())}
+            )
+        if device_info.get("name") == key:
             device_info["name"] = self._build_device_name(key, platform)
         return device_info
 
@@ -201,20 +221,20 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         platform: EntityPlatform | None = None,
     ):
         host = config[CONF_HOST]
-        self.device_infos[DeviceKey.heatpump.value] = self._build_device_info(
+        self.device_infos[DeviceKey.heatpump] = self._build_device_info(
             DeviceKey.heatpump, host, platform
         )
         via = (
             DOMAIN,
-            f"{self.unique_id}_{DeviceKey.heatpump.value}".lower(),
+            f"{self.unique_id}_{DeviceKey.heatpump}".lower(),
         )
-        self.device_infos[DeviceKey.heating.value] = self._build_device_info(
+        self.device_infos[DeviceKey.heating] = self._build_device_info(
             DeviceKey.heating, host, platform, via
         )
-        self.device_infos[DeviceKey.domestic_water.value] = self._build_device_info(
+        self.device_infos[DeviceKey.domestic_water] = self._build_device_info(
             DeviceKey.domestic_water, host, platform, via
         )
-        self.device_infos[DeviceKey.cooling.value] = self._build_device_info(
+        self.device_infos[DeviceKey.cooling] = self._build_device_info(
             DeviceKey.cooling, host, platform, via
         )
 
@@ -225,16 +245,16 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             return str(key.value)
         return platform.platform_data.platform_translations.get(
             f"component.{DOMAIN}.entity.device.{key.value}.name"
-        )
+        ) or str(key.value)
 
     def _build_device_info(
         self,
         key: DeviceKey,
         host: str,
         platform: EntityPlatform | None = None,
-        via_device=None,
+        via_device: tuple[str, str] | None = None,
     ) -> DeviceInfo:
-        return DeviceInfo(
+        device_info = DeviceInfo(
             identifiers={
                 (
                     DOMAIN,
@@ -243,7 +263,6 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             },
             entry_type=None,
             name=self._build_device_name(key, platform),
-            via_device=via_device,
             configuration_url=f"http://{host}/",
             connections={
                 (
@@ -260,6 +279,9 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             # default_manufacturer=self.manufacturer,
             # default_model=self.model,
         )
+        if via_device is not None:
+            device_info["via_device"] = via_device
+        return device_info
 
     def _is_version_not_compatible(
         self, description: LuxtronikEntityDescription
@@ -288,20 +310,19 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             return True
 
         # Check maximum minor version if specified
-        if (
+        return (
             description.max_firmware_version_minor is not None
             and self.firmware_version_minor > description.max_firmware_version_minor
-        ):
-            return True
-
-        # If all checks pass or no version restrictions are specified
-        return False
+        )
 
     @property
     def serial_number(self) -> str:
         """Return the serial number."""
         serial_number_date = self.get_value(LP.P0874_SERIAL_NUMBER)
-        serial_number_hex = hex(int(self.get_value(LP.P0875_SERIAL_NUMBER_MODEL)))
+        serial_number_model = self.get_value(LP.P0875_SERIAL_NUMBER_MODEL)
+        serial_number_hex = (
+            hex(int(serial_number_model)) if serial_number_model is not None else "0"
+        )
         return f"{serial_number_date}-{serial_number_hex}".replace("x", "")
 
     @property
@@ -312,7 +333,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
     @property
     def model(self) -> str:
         """Return the heatpump model."""
-        return self.get_value(LC.C0078_MODEL_CODE)
+        return str(self.get_value(LC.C0078_MODEL_CODE) or "")
 
     @property
     def manufacturer(self) -> str | None:
@@ -350,6 +371,35 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         minor = rel[1] if len(rel) > 1 else 0
         patch = rel[2] if len(rel) > 2 else 0
         return Version(f"{minor}.{patch}")
+
+    @property
+    def room_thermostat_type(self) -> LuxRoomThermostatType | int | None:
+        """Derived runtime room thermostat type from parameter P0033.
+
+        Returns LuxRoomThermostatType enum when recognized, raw int when
+        unknown numeric, or None when not set or on error.
+        """
+        try:
+            raw = self.get_value(LP.P0033_ROOM_THERMOSTAT_TYPE)
+            if raw is None:
+                return None
+            try:
+                num = int(raw)
+            except Exception:
+                return None
+            if num == LuxRoomThermostatType.rbe.value:
+                rbe_version = Version(self.get_value(LC.C0258_RBE_VERSION) or "0")
+                if rbe_version >= Version("2.0.0"):
+                    return LuxRoomThermostatType.rbe_plus
+                else:
+                    return LuxRoomThermostatType.rbe
+
+            try:
+                return LuxRoomThermostatType(num)
+            except Exception:
+                return num
+        except Exception:
+            return None
 
     def entity_visible(self, description: LuxtronikEntityDescription) -> bool:
         """Is description visible."""
@@ -414,30 +464,33 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
             return self.has_domestic_water
         if device_key == DeviceKey.cooling:
             return self.has_cooling
-            # return self.detect_cooling_present()
         raise NotImplementedError
 
     @property
     def has_heating(self) -> bool:
         """Is heating activated."""
-        return bool(self.get_value(LC.C0064_OPERATION_HOURS_HEATING) > 0)
+        val = self.get_value(LC.C0064_OPERATION_HOURS_HEATING)
+        return val is not None and val > 0
 
     @property
     def has_domestic_water(self) -> bool:
         """Is domestic water activated."""
-        return bool(self.get_value(LC.C0065_OPERATION_HOURS_DHW) > 0)
+        val = self.get_value(LC.C0065_OPERATION_HOURS_DHW)
+        return val is not None and val > 0
 
     @property
     def has_cooling(self) -> bool:
-        """Is domestic water activated."""
-        return bool(self.get_value(LC.C0066_OPERATION_HOURS_COOLING) > 0)
+        """Is cooling activated."""
+        val = self.get_value(LC.C0066_OPERATION_HOURS_COOLING)
+        return val is not None and val > 0
 
     def get_value(self, group_sensor_id: str | LP | LC | LV):
         """Get a sensor value from Luxtronik."""
         sensor = self.get_sensor_by_id(str(group_sensor_id))
         if sensor is None:
             return None
-        return correct_key_value(sensor.value, self.data, group_sensor_id)
+        value = sensor[1] if isinstance(sensor, tuple) else sensor.value
+        return normalize_sensor_value(value, self.data, group_sensor_id)
 
     def get_sensor_by_id(self, group_sensor_id: str):
         """Get a sensor object by id from Luxtronik."""
@@ -475,25 +528,31 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
 
     def _detect_solar_present(self) -> bool:
         """Detect and returns True if solar is present."""
+        if bool(self.get_value(LV.V0250_SOLAR)):
+            return True
+        if (self.get_value(LP.P0882_SOLAR_OPERATION_HOURS) or 0) > 0.01:
+            return True
+        collector_temp = self.get_value(LC.C0026_SOLAR_COLLECTOR_TEMPERATURE)
+        if (
+            bool(self.get_value(LV.V0038_SOLAR_COLLECTOR))
+            and collector_temp is not None
+            and float(collector_temp) != 5.0
+        ):
+            return True
+        buffer_temp = self.get_value(LC.C0027_SOLAR_BUFFER_TEMPERATURE)
         return (
-            bool(self.get_value(LV.V0250_SOLAR))
-            or self.get_value(LP.P0882_SOLAR_OPERATION_HOURS) > 0.01  # noqa: W503
-            or (
-                bool(self.get_value(LV.V0038_SOLAR_COLLECTOR))  # noqa: W503
-                and float(self.get_value(LC.C0026_SOLAR_COLLECTOR_TEMPERATURE))  # noqa: W503
-                != 5.0  # noqa: W503
-            )
-            or (
-                bool(self.get_value(LV.V0039_SOLAR_BUFFER))  # noqa: W503
-                and float(self.get_value(LC.C0027_SOLAR_BUFFER_TEMPERATURE))  # noqa: W503
-                != 150.0  # noqa: W503
-            )
+            bool(self.get_value(LV.V0039_SOLAR_BUFFER))
+            and buffer_temp is not None
+            and float(buffer_temp) != 150.0
         )
 
     def _detect_dhw_circulation_pump_present(self) -> bool:
-        """Detect and returns True if solar is present."""
+        """Detect and returns True if DHW circulation pump is present."""
         try:
-            return int(self.get_value(LP.P0085_DHW_CHARGING_PUMP)) != 1
+            value = self.get_value(LP.P0085_DHW_CHARGING_PUMP)
+            if value is None:
+                return False
+            return int(value) != 1
         except Exception:  # pylint: disable=broad-except
             return False
 
@@ -506,12 +565,7 @@ class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
         """Make sure a coordinator is shut down as well as its connection."""
         await super().async_shutdown()
         if hasattr(self, "client") and self.client is not None:
-            # await self.client.disconnect()
             del self.client
-        else:
-            LOGGER.warning(
-                "LuxtronikCoordinator has no 'client' attribute during shutdown."
-            )
 
 
 class LuxtronikConnectionError(HomeAssistantError):
@@ -526,26 +580,42 @@ class LuxtronikConnectionError(HomeAssistantError):
         self.original = original
 
 
+_OVERRIDES_APPLIED = False
+
+
 async def connect_and_get_coordinator(
-    hass: HomeAssistant, config: dict[str, Any]
+    hass: HomeAssistant, config: ConfigEntry | dict[str, Any]
 ) -> LuxtronikCoordinator:
     """Try to connect to a Luxtronik device and return coordinator."""
+    global _OVERRIDES_APPLIED
+    # No lock needed: all override calls are synchronous (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    if not _OVERRIDES_APPLIED:
+        update_Luxtronik_HeatpumpCodes()
+        update_Luxtronik_Parameters()
+        isolate_instance_data()
+        _OVERRIDES_APPLIED = True
+        LOGGER.info(
+            "Library overrides applied (HeatpumpCodes, Parameters, instance data isolation)."
+        )
 
+    config_data: dict[str, Any] = dict(
+        config.data if isinstance(config, ConfigEntry) else config
+    )
     if isinstance(config, ConfigEntry):
-        config = config.data
+        config_data.update(dict(config.options))
 
-    host = config.get(CONF_HOST)
-    port = config.get(CONF_PORT, DEFAULT_PORT)
+    host: str = config_data.get(CONF_HOST, "")
+    port = config_data.get(CONF_PORT, DEFAULT_PORT)
 
-    try:
-        coordinator = await LuxtronikCoordinator.connect(hass, config)
+    try:  # pragma: no cover
+        coordinator = await LuxtronikCoordinator.connect(hass, config_data)
         LOGGER.info("Luxtronik connect to device %s:%s successful!", host, port)
 
-        # ✅ Perform initial data fetch manually
-        await coordinator._async_update_data()
-        LOGGER.info("Initial data fetched for coordinator")
+        # no need to fetch first data manually here,
+        # already done by async_config_entry_first_refresh() in __init.py:47__
 
         return coordinator
     except Exception as err:
         LOGGER.error("Luxtronik connect to device %s:%s failed: %s", host, port, err)
-        raise LuxtronikConnectionError(host, port, err)
+        raise LuxtronikConnectionError(host, port, err) from err

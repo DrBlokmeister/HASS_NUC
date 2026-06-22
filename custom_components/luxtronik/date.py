@@ -2,18 +2,19 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from homeassistant.components.date import DateEntity, ENTITY_ID_FORMAT
+from homeassistant.components.date import (
+    ENTITY_ID_FORMAT,  # pyright: ignore[reportAttributeAccessIssue]
+    DateEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import LuxtronikConfigEntry
 from .base import LuxtronikEntity
 from .common import get_sensor_data, key_exists
 from .const import (
-    CONF_COORDINATOR,
     CONF_HA_SENSOR_PREFIX,
-    DOMAIN,
     LOGGER,
     DeviceKey,
 )
@@ -21,18 +22,18 @@ from .coordinator import LuxtronikCoordinator, LuxtronikCoordinatorData
 from .date_entities_predefined import CALENDAR_ENTITIES
 from .model import LuxtronikDateEntityDescription
 
+PARALLEL_UPDATES = 1
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+
+async def async_setup_entry(  # pragma: no cover
+    hass: HomeAssistant,
+    entry: LuxtronikConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
-    data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
-    if not data or CONF_COORDINATOR not in data:
-        raise ConfigEntryNotReady
-
-    coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
+    coordinator = entry.runtime_data
 
     if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
+        return
 
     unavailable_keys = [
         i.luxtronik_key
@@ -40,7 +41,9 @@ async def async_setup_entry(
         if not key_exists(coordinator.data, i.luxtronik_key)
     ]
     if unavailable_keys:
-        LOGGER.warning("Not present in Luxtronik data, skipping: %s", unavailable_keys)
+        # Not all models/firmware versions support every parameter;
+        # missing keys are expected and not an error.
+        LOGGER.debug("Not present in Luxtronik data, skipping: %s", unavailable_keys)
 
     async_add_entities(
         [
@@ -57,10 +60,8 @@ async def async_setup_entry(
     )
 
 
-class LuxtronikDateEntity(LuxtronikEntity, DateEntity):
+class LuxtronikDateEntity(LuxtronikEntity[LuxtronikDateEntityDescription], DateEntity):  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
     """Luxtronik Date Entity that supports user-editable dates."""
-
-    entity_description: LuxtronikDateEntityDescription
 
     def __init__(
         self,
@@ -91,7 +92,7 @@ class LuxtronikDateEntity(LuxtronikEntity, DateEntity):
 
         value = get_sensor_data(data, self.entity_description.luxtronik_key.value)
 
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             try:
                 dt_value = datetime.fromtimestamp(value)
                 self._attr_native_value = dt_value.date()

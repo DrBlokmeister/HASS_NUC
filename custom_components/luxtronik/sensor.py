@@ -1,36 +1,31 @@
 """Support for Luxtronik sensors."""
 
-# flake8: noqa: W503
 # region Imports
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from decimal import Decimal
+from datetime import UTC, datetime
 from typing import Any
 
-from homeassistant.components.sensor import ENTITY_ID_FORMAT, SensorEntity
+from homeassistant.components.sensor import (
+    ENTITY_ID_FORMAT,  # pyright: ignore[reportAttributeAccessIssue]
+    SensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import StateType
-from homeassistant.util.dt import dt as dt_util
 
+from . import LuxtronikConfigEntry
 from .base import LuxtronikEntity
 from .common import get_sensor_data, key_exists
 from .const import (
-    CONF_COORDINATOR,
     CONF_HA_SENSOR_PREFIX,
     DOMAIN,
     LOGGER,
     DeviceKey,
     LuxCalculation as LC,
-    LuxOperationMode,
     LuxParameter as LP,
     LuxSmartGridStatus,
-    LuxStatus1Option,
-    LuxStatus3Option,
     SensorAttrKey as SA,
     SensorKey,
 )
@@ -41,30 +36,32 @@ from .sensor_entities_predefined import SENSORS, SENSORS_INDEX, SENSORS_STATUS
 
 # endregion Imports
 
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: LuxtronikConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Luxtronik sensors dynamically through Luxtronik discovery."""
 
-    data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
-    if not data or CONF_COORDINATOR not in data:
-        raise ConfigEntryNotReady
-
-    coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
+    coordinator = entry.runtime_data
 
     # Ensure coordinator has valid data before adding entities
     if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
+        return
 
     unavailable_keys = [
         i.luxtronik_key
         for i in SENSORS + SENSORS_STATUS
         if not key_exists(coordinator.data, i.luxtronik_key)
-        and not i.luxtronik_key == LC.UNSET
+        and i.luxtronik_key != LC.UNSET
     ]
     if unavailable_keys:
-        LOGGER.warning("Not present in Luxtronik data, skipping: %s", unavailable_keys)
+        # Not all models/firmware versions support every parameter;
+        # missing keys are expected and not an error.
+        LOGGER.debug("Not present in Luxtronik data, skipping: %s", unavailable_keys)
 
     async_add_entities(
         [
@@ -118,10 +115,9 @@ async def async_setup_entry(
     )
 
 
-class LuxtronikSensorEntity(LuxtronikEntity, SensorEntity):
+class LuxtronikSensorEntity(LuxtronikEntity[LuxtronikSensorDescription], SensorEntity):  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
     """Luxtronik Sensor Entity."""
 
-    entity_description: LuxtronikSensorDescription
     _coordinator: LuxtronikCoordinator
 
     _unrecorded_attributes = frozenset(
@@ -170,20 +166,17 @@ class LuxtronikSensorEntity(LuxtronikEntity, SensorEntity):
         self, data: LuxtronikCoordinatorData | None = None
     ) -> None:
         """Handle updated data from the coordinator."""
-        # if not self.should_update():
-        #    return
-
         data = self.coordinator.data if data is None else data
         if data is None:
             return
 
-        value = get_sensor_data(data, self.entity_description.luxtronik_key.value)
+        value = get_sensor_data(data, self.entity_description.luxtronik_key)
 
         if value is None:
             self._attr_native_value = None
-        elif self.entity_description.key.value == SensorKey.ERROR_REASON:
+        elif self.entity_description.key == SensorKey.ERROR_REASON:
             self._attr_native_value = value
-        elif isinstance(value, (float, int)):
+        elif isinstance(value, float | int):
             factor = self.entity_description.factor or 1
             precision = self.entity_description.native_precision
             value = float(value) * factor
@@ -197,15 +190,10 @@ class LuxtronikSensorEntity(LuxtronikEntity, SensorEntity):
         super()._handle_coordinator_update()
 
 
-class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
+class LuxtronikStatusSensorEntity(LuxtronikSensorEntity):
     """Luxtronik Status Sensor with extended attr."""
 
-    entity_description: LuxtronikSensorDescription
-
     _coordinator: LuxtronikCoordinator
-    _evu_tracker: LuxtronikEVUTracker = LuxtronikEVUTracker()
-
-    _last_state: StateType | date | datetime | Decimal = None
 
     _unrecorded_attributes = frozenset(
         LuxtronikSensorEntity._unrecorded_attributes
@@ -221,6 +209,18 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
         }
     )
 
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        coordinator: LuxtronikCoordinator,
+        description: LuxtronikSensorDescription,
+        device_info_ident: DeviceKey,
+    ) -> None:
+        """Init Luxtronik Status Sensor."""
+        super().__init__(hass, entry, coordinator, description, device_info_ident)
+        self._evu_tracker = LuxtronikEVUTracker()
+
     @callback
     def _handle_coordinator_update(
         self, data: LuxtronikCoordinatorData | None = None
@@ -233,57 +233,11 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
         # For normal status sensors, use the parent's update logic
         super()._handle_coordinator_update(data)
 
-        self._evu_tracker.update(self._attr_native_value)
-
-        if self._attr_native_value is None or self._last_state is None:
-            pass
-
-        # region Workaround Luxtronik Bug
-        else:
-            # region Workaround: Inverter heater is active but not the heatpump!
-            # Status shows heating but status 3 = no request!
-            sl1 = self._get_value(LC.C0117_STATUS_LINE_1)
-            sl3 = self._get_value(LC.C0119_STATUS_LINE_3)
-            add_circ_pump = self._get_value(LC.C0047_ADDITIONAL_CIRCULATION_PUMP)
-            s1_workaround: list[str] = [
-                LuxStatus1Option.heatpump_idle,
-                LuxStatus1Option.pump_forerun,
-                LuxStatus1Option.heatpump_coming,
-            ]
-            s3_workaround: list[str | None] = [
-                LuxStatus3Option.no_request,
-                LuxStatus3Option.unknown,
-                LuxStatus3Option.none,
-                LuxStatus3Option.grid_switch_on_delay,
-                None,
-            ]
-            if sl1 in s1_workaround and sl3 in s3_workaround and not add_circ_pump:
-                # ignore pump forerun
-                self._attr_native_value = LuxOperationMode.no_request.value
-            # endregion Workaround: Inverter heater is active but not the heatpump!
-
-            # region Workaround Thermal desinfection with heatpump running
-            if sl3 == LuxStatus3Option.thermal_desinfection:
-                # map thermal desinfection to Domestic Water iso Heating
-                self._attr_native_value = LuxOperationMode.domestic_water.value
-            # endregion Workaround Thermal desinfection with heatpump running
-
-            # region Workaround Thermal desinfection with (only) using 2nd heatsource
-            s3_workaround: list[str | None] = [
-                LuxStatus3Option.no_request,
-                LuxStatus3Option.cycle_lock,
-            ]
-            if sl3 in s3_workaround:
-                DHW_recirculation = self._get_value(LC.C0038_DHW_RECIRCULATION_PUMP)
-                AddHeat = self._get_value(LC.C0048_ADDITIONAL_HEAT_GENERATOR)
-                if AddHeat and DHW_recirculation:
-                    # more fixes to detect thermal desinfection sequences
-                    self._attr_native_value = LuxOperationMode.domestic_water.value
-            # endregion Workaround Thermal desinfection with (only) using 2nd heatsource
-
-        # endregion Workaround Luxtronik Bug
-
-        self._last_state = self._attr_native_value
+        self._evu_tracker.update(
+            str(self._attr_native_value)
+            if self._attr_native_value is not None
+            else None
+        )
 
         attr = self._attr_extra_state_attributes
         attr[SA.STATUS_RAW] = self._attr_native_value
@@ -327,7 +281,11 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
             f"component.{DOMAIN}.entity.sensor.status_line_2.state.{line_2_state}"
         )
         # Show evu end time if available
-        suffix = self._evu_tracker.get_evu_status_suffix(self._attr_native_value)
+        suffix = self._evu_tracker.get_evu_status_suffix(
+            str(self._attr_native_value)
+            if self._attr_native_value is not None
+            else None
+        )
         return (
             f"{line_1} {line_2} {status_time}. {suffix}"
             if suffix
@@ -361,31 +319,24 @@ class LuxtronikStatusSensorEntity(LuxtronikSensorEntity, SensorEntity):
             # EVU=0, EVU2=1 → Status 3 (normal operation)
             # EVU=1, EVU2=1 → Status 4 (increased operation)
             if evu_on and not evu2_on:
-                self._attr_native_value = LuxSmartGridStatus.locked.value  # Status 1
+                self._attr_native_value = LuxSmartGridStatus.locked  # Status 1
             elif not evu_on and not evu2_on:
-                self._attr_native_value = LuxSmartGridStatus.reduced.value  # Status 2
+                self._attr_native_value = LuxSmartGridStatus.reduced  # Status 2
             elif not evu_on and evu2_on:
-                self._attr_native_value = LuxSmartGridStatus.normal.value  # Status 3
+                self._attr_native_value = LuxSmartGridStatus.normal  # Status 3
             else:  # evu_on and evu2_on
-                self._attr_native_value = LuxSmartGridStatus.increased.value  # Status 4
-
-            # Set icon based on current state
-            descr = self.entity_description
-            if descr.icon_by_state and self._attr_native_value in descr.icon_by_state:
-                self._attr_icon = descr.icon_by_state.get(self._attr_native_value)
-            elif descr.icon:
-                self._attr_icon = descr.icon
+                self._attr_native_value = LuxSmartGridStatus.increased  # Status 4
 
         # Don't call super() to avoid setting value to None (luxtronik_key=UNSET)
         self._enrich_extra_attributes()
         self.async_write_ha_state()
 
 
-class LuxtronikIndexSensor(LuxtronikSensorEntity, SensorEntity):
+class LuxtronikIndexSensor(LuxtronikSensorEntity):
     _min_index = 0
     _max_index = 4
 
-    entity_description: LuxtronikIndexSensorDescription
+    entity_description: LuxtronikIndexSensorDescription  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @callback
     def _handle_coordinator_update(
@@ -419,13 +370,6 @@ class LuxtronikIndexSensor(LuxtronikSensorEntity, SensorEntity):
         self.async_write_ha_state()
 
     def format_time(self, value_timestamp: int | None) -> datetime | None:
-        if value_timestamp is not None and isinstance(value_timestamp, int):
-            value_timestamp = datetime.fromtimestamp(value_timestamp, timezone.utc)
-        if (
-            value_timestamp is not None
-            and isinstance(value_timestamp, datetime)
-            and value_timestamp.tzinfo is None
-        ):
-            time_zone = dt_util.get_time_zone(self.hass.config.time_zone)
-            value_timestamp = value_timestamp.replace(tzinfo=time_zone)
-        return value_timestamp
+        if value_timestamp is None:
+            return None
+        return datetime.fromtimestamp(value_timestamp, UTC)

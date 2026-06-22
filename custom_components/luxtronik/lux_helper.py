@@ -44,23 +44,33 @@ LUXTRONIK_CALCULATIONS_READ = 3004
 LUXTRONIK_VISIBILITIES_READ = 3005
 
 
-def discover() -> list[tuple[str, int | None]]:
-    """Broadcast discovery for Luxtronik heat pumps."""
+def discover(
+    broadcast_addresses: list[str] | None = None,
+) -> list[tuple[str, int | None]]:
+    """Broadcast discovery for Luxtronik heat pumps.
 
+    If you omit ``broadcast_addresses``, fallback to the OS-selected
+    default route.
+    """
+
+    targets: list[str] = (
+        list(broadcast_addresses) if broadcast_addresses else ["255.255.255.255"]
+    )
     results: list[tuple[str, int | None]] = []
 
     # pylint: disable=too-many-nested-blocks
     for port in LUXTRONIK_DISCOVERY_PORTS:
-        LOGGER.info("Send discovery packets to port %s", port)
+        LOGGER.info("Send discovery packets to port %s on %s", port, targets)
         server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         server.bind(("", port))
         server.settimeout(LUXTRONIK_DISCOVERY_TIMEOUT)
 
-        # send AIT magic broadcast packet
+        # send AIT magic broadcast packet to every target broadcast address
         magic_bytes = LUXTRONIK_DISCOVERY_MAGIC_PACKET.encode()
-        server.sendto(magic_bytes, ("255.255.255.255", port))
-        LOGGER.debug("Sending broadcast request %s", magic_bytes)
+        for target in targets:
+            server.sendto(magic_bytes, (target, port))
+            LOGGER.debug("Sent broadcast request to %s:%s", target, port)
 
         while True:
             try:
@@ -74,7 +84,7 @@ def discover() -> list[tuple[str, int | None]]:
                 # if the response starts with the magic nonsense
                 if res.startswith(LUXTRONIK_DISCOVERY_RESPONSE_PREFIX):
                     LOGGER.debug(
-                        f"Received valid Luxtronik response from {ip_address}: {str(res_list)}"
+                        f"Received valid Luxtronik response from {ip_address}: {res_list!s}"
                     )
                     try:
                         res_port: int | None = int(res_list[2])
@@ -95,11 +105,11 @@ def discover() -> list[tuple[str, int | None]]:
 
                 else:
                     LOGGER.debug(
-                        f"Skipping invalid response from {ip_address}: {str(res_list)}"
+                        f"Skipping invalid response from {ip_address}: {res_list!s}"
                     )
 
             # if the timeout triggers, go on and use the other broadcast port
-            except socket.timeout:
+            except TimeoutError:
                 break
         server.close()
     return results
@@ -160,9 +170,11 @@ def _is_socket_closed(sock: socket.socket) -> bool:
         LOGGER.exception(
             "Unexpected exception when checking if a socket is closed", exc_info=err
         )
+        return True
+    last_timeout: float | None = None
     try:
-        # this will try to read bytes without blocking and also without removing them from buffer (peek only)
         last_timeout = sock.gettimeout()
+        # this will try to read bytes without blocking and also without removing them from buffer (peek only)
         sock.settimeout(None)
         data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
         if len(data) == 0:
@@ -184,7 +196,8 @@ def _is_socket_closed(sock: socket.socket) -> bool:
         )
         return False
     finally:
-        sock.settimeout(last_timeout)
+        if last_timeout is not None:
+            sock.settimeout(last_timeout)
     return False
 
 
@@ -222,7 +235,7 @@ class Luxtronik:
                 "Disconnected from Luxtronik heatpump %s:%s", self._host, self._port
             )
 
-    def connect(self) -> None:
+    def connect(self) -> None:  # pragma: no cover
         """Establish connection to the heatpump."""
         with self._lock:
             if self._socket is None or _is_socket_closed(self._socket):
@@ -237,30 +250,34 @@ class Luxtronik:
                         self._port,
                         self._socket_timeout,
                     )
-                except (socket.timeout, OSError) as err:
+                except (TimeoutError, OSError) as err:
                     LOGGER.error("Failed to connect: %s", err)
                     self._disconnect()
                     raise
 
-    def read(self):
+    def read(self):  # pragma: no cover
         """Read data from heatpump."""
         self._read_write(write=False)
 
-    def write(self):
+    def write(self):  # pragma: no cover
         """Write parameter to heatpump."""
         self._read_write(write=True)
 
-    def _read_write(self, write=False):
+    def _read_write(self, write=False):  # pragma: no cover
+        self.connect()
+
         try:
-            self.connect()
-        except Exception as err:
-            LOGGER.error("Connection failed during read/write: %s", err)
-            return
-
-        if write:
-            self._write()
-
-        self._read()
+            if write:
+                self._write()
+            self._read()
+        except OSError:
+            LOGGER.error("Socket error during read/write", exc_info=True)
+            self._disconnect()
+            raise
+        except struct.error:
+            LOGGER.error("Protocol/parse error during read/write", exc_info=True)
+            self._disconnect()
+            raise
 
     def _read(self):
         self._read_data(
@@ -283,6 +300,8 @@ class Luxtronik:
         )
 
     def _write(self):
+        if self._socket is None:
+            raise OSError("Cannot write: socket is not connected")
         for index, value in self.parameters.queue.items():
             if isinstance(value, float):
                 value = int(value)
@@ -304,7 +323,7 @@ class Luxtronik:
         # Todo: Change methods to async
         # await asyncio.sleep(WAIT_TIME_WRITE_PARAMETER)
 
-    def _read_data(
+    def _read_data(  # pragma: no cover
         self, command: int, item_size: int, parser, label: str, retries: int = 4
     ) -> None:
         """Generic method to read data from the socket with timeout and retry handling."""
@@ -318,6 +337,9 @@ class Luxtronik:
                         "Socket is not connected. Attempting to reconnect..."
                     )
                     self.connect()
+
+                if self._socket is None:
+                    raise OSError("Socket not connected after connect()")
 
                 self._socket.sendall(struct.pack(">ii", command, 0))
                 cmd = struct.unpack(">i", self._socket.recv(4))[0]
@@ -352,14 +374,14 @@ class Luxtronik:
                     try:
                         raw = self._socket.recv(item_size)
                         data.append(struct.unpack(fmt, raw)[0])
-                    except (struct.error, socket.timeout) as err:
+                    except (TimeoutError, struct.error) as err:
                         LOGGER.debug("Error reading %s item: %s", label, err)
 
                 LOGGER.debug("Read %d %s items", length, label)
                 parser.parse(data)
                 return  # Success, exit after first successful attempt
 
-            except (socket.timeout, ConnectionResetError, OSError) as err:
+            except (TimeoutError, ConnectionResetError, OSError) as err:
                 LOGGER.warning(
                     "Error while reading %s (attempt %d/%d): %s",
                     label,

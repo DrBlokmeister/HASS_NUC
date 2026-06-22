@@ -3,17 +3,15 @@
 # region Imports
 from __future__ import annotations
 
+from asyncio import timeout
 from collections.abc import Mapping
 from typing import Any
 
-from async_timeout import timeout
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_COORDINATOR, DOMAIN
-from .coordinator import LuxtronikCoordinator
+from . import LuxtronikConfigEntry
 from .common import async_get_mac_address
 
 # endregion Imports
@@ -22,11 +20,10 @@ TO_REDACT = {CONF_USERNAME, CONF_PASSWORD}
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant, entry: LuxtronikConfigEntry
 ) -> Mapping[str, Any]:
     """Return diagnostics for a config entry."""
-    data: dict = hass.data[DOMAIN][entry.entry_id]
-    coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
+    coordinator = entry.runtime_data
 
     # Optionally refresh data to ensure it's up to date
     await coordinator.async_request_refresh()
@@ -51,7 +48,7 @@ async def async_get_config_entry_diagnostics(
     return diag_data
 
 
-def _dump_items(items: dict) -> dict:
+def _dump_items(items: dict[int, Any]) -> dict[str, str]:
     dump = {}
     for index, item in sorted(items.items()):
         dump[f"{index:<4d} {item.name:<60}"] = f"{item}"

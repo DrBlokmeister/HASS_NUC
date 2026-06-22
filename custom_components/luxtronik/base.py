@@ -3,12 +3,12 @@
 # region Imports
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
-from typing import Any
 from enum import StrEnum
+from typing import Any
 
-from homeassistant.components.water_heater import STATE_HEAT_PUMP
-from homeassistant.const import STATE_OFF, UnitOfTemperature, UnitOfTime
+from homeassistant.const import UnitOfTemperature, UnitOfTime
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -18,8 +18,8 @@ from homeassistant.util.dt import utcnow
 
 from .common import get_sensor_data
 from .const import (
-    DeviceKey,
     LOGGER,
+    DeviceKey,
     LuxCalculation as LC,
     LuxMode,
     LuxOperationMode,
@@ -28,18 +28,25 @@ from .const import (
     SensorAttrKey as SA,
 )
 from .coordinator import LuxtronikCoordinator
-from .model import LuxtronikEntityAttributeDescription, LuxtronikEntityDescription
+from .model import (
+    LuxtronikCoordinatorData,
+    LuxtronikEntityAttributeDescription,
+    LuxtronikEntityDescription,
+)
 
 # endregion Imports
 
 
-class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
+class LuxtronikEntity[DescriptionT: LuxtronikEntityDescription](  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+    CoordinatorEntity[LuxtronikCoordinator],
+    RestoreEntity,
+):
     """Luxtronik base device."""
 
-    entity_description: LuxtronikEntityDescription
+    entity_description: DescriptionT
     next_update: datetime | None = None
+    _attr_state: Any = None  # Any: values come from luxtronik library (untyped)
 
-    _attr_cache: dict[SA, Any] = {}
     _entity_component_unrecorded_attributes = frozenset(
         {
             SA.LUXTRONIK_KEY,
@@ -49,40 +56,57 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
     def __init__(
         self,
         coordinator: LuxtronikCoordinator,
-        description: LuxtronikEntityDescription,
+        description: DescriptionT,
         device_info_ident: DeviceKey,
     ) -> None:
-        """Init LuxtronikEntity."""
         super().__init__(coordinator=coordinator)
+
+        # ✅ Build final description FIRST
+        translation_key = (
+            description.key.value  # pyright: ignore[reportAttributeAccessIssue]
+            if description.translation_key_name is None
+            else description.translation_key_name
+        )
+
+        description = replace(
+            description,
+            translation_key=translation_key,
+        )
+
+        if description.entity_registry_enabled_default is None:
+            description = replace(
+                description,
+                entity_registry_enabled_default=coordinator.entity_visible(description),
+            )
+
+        # ✅ Now assign once
+        self.entity_description = description
+
+        # --- everything below uses the FINAL description ---
+        self._attr_translation_key = description.translation_key
+        self._attr_cache = {}
         self._device_info_ident = device_info_ident
+        self._attr_device_info = coordinator.get_device(device_info_ident)
+
         self._attr_extra_state_attributes = {
-            SA.LUXTRONIK_KEY: f"{description.luxtronik_key.name[1:5]} {description.luxtronik_key.value}"
+            SA.LUXTRONIK_KEY: (
+                f"{description.luxtronik_key.name[1:5]} "
+                f"{description.luxtronik_key.value}"
+            )
         }
+
         for field in description.__dataclass_fields__:
             if field.startswith("luxtronik_key_"):
-                value = description.__getattribute__(field)
+                value = getattr(description, field)
                 if value is None:
-                    pass
-                elif isinstance(value, StrEnum):
+                    continue
+                if isinstance(value, StrEnum):
                     self._attr_extra_state_attributes[field] = (
                         f"{value.name[1:5]} {value.value}"
                     )
                 else:
                     self._attr_extra_state_attributes[field] = value
-        if description.entity_registry_enabled_default:
-            description.entity_registry_enabled_default = coordinator.entity_visible(
-                description
-            )
-        self.entity_description = description
-        self._attr_device_info = coordinator.get_device(device_info_ident)
 
-        translation_key = (
-            description.key.value
-            if description.translation_key_name is None
-            else description.translation_key_name
-        )
-        description.translation_key = translation_key
-        description.has_entity_name = True
         self._attr_state = self._get_value(description.luxtronik_key)
 
     async def async_added_to_hass(self) -> None:
@@ -134,8 +158,6 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
 
     def should_update(self) -> bool:
         """Determine if the entity should update based on next_update."""
-        # if self.entity_description.luxtronik_key in [LP.P0049_PUMP_OPTIMIZATION,LC.C0017_DHW_TEMPERATURE]:
-        #    LOGGER.info("should_update,%s,%s,@ %s", self.entity_description.luxtronik_key, self.entity_description.update_interval,self.next_update)
         if self.entity_description.update_interval is None:
             return True
         return self.next_update is None or self.next_update <= utcnow()
@@ -144,11 +166,16 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
         self._handle_coordinator_update()
 
     @callback
-    def _handle_coordinator_update(self, force: bool = False) -> None:
-        """Handle updated data from the coordinator."""
-        # if not force and not self.should_update():
-        #    return
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator.
 
+        The data parameter is used by subclass overrides to pass freshly
+        written coordinator data (e.g. after async_write). The base
+        implementation always reads from self.coordinator.data via
+        _get_value. Subclasses may call super() with or without data.
+        """
         descr = self.entity_description
         value = self._get_value(descr.luxtronik_key)
 
@@ -157,44 +184,33 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
             value = value.replace(tzinfo=time_zone)
 
         self._attr_state = value
-        # if self.entity_description.luxtronik_key == LC.C0146_APPROVAL_COOLING:
-        # LOGGER.info('[Base]Cooling Approval=%s',self._attr_state)
-        # LOGGER.info('[Base]on_state=%s',self.entity_description.on_state)
 
-        icon_state = getattr(
-            self,
-            "_attr_is_on",
-            getattr(self, "_attr_current_lux_operation", self._attr_state),
-        )
-        if descr.icon_by_state and icon_state in descr.icon_by_state:
-            self._attr_icon = descr.icon_by_state.get(icon_state)
-        else:
-            self._attr_icon = descr.icon
-
-        if hasattr(self, "_attr_current_operation"):
-            if self._attr_current_operation == STATE_OFF:
-                self._attr_icon += "-off"
-            elif self._attr_current_operation == STATE_HEAT_PUMP:
-                self._attr_icon += "-auto"
+        if descr.icon_by_state:
+            icon_state = getattr(
+                self,
+                "_attr_is_on",
+                getattr(self, "_attr_current_lux_operation", self._attr_state),
+            )
+            if icon_state in descr.icon_by_state:
+                self._attr_icon = descr.icon_by_state.get(icon_state)
+            else:
+                self._attr_icon = descr.icon
 
         self._enrich_extra_attributes()
-
-        # if descr.update_interval is not None:
-        #    self.next_update = dt_util.utcnow() + descr.update_interval
 
         self.async_write_ha_state()
 
     def compute_is_on(self, state: Any) -> bool:
         descr = self.entity_description
 
-        if isinstance(descr.on_state, bool) and state is not None:
+        if isinstance(descr.on_state, bool) and state is not None:  # pyright: ignore[reportAttributeAccessIssue]
             state = bool(state)
 
         is_on = bool(
-            state == descr.on_state or (descr.on_states and state in descr.on_states)
+            state == descr.on_state or (descr.on_states and state in descr.on_states)  # pyright: ignore[reportAttributeAccessIssue]
         )
 
-        return not is_on if descr.inverted else is_on
+        return not is_on if getattr(descr, "inverted", False) else is_on
 
     def _enrich_extra_attributes(self) -> None:
         for attr in self.entity_description.extra_attributes:
@@ -219,6 +235,8 @@ class LuxtronikEntity(CoordinatorEntity[LuxtronikCoordinator], RestoreEntity):
             # Ensure timezone:
             time_zone = dt_util.get_time_zone(self.hass.config.time_zone)
             value = value.replace(tzinfo=time_zone)
+        if isinstance(value, datetime):
+            return str(value)
         if attr.format is None:
             return str(value)
         if attr.format == SensorAttrFormat.HOUR_MINUTE:

@@ -3,26 +3,24 @@
 # region Imports
 from __future__ import annotations
 
-import aiohttp
+from datetime import UTC, datetime, timedelta
 import re
-
-from awesomeversion import AwesomeVersion, AwesomeVersionStrategy
-from datetime import datetime, timedelta, timezone
-from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_UNAVAILABLE
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
 from typing import Final
 
+from aiohttp import ClientTimeout
+from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from packaging.version import Version
+
+from . import LuxtronikConfigEntry
 from .base import LuxtronikEntity
 from .const import (
-    CONF_COORDINATOR,
+    CHANGELOG_URL,
     CONF_HA_SENSOR_PREFIX,
-    DOMAIN,
     DOWNLOAD_PORTAL_URL,
     FIRMWARE_UPDATE_MANUAL_DE,
     FIRMWARE_UPDATE_MANUAL_EN,
@@ -38,19 +36,19 @@ from .model import LuxtronikUpdateEntityDescription
 
 # endregion Imports
 
+PARALLEL_UPDATES = 0
+
 MIN_TIME_BETWEEN_UPDATES: Final = timedelta(hours=1)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: LuxtronikConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Luxtronik binary sensors dynamically through Luxtronik discovery."""
 
-    data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
-    if not data or CONF_COORDINATOR not in data:
-        raise ConfigEntryNotReady
-
-    coordinator: LuxtronikCoordinator = data[CONF_COORDINATOR]
+    coordinator = entry.runtime_data
 
     description = LuxtronikUpdateEntityDescription(
         luxtronik_key=LuxCalculation.C0081_FIRMWARE_VERSION,
@@ -65,16 +63,17 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
+class LuxtronikUpdateEntity(  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+    LuxtronikEntity[LuxtronikUpdateEntityDescription], UpdateEntity
+):
     """Representation of Luxtronik firmware update entity."""
 
-    entity_description: LuxtronikUpdateEntityDescription
-
     _attr_title = "Luxtronik Firmware Version"
-    _attr_supported_features: UpdateEntityFeature = (
+    _attr_supported_features: UpdateEntityFeature = (  # pyright: ignore[reportIncompatibleVariableOverride]
         UpdateEntityFeature.INSTALL | UpdateEntityFeature.RELEASE_NOTES
     )
     __firmware_version_available = None
+    __firmware_version_changelog = None
     __firmware_version_available_last_request = None
 
     def __init__(
@@ -93,18 +92,18 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
         self.entity_id = f"update.{prefix}_{description.key}"
         self._attr_unique_id = self.entity_id
 
-    async def async_added_to_hass(self) -> None:
+    async def async_added_to_hass(self) -> None:  # pragma: no cover
         """Run when entity is added to Home Assistant."""
         await super().async_added_to_hass()
         await self._request_available_firmware_version()
 
     @property
-    def installed_version(self) -> str | None:
+    def installed_version(self) -> str | None:  # pyright: ignore[reportIncompatibleVariableOverride]
         """Return the currently installed firmware version."""
         return self._attr_state
 
     @property
-    def latest_version(self) -> str | None:
+    def latest_version(self) -> str | None:  # pyright: ignore[reportIncompatibleVariableOverride]
         """Return the latest available firmware version."""
         if self.__firmware_version_available is None or self.installed_version is None:
             return None
@@ -121,22 +120,15 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
         """Return True if latest_version is newer than installed_version."""
 
         def normalize(version: str) -> str:
-            """Normalize Luxtronik firmware versions for comparison."""
-            version = re.sub(r"^[^\d]+", "", version)  # Strip leading V/B/etc.
-            version = version.split("-")[0]  # Ignore build suffix like -9086
-            return version
+            # Remove any leading non-digit characters
+            return re.sub(r"^[^\d]+", "", version)
 
-        latest = AwesomeVersion(
-            normalize(latest_version),
-            find_first_match=True,
-            ensure_strategy=[AwesomeVersionStrategy.SEMVER],
-        )
-        installed = AwesomeVersion(
-            normalize(installed_version),
-            find_first_match=True,
-            ensure_strategy=[AwesomeVersionStrategy.SEMVER],
-        )
-        return latest > installed
+        try:
+            return Version(normalize(latest_version)) > Version(
+                normalize(installed_version)
+            )
+        except Exception:
+            return False
 
     @staticmethod
     def extract_firmware_version(filename: str | None) -> str | None:
@@ -155,6 +147,8 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
     def release_notes(self) -> str | None:
         """Build release notes HTML."""
         download_id = get_firmware_download_id(self.installed_version)
+        if download_id is None:
+            return None
         release_url = get_manufacturer_firmware_url_by_model(
             self.coordinator.model, download_id
         )
@@ -165,12 +159,14 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
             else FIRMWARE_UPDATE_MANUAL_EN
         )
         return (
-            f"For your {release_url}"
-            f"{self.coordinator.manufacturer} {self.coordinator.model} (Download ID {download_id})</a> is "
-            f"{download_url}Firmware Version {self.__firmware_version_available}</a> available.<br>"
-            f"{manual_url}Firmware Update Instructions</a><br><br>"
-            "The Install button below has no function. It is only needed to notify in Home Assistant.<br><br>"
-            "Alpha Innotec doesn't provide a changelog.<br>Please contact support for more information."
+            f'For your <a href="{release_url}" target="_blank" rel="noreferrer noopener">'
+            f"{self.coordinator.manufacturer} {self.coordinator.model} (Download ID {download_id})</a> a firmware update to "
+            f'<a href="{download_url}" target="_blank" rel="noreferrer noopener">Firmware Version {self.__firmware_version_available}</a> is available.<br><br>'
+            f'<a href="{manual_url}" target="_blank" rel="noreferrer noopener">Firmware Update Instructions</a><br><br>'
+            "The Install button below has no function. It only exists to provide this notification in Home Assistant.<br><br>"
+            "Please contact Alpha Innotec support for more information.<br><br>"
+            f"Change Log:<br><br>{self.__firmware_version_changelog}<br><br>"
+            "Please use Google Translate or similar, if necessary."
         )
 
     async def async_update(self) -> None:
@@ -178,8 +174,7 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
         if (
             self.__firmware_version_available_last_request is None
             or self.__firmware_version_available_last_request
-            < datetime.now(timezone.utc).timestamp()
-            - MIN_TIME_BETWEEN_UPDATES.total_seconds()
+            < datetime.now(UTC).timestamp() - MIN_TIME_BETWEEN_UPDATES.total_seconds()
         ):
             await self._request_available_firmware_version()
 
@@ -191,27 +186,35 @@ class LuxtronikUpdateEntity(LuxtronikEntity, UpdateEntity):
             return
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"{DOWNLOAD_PORTAL_URL}{download_id}", timeout=30
-                ) as response:
-                    if response.status != 200:
-                        raise Exception(f"HTTP error: {response.status}")
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                f"{DOWNLOAD_PORTAL_URL}{download_id}", timeout=ClientTimeout(total=30)
+            ) as response:
+                if response.status != 200:
+                    raise Exception(f"HTTP error: {response.status}")
 
-                    header_content_disposition = response.headers.get(
-                        "Content-Disposition", ""
-                    )
-                    filename_match = re.findall(
-                        "filename=(.+)", header_content_disposition
-                    )
-                    filename = filename_match[0] if filename_match else None
+                header_content_disposition = response.headers.get(
+                    "Content-Disposition", ""
+                )
+                filename_match = re.findall("filename=(.+)", header_content_disposition)
+                filename = filename_match[0] if filename_match else None
 
-                    self.__firmware_version_available_last_request = datetime.now(
-                        timezone.utc
-                    ).timestamp()
-                    self.__firmware_version_available = self.extract_firmware_version(
-                        filename
-                    )
+                self.__firmware_version_available_last_request = datetime.now(
+                    UTC
+                ).timestamp()
+
+                self.__firmware_version_available = self.extract_firmware_version(
+                    filename
+                )
+
+            async with session.get(  # pragma: no cover
+                f"{CHANGELOG_URL}{download_id}", timeout=ClientTimeout(total=30)
+            ) as response:
+                if response.status != 200:
+                    raise Exception(f"HTTP error: {response.status}")
+
+                self.__firmware_version_changelog = await response.text()
+
         except Exception:
             LOGGER.warning(
                 "Could not request download portal firmware version",

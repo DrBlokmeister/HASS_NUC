@@ -1,12 +1,11 @@
 """Support for Luxtronik classes."""
 
 # region Imports
-from typing import Any
-
 from functools import partial
 from ipaddress import IPv6Address, ip_address
-from getmac import get_mac_address
+from typing import Any
 
+from getmac import get_mac_address
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import device_registry
@@ -96,34 +95,27 @@ def get_sensor_data(
     if sensor is None:
         LOGGER.warning("Get_sensor %s (%s) returns None", sensor_id, luxtronik_key)
         return None
+    value = sensor.value  # pyright: ignore[reportAttributeAccessIssue]
     return (
-        sensor.value
+        value
         if raw_value
-        else correct_key_value(sensor.value, coordinator, luxtronik_key)
+        else normalize_sensor_value(value, coordinator, luxtronik_key)
     )
 
 
-def correct_key_value(
+def normalize_sensor_value(
     value: Any,
     coordinator: LuxtronikCoordinatorData | None,
     sensor_id: str | LP | LC | LV,
 ) -> Any:
-    """Handle special value corrections."""
+    """Normalize special Luxtronik sensor values."""
     # prevent dealing with None value, and skip unnecessary processing
-    if (
-        value is None
-        or sensor_id is None
-        or sensor_id
-        not in [
-            LC.C0080_STATUS,
-            LC.C0100_ERROR_REASON,
-            LC.C0117_STATUS_LINE_1,
-            LC.C0119_STATUS_LINE_3,
-        ]
-    ):
+    if value is None or coordinator is None or sensor_id is None:
         return value
 
-    # fix 'states may not contain spaces ea for valid translations'
+    # Normalize all string values for translation safety across sensors.
+    # Replace spaces and slashes and lower-case the value so Home Assistant
+    # translations remain valid regardless of the originating sensor.
     if sensor_id in [
         LC.C0080_STATUS,
         LC.C0117_STATUS_LINE_1,
@@ -140,7 +132,7 @@ def correct_key_value(
     # region Workaround Luxtronik Bug: Line 1 shows 'heatpump coming' on shutdown!
     if (
         sensor_id == LC.C0117_STATUS_LINE_1
-        and value == LuxStatus1Option.heatpump_coming.value
+        and value == LuxStatus1Option.heatpump_coming
         and int(get_sensor_data(coordinator, LC.C0072_TIMER_SCB_ON)) < 10
         and int(get_sensor_data(coordinator, LC.C0071_TIMER_SCB_OFF)) > 0
     ):
@@ -149,47 +141,91 @@ def correct_key_value(
     # region Workaround Luxtronik Bug: Line 1 shows 'pump forerun' on CompressorHeater!
     if (
         sensor_id == LC.C0117_STATUS_LINE_1
-        and value == LuxStatus1Option.pump_forerun.value
+        and value == LuxStatus1Option.pump_forerun
         and bool(get_sensor_data(coordinator, LC.C0182_COMPRESSOR_HEATER))
     ):
         return LuxStatus1Option.compressor_heater
     # endregion Workaround Luxtronik Bug: Line 1 shows 'pump forerun' on CompressorHeater!
 
-    if sensor_id == LC.C0080_STATUS and value == LuxOperationMode.no_request.value:
-        status_line3 = get_sensor_data(
+    if sensor_id == LC.C0080_STATUS:
+        status_line3_raw = get_sensor_data(
             coordinator, LC.C0119_STATUS_LINE_3, raw_value=True
         )
-        if status_line3 is None:
-            LOGGER.warning("StatusLine3 is None!")
 
-        # region Workaround Detect passive cooling operation mode
-        if status_line3 is not None and status_line3 == LuxStatus3Option.cooling.value:
-            return LuxOperationMode.cooling
-        # endregion Workaround Detect passive cooling operation mode
+        if status_line3_raw == LuxStatus3Option.thermal_desinfection:
+            return LuxOperationMode.domestic_water
 
-        # region Workaround Detect active cooling operation mode
-        if status_line3 is not None and status_line3 == LuxStatus3Option.heating.value:
-            T_in = get_sensor_data(coordinator, LC.C0010_FLOW_IN_TEMPERATURE)
-            T_out = get_sensor_data(coordinator, LC.C0011_FLOW_OUT_TEMPERATURE)
-            T_heat_in = get_sensor_data(
-                coordinator, LC.C0204_HEAT_SOURCE_INPUT_TEMPERATURE
-            )
-            T_heat_out = get_sensor_data(
-                coordinator, LC.C0024_HEAT_SOURCE_OUTPUT_TEMPERATURE
-            )
-            Flow_WQ = get_sensor_data(coordinator, LC.C0173_HEAT_SOURCE_FLOW_RATE)
-            Pump = get_sensor_data(coordinator, LC.C0043_PUMP_FLOW)
-            if (T_out > T_in) and (T_heat_out > T_heat_in) and (Flow_WQ > 0) and Pump:
+        status_line1 = get_sensor_data(coordinator, LC.C0117_STATUS_LINE_1)
+        status_line3 = get_sensor_data(coordinator, LC.C0119_STATUS_LINE_3)
+        add_circ_pump = get_sensor_data(
+            coordinator, LC.C0047_ADDITIONAL_CIRCULATION_PUMP
+        )
+        s1_workaround: list[str] = [
+            LuxStatus1Option.heatpump_idle,
+            LuxStatus1Option.pump_forerun,
+            LuxStatus1Option.heatpump_coming,
+        ]
+        s3_workaround: list[str | None] = [
+            LuxStatus3Option.no_request,
+            LuxStatus3Option.unknown,
+            LuxStatus3Option.none,
+            LuxStatus3Option.grid_switch_on_delay,
+            None,
+        ]
+        if (
+            status_line1 in s1_workaround
+            and status_line3 in s3_workaround
+            and not add_circ_pump
+        ):
+            return LuxOperationMode.no_request
+
+        if (
+            status_line3
+            in [
+                LuxStatus3Option.no_request,
+                LuxStatus3Option.cycle_lock,
+                LuxStatus3Option.heating,
+            ]
+            and get_sensor_data(coordinator, LC.C0038_DHW_RECIRCULATION_PUMP)
+            and get_sensor_data(coordinator, LC.C0048_ADDITIONAL_HEAT_GENERATOR)
+        ):
+            return LuxOperationMode.domestic_water
+
+        if value == LuxOperationMode.no_request:
+            if (
+                status_line3_raw is not None
+                and status_line3_raw == LuxStatus3Option.cooling
+            ):
                 return LuxOperationMode.cooling
-        # endregion Workaround Detect active cooling operation mode
 
-    if (
-        sensor_id == LC.C0080_STATUS
-        and value == LuxOperationMode.heating.value
-        and not get_sensor_data(coordinator, LC.C0044_COMPRESSOR)
-        and not get_sensor_data(coordinator, LC.C0048_ADDITIONAL_HEAT_GENERATOR)
-    ):
-        return LuxOperationMode.no_request
+            if (
+                status_line3_raw is not None
+                and status_line3_raw == LuxStatus3Option.heating
+            ):
+                T_in = get_sensor_data(coordinator, LC.C0010_FLOW_IN_TEMPERATURE)
+                T_out = get_sensor_data(coordinator, LC.C0011_FLOW_OUT_TEMPERATURE)
+                T_heat_in = get_sensor_data(
+                    coordinator, LC.C0204_HEAT_SOURCE_INPUT_TEMPERATURE
+                )
+                T_heat_out = get_sensor_data(
+                    coordinator, LC.C0024_HEAT_SOURCE_OUTPUT_TEMPERATURE
+                )
+                Flow_WQ = get_sensor_data(coordinator, LC.C0173_HEAT_SOURCE_FLOW_RATE)
+                Pump = get_sensor_data(coordinator, LC.C0043_PUMP_FLOW)
+                if (
+                    (T_out > T_in)
+                    and (T_heat_out > T_heat_in)
+                    and (Flow_WQ > 0)
+                    and Pump
+                ):
+                    return LuxOperationMode.cooling
+
+        if (
+            value == LuxOperationMode.heating
+            and not get_sensor_data(coordinator, LC.C0044_COMPRESSOR)
+            and not get_sensor_data(coordinator, LC.C0048_ADDITIONAL_HEAT_GENERATOR)
+        ):
+            return LuxOperationMode.no_request
 
     # no changes needed, return sensor value
     return value

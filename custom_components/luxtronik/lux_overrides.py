@@ -1,23 +1,150 @@
-from luxtronik.datatypes import HeatpumpCode, Celsius, Timestamp, Percent, Percent2
+from copy import deepcopy
+
+from luxtronik.calculations import Calculations
+from luxtronik.datatypes import (
+    Base,
+    Celsius,
+    HeatpumpCode,
+    MixedCircuitMode,
+    Percent,
+    Percent2,
+    SelectionBase,
+    Timestamp,
+)
 from luxtronik.parameters import Parameters
+from luxtronik.visibilities import Visibilities
+
+
+class MajorMinorVersion(Base):
+    """MajorMinorVersion datatype, converts from and to a RBEVersion"""
+
+    datatype_class = "version"
+
+    def from_heatpump(self, value):
+        major = value // 100
+        minor = value % 100
+        return f"{major}.{minor:02d}"
+
+
+class SecondsToHours(Base):
+    """Seconds to hours datatype, converts from and to hours."""
+
+    measurement_type = "hours"
+
+    def from_heatpump(self, value):
+        # Round to the nearest half hour so UI values stay in 0.5-hour increments.
+        return round(value / 1800) / 2
+
+    def to_heatpump(self, value):
+        return int(value * 3600)
+
+
+class FrequencyAutomatic(Base):
+    """Frequency with Automatic mode (0=Auto, 1-101=21-121 Hz)."""
+
+    measurement_type = "frequency"
+
+    def from_heatpump(self, value):
+        # 0 stays 0 (Automatic), 1-101 maps to 20-120 Hz
+        if value == 0:
+            return 0
+        return value + 20  # 1 → 21 Hz, 2 → 22 Hz, ..., 101 → 121 Hz
+
+    def to_heatpump(self, value):
+        # 0 stays 0 (Automatic), 21-121 Hz maps to 1-101
+        if value == 0:
+            return 0
+        return int(value - 20)  # 21 → 1, 22 → 2, ..., 121 → 101
+
+
+class PoolPVMode(SelectionBase):
+    """PoolPVMode datatype, converts from and to a PoolPVMode"""
+
+    measurement_type = "selection"
+
+    codes = {
+        0: "Automatic",
+        1: "PV_Off",
+        2: "Pool_Party",
+        3: "Pool_Holidays",
+        4: "Pool_Off",
+    }
 
 
 # Define your new/updated custom parameters in a dictionary
 parameters_to_add_update = {
     6: Timestamp("ID_SU_FrkdHz", True),
     7: Timestamp("ID_SU_FrkdBw", True),
+    119: PoolPVMode("ID_Ba_Sw_akt", True),
+    695: MixedCircuitMode("ID_Ba_Hz_MK1_akt", True),
+    696: MixedCircuitMode("ID_Ba_Hz_MK2_akt", True),
     731: Timestamp("ID_SU_FstdHz", True),
     732: Timestamp("ID_SU_FstdBw", True),
     973: Celsius("ID_Einst_BW_max", True),
     980: Percent2("ID_RBE_Einflussfaktor_RT_akt", True),
+    1045: FrequencyAutomatic("ID_Einst_P155_DHW_Freq", True),
+    1146: Celsius("Extra_DHW_target_temp", True),
+    1147: SecondsToHours("Extra_DHW_duration", True),
     1148: Celsius("HEATING_TARGET_TEMP_ROOM_THERMOSTAT", True),
     1159: Percent("Unknown_Parameter_1159", True),
     # Add more as needed
 }
 
+calculations_to_add_update = {
+    258: MajorMinorVersion("RBE_Version", False),
+}
+
 
 def update_Luxtronik_Parameters():
-    Parameters.parameters.update(parameters_to_add_update)
+    Parameters.parameters.update(parameters_to_add_update)  # pyright: ignore[reportCallIssue, reportArgumentType]
+    Calculations.calculations.update(calculations_to_add_update)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+
+_INSTANCE_DATA_ISOLATED = False
+
+
+def isolate_instance_data():
+    """Patch library classes to use instance-level data dicts.
+
+    The upstream luxtronik library stores parameter/calculation/visibility
+    data in class-level dicts shared across all instances.  When multiple
+    heat pumps are configured, ``parse()`` on one instance overwrites
+    values read by another, causing data mixing (see issue #515).
+
+    This patches ``__init__`` so every new instance gets its own deep copy
+    of the class-level dict.
+    """
+    # No lock needed: called only from synchronous code path (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    global _INSTANCE_DATA_ISOLATED
+    if _INSTANCE_DATA_ISOLATED:
+        return
+
+    _orig_params_init = Parameters.__init__
+
+    def _params_init(self, *args, **kwargs):
+        _orig_params_init(self, *args, **kwargs)
+        self.parameters = deepcopy(self.parameters)
+
+    Parameters.__init__ = _params_init
+
+    _orig_calcs_init = Calculations.__init__
+
+    def _calcs_init(self, *args, **kwargs):
+        _orig_calcs_init(self, *args, **kwargs)
+        self.calculations = deepcopy(self.calculations)
+
+    Calculations.__init__ = _calcs_init
+
+    _orig_vis_init = Visibilities.__init__
+
+    def _vis_init(self, *args, **kwargs):
+        _orig_vis_init(self, *args, **kwargs)
+        self.visibilities = deepcopy(self.visibilities)
+
+    Visibilities.__init__ = _vis_init
+
+    _INSTANCE_DATA_ISOLATED = True
 
 
 def update_Luxtronik_HeatpumpCodes():
