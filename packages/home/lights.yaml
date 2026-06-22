@@ -25,7 +25,7 @@ adaptive_lighting:
   min_color_temp: 2000
   max_color_temp: 5000
   sleep_color_temp: 1000
-  max_sunrise_time: "05:00:00"
+  max_sunrise_time: "06:00:00"
   take_over_control: True # Disable adaptive lighting when I set the color/brightness of a light myself
   autoreset_control_seconds: 600 # Reset lights to use adaptive lighting after 10 minutes
   intercept: False # Disable intercepting of light.turn_on calls. I do all of this myself.
@@ -227,25 +227,55 @@ script:
         required: false
     sequence:
       - choose:
-          # Single click: toggle with adaptive brightness.
+          # Single click:
+          # - If off: turn on and apply adaptive lighting.
+          # - If on: clear manual control and turn off.
           - conditions:
               - condition: template
                 value_template: "{{ click_count | int(1) == 1 }}"
             sequence:
-              - service: light.toggle
-                data:
-                  entity_id: "{{ light_entity }}"
-                  brightness_pct: >
-                    {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}
-                  color_temp_kelvin: >
-                    {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}
-                  transition: "{{ transition_time | float(0) }}"
-              - service: adaptive_lighting.set_manual_control
-                continue_on_error: true
-                data:
-                  lights:
-                    - "{{ light_entity }}"
-                  manual_control: false
+              - choose:
+                  # Light was already on: release it from manual control, then turn it off.
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ is_state(light_entity, 'on') }}"
+                    sequence:
+                      - service: adaptive_lighting.set_manual_control
+                        continue_on_error: true
+                        data:
+                          entity_id: switch.adaptive_lighting_adaptive_lighting
+                          lights:
+                            - "{{ light_entity }}"
+                          manual_control: false
+                      - service: light.turn_off
+                        data:
+                          entity_id: "{{ light_entity }}"
+                          transition: "{{ transition_time | float(0) }}"
+                # Light was off: release it from manual control, turn on, then apply AL.
+                default:
+                  - service: adaptive_lighting.set_manual_control
+                    continue_on_error: true
+                    data:
+                      entity_id: switch.adaptive_lighting_adaptive_lighting
+                      lights:
+                        - "{{ light_entity }}"
+                      manual_control: false
+                  - service: light.turn_on
+                    data:
+                      entity_id: "{{ light_entity }}"
+                      transition: "{{ transition_time | float(0) }}"
+                  - delay:
+                      milliseconds: 500
+                  - service: adaptive_lighting.apply
+                    continue_on_error: true
+                    data:
+                      entity_id: switch.adaptive_lighting_adaptive_lighting
+                      lights:
+                        - "{{ light_entity }}"
+                      adapt_brightness: true
+                      adapt_color: true
+                      turn_on_lights: false
+                      transition: "{{ transition_time | float(0) }}"
           # Double click:
           # - If off or not already full/cool: full brightness, cool-ish white.
           # - If already full/cool: reset to adaptive.
