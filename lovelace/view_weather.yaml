@@ -388,6 +388,1649 @@ cards:
                   --icon-size: 28px;
                 }
 
+      - type: grid
+        title: Room Temperatures
+        columns: 3
+        square: false
+        card_mod:
+          style: |
+            #root {
+              gap: 6px !important;
+            }
+        cards:
+          ###########################################################################
+          # LIVING ROOM
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.living_room_aqm_temperature
+            primary: Living Room
+            secondary: >-
+              {%- set temp_ents = [
+                'sensor.temperature_livingroom',
+                'sensor.living_room_aqm_temperature'
+              ] -%}
+              {%- set hum_ents = [
+                'sensor.humidity_livingroom',
+                'sensor.living_room_aqm_humidity'
+              ] -%}
+              {%- set temps = temp_ents
+                | map('states')
+                | reject('in', ['unknown', 'unavailable', 'none', 'None', ''])
+                | map('float')
+                | list -%}
+              {%- set hums = hum_ents
+                | map('states')
+                | reject('in', ['unknown', 'unavailable', 'none', 'None', ''])
+                | map('float')
+                | list -%}
+              {%- if temps | count == 0 -%}
+                Temp unavailable
+              {%- else -%}
+                {{ (temps | sum / temps | count) | round(1) }} °C
+              {%- endif -%}
+              {%- if hums | count > 0 %}
+              {{ (hums | sum / hums | count) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:sofa
+            icon_color: >-
+              {%- set vals = [
+                states('sensor.temperature_livingroom'),
+                states('sensor.living_room_aqm_temperature')
+              ] | reject('in', ['unknown', 'unavailable', 'none', 'None', '']) | map('float') | list -%}
+              {%- if vals | count == 0 -%}
+                grey
+              {%- else -%}
+                {%- set avg = vals | sum / vals | count -%}
+                {%- if avg >= 27 -%}
+                  red
+                {%- elif avg >= 24 -%}
+                  orange
+                {%- elif avg >= 20 -%}
+                  green
+                {%- elif avg >= 18 -%}
+                  blue
+                {%- else -%}
+                  indigo
+                {%- endif -%}
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Living Room climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Living Room temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~15
+                            max: ~30
+                            decimals: 1
+                            align_to: 1
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.temperature_livingroom
+                            offset: "-4d"
+                            name: Living 4d ago
+                            color: "#FF9800"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.living_room_aqm_temperature
+                            offset: "-4d"
+                            name: AQM 4d ago
+                            color: "#03A9F4"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.temperature_livingroom
+                            offset: "-3d"
+                            name: Living 3d ago
+                            color: "#FF9800"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.living_room_aqm_temperature
+                            offset: "-3d"
+                            name: AQM 3d ago
+                            color: "#03A9F4"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.temperature_livingroom
+                            offset: "-2d"
+                            name: Living 2d ago
+                            color: "#FF9800"
+                            opacity: 0.38
+                          - entity: sensor.living_room_aqm_temperature
+                            offset: "-2d"
+                            name: AQM 2d ago
+                            color: "#03A9F4"
+                            opacity: 0.38
+                          - entity: sensor.temperature_livingroom
+                            offset: "-1d"
+                            name: Living yesterday
+                            color: "#FF9800"
+                            opacity: 0.55
+                          - entity: sensor.living_room_aqm_temperature
+                            offset: "-1d"
+                            name: AQM yesterday
+                            color: "#03A9F4"
+                            opacity: 0.55
+                          - entity: sensor.temperature_livingroom
+                            name: Living
+                            color: "#FF9800"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                          - entity: sensor.living_room_aqm_temperature
+                            name: Living AQM
+                            color: "#03A9F4"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Living Room humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.humidity_livingroom
+                            offset: "-4d"
+                            name: Living 4d ago
+                            color: "#26A69A"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.living_room_aqm_humidity
+                            offset: "-4d"
+                            name: AQM 4d ago
+                            color: "#7E57C2"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.humidity_livingroom
+                            offset: "-3d"
+                            name: Living 3d ago
+                            color: "#26A69A"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.living_room_aqm_humidity
+                            offset: "-3d"
+                            name: AQM 3d ago
+                            color: "#7E57C2"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.humidity_livingroom
+                            offset: "-2d"
+                            name: Living 2d ago
+                            color: "#26A69A"
+                            opacity: 0.38
+                          - entity: sensor.living_room_aqm_humidity
+                            offset: "-2d"
+                            name: AQM 2d ago
+                            color: "#7E57C2"
+                            opacity: 0.38
+                          - entity: sensor.humidity_livingroom
+                            offset: "-1d"
+                            name: Living yesterday
+                            color: "#26A69A"
+                            opacity: 0.55
+                          - entity: sensor.living_room_aqm_humidity
+                            offset: "-1d"
+                            name: AQM yesterday
+                            color: "#7E57C2"
+                            opacity: 0.55
+                          - entity: sensor.humidity_livingroom
+                            name: Living
+                            color: "#26A69A"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                          - entity: sensor.living_room_aqm_humidity
+                            name: Living AQM
+                            color: "#7E57C2"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
+          ###########################################################################
+          # STUDY
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.study_aqm_temperature
+            primary: Study
+            secondary: >-
+              {%- set t = states('sensor.study_aqm_temperature') -%}
+              {%- set hum_ents = [
+                'sensor.study_multi_sensor_2_humidity',
+                'sensor.study_aqm_humidity'
+              ] -%}
+              {%- set hums = hum_ents
+                | map('states')
+                | reject('in', ['unknown', 'unavailable', 'none', 'None', ''])
+                | map('float')
+                | list -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float(0) | round(1) }} °C
+              {%- endif -%}
+              {%- if hums | count > 0 %}
+              {{ (hums | sum / hums | count) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:desktop-tower-monitor
+            icon_color: >-
+              {%- set v = states('sensor.study_aqm_temperature') -%}
+              {%- set t = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif t >= 27 -%}
+                red
+              {%- elif t >= 24 -%}
+                orange
+              {%- elif t >= 20 -%}
+                green
+              {%- elif t >= 18 -%}
+                blue
+              {%- else -%}
+                indigo
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Study climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Study temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~15
+                            max: ~30
+                            decimals: 1
+                            align_to: 1
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.study_aqm_temperature
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#2ECC40"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.study_aqm_temperature
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#2ECC40"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.study_aqm_temperature
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#2ECC40"
+                            opacity: 0.38
+                          - entity: sensor.study_aqm_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#2ECC40"
+                            opacity: 0.55
+                          - entity: sensor.study_aqm_temperature
+                            name: Today
+                            color: "#2ECC40"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Study humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.study_multi_sensor_2_humidity
+                            offset: "-4d"
+                            name: Study down 4d ago
+                            color: "#26A69A"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.study_aqm_humidity
+                            offset: "-4d"
+                            name: AQM 4d ago
+                            color: "#7E57C2"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.study_multi_sensor_2_humidity
+                            offset: "-3d"
+                            name: Study down 3d ago
+                            color: "#26A69A"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.study_aqm_humidity
+                            offset: "-3d"
+                            name: AQM 3d ago
+                            color: "#7E57C2"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.study_multi_sensor_2_humidity
+                            offset: "-2d"
+                            name: Study down 2d ago
+                            color: "#26A69A"
+                            opacity: 0.38
+                          - entity: sensor.study_aqm_humidity
+                            offset: "-2d"
+                            name: AQM 2d ago
+                            color: "#7E57C2"
+                            opacity: 0.38
+                          - entity: sensor.study_multi_sensor_2_humidity
+                            offset: "-1d"
+                            name: Study down yesterday
+                            color: "#26A69A"
+                            opacity: 0.55
+                          - entity: sensor.study_aqm_humidity
+                            offset: "-1d"
+                            name: AQM yesterday
+                            color: "#7E57C2"
+                            opacity: 0.55
+                          - entity: sensor.study_multi_sensor_2_humidity
+                            name: Study down
+                            color: "#26A69A"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                          - entity: sensor.study_aqm_humidity
+                            name: Study AQM
+                            color: "#7E57C2"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
+          ###########################################################################
+          # BEDROOM
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.bedroom_aqm_temperature
+            primary: Bedroom
+            secondary: >-
+              {%- set temp_ents = [
+                'sensor.temperature_bedroom',
+                'sensor.bedroom_aqm_temperature'
+              ] -%}
+              {%- set hum_ents = [
+                'sensor.humidity_bedroom',
+                'sensor.bedroom_aqm_humidity'
+              ] -%}
+              {%- set temps = temp_ents
+                | map('states')
+                | reject('in', ['unknown', 'unavailable', 'none', 'None', ''])
+                | map('float')
+                | list -%}
+              {%- set hums = hum_ents
+                | map('states')
+                | reject('in', ['unknown', 'unavailable', 'none', 'None', ''])
+                | map('float')
+                | list -%}
+              {%- if temps | count == 0 -%}
+                Temp unavailable
+              {%- else -%}
+                {{ (temps | sum / temps | count) | round(1) }} °C
+              {%- endif -%}
+              {%- if hums | count > 0 %}
+              {{ (hums | sum / hums | count) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:bed
+            icon_color: >-
+              {%- set vals = [
+                states('sensor.temperature_bedroom'),
+                states('sensor.bedroom_aqm_temperature')
+              ] | reject('in', ['unknown', 'unavailable', 'none', 'None', '']) | map('float') | list -%}
+              {%- if vals | count == 0 -%}
+                grey
+              {%- else -%}
+                {%- set avg = vals | sum / vals | count -%}
+                {%- if avg >= 27 -%}
+                  red
+                {%- elif avg >= 24 -%}
+                  orange
+                {%- elif avg >= 20 -%}
+                  green
+                {%- elif avg >= 18 -%}
+                  blue
+                {%- else -%}
+                  indigo
+                {%- endif -%}
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Bedroom climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Bedroom temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~15
+                            max: ~30
+                            decimals: 1
+                            align_to: 1
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.temperature_bedroom
+                            offset: "-4d"
+                            name: Bedroom 4d ago
+                            color: "#FF7043"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.bedroom_aqm_temperature
+                            offset: "-4d"
+                            name: AQM 4d ago
+                            color: "#29B6F6"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.temperature_bedroom
+                            offset: "-3d"
+                            name: Bedroom 3d ago
+                            color: "#FF7043"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.bedroom_aqm_temperature
+                            offset: "-3d"
+                            name: AQM 3d ago
+                            color: "#29B6F6"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.temperature_bedroom
+                            offset: "-2d"
+                            name: Bedroom 2d ago
+                            color: "#FF7043"
+                            opacity: 0.38
+                          - entity: sensor.bedroom_aqm_temperature
+                            offset: "-2d"
+                            name: AQM 2d ago
+                            color: "#29B6F6"
+                            opacity: 0.38
+                          - entity: sensor.temperature_bedroom
+                            offset: "-1d"
+                            name: Bedroom yesterday
+                            color: "#FF7043"
+                            opacity: 0.55
+                          - entity: sensor.bedroom_aqm_temperature
+                            offset: "-1d"
+                            name: AQM yesterday
+                            color: "#29B6F6"
+                            opacity: 0.55
+                          - entity: sensor.temperature_bedroom
+                            name: Bedroom
+                            color: "#FF7043"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                          - entity: sensor.bedroom_aqm_temperature
+                            name: Bedroom AQM
+                            color: "#29B6F6"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Bedroom humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.humidity_bedroom
+                            offset: "-4d"
+                            name: Bedroom 4d ago
+                            color: "#EC407A"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.bedroom_aqm_humidity
+                            offset: "-4d"
+                            name: AQM 4d ago
+                            color: "#26C6DA"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.humidity_bedroom
+                            offset: "-3d"
+                            name: Bedroom 3d ago
+                            color: "#EC407A"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.bedroom_aqm_humidity
+                            offset: "-3d"
+                            name: AQM 3d ago
+                            color: "#26C6DA"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.humidity_bedroom
+                            offset: "-2d"
+                            name: Bedroom 2d ago
+                            color: "#EC407A"
+                            opacity: 0.38
+                          - entity: sensor.bedroom_aqm_humidity
+                            offset: "-2d"
+                            name: AQM 2d ago
+                            color: "#26C6DA"
+                            opacity: 0.38
+                          - entity: sensor.humidity_bedroom
+                            offset: "-1d"
+                            name: Bedroom yesterday
+                            color: "#EC407A"
+                            opacity: 0.55
+                          - entity: sensor.bedroom_aqm_humidity
+                            offset: "-1d"
+                            name: AQM yesterday
+                            color: "#26C6DA"
+                            opacity: 0.55
+                          - entity: sensor.humidity_bedroom
+                            name: Bedroom
+                            color: "#EC407A"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                          - entity: sensor.bedroom_aqm_humidity
+                            name: Bedroom AQM
+                            color: "#26C6DA"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
+          ###########################################################################
+          # BATHROOM
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.temperature_bathroom
+            primary: Bathroom
+            secondary: >-
+              {%- set t = states('sensor.temperature_bathroom') -%}
+              {%- set h = states('sensor.humidity_bathroom') -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float(0) | round(1) }} °C
+              {%- endif -%}
+              {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] %}
+              {{ h | float(0) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:shower
+            icon_color: >-
+              {%- set v = states('sensor.temperature_bathroom') -%}
+              {%- set t = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif t >= 27 -%}
+                red
+              {%- elif t >= 24 -%}
+                orange
+              {%- elif t >= 20 -%}
+                green
+              {%- elif t >= 18 -%}
+                blue
+              {%- else -%}
+                indigo
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Bathroom climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Bathroom temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~15
+                            max: ~30
+                            decimals: 1
+                            align_to: 1
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.temperature_bathroom
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#0074D9"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.temperature_bathroom
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#0074D9"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.temperature_bathroom
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#0074D9"
+                            opacity: 0.38
+                          - entity: sensor.temperature_bathroom
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#0074D9"
+                            opacity: 0.55
+                          - entity: sensor.temperature_bathroom
+                            name: Today
+                            color: "#0074D9"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Bathroom humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.humidity_bathroom
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#00BCD4"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.humidity_bathroom
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#00BCD4"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.humidity_bathroom
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#00BCD4"
+                            opacity: 0.38
+                          - entity: sensor.humidity_bathroom
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#00BCD4"
+                            opacity: 0.55
+                          - entity: sensor.humidity_bathroom
+                            name: Today
+                            color: "#00BCD4"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
+          ###########################################################################
+          # GUEST ROOM
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.guest_room_aqm_temperature
+            primary: Guest Room
+            secondary: >-
+              {%- set t = states('sensor.guest_room_aqm_temperature') -%}
+              {%- set h = states('sensor.guest_room_aqm_humidity') -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float(0) | round(1) }} °C
+              {%- endif -%}
+              {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] %}
+              {{ h | float(0) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:bed-outline
+            icon_color: >-
+              {%- set v = states('sensor.guest_room_aqm_temperature') -%}
+              {%- set t = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif t >= 27 -%}
+                red
+              {%- elif t >= 24 -%}
+                orange
+              {%- elif t >= 20 -%}
+                green
+              {%- elif t >= 18 -%}
+                blue
+              {%- else -%}
+                indigo
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Guest Room climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Guest Room temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~15
+                            max: ~30
+                            decimals: 1
+                            align_to: 1
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.guest_room_aqm_temperature
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#B10DC9"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.guest_room_aqm_temperature
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#B10DC9"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.guest_room_aqm_temperature
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#B10DC9"
+                            opacity: 0.38
+                          - entity: sensor.guest_room_aqm_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#B10DC9"
+                            opacity: 0.55
+                          - entity: sensor.guest_room_aqm_temperature
+                            name: Today
+                            color: "#B10DC9"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Guest Room humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.guest_room_aqm_humidity
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#7E57C2"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.guest_room_aqm_humidity
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#7E57C2"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.guest_room_aqm_humidity
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#7E57C2"
+                            opacity: 0.38
+                          - entity: sensor.guest_room_aqm_humidity
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#7E57C2"
+                            opacity: 0.55
+                          - entity: sensor.guest_room_aqm_humidity
+                            name: Today
+                            color: "#7E57C2"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
+          ###########################################################################
+          # BABY ROOM
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.baby_room_aqm_temperature
+            primary: Baby Room
+            secondary: >-
+              {%- set t = states('sensor.baby_room_aqm_temperature') -%}
+              {%- set h = states('sensor.baby_room_aqm_humidity') -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float(0) | round(1) }} °C
+              {%- endif -%}
+              {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] %}
+              {{ h | float(0) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:baby-face-outline
+            icon_color: >-
+              {%- set v = states('sensor.baby_room_aqm_temperature') -%}
+              {%- set t = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif t >= 27 -%}
+                red
+              {%- elif t >= 24 -%}
+                orange
+              {%- elif t >= 20 -%}
+                green
+              {%- elif t >= 18 -%}
+                blue
+              {%- else -%}
+                indigo
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Baby Room climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Baby Room temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~15
+                            max: ~30
+                            decimals: 1
+                            align_to: 1
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.baby_room_aqm_temperature
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#FF69B4"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.baby_room_aqm_temperature
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#FF69B4"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.baby_room_aqm_temperature
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#FF69B4"
+                            opacity: 0.38
+                          - entity: sensor.baby_room_aqm_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#FF69B4"
+                            opacity: 0.55
+                          - entity: sensor.baby_room_aqm_temperature
+                            name: Today
+                            color: "#FF69B4"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Baby Room humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.baby_room_aqm_humidity
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#EC407A"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.baby_room_aqm_humidity
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#EC407A"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.baby_room_aqm_humidity
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#EC407A"
+                            opacity: 0.38
+                          - entity: sensor.baby_room_aqm_humidity
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#EC407A"
+                            opacity: 0.55
+                          - entity: sensor.baby_room_aqm_humidity
+                            name: Today
+                            color: "#EC407A"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
+          ###########################################################################
+          # SHED
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.shed_aqm_temperature
+            primary: Shed
+            secondary: >-
+              {%- set t = states('sensor.shed_aqm_temperature') -%}
+              {%- set h = states('sensor.shed_aqm_humidity') -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float(0) | round(1) }} °C
+              {%- endif -%}
+              {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] %}
+              {{ h | float(0) | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:greenhouse
+            icon_color: >-
+              {%- set v = states('sensor.shed_aqm_temperature') -%}
+              {%- set t = v | float(0) -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif t >= 30 -%}
+                red
+              {%- elif t >= 24 -%}
+                orange
+              {%- elif t >= 15 -%}
+                green
+              {%- elif t >= 5 -%}
+                blue
+              {%- else -%}
+                indigo
+              {%- endif -%}
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Shed climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Shed temperature · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 1min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~0
+                            max: ~35
+                            decimals: 1
+                            align_to: 5
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: °C
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.shed_aqm_temperature
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#8A2BE2"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.shed_aqm_temperature
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#8A2BE2"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.shed_aqm_temperature
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#8A2BE2"
+                            opacity: 0.38
+                          - entity: sensor.shed_aqm_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#8A2BE2"
+                            opacity: 0.55
+                          - entity: sensor.shed_aqm_temperature
+                            name: Today
+                            color: "#8A2BE2"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          title: Shed humidity · today vs last 4 days
+                          show: true
+                          show_states: true
+                          colorize_states: true
+                        update_interval: 5min
+                        graph_span: 24h
+                        span:
+                          start: day
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 260px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.shed_aqm_humidity
+                            offset: "-4d"
+                            name: 4d ago
+                            color: "#4CAF50"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.shed_aqm_humidity
+                            offset: "-3d"
+                            name: 3d ago
+                            color: "#4CAF50"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.shed_aqm_humidity
+                            offset: "-2d"
+                            name: 2d ago
+                            color: "#4CAF50"
+                            opacity: 0.38
+                          - entity: sensor.shed_aqm_humidity
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#4CAF50"
+                            opacity: 0.55
+                          - entity: sensor.shed_aqm_humidity
+                            name: Today
+                            color: "#4CAF50"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+
       - type: custom:apexcharts-card
         header:
           title: Home Temperatures
@@ -425,7 +2068,7 @@ cards:
           - show: true
             decimals: 1
             min: 15
-            max: 25
+            max: 30
             align_to: 1
             apex_config:
               tickAmount: 4

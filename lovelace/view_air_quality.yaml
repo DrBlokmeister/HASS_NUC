@@ -3,73 +3,2276 @@ title: Air Quality
 icon: "mdi:air-purifier"
 badges: []
 cards:
-  - type: glance
-    name: CO2 Concentrations
-    entities:
-      - entity: sensor.bedroom_co2
-        name: Bedroom
-      - entity: sensor.study_co2
-        name: Study
-      - entity: sensor.living_room_co2
-        name: Living Room
-      - entity: sensor.shed_co2
-        name: Shed
-      - entity: sensor.baby_room_co2
-        name: Baby Room
-      - entity: sensor.guest_room_co2
-        name: Guest Room
-
-  - type: horizontal-stack
-    name: CO2 Calibration
+  - type: vertical-stack
     cards:
-      - type: button
-        entity: button.bedroom_calibrate_mh_z19
-        name: Bedroom
-        tap_action:
-          action: call-service
-          service: button.press
-          data:
-            entity_id: button.bedroom_calibrate_mh_z19
-      - type: button
-        entity: button.study_calibrate_mh_z19
-        name: Study
-        tap_action:
-          action: call-service
-          service: button.press
-          data:
-            entity_id: button.study_calibrate_mh_z19
-      - type: button
-        entity: button.living_room_calibrate_mh_z19
-        name: Living Room
-        tap_action:
-          action: call-service
-          service: button.press
-          data:
-            entity_id: button.living_room_calibrate_mh_z19
-      - type: button
-        entity: button.shed_calibrate_mh_z19
-        name: Shed
-        tap_action:
-          action: call-service
-          service: button.press
-          data:
-            entity_id: button.shed_calibrate_mh_z19
-      - type: button
-        entity: button.baby_room_calibrate_mh_z19
-        name: Baby Room
-        tap_action:
-          action: call-service
-          service: button.press
-          data:
-            entity_id: button.baby_room_calibrate_mh_z19
-      - type: button
-        entity: button.guest_room_calibrate_mh_z19
-        name: Guest Room
-        tap_action:
-          action: call-service
-          service: button.press
-          data:
-            entity_id: button.guest_room_calibrate_mh_z19
+      - type: custom:mushroom-title-card
+        title: CO₂ Concentrations
+        subtitle: Tap a room for a 4-day overlay
+        alignment: center
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.bedroom_co2
+            primary: Bedroom
+            secondary: >-
+              {%- set raw = states('sensor.bedroom_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif co2 < 800 -%}
+                {{ co2 | round(0) }} ppm · good
+              {%- elif co2 < 1000 -%}
+                {{ co2 | round(0) }} ppm · okay
+              {%- elif co2 < 1400 -%}
+                {{ co2 | round(0) }} ppm · ventilate
+              {%- else -%}
+                {{ co2 | round(0) }} ppm · high
+              {%- endif -%}
+            icon: mdi:bed-king-outline
+            icon_color: >-
+              {%- set raw = states('sensor.bedroom_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 800 -%}
+                green
+              {%- elif co2 < 1000 -%}
+                amber
+              {%- elif co2 < 1400 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Bedroom CO₂
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Bedroom CO₂ - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 400
+                        max: ~1000
+                        decimals: 0
+                        align_to: 200
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppm
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.bedroom_co2
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.bedroom_co2
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.bedroom_co2
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.bedroom_co2
+                        name: Today
+                        color: "#4682B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.study_co2
+            primary: Study
+            secondary: >-
+              {%- set raw = states('sensor.study_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif co2 < 800 -%}
+                {{ co2 | round(0) }} ppm · good
+              {%- elif co2 < 1000 -%}
+                {{ co2 | round(0) }} ppm · okay
+              {%- elif co2 < 1400 -%}
+                {{ co2 | round(0) }} ppm · ventilate
+              {%- else -%}
+                {{ co2 | round(0) }} ppm · high
+              {%- endif -%}
+            icon: mdi:desk
+            icon_color: >-
+              {%- set raw = states('sensor.study_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 800 -%}
+                green
+              {%- elif co2 < 1000 -%}
+                amber
+              {%- elif co2 < 1400 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Study CO₂
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Study CO₂ - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 400
+                        max: ~1000
+                        decimals: 0
+                        align_to: 200
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppm
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.study_co2
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.study_co2
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.study_co2
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.study_co2
+                        name: Today
+                        color: "#32CD32"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.living_room_co2
+            primary: Living Room
+            secondary: >-
+              {%- set raw = states('sensor.living_room_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif co2 < 800 -%}
+                {{ co2 | round(0) }} ppm · good
+              {%- elif co2 < 1000 -%}
+                {{ co2 | round(0) }} ppm · okay
+              {%- elif co2 < 1400 -%}
+                {{ co2 | round(0) }} ppm · ventilate
+              {%- else -%}
+                {{ co2 | round(0) }} ppm · high
+              {%- endif -%}
+            icon: mdi:sofa-outline
+            icon_color: >-
+              {%- set raw = states('sensor.living_room_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 800 -%}
+                green
+              {%- elif co2 < 1000 -%}
+                amber
+              {%- elif co2 < 1400 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Living Room CO₂
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Living Room CO₂ - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 400
+                        max: ~1000
+                        decimals: 0
+                        align_to: 200
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppm
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.living_room_co2
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.living_room_co2
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.living_room_co2
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.living_room_co2
+                        name: Today
+                        color: "#FF6347"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.shed_co2
+            primary: Shed
+            secondary: >-
+              {%- set raw = states('sensor.shed_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif co2 < 800 -%}
+                {{ co2 | round(0) }} ppm · good
+              {%- elif co2 < 1000 -%}
+                {{ co2 | round(0) }} ppm · okay
+              {%- elif co2 < 1400 -%}
+                {{ co2 | round(0) }} ppm · ventilate
+              {%- else -%}
+                {{ co2 | round(0) }} ppm · high
+              {%- endif -%}
+            icon: mdi:greenhouse
+            icon_color: >-
+              {%- set raw = states('sensor.shed_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 800 -%}
+                green
+              {%- elif co2 < 1000 -%}
+                amber
+              {%- elif co2 < 1400 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Shed CO₂
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Shed CO₂ - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 400
+                        max: ~1000
+                        decimals: 0
+                        align_to: 200
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppm
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.shed_co2
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.shed_co2
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.shed_co2
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.shed_co2
+                        name: Today
+                        color: "#8A2BE2"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.baby_room_co2
+            primary: Baby Room
+            secondary: >-
+              {%- set raw = states('sensor.baby_room_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif co2 < 800 -%}
+                {{ co2 | round(0) }} ppm · good
+              {%- elif co2 < 1000 -%}
+                {{ co2 | round(0) }} ppm · okay
+              {%- elif co2 < 1400 -%}
+                {{ co2 | round(0) }} ppm · ventilate
+              {%- else -%}
+                {{ co2 | round(0) }} ppm · high
+              {%- endif -%}
+            icon: mdi:baby-face-outline
+            icon_color: >-
+              {%- set raw = states('sensor.baby_room_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 800 -%}
+                green
+              {%- elif co2 < 1000 -%}
+                amber
+              {%- elif co2 < 1400 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Baby Room CO₂
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Baby Room CO₂ - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 400
+                        max: ~1000
+                        decimals: 0
+                        align_to: 200
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppm
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.baby_room_co2
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.baby_room_co2
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.baby_room_co2
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.baby_room_co2
+                        name: Today
+                        color: "#FF69B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.guest_room_co2
+            primary: Guest Room
+            secondary: >-
+              {%- set raw = states('sensor.guest_room_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif co2 < 800 -%}
+                {{ co2 | round(0) }} ppm · good
+              {%- elif co2 < 1000 -%}
+                {{ co2 | round(0) }} ppm · okay
+              {%- elif co2 < 1400 -%}
+                {{ co2 | round(0) }} ppm · ventilate
+              {%- else -%}
+                {{ co2 | round(0) }} ppm · high
+              {%- endif -%}
+            icon: mdi:bed-outline
+            icon_color: >-
+              {%- set raw = states('sensor.guest_room_co2') -%}
+              {%- set co2 = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif co2 < 800 -%}
+                green
+              {%- elif co2 < 1000 -%}
+                amber
+              {%- elif co2 < 1400 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Guest Room CO₂
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Guest Room CO₂ - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 400
+                        max: ~1000
+                        decimals: 0
+                        align_to: 200
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppm
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.guest_room_co2
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.guest_room_co2
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.guest_room_co2
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.guest_room_co2
+                        name: Today
+                        color: "#FFD700"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+
+      - type: horizontal-stack
+        name: CO2 Calibration
+        cards:
+          - type: button
+            entity: button.bedroom_calibrate_mh_z19
+            name: Bedroom
+            tap_action:
+              action: call-service
+              service: button.press
+              data:
+                entity_id: button.bedroom_calibrate_mh_z19
+          - type: button
+            entity: button.study_calibrate_mh_z19
+            name: Study
+            tap_action:
+              action: call-service
+              service: button.press
+              data:
+                entity_id: button.study_calibrate_mh_z19
+          - type: button
+            entity: button.living_room_calibrate_mh_z19
+            name: Living Room
+            tap_action:
+              action: call-service
+              service: button.press
+              data:
+                entity_id: button.living_room_calibrate_mh_z19
+          - type: button
+            entity: button.shed_calibrate_mh_z19
+            name: Shed
+            tap_action:
+              action: call-service
+              service: button.press
+              data:
+                entity_id: button.shed_calibrate_mh_z19
+          - type: button
+            entity: button.baby_room_calibrate_mh_z19
+            name: Baby Room
+            tap_action:
+              action: call-service
+              service: button.press
+              data:
+                entity_id: button.baby_room_calibrate_mh_z19
+          - type: button
+            entity: button.guest_room_calibrate_mh_z19
+            name: Guest Room
+            tap_action:
+              action: call-service
+              service: button.press
+              data:
+                entity_id: button.guest_room_calibrate_mh_z19
+
+# PM2.5 grid with per-room 4-day popup
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-title-card
+        title: PM2.5 Concentrations
+        subtitle: Tap a room for a 4-day PM2.5 overlay
+        alignment: center
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.bedroom_pm_2_5_concentration
+            primary: Bedroom
+            secondary: >-
+              {%- set raw = states('sensor.bedroom_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif pm < 5 -%}
+                {{ pm | round(1) }} µg/m³ · excellent
+              {%- elif pm < 10 -%}
+                {{ pm | round(1) }} µg/m³ · good
+              {%- elif pm < 25 -%}
+                {{ pm | round(1) }} µg/m³ · okay
+              {%- else -%}
+                {{ pm | round(1) }} µg/m³ · high
+              {%- endif -%}
+            icon: mdi:bed-king-outline
+            icon_color: >-
+              {%- set raw = states('sensor.bedroom_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif pm < 5 -%}
+                green
+              {%- elif pm < 10 -%}
+                light-green
+              {%- elif pm < 25 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Bedroom PM2.5
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Bedroom PM2.5 - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~50
+                        decimals: 1
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 1
+                      transform: "return Math.round(x * 10) / 10;"
+                      unit: µg/m³
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.bedroom_pm_2_5_concentration
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.bedroom_pm_2_5_concentration
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.bedroom_pm_2_5_concentration
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.bedroom_pm_2_5_concentration
+                        name: Today
+                        color: "#4682B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.study_pm_2_5_concentration
+            primary: Study
+            secondary: >-
+              {%- set raw = states('sensor.study_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif pm < 5 -%}
+                {{ pm | round(1) }} µg/m³ · excellent
+              {%- elif pm < 10 -%}
+                {{ pm | round(1) }} µg/m³ · good
+              {%- elif pm < 25 -%}
+                {{ pm | round(1) }} µg/m³ · okay
+              {%- else -%}
+                {{ pm | round(1) }} µg/m³ · high
+              {%- endif -%}
+            icon: mdi:desk
+            icon_color: >-
+              {%- set raw = states('sensor.study_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif pm < 5 -%}
+                green
+              {%- elif pm < 10 -%}
+                light-green
+              {%- elif pm < 25 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Study PM2.5
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Study PM2.5 - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~50
+                        decimals: 1
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 1
+                      transform: "return Math.round(x * 10) / 10;"
+                      unit: µg/m³
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.study_pm_2_5_concentration
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.study_pm_2_5_concentration
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.study_pm_2_5_concentration
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.study_pm_2_5_concentration
+                        name: Today
+                        color: "#32CD32"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.living_room_pm_2_5_concentration
+            primary: Living Room
+            secondary: >-
+              {%- set raw = states('sensor.living_room_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif pm < 5 -%}
+                {{ pm | round(1) }} µg/m³ · excellent
+              {%- elif pm < 10 -%}
+                {{ pm | round(1) }} µg/m³ · good
+              {%- elif pm < 25 -%}
+                {{ pm | round(1) }} µg/m³ · okay
+              {%- else -%}
+                {{ pm | round(1) }} µg/m³ · high
+              {%- endif -%}
+            icon: mdi:sofa-outline
+            icon_color: >-
+              {%- set raw = states('sensor.living_room_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif pm < 5 -%}
+                green
+              {%- elif pm < 10 -%}
+                light-green
+              {%- elif pm < 25 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Living Room PM2.5
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Living Room PM2.5 - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~50
+                        decimals: 1
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 1
+                      transform: "return Math.round(x * 10) / 10;"
+                      unit: µg/m³
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.living_room_pm_2_5_concentration
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.living_room_pm_2_5_concentration
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.living_room_pm_2_5_concentration
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.living_room_pm_2_5_concentration
+                        name: Today
+                        color: "#FF6347"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.shed_pm_2_5_concentration
+            primary: Shed
+            secondary: >-
+              {%- set raw = states('sensor.shed_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif pm < 5 -%}
+                {{ pm | round(1) }} µg/m³ · excellent
+              {%- elif pm < 10 -%}
+                {{ pm | round(1) }} µg/m³ · good
+              {%- elif pm < 25 -%}
+                {{ pm | round(1) }} µg/m³ · okay
+              {%- else -%}
+                {{ pm | round(1) }} µg/m³ · high
+              {%- endif -%}
+            icon: mdi:greenhouse
+            icon_color: >-
+              {%- set raw = states('sensor.shed_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif pm < 5 -%}
+                green
+              {%- elif pm < 10 -%}
+                light-green
+              {%- elif pm < 25 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Shed PM2.5
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Shed PM2.5 - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~50
+                        decimals: 1
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 1
+                      transform: "return Math.round(x * 10) / 10;"
+                      unit: µg/m³
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.shed_pm_2_5_concentration
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.shed_pm_2_5_concentration
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.shed_pm_2_5_concentration
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.shed_pm_2_5_concentration
+                        name: Today
+                        color: "#8A2BE2"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.baby_room_pm_2_5_concentration
+            primary: Baby Room
+            secondary: >-
+              {%- set raw = states('sensor.baby_room_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif pm < 5 -%}
+                {{ pm | round(1) }} µg/m³ · excellent
+              {%- elif pm < 10 -%}
+                {{ pm | round(1) }} µg/m³ · good
+              {%- elif pm < 25 -%}
+                {{ pm | round(1) }} µg/m³ · okay
+              {%- else -%}
+                {{ pm | round(1) }} µg/m³ · high
+              {%- endif -%}
+            icon: mdi:baby-face-outline
+            icon_color: >-
+              {%- set raw = states('sensor.baby_room_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif pm < 5 -%}
+                green
+              {%- elif pm < 10 -%}
+                light-green
+              {%- elif pm < 25 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Baby Room PM2.5
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Baby Room PM2.5 - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~50
+                        decimals: 1
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 1
+                      transform: "return Math.round(x * 10) / 10;"
+                      unit: µg/m³
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.baby_room_pm_2_5_concentration
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.baby_room_pm_2_5_concentration
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.baby_room_pm_2_5_concentration
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.baby_room_pm_2_5_concentration
+                        name: Today
+                        color: "#FF69B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.guest_room_pm_2_5_concentration
+            primary: Guest Room
+            secondary: >-
+              {%- set raw = states('sensor.guest_room_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif pm < 5 -%}
+                {{ pm | round(1) }} µg/m³ · excellent
+              {%- elif pm < 10 -%}
+                {{ pm | round(1) }} µg/m³ · good
+              {%- elif pm < 25 -%}
+                {{ pm | round(1) }} µg/m³ · okay
+              {%- else -%}
+                {{ pm | round(1) }} µg/m³ · high
+              {%- endif -%}
+            icon: mdi:bed-outline
+            icon_color: >-
+              {%- set raw = states('sensor.guest_room_pm_2_5_concentration') -%}
+              {%- set pm = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif pm < 5 -%}
+                green
+              {%- elif pm < 10 -%}
+                light-green
+              {%- elif pm < 25 -%}
+                amber
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Guest Room PM2.5
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Guest Room PM2.5 - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~50
+                        decimals: 1
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 1
+                      transform: "return Math.round(x * 10) / 10;"
+                      unit: µg/m³
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.guest_room_pm_2_5_concentration
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.guest_room_pm_2_5_concentration
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.guest_room_pm_2_5_concentration
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.guest_room_pm_2_5_concentration
+                        name: Today
+                        color: "#FFD700"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+
+# TVOC grid with per-room 4-day popup
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-title-card
+        title: TVOC Concentrations
+        subtitle: Tap a room for a 4-day TVOC overlay
+        alignment: center
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.bedroom_tvoc
+            primary: Bedroom
+            secondary: >-
+              {%- set raw = states('sensor.bedroom_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif tvoc < 250 -%}
+                {{ tvoc | round(0) }} ppb · good
+              {%- elif tvoc < 500 -%}
+                {{ tvoc | round(0) }} ppb · okay
+              {%- elif tvoc < 1000 -%}
+                {{ tvoc | round(0) }} ppb · ventilate
+              {%- else -%}
+                {{ tvoc | round(0) }} ppb · high
+              {%- endif -%}
+            icon: mdi:bed-king-outline
+            icon_color: >-
+              {%- set raw = states('sensor.bedroom_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif tvoc < 250 -%}
+                green
+              {%- elif tvoc < 500 -%}
+                amber
+              {%- elif tvoc < 1000 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Bedroom TVOC
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Bedroom TVOC - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~10000
+                        decimals: 0
+                        align_to: 5000
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppb
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.bedroom_tvoc
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.bedroom_tvoc
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.bedroom_tvoc
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.bedroom_tvoc
+                        name: Today
+                        color: "#4682B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.study_tvoc
+            primary: Study
+            secondary: >-
+              {%- set raw = states('sensor.study_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif tvoc < 250 -%}
+                {{ tvoc | round(0) }} ppb · good
+              {%- elif tvoc < 500 -%}
+                {{ tvoc | round(0) }} ppb · okay
+              {%- elif tvoc < 1000 -%}
+                {{ tvoc | round(0) }} ppb · ventilate
+              {%- else -%}
+                {{ tvoc | round(0) }} ppb · high
+              {%- endif -%}
+            icon: mdi:desk
+            icon_color: >-
+              {%- set raw = states('sensor.study_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif tvoc < 250 -%}
+                green
+              {%- elif tvoc < 500 -%}
+                amber
+              {%- elif tvoc < 1000 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Study TVOC
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Study TVOC - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~10000
+                        decimals: 0
+                        align_to: 5000
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppb
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.study_tvoc
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.study_tvoc
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.study_tvoc
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.study_tvoc
+                        name: Today
+                        color: "#32CD32"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.living_room_tvoc
+            primary: Living Room
+            secondary: >-
+              {%- set raw = states('sensor.living_room_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif tvoc < 250 -%}
+                {{ tvoc | round(0) }} ppb · good
+              {%- elif tvoc < 500 -%}
+                {{ tvoc | round(0) }} ppb · okay
+              {%- elif tvoc < 1000 -%}
+                {{ tvoc | round(0) }} ppb · ventilate
+              {%- else -%}
+                {{ tvoc | round(0) }} ppb · high
+              {%- endif -%}
+            icon: mdi:sofa-outline
+            icon_color: >-
+              {%- set raw = states('sensor.living_room_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif tvoc < 250 -%}
+                green
+              {%- elif tvoc < 500 -%}
+                amber
+              {%- elif tvoc < 1000 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Living Room TVOC
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Living Room TVOC - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~10000
+                        decimals: 0
+                        align_to: 5000
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppb
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.living_room_tvoc
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.living_room_tvoc
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.living_room_tvoc
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.living_room_tvoc
+                        name: Today
+                        color: "#FF6347"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.shed_tvoc
+            primary: Shed
+            secondary: >-
+              {%- set raw = states('sensor.shed_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif tvoc < 250 -%}
+                {{ tvoc | round(0) }} ppb · good
+              {%- elif tvoc < 500 -%}
+                {{ tvoc | round(0) }} ppb · okay
+              {%- elif tvoc < 1000 -%}
+                {{ tvoc | round(0) }} ppb · ventilate
+              {%- else -%}
+                {{ tvoc | round(0) }} ppb · high
+              {%- endif -%}
+            icon: mdi:greenhouse
+            icon_color: >-
+              {%- set raw = states('sensor.shed_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif tvoc < 250 -%}
+                green
+              {%- elif tvoc < 500 -%}
+                amber
+              {%- elif tvoc < 1000 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Shed TVOC
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Shed TVOC - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~10000
+                        decimals: 0
+                        align_to: 5000
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppb
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.shed_tvoc
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.shed_tvoc
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.shed_tvoc
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.shed_tvoc
+                        name: Today
+                        color: "#8A2BE2"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.baby_room_tvoc
+            primary: Baby Room
+            secondary: >-
+              {%- set raw = states('sensor.baby_room_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif tvoc < 250 -%}
+                {{ tvoc | round(0) }} ppb · good
+              {%- elif tvoc < 500 -%}
+                {{ tvoc | round(0) }} ppb · okay
+              {%- elif tvoc < 1000 -%}
+                {{ tvoc | round(0) }} ppb · ventilate
+              {%- else -%}
+                {{ tvoc | round(0) }} ppb · high
+              {%- endif -%}
+            icon: mdi:baby-face-outline
+            icon_color: >-
+              {%- set raw = states('sensor.baby_room_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif tvoc < 250 -%}
+                green
+              {%- elif tvoc < 500 -%}
+                amber
+              {%- elif tvoc < 1000 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Baby Room TVOC
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Baby Room TVOC - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~10000
+                        decimals: 0
+                        align_to: 5000
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppb
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.baby_room_tvoc
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.baby_room_tvoc
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.baby_room_tvoc
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.baby_room_tvoc
+                        name: Today
+                        color: "#FF69B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
+          - type: custom:mushroom-template-card
+            entity: sensor.guest_room_tvoc
+            primary: Guest Room
+            secondary: >-
+              {%- set raw = states('sensor.guest_room_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- elif tvoc < 250 -%}
+                {{ tvoc | round(0) }} ppb · good
+              {%- elif tvoc < 500 -%}
+                {{ tvoc | round(0) }} ppb · okay
+              {%- elif tvoc < 1000 -%}
+                {{ tvoc | round(0) }} ppb · ventilate
+              {%- else -%}
+                {{ tvoc | round(0) }} ppb · high
+              {%- endif -%}
+            icon: mdi:bed-outline
+            icon_color: >-
+              {%- set raw = states('sensor.guest_room_tvoc') -%}
+              {%- set tvoc = raw | float(0) -%}
+              {%- if raw in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif tvoc < 250 -%}
+                green
+              {%- elif tvoc < 500 -%}
+                amber
+              {%- elif tvoc < 1000 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Guest Room TVOC
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Guest Room TVOC - past 4 days
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 300px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                    yaxis:
+                      - min: 0
+                        max: ~10000
+                        decimals: 0
+                        align_to: 5000
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 3
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: ppb
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 15min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                    series:
+                      - entity: sensor.guest_room_tvoc
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#9E9E9E"
+                        opacity: 0.18
+                      - entity: sensor.guest_room_tvoc
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#B0B0B0"
+                        opacity: 0.28
+                      - entity: sensor.guest_room_tvoc
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#C7C7C7"
+                        opacity: 0.45
+                      - entity: sensor.guest_room_tvoc
+                        name: Today
+                        color: "#FFD700"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 82px;
+                  border-radius: 18px;
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  background: linear-gradient(135deg, rgba(var(--rgb-card-background-color), 0.94), rgba(var(--rgb-card-background-color), 0.68));
+                }
+                mushroom-shape-icon {
+                  --shape-color: rgba(255, 255, 255, 0.08) !important;
+                }
 
   - type: custom:apexcharts-card
     graph_span: 24h
@@ -399,636 +2602,3 @@ cards:
         name: Guest Room
         color: "#FFD700"
         stroke_width: 4
-
-
-  - type: custom:collapsable-cards
-    title: "Today vs Yesterday"
-    defaultOpen: false
-    cards:
-      - type: custom:apexcharts-card
-        graph_span: 24h
-        span:
-          start: day
-          offset: +0h
-        header:
-          show: true
-          title: CO2 Today vs Yesterday
-          show_states: true
-          colorize_states: true
-        now:
-          show: true
-        apex_config:
-          legend:
-            show: false
-        chart_type: line
-        update_interval: 1m
-        yaxis:
-          - min: 400
-            max: ~1000
-            decimals: 0
-            align_to: 200
-            apex_config:
-              tickAmount: 4
-        all_series_config:
-          stroke_width: 2
-          float_precision: 0
-          transform: "return Math.round(x);"
-          unit: ppm
-          group_by:
-            func: avg
-            duration: 15min
-        series:
-          - entity: sensor.living_room_co2
-            offset: "-1d"
-            name: Living Room - Yesterday
-            color: "#FF6347"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.living_room_co2
-            name: Living Room - Today
-            color: "#FF6347"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.bedroom_co2
-            offset: "-1d"
-            name: Bedroom - Yesterday
-            color: "#4682B4"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.bedroom_co2
-            name: Bedroom - Today
-            color: "#4682B4"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.study_co2
-            offset: "-1d"
-            name: Study - Yesterday
-            color: "#32CD32"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.study_co2
-            name: Study - Today
-            color: "#32CD32"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.guest_room_co2
-            offset: "-1d"
-            name: Guest Room - Yesterday
-            color: "#FFD700"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.guest_room_co2
-            name: Guest Room - Today
-            color: "#FFD700"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.baby_room_co2
-            offset: "-1d"
-            name: Baby Room - Yesterday
-            color: "#FF69B4"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.baby_room_co2
-            name: Baby Room - Today
-            color: "#FF69B4"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.shed_co2
-            offset: "-1d"
-            name: Shed - Yesterday
-            color: "#8A2BE2"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.shed_co2
-            name: Shed - Today
-            color: "#8A2BE2"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-      - type: custom:apexcharts-card
-        graph_span: 24h
-        span:
-          start: day
-          offset: +0h
-        header:
-          show: true
-          title: PM2.5 Today vs Yesterday
-          show_states: true
-          colorize_states: true
-        now:
-          show: true
-        apex_config:
-          legend:
-            show: false
-        chart_type: line
-        update_interval: 1m
-        yaxis:
-          - min: 0
-            max: 50
-            decimals: 1
-            apex_config:
-              tickAmount: 4
-        all_series_config:
-          stroke_width: 2
-          float_precision: 1
-          unit: µg/m³
-          group_by:
-            func: avg
-            duration: 15min
-        series:
-          - entity: sensor.living_room_pm_2_5_concentration
-            offset: "-1d"
-            name: Living Room - Yesterday
-            color: "#FF6347"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.living_room_pm_2_5_concentration
-            name: Living Room - Today
-            color: "#FF6347"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.bedroom_pm_2_5_concentration
-            offset: "-1d"
-            name: Bedroom - Yesterday
-            color: "#4682B4"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.bedroom_pm_2_5_concentration
-            name: Bedroom - Today
-            color: "#4682B4"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.study_pm_2_5_concentration
-            offset: "-1d"
-            name: Study - Yesterday
-            color: "#32CD32"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.study_pm_2_5_concentration
-            name: Study - Today
-            color: "#32CD32"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.guest_room_pm_2_5_concentration
-            offset: "-1d"
-            name: Guest Room - Yesterday
-            color: "#FFD700"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.guest_room_pm_2_5_concentration
-            name: Guest Room - Today
-            color: "#FFD700"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.baby_room_pm_2_5_concentration
-            offset: "-1d"
-            name: Baby Room - Yesterday
-            color: "#FF69B4"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.baby_room_pm_2_5_concentration
-            name: Baby Room - Today
-            color: "#FF69B4"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-          - entity: sensor.shed_pm_2_5_concentration
-            offset: "-1d"
-            name: Shed - Yesterday
-            color: "#8A2BE2"
-            opacity: 0.35
-            show: { in_header: false }
-          - entity: sensor.shed_pm_2_5_concentration
-            name: Shed - Today
-            color: "#8A2BE2"
-            extend_to: now
-            opacity: 1
-            stroke_width: 4
-
-  #####################################################################
-  # TVOC 7-day overlays (collapsed)
-  #####################################################################
-
-  - type: custom:collapsable-cards
-    title: "TVOC: Today vs last 6 days"
-    defaultOpen: false
-    cards:
-      - type: grid
-        columns: 2
-        square: false
-        cards:
-          - type: custom:apexcharts-card
-            header:
-              title: Baby Room TVOC (Today vs last 6 days)
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 1min
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            apex_config:
-              chart:
-                height: 200px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-            series:
-              - entity: sensor.baby_room_tvoc
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#FF69B4"
-                opacity: 0.2
-              - entity: sensor.baby_room_tvoc
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#FF69B4"
-                opacity: 0.3
-              - entity: sensor.baby_room_tvoc
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#FF69B4"
-                opacity: 0.4
-              - entity: sensor.baby_room_tvoc
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#FF69B4"
-                opacity: 0.5
-              - entity: sensor.baby_room_tvoc
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#FF69B4"
-                opacity: 0.6
-              - entity: sensor.baby_room_tvoc
-                offset: "-1d"
-                name: Yesterday
-                color: "#FF69B4"
-                opacity: 0.7
-              - entity: sensor.baby_room_tvoc
-                name: Today
-                color: "#FF69B4"
-                opacity: 1
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-
-          - type: custom:apexcharts-card
-            header:
-              title: Bedroom TVOC (Today vs last 6 days)
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 1min
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            apex_config:
-              chart:
-                height: 200px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-            series:
-              - entity: sensor.bedroom_tvoc
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#4682B4"
-                opacity: 0.2
-              - entity: sensor.bedroom_tvoc
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#4682B4"
-                opacity: 0.3
-              - entity: sensor.bedroom_tvoc
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#4682B4"
-                opacity: 0.4
-              - entity: sensor.bedroom_tvoc
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#4682B4"
-                opacity: 0.5
-              - entity: sensor.bedroom_tvoc
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#4682B4"
-                opacity: 0.6
-              - entity: sensor.bedroom_tvoc
-                offset: "-1d"
-                name: Yesterday
-                color: "#4682B4"
-                opacity: 0.7
-              - entity: sensor.bedroom_tvoc
-                name: Today
-                color: "#4682B4"
-                opacity: 1
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-
-          - type: custom:apexcharts-card
-            header:
-              title: Study TVOC (Today vs last 6 days)
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 1min
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            apex_config:
-              chart:
-                height: 200px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-            series:
-              - entity: sensor.study_tvoc
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#32CD32"
-                opacity: 0.2
-              - entity: sensor.study_tvoc
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#32CD32"
-                opacity: 0.3
-              - entity: sensor.study_tvoc
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#32CD32"
-                opacity: 0.4
-              - entity: sensor.study_tvoc
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#32CD32"
-                opacity: 0.5
-              - entity: sensor.study_tvoc
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#32CD32"
-                opacity: 0.6
-              - entity: sensor.study_tvoc
-                offset: "-1d"
-                name: Yesterday
-                color: "#32CD32"
-                opacity: 0.7
-              - entity: sensor.study_tvoc
-                name: Today
-                color: "#32CD32"
-                opacity: 1
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-
-          - type: custom:apexcharts-card
-            header:
-              title: Living Room TVOC (Today vs last 6 days)
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 1min
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            apex_config:
-              chart:
-                height: 200px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-            series:
-              - entity: sensor.living_room_tvoc
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#FF6347"
-                opacity: 0.2
-              - entity: sensor.living_room_tvoc
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#FF6347"
-                opacity: 0.3
-              - entity: sensor.living_room_tvoc
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#FF6347"
-                opacity: 0.4
-              - entity: sensor.living_room_tvoc
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#FF6347"
-                opacity: 0.5
-              - entity: sensor.living_room_tvoc
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#FF6347"
-                opacity: 0.6
-              - entity: sensor.living_room_tvoc
-                offset: "-1d"
-                name: Yesterday
-                color: "#FF6347"
-                opacity: 0.7
-              - entity: sensor.living_room_tvoc
-                name: Today
-                color: "#FF6347"
-                opacity: 1
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-
-          - type: custom:apexcharts-card
-            header:
-              title: Guest Room TVOC (Today vs last 6 days)
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 1min
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            apex_config:
-              chart:
-                height: 200px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-            series:
-              - entity: sensor.guest_room_tvoc
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#FFD700"
-                opacity: 0.2
-              - entity: sensor.guest_room_tvoc
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#FFD700"
-                opacity: 0.3
-              - entity: sensor.guest_room_tvoc
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#FFD700"
-                opacity: 0.4
-              - entity: sensor.guest_room_tvoc
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#FFD700"
-                opacity: 0.5
-              - entity: sensor.guest_room_tvoc
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#FFD700"
-                opacity: 0.6
-              - entity: sensor.guest_room_tvoc
-                offset: "-1d"
-                name: Yesterday
-                color: "#FFD700"
-                opacity: 0.7
-              - entity: sensor.guest_room_tvoc
-                name: Today
-                color: "#FFD700"
-                opacity: 1
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-
-          - type: custom:apexcharts-card
-            header:
-              title: Shed TVOC (Today vs last 6 days)
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 1min
-            graph_span: 24h
-            span:
-              start: day
-            now:
-              show: true
-            apex_config:
-              chart:
-                height: 200px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-            series:
-              - entity: sensor.shed_tvoc
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#8A2BE2"
-                opacity: 0.2
-              - entity: sensor.shed_tvoc
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#8A2BE2"
-                opacity: 0.3
-              - entity: sensor.shed_tvoc
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#8A2BE2"
-                opacity: 0.4
-              - entity: sensor.shed_tvoc
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#8A2BE2"
-                opacity: 0.5
-              - entity: sensor.shed_tvoc
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#8A2BE2"
-                opacity: 0.6
-              - entity: sensor.shed_tvoc
-                offset: "-1d"
-                name: Yesterday
-                color: "#8A2BE2"
-                opacity: 0.7
-              - entity: sensor.shed_tvoc
-                name: Today
-                color: "#8A2BE2"
-                opacity: 1
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true

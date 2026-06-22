@@ -194,7 +194,7 @@ cards:
 
   #Thermostat Cards
   - type: grid
-    columns: 2
+    columns: 3
     cards:
       - type: thermostat
         entity: climate.badkamer
@@ -210,6 +210,136 @@ cards:
         entity: climate.slaapkamer
       - type: thermostat
         entity: climate.babykamer
+
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    span:
+      start: day
+    header:
+      show: true
+      title: Climate Room Temperatures Today vs Yesterday
+      show_states: true
+      colorize_states: true
+    now:
+      show: true
+    apex_config:
+      legend:
+        show: false
+    update_interval: 1m
+    yaxis:
+      - min: 14
+        max: 26
+        decimals: 0
+        align_to: 2
+        # apex_config:
+        #   tickAmount: 5
+        #   forceNiceScale: false
+    all_series_config:
+      attribute: current_temperature
+      stroke_width: 2
+      float_precision: 1
+      unit: °C
+      group_by:
+        func: avg
+        duration: 10min
+    series:
+      - entity: climate.badkamer
+        name: Bathroom - Yesterday
+        color: '#FFCE56'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.badkamer
+        name: Bathroom
+        color: '#FFCE56'
+        extend_to: now
+        stroke_width: 4
+
+      - entity: climate.studeerkamer
+        name: Study - Yesterday
+        color: '#32CD32'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.studeerkamer
+        name: Study
+        color: '#32CD32'
+        extend_to: now
+        stroke_width: 4
+
+      - entity: climate.tamara
+        name: Tamara - Yesterday
+        color: '#00CED1'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.tamara
+        name: Tamara
+        color: '#00CED1'
+        extend_to: now
+        stroke_width: 4
+
+      - entity: climate.woonkamer
+        name: Living Room - Yesterday
+        color: '#FF6347'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.woonkamer
+        name: Living Room
+        color: '#FF6347'
+        extend_to: now
+        stroke_width: 4
+
+      - entity: climate.logeerkamer
+        name: Guest Room - Yesterday
+        color: '#FFD700'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.logeerkamer
+        name: Guest Room
+        color: '#FFD700'
+        extend_to: now
+        stroke_width: 4
+
+      - entity: climate.slaapkamer
+        name: Bedroom - Yesterday
+        color: '#4682B4'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.slaapkamer
+        name: Bedroom
+        color: '#4682B4'
+        extend_to: now
+        stroke_width: 4
+
+      - entity: climate.babykamer
+        name: Baby Room - Yesterday
+        color: '#FF69B4'
+        offset: '-1d'
+        opacity: 0.35
+        stroke_dash: 4
+        show:
+          in_header: false
+      - entity: climate.babykamer
+        name: Baby Room
+        color: '#FF69B4'
+        extend_to: now
+        stroke_width: 4
 
   - type: custom:decluttering-card
     template: climate_apexchart
