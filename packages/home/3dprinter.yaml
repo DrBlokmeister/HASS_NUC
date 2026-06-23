@@ -410,9 +410,9 @@ automation:
     id: yaml_automation_3dprinter_bambu_notify_when_bambu_print_is_finished
     description: >
       Sends a phone notification when the Bambu P1S print finishes, including
-      completion timestamp, print duration, and a snapshot/live image from the
-      printer camera.
+      completion timestamp and a camera image from the printer.
     mode: single
+    max_exceeded: silent
     triggers:
       - trigger: state
         entity_id: sensor.blokmeisterp1s_print_status
@@ -423,55 +423,25 @@ automation:
         entity_id: binary_sensor.blokmeisterp1s_online
         state: "on"
     actions:
-      - variables:
-          completion_ts: >
-            {% set end_ts = states('sensor.blokmeisterp1s_end_time') %}
-            {% if end_ts not in ['unknown', 'unavailable', 'none', ''] %}
-              {{ as_timestamp(end_ts) }}
-            {% else %}
-              {{ as_timestamp(now()) }}
-            {% endif %}
-          completion_local: >
-            {% set end_ts = states('sensor.blokmeisterp1s_end_time') %}
-            {% if end_ts not in ['unknown', 'unavailable', 'none', ''] %}
-              {{ as_timestamp(end_ts) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
-            {% else %}
-              {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
-            {% endif %}
-          duration_seconds: >
-            {% set start_ts = states('sensor.blokmeisterp1s_start_time') %}
-            {% set end_ts = states('sensor.blokmeisterp1s_end_time') %}
-            {% if start_ts not in ['unknown', 'unavailable', 'none', '']
-                  and end_ts not in ['unknown', 'unavailable', 'none', ''] %}
-              {{ (as_timestamp(end_ts) - as_timestamp(start_ts)) | int(0) }}
-            {% else %}
-              0
-            {% endif %}
-          duration_human: >
-            {% set s = duration_seconds | int(0) %}
-            {% set h = s // 3600 %}
-            {% set m = (s % 3600) // 60 %}
-            {% if h > 0 %}
-              {{ h }}h {{ m }}m
-            {% else %}
-              {{ m }}m
-            {% endif %}
-          task_name: >
-            {% set name = states('sensor.blokmeisterp1s_task_name') %}
-            {% if name not in ['unknown', 'unavailable', 'none', ''] %}
-              {{ name }}
-            {% else %}
-              Bambu print
-            {% endif %}
-          completion_image: >
-            {{ state_attr('camera.p1s_camera', 'entity_picture') }}
       - service: notify.mobile_app_blokmeisterp9pro
         data:
           title: "3D printer: print finished"
           message: >-
-            <b>{{ task_name }}</b> is done.
-            Completed at <b>{{ completion_local }}</b>.
-            Duration: <b>{{ duration_human }}</b>.
+            <b>
+              {% set name = states('sensor.blokmeisterp1s_task_name') %}
+              {{ name if name not in ['unknown', 'unavailable', 'none', 'None', ''] else 'Bambu print' }}
+            </b>
+            is done.
+
+            Completed at
+            <b>
+              {% set end_time = states('sensor.blokmeisterp1s_end_time') %}
+              {% if end_time not in ['unknown', 'unavailable', 'none', 'None', ''] %}
+                {{ as_timestamp(end_time) | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+              {% else %}
+                {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+              {% endif %}
+            </b>.
           data:
             ttl: 0
             priority: high
@@ -480,8 +450,8 @@ automation:
             tag: bambu_print_finished
             channel: status
             ledColor: "green"
-            clickAction: "/lovelace-default"
-            image: "{{ completion_image }}"
+            clickAction: "/lovelace-default/8"
+            image: "/api/camera_proxy/camera.p1s_camera"
 
   - alias: "[3dprinter|bambu] Notify when Bambu printer reports an error"
     id: yaml_automation_3dprinter_bambu_notify_when_bambu_printer_reports_an_error
