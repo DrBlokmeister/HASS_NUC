@@ -2368,3 +2368,1944 @@ cards:
           - entity: number.override_fan_duration
             name: Override duration
             icon: mdi:fan-clock
+
+  - type: grid
+    title: Average Temps - Last 12h
+    columns: 3
+    square: false
+    cards:
+      - type: custom:mushroom-template-card
+        entity: sensor.baby_room_alphahome_temperature
+        primary: Baby Room
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.baby_room_alphahome_temperature', 'sensor.baby_room_aqm_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.baby_room_aqm_humidity'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.baby_room_aqm_pressure'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:baby-face-outline
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.baby_room_alphahome_temperature', 'sensor.baby_room_aqm_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Baby Room Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Baby Room Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.baby_room_alphahome_temperature
+                        name: AlphaHome
+                        color: "#FF69B4"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.baby_room_aqm_temperature
+                        name: AQM
+                        color: "#FF69B4"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Baby Room Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.baby_room_aqm_humidity
+                        name: AQM
+                        color: "#FF69B4"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Baby Room Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.baby_room_aqm_pressure
+                        name: AQM
+                        color: "#FF69B4"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.bathroom_alphahome_temperature
+        primary: Bathroom
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.bathroom_alphahome_temperature', 'sensor.temperature_bathroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.humidity_bathroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.pressure_bathroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:shower
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.bathroom_alphahome_temperature', 'sensor.temperature_bathroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Bathroom Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Bathroom Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.bathroom_alphahome_temperature
+                        name: AlphaHome
+                        color: "#FFCE56"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.temperature_bathroom
+                        name: Bathroom
+                        color: "#FFCE56"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Bathroom Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.humidity_bathroom
+                        name: Bathroom
+                        color: "#FFCE56"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Bathroom Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.pressure_bathroom
+                        name: Bathroom
+                        color: "#FFCE56"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.bedroom_alphahome_temperature
+        primary: Bedroom
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.bedroom_alphahome_temperature', 'sensor.bedroom_aqm_temperature', 'sensor.temperature_bedroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.bedroom_aqm_humidity', 'sensor.humidity_bedroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.bedroom_aqm_pressure', 'sensor.pressure_bedroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:bed-king-outline
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.bedroom_alphahome_temperature', 'sensor.bedroom_aqm_temperature', 'sensor.temperature_bedroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Bedroom Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Bedroom Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.bedroom_alphahome_temperature
+                        name: AlphaHome
+                        color: "#4682B4"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.bedroom_aqm_temperature
+                        name: AQM
+                        color: "#4682B4"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.temperature_bedroom
+                        name: Bedroom
+                        color: "#4682B4"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Bedroom Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.bedroom_aqm_humidity
+                        name: AQM
+                        color: "#4682B4"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.humidity_bedroom
+                        name: Bedroom
+                        color: "#4682B4"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Bedroom Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.bedroom_aqm_pressure
+                        name: AQM
+                        color: "#4682B4"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.pressure_bedroom
+                        name: Bedroom
+                        color: "#4682B4"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.guestroom_alphahome_temperature
+        primary: Guest Room
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.guestroom_alphahome_temperature', 'sensor.guest_room_aqm_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.guest_room_aqm_humidity'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.guest_room_aqm_pressure'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:bed-outline
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.guestroom_alphahome_temperature', 'sensor.guest_room_aqm_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Guest Room Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Guest Room Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.guestroom_alphahome_temperature
+                        name: AlphaHome
+                        color: "#FFD700"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.guest_room_aqm_temperature
+                        name: AQM
+                        color: "#FFD700"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Guest Room Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.guest_room_aqm_humidity
+                        name: AQM
+                        color: "#FFD700"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Guest Room Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.guest_room_aqm_pressure
+                        name: AQM
+                        color: "#FFD700"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.living_room_alphahome_temperature
+        primary: Living Room
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.living_room_alphahome_temperature', 'sensor.living_room_aqm_temperature', 'sensor.temperature_livingroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.living_room_aqm_humidity', 'sensor.humidity_livingroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.living_room_aqm_pressure', 'sensor.livingroom_pressure'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:sofa-outline
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.living_room_alphahome_temperature', 'sensor.living_room_aqm_temperature', 'sensor.temperature_livingroom'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Living Room Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Living Room Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.living_room_alphahome_temperature
+                        name: AlphaHome
+                        color: "#FF6347"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.living_room_aqm_temperature
+                        name: AQM
+                        color: "#FF6347"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.temperature_livingroom
+                        name: Living Room
+                        color: "#FF6347"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Living Room Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.living_room_aqm_humidity
+                        name: AQM
+                        color: "#FF6347"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.humidity_livingroom
+                        name: Living Room
+                        color: "#FF6347"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Living Room Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.living_room_aqm_pressure
+                        name: AQM
+                        color: "#FF6347"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.livingroom_pressure
+                        name: Living Room
+                        color: "#FF6347"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.study_alphahome_temperature
+        primary: Study
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.study_alphahome_temperature', 'sensor.study_aqm_temperature', 'sensor.study_multi_sensor_2_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.study_aqm_humidity', 'sensor.study_multi_sensor_2_humidity'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.study_aqm_pressure', 'sensor.study_multi_sensor_2_pressure'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:desk
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.study_alphahome_temperature', 'sensor.study_aqm_temperature', 'sensor.study_multi_sensor_2_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Study Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Study Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.study_alphahome_temperature
+                        name: AlphaHome
+                        color: "#32CD32"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.study_aqm_temperature
+                        name: AQM
+                        color: "#32CD32"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.study_multi_sensor_2_temperature
+                        name: Multi
+                        color: "#32CD32"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Study Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.study_aqm_humidity
+                        name: AQM
+                        color: "#32CD32"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.study_multi_sensor_2_humidity
+                        name: Multi
+                        color: "#32CD32"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Study Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.study_aqm_pressure
+                        name: AQM
+                        color: "#32CD32"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.study_multi_sensor_2_pressure
+                        name: Multi
+                        color: "#32CD32"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.tamaras_room_alphahome_temperature
+        primary: Tamara's Room
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.tamaras_room_alphahome_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in [] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in [] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:home-heart
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.tamaras_room_alphahome_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Tamara's Room Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Tamara's Room Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.tamaras_room_alphahome_temperature
+                        name: AlphaHome
+                        color: "#BA68C8"
+                        stroke_dash: 6
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.temperature_outside
+        primary: Outside
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.temperature_outside', 'sensor.shed_aqm_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.humidity_outside', 'sensor.shed_aqm_humidity'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.pressure_outside', 'sensor.shed_aqm_pressure'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:weather-partly-cloudy
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.temperature_outside', 'sensor.shed_aqm_temperature'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Outside Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Outside Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.temperature_outside
+                        name: Outside
+                        color: "#8A2BE2"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.shed_aqm_temperature
+                        name: Shed AQM
+                        color: "#8A2BE2"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Outside Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.humidity_outside
+                        name: Outside
+                        color: "#8A2BE2"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.shed_aqm_humidity
+                        name: Shed AQM
+                        color: "#8A2BE2"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Outside Pressure - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~980
+                        max: ~1040
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "hPa"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.pressure_outside
+                        name: Outside
+                        color: "#8A2BE2"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                      - entity: sensor.shed_aqm_pressure
+                        name: Shed AQM
+                        color: "#8A2BE2"
+                        stroke_dash: 0
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.temperature_utility_cabinet
+        primary: Utility Room
+        secondary: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.temperature_utility_cabinet'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%} · {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.humidity_utility_cabinet'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+          {{ '\n' }}{%- set ns = namespace(values=[]) -%}
+          {%- for e in [] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count > 0 -%}
+            {{ (ns.values | sum / (ns.values | count)) | round(0) }} hPa
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:countertop-outline
+        icon_color: >-
+          {%- set ns = namespace(values=[]) -%}
+          {%- for e in ['sensor.temperature_utility_cabinet'] -%}
+            {%- set s = states(e) -%}
+            {%- if s not in ['unknown', 'unavailable', 'none', 'None', ''] and s | is_number -%}
+              {%- set ns.values = ns.values + [s | float] -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.values | count == 0 -%}
+            grey
+          {%- else -%}
+            {%- set t = ns.values | sum / (ns.values | count) -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Utility Room Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Utility Room Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.temperature_utility_cabinet
+                        name: Utility
+                        color: "#4BC0C0"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Utility Room Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.humidity_utility_cabinet
+                        name: Utility
+                        color: "#4BC0C0"
+                        stroke_dash: 2
+                        show:
+                          in_header: true
+                          legend_value: false
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 92px;
+            }
+            mushroom-state-info {
+              --card-primary-font-size: 15px;
+              --card-secondary-font-size: 13px;
+              --card-secondary-line-height: 1.35;
+            }
