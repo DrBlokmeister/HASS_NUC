@@ -1054,3 +1054,137 @@ esphome_update_group_card:
         ha-card {
           min-height: 116px;
         }
+
+
+##########################
+## CO2 POP-UP GRID CARD ##
+##########################
+co2_pop_up_grid_card:
+  card:
+    type: custom:mushroom-template-card
+    entity: '[[entity_id]]'
+    primary: '[[title]]'
+    secondary: >-
+      {%- set v = states('[[entity_id]]') -%}
+      {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+        Unavailable
+      {%- else -%}
+        {{ v | float(0) | round(0) | int }} ppm
+      {%- endif -%}
+    icon: mdi:molecule-co2
+    icon_color: >-
+      {%- set v = states('[[entity_id]]') -%}
+      {%- set co2 = v | float(0) -%}
+      {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+        grey
+      {%- elif co2 < 700 -%}
+        green
+      {%- elif co2 < 900 -%}
+        yellow
+      {%- elif co2 < 1200 -%}
+        orange
+      {%- else -%}
+        red
+      {%- endif -%}
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[title]] CO₂'
+          content:
+            type: custom:apexcharts-card
+            graph_span: 24h
+            span:
+              start: day
+            header:
+              show: true
+              title: '[[title]] CO₂'
+              show_states: true
+              colorize_states: true
+            now:
+              show: true
+            chart_type: line
+            update_interval: 1m
+            apex_config:
+              chart:
+                height: 320px
+              legend:
+                show: false
+              grid:
+                borderColor: rgba(255, 255, 255, 0.08)
+              tooltip:
+                shared: true
+              stroke:
+                curve: smooth
+            yaxis:
+              - min: 400
+                max: ~1000
+                decimals: 0
+                align_to: 200
+                apex_config:
+                  tickAmount: 4
+                  forceNiceScale: true
+            all_series_config:
+              stroke_width: 2
+              float_precision: 0
+              transform: "return Math.round(x);"
+              unit: ppm
+              fill_raw: last
+              group_by:
+                func: avg
+                duration: 15min
+              show:
+                in_header: false
+                legend_value: false
+                name_in_header: false
+                offset_in_name: false
+            series:
+              - entity: '[[entity_id]]'
+                offset: "-6d"
+                name: 6 Days Ago
+                color: "#8F9499"
+                opacity: 0.16
+              - entity: '[[entity_id]]'
+                offset: "-5d"
+                name: 5 Days Ago
+                color: "#8996A3"
+                opacity: 0.20
+              - entity: '[[entity_id]]'
+                offset: "-4d"
+                name: 4 Days Ago
+                color: "#819BB3"
+                opacity: 0.25
+              - entity: '[[entity_id]]'
+                offset: "-3d"
+                name: 3 Days Ago
+                color: "#75A2C7"
+                opacity: 0.32
+              - entity: '[[entity_id]]'
+                offset: "-2d"
+                name: 2 Days Ago
+                color: "#66A9DB"
+                opacity: 0.42
+              - entity: '[[entity_id]]'
+                offset: "-1d"
+                name: Yesterday
+                color: "#58B0EE"
+                opacity: 0.58
+              - entity: '[[entity_id]]'
+                name: Today
+                color: "#4682B4"
+                opacity: 1
+                stroke_width: 4
+                extend_to: now
+                show:
+                  in_header: true
+                  legend_value: true
+                  name_in_header: false
+    hold_action:
+      action: more-info
+    card_mod:
+      style: |
+        ha-card {
+          min-height: 56px;
+          --icon-size: 28px;
+        }
