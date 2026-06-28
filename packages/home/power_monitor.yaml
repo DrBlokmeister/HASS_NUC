@@ -104,9 +104,9 @@ template:
         unique_id: yaml_template_sensor_net_power_usage
         default_entity_id: sensor.net_power_usage
         icon: mdi:flash
-        unit_of_measurement: 'kW'
+        unit_of_measurement: "kW"
         state: >-
-          {{ states( 'sensor.electricity_meter_power_consumption' ) | float(0) - states( 'sensor.electricity_meter_power_production' ) | float(0) }}
+          {{ states('sensor.electricity_meter_power_consumption') | float(0) - states('sensor.electricity_meter_power_production') | float(0) }}
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Electricity Meter Power (W)"
         unique_id: yaml_template_sensor_electricity_meter_power_watt
@@ -129,9 +129,9 @@ template:
         unit_of_measurement: "W"
         state: >-
           {% if states('sensor.pv_power')|is_number %}
-            {{ (states('sensor.electricity_meter_power_consumption') | float(0) - states('sensor.electricity_meter_power_production') | float(0) + states('sensor.pv_power') | float(0)/1000)*1000 }}
+            {{ (states('sensor.electricity_meter_power_consumption') | float(0) - states('sensor.electricity_meter_power_production') | float(0) + states('sensor.pv_power') | float(0) / 1000) * 1000 }}
           {% else %}
-            {{ (states('sensor.electricity_meter_power_consumption') | float(0) - states('sensor.electricity_meter_power_production') | float(0))*1000 }}
+            {{ (states('sensor.electricity_meter_power_consumption') | float(0) - states('sensor.electricity_meter_power_production') | float(0)) * 1000 }}
           {% endif %}
         availability: "{{ states('sensor.electricity_meter_power_consumption')|is_number and states('sensor.electricity_meter_power_production')|is_number }}"
       - name: "Total Power Consumption (kW)"
@@ -139,7 +139,7 @@ template:
         default_entity_id: sensor.total_power_consumption_kilowatt
         icon: mdi:flash-outline
         unit_of_measurement: "kW"
-        state: "{{ states('sensor.total_power_consumption_watt') | float(0)/1000 }}"
+        state: "{{ states('sensor.total_power_consumption_watt') | float(0) / 1000 }}"
         availability: "{{ states('sensor.total_power_consumption_watt')|is_number }}"
       - name: "Average Electricity Price Today"
         unique_id: yaml_template_sensor_average_electricity_price_today
@@ -147,9 +147,9 @@ template:
         unit_of_measurement: "€/kWh"
         state: >-
           {% if now().hour == 0 and now().minute < 15 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price') | float(0) | round(3) }}
           {% else %}
-            {{ (states('sensor.total_electricity_cost_daily_energy_use')|float(0) / states('sensor.daily_energy_use')|float(1))|round(3) }}
+            {{ (states('sensor.total_electricity_cost_daily_energy_use') | float(0) / states('sensor.daily_energy_use') | float(1)) | round(3) }}
           {% endif %}
         availability: >-
           {{
@@ -163,9 +163,9 @@ template:
         unit_of_measurement: "€/kWh"
         state: >-
           {% if now().weekday() == 0 and now().hour == 0 and now().minute < 15 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price') | float(0) | round(3) }}
           {% else %}
-            {{ (states('sensor.total_electricity_cost_weekly_energy_use')|float(0) / states('sensor.weekly_energy_use')|float(1))|round(3) }}
+            {{ (states('sensor.total_electricity_cost_weekly_energy_use') | float(0) / states('sensor.weekly_energy_use') | float(1)) | round(3) }}
           {% endif %}
         availability: >-
           {{
@@ -179,9 +179,9 @@ template:
         unit_of_measurement: "€/kWh"
         state: >-
           {% if now().day == 1 and now().hour == 0 and now().minute < 15 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price') | float(0) | round(3) }}
           {% else %}
-            {{ (states('sensor.total_electricity_cost_monthly_energy_use')|float(0) / states('sensor.monthly_energy_use')|float(1))|round(3) }}
+            {{ (states('sensor.total_electricity_cost_monthly_energy_use') | float(0) / states('sensor.monthly_energy_use') | float(1)) | round(3) }}
           {% endif %}
         availability: >-
           {{
@@ -195,9 +195,9 @@ template:
         unit_of_measurement: "€/kWh"
         state: >-
           {% if now().month == 1 and now().day == 1 and now().hour == 0 and now().minute < 15 %}
-            {{ states('sensor.nordpool_energy_price')|float(0)|round(3) }}
+            {{ states('sensor.nordpool_energy_price') | float(0) | round(3) }}
           {% else %}
-            {{ (states('sensor.total_electricity_cost_yearly_energy_use')|float(0) / states('sensor.yearly_energy_use')|float(1))|round(3) }}
+            {{ (states('sensor.total_electricity_cost_yearly_energy_use') | float(0) / states('sensor.yearly_energy_use') | float(1)) | round(3) }}
           {% endif %}
         availability: >-
           {{
@@ -209,9 +209,9 @@ template:
         unique_id: yaml_template_sensor_heatpump_tapwater_power_estimate
         unit_of_measurement: "W"
         state: >-
-          {% if is_state('binary_sensor.heatpump_tapwater_recirculation_pump', 'on')%}
+          {% if is_state('binary_sensor.heatpump_tapwater_recirculation_pump', 'on') %}
             {% if (255.5 + (states('sensor.heatpump_tapwater_temperature') | float(0) * 16.66)) > (states('sensor.electricity_meter_power_consumption_phase_l2') | float(0) * 1000) %}
-              {{ states('sensor.electricity_meter_power_consumption_phase_l2') | float(0)*1000 }}
+              {{ states('sensor.electricity_meter_power_consumption_phase_l2') | float(0) * 1000 }}
             {% else %}
               {{ 255.5 + (states('sensor.heatpump_tapwater_temperature') | float(0) * 16.66) }}
             {% endif %}
@@ -225,7 +225,7 @@ template:
         state: >-
           {% if is_state('binary_sensor.heatpump_additional_circulation_pump', 'on') and is_state('binary_sensor.heatpump_tapwater_recirculation_pump', 'off') %}
             {% if (-1323.9 + (states('sensor.heatpump_hot_gas_temperature') | float(0) * 38.59)) > (states('sensor.electricity_meter_power_consumption_phase_l2') | float(0) * 1000) %}
-              {{ states('sensor.electricity_meter_power_consumption_phase_l2') | float(0)*1000 }}
+              {{ states('sensor.electricity_meter_power_consumption_phase_l2') | float(0) * 1000 }}
             {% elif (-1323.9 + (states('sensor.heatpump_hot_gas_temperature') | float(0) * 38.59)) < 0 %}
               0
             {% else %}
@@ -244,47 +244,47 @@ template:
           {% elif is_state('sensor.heatpump_status', 'heating') %}
             0
           {% else %}
-            {{ (states('sensor.shelly_heat_pump_power') | float(0))/2 }}
+            {{ (states('sensor.shelly_heat_pump_power') | float(0)) / 2 }}
           {% endif %}
         availability: "{{ states('sensor.shelly_heat_pump_power')|is_number }}"
       - name: Heatpump Heating Power
         unique_id: yaml_template_sensor_heatpump_heating_power
         unit_of_measurement: "W"
         state: >-
-          {% if is_state('sensor.heatpump_status', 'heating')%}
+          {% if is_state('sensor.heatpump_status', 'heating') %}
             {{ states('sensor.shelly_heat_pump_power') }}
           {% elif is_state('sensor.heatpump_status', 'hot_water') or is_state('sensor.heatpump_status', 'domestic water') %}
             0
           {% else %}
-            {{ (states('sensor.shelly_heat_pump_power') | float(0))/2 }}
+            {{ (states('sensor.shelly_heat_pump_power') | float(0)) / 2 }}
           {% endif %}
         availability: "{{ states('sensor.shelly_heat_pump_power')|is_number }}"
       - name: "Current Electricity Cost per Hour"
         #unique_id: yaml_template_sensor_current_electricity_cost_per_hour
         icon: mdi:currency-eur
         unit_of_measurement: "€/h"
-        state: "{{ ((states('sensor.total_power_consumption_watt') | float(0))/1000 * states('sensor.nordpool_energy_price') | float(0)) | round(3) }}"
+        state: "{{ ((states('sensor.total_power_consumption_watt') | float(0)) / 1000 * states('sensor.nordpool_energy_price') | float(0)) | round(3) }}"
         availability: "{{ states('sensor.total_power_consumption_watt')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
       - name: "Potential Electricity Usage Cost (Lowest Price)"
         #unique_id: yaml_template_sensor_potential_electricity_usage_cost_lowest_price
         default_entity_id: sensor.potential_electricity_usage_cost_lowest_price
         icon: mdi:currency-eur
         unit_of_measurement: "€"
-        state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'min') | float(0) ) | round(3) }}"
+        state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'min') | float(0)) | round(3) }}"
         availability: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'min')|is_number }}"
       - name: "Potential Electricity Usage Cost (Highest Price)"
         #unique_id: yaml_template_sensor_potential_electricity_usage_cost_highest_price
         default_entity_id: sensor.potential_electricity_usage_cost_highest_price
         icon: mdi:currency-eur
         unit_of_measurement: "€"
-        state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'max') | float(0) ) | round(3) }}"
+        state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'max') | float(0)) | round(3) }}"
         availability: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'max')|is_number }}"
       - name: "Potential Electricity Usage Cost (Mean Price)"
         #unique_id: yaml_template_sensor_potential_electricity_usage_cost_mean_price
         default_entity_id: sensor.potential_electricity_usage_cost_mean_price
         icon: mdi:currency-eur
         unit_of_measurement: "€"
-        state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'mean') | float(0) ) | round(3) }}"
+        state: "{{ (states('sensor.daily_energy_use') | float(0) * state_attr('sensor.nordpool_energy_price', 'mean') | float(0)) | round(3) }}"
         availability: "{{ states('sensor.daily_energy_use')|is_number and state_attr('sensor.nordpool_energy_price', 'mean')|is_number }}"
       - name: "Solar Panels Production Earnings per Hour"
         unique_id: yaml_template_sensor_solar_panel_benefit_hourly
@@ -307,7 +307,7 @@ template:
         unique_id: yaml_template_sensor_net_electricity_cost_per_hour
         icon: mdi:currency-eur
         unit_of_measurement: "€/h"
-        state: "{{ (states('sensor.current_electricity_cost_per_hour')|float(0) - states('sensor.solar_panels_production_earnings_hourly')|float(0))|round(3) }}"
+        state: "{{ (states('sensor.current_electricity_cost_per_hour') | float(0) - states('sensor.solar_panels_production_earnings_hourly') | float(0)) | round(3) }}"
         availability: "{{ states('sensor.current_electricity_cost_per_hour')|is_number and states('sensor.solar_panels_production_earnings_hourly')|is_number }}"
       - name: "Unknown Electricity Cost per Hour"
         unique_id: yaml_template_sensor_unknown_power_energy_cost_hourly
@@ -327,6 +327,12 @@ template:
         unit_of_measurement: "€/h"
         state: "{{ (states('sensor.plug_3d_printer_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
         availability: "{{ states('sensor.plug_3d_printer_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+      - name: "Plug Air Conditioner Electricity Cost per Hour"
+        unique_id: yaml_template_sensor_plug_air_conditioner_electricity_cost_per_hour
+        icon: mdi:currency-eur
+        unit_of_measurement: "€/h"
+        state: "{{ (states('sensor.plug_air_conditioner_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
+        availability: "{{ states('sensor.plug_air_conditioner_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
       - name: "Blitzwolf Ambilight Amplifier Electricity Cost per Hour"
         unique_id: yaml_template_sensor_blitzwolf_ambilight_amplifier_energy_cost_hourly
         icon: mdi:currency-eur
@@ -339,12 +345,30 @@ template:
         unit_of_measurement: "€/h"
         state: "{{ (states('sensor.plug_study_desk_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
         availability: "{{ states('sensor.plug_study_desk_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+      - name: "Plug Bare Computer Electricity Cost per Hour"
+        unique_id: yaml_template_sensor_plug_bare_computer_electricity_cost_per_hour
+        icon: mdi:currency-eur
+        unit_of_measurement: "€/h"
+        state: "{{ (states('sensor.plug_computer_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
+        availability: "{{ states('sensor.plug_computer_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
       - name: "Blitzwolf Dishwasher Electricity Cost per Hour"
         unique_id: yaml_template_sensor_blitzwolf_dishwasher_energy_cost_hourly
         icon: mdi:currency-eur
         unit_of_measurement: "€/h"
         state: "{{ (states('sensor.plug_dishwasher_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
         availability: "{{ states('sensor.plug_dishwasher_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+      - name: "Plug Electric Bike Electricity Cost per Hour"
+        unique_id: yaml_template_sensor_plug_electric_bike_electricity_cost_per_hour
+        icon: mdi:currency-eur
+        unit_of_measurement: "€/h"
+        state: "{{ (states('sensor.plug_electric_bike_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
+        availability: "{{ states('sensor.plug_electric_bike_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
+      - name: "Plug Epaper AP Electricity Cost per Hour"
+        unique_id: yaml_template_sensor_plug_epaper_ap_electricity_cost_per_hour
+        icon: mdi:currency-eur
+        unit_of_measurement: "€/h"
+        state: "{{ (states('sensor.plug_epaper_ap_power') | float(0) * states('sensor.nordpool_energy_price') | float(0)) / 1000 }}"
+        availability: "{{ states('sensor.plug_epaper_ap_power')|is_number and states('sensor.nordpool_energy_price')|is_number }}"
       - name: "Blitzwolf NAS Electricity Cost per Hour"
         unique_id: yaml_template_sensor_blitzwolf_nas_energy_cost_hourly
         icon: mdi:currency-eur
@@ -457,11 +481,12 @@ template:
         unique_id: yaml_template_solar_panel_power_production_available
         unit_of_measurement: "W"
         state: >-
-          {% if states('sensor.pv_power') in ['unavailable', 'uknown', None] %}
+          {% if states('sensor.pv_power') in ['unavailable', 'unknown', None] %}
             0
           {% else %}
             {{ states('sensor.pv_power') }}
           {% endif %}
+        availability: "{{ true }}"
 #######################
 #    INPUT NUMBERS    #
 #######################
@@ -591,6 +616,35 @@ sensor:
     unit_time: h
     method: left
     round: 2
+  - platform: integration
+    source: sensor.plug_air_conditioner_electricity_cost_per_hour
+    name: Plug Air Conditioner Total Electricity Cost
+    unique_id: yaml_integration_plug_air_conditioner_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.plug_bare_computer_electricity_cost_per_hour
+    name: Plug Bare Computer Total Electricity Cost
+    unique_id: yaml_integration_plug_bare_computer_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.plug_electric_bike_electricity_cost_per_hour
+    name: Plug Electric Bike Total Electricity Cost
+    unique_id: yaml_integration_plug_electric_bike_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+  - platform: integration
+    source: sensor.plug_epaper_ap_electricity_cost_per_hour
+    name: Plug Epaper AP Total Electricity Cost
+    unique_id: yaml_integration_plug_epaper_ap_total_electricity_cost
+    unit_time: h
+    method: left
+    round: 2
+
 
   - platform: integration
     source: sensor.all_lights_power_estimate_electricity_cost_per_hour
@@ -818,18 +872,20 @@ sensor:
     round_digits: 0
     type: sum
     entity_ids:
-      - sensor.plug_10gb_switch_power #in W
-      - sensor.plug_3d_printer_power #in W
-      - sensor.plug_study_desk_power #in W
-      - sensor.plug_study_workbench_power
-      - sensor.plug_nas_power #in W
-      - sensor.plug_washing_machine_power #in W
-      - sensor.plug_watercooker_power #in W
+      - sensor.plug_10gb_switch_power # in W
+      - sensor.plug_3d_printer_power # in W
+      - sensor.plug_study_desk_power # in W
+      - sensor.plug_air_conditioner_power # in W
+      - sensor.plug_study_workbench_power # in W
+      - sensor.plug_nas_power # in W
+      - sensor.plug_washing_machine_power # in W
+      - sensor.plug_watercooker_power # in W
+      - sensor.plug_tv_power # in W
       - sensor.moeke_power_estimate
       - sensor.alfred_power_estimate
       - sensor.argus_power_estimate
-      - sensor.blitzwolf_ambilight_amplifier_power
-      - sensor.plug_tv_power
+      - sensor.blitzwolf_ambilight_amplifier_power # in W
+      - sensor.plug_electric_bike_power
 
   - platform: min_max
     name: Phase 2 Known Power
@@ -837,7 +893,7 @@ sensor:
     round_digits: 0
     type: sum
     entity_ids:
-      - sensor.plug_dishwasher_power
+      - sensor.plug_dishwasher_power # in W
       - sensor.shelly_heat_pump_power #Heatpump
 
   - platform: min_max
@@ -846,11 +902,17 @@ sensor:
     round_digits: 0
     type: sum
     entity_ids:
-      - sensor.plug_poe_switch_power
-      - sensor.plug_router_power
-      - sensor.plug_nuc_power
+      - sensor.plug_poe_switch_power # in W
+      - sensor.plug_router_power # in W
+      - sensor.plug_nuc_power # in W
       - sensor.ventilation_power_estimate
-      - sensor.blitzwolf_heatpump_power
+      - sensor.blitzwolf_heatpump_power # in W
+      - sensor.plug_oven_power
+
+  # Plug power entities without a known phase assignment yet:
+  # - sensor.plug_computer_power
+  # - sensor.plug_electric_car_power
+  # - sensor.plug_epaper_ap_power
 
   - platform: min_max
     name: Shelly PM Lights Power
@@ -887,24 +949,29 @@ sensor:
 # Voltage groups
   - platform: group
     name: Phase 1 Voltage
-    #unique_id: phase_1_voltage
+    unique_id: yaml_sensor_group_phase_1_voltage
     type: median
     ignore_non_numeric: true
     device_class: voltage
     entities:
       - sensor.plug_10gb_switch_voltage
       - sensor.plug_3d_printer_voltage
+      - sensor.plug_air_conditioner_voltage
       - sensor.plug_study_desk_voltage
+      - sensor.plug_computer_voltage
       - sensor.plug_study_workbench_voltage
+      - sensor.plug_epaper_ap_voltage
       - sensor.plug_nas_voltage
       - sensor.plug_washing_machine_voltage
       - sensor.plug_watercooker_voltage
       - sensor.blitzwolf_ambilight_amplifier_voltage
       - sensor.plug_tv_voltage
+      - sensor.plug_electric_car_voltage
+      - sensor.plug_electric_bike_voltage
 
   - platform: group
     name: Phase 2 Voltage
-    #unique_id: phase_2_voltage
+    unique_id: yaml_sensor_group_phase_2_voltage
     type: median
     ignore_non_numeric: true
     device_class: voltage
@@ -914,7 +981,7 @@ sensor:
 
   - platform: group
     name: Phase 3 Voltage
-    #unique_id: phase_3_voltage
+    unique_id: yaml_sensor_group_phase_3_voltage
     type: median
     ignore_non_numeric: true
     device_class: voltage
@@ -922,6 +989,8 @@ sensor:
       - sensor.plug_poe_switch_voltage
       - sensor.plug_router_voltage
       - sensor.plug_nuc_voltage
+      - sensor.plug_heat_pump_voltage
+      - sensor.plug_oven_voltage
 
   - platform: group
     name: Shelly Voltage
@@ -1428,6 +1497,7 @@ group:
       - sensor.plug_3d_printer_power
       - sensor.plug_dishwasher_power
       - sensor.plug_electric_car_power
+      - sensor.plug_electric_bike_power
       # - sensor.plug_epaper_ap_power # This is already included through the study workbench
       - sensor.plug_nas_power
       - sensor.plug_nuc_power
@@ -1439,6 +1509,7 @@ group:
       - sensor.plug_washing_machine_power
       - sensor.plug_watercooker_power
       - sensor.plug_oven_power
+      - sensor.plug_air_conditioner_power
 
       - sensor.blitzwolf_ambilight_amplifier_power
       - sensor.blitzwolf_heatpump_power
