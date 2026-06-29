@@ -2779,7 +2779,7 @@ class ParitySpeedSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
     """Parity check speed sensor (disabled by default)."""
 
     _attr_translation_key = "parity_speed"
-    _attr_native_unit_of_measurement = "MiB/s"
+    _attr_native_unit_of_measurement = "MB/s"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -2801,7 +2801,7 @@ class ParitySpeedSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
 
     @property
     def native_value(self) -> float | None:
-        """Return current parity check speed in MiB/s."""
+        """Return current parity check speed in MB/s."""
         data: UnraidStorageData | None = self.coordinator.data
         if data is None or data.parity_status is None:
             return None
@@ -2813,9 +2813,7 @@ class ParitySpeedSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
             speed_val = float(speed)
         except (TypeError, ValueError):
             return None
-        # Unraid GraphQL API returns parityCheckStatus.speed already as
-        # MB/s-ish value, e.g. "164" for 164 MB/s.
-        # Do not divide by 1024 * 1024 here.
+        # API reports parity speed directly in MB/s
         return round(speed_val, 1)
 
     @property
