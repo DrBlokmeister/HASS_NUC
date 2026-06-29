@@ -1341,7 +1341,6 @@ automation:
             tag: electricity_trend_update
             clickAction: "/lovelace-default/9"
 
-
   - alias: "[home|electricityprice] Send electricity price graph daily"
     id: yaml_automation_home_electricityprice_send_electricity_price_graph_daily
     description: "Every day at 15:00: download puppet-rendered Lovelace graph image and push it to the phone."
@@ -1355,98 +1354,113 @@ automation:
         http://10.0.0.252:10000/lovelace-separate-graphs/0?viewport=625x530&rotate=0&zoom=1.22&wait=7000&dark
       attachment_url: "/local/downloads/electricity_price_tomorrow.png"
     action:
-      - action: downloader.download_file
-        data:
-          overwrite: true
-          url: "{{ screenshot_url }}"
-          filename: "{{ filename }}"
-      - wait_for_trigger:
-          - platform: event
-            event_type: downloader_download_completed
-            event_data:
-              filename: electricity_price_tomorrow.png
-          - platform: event
-            event_type: downloader_download_failed
-            event_data:
-              filename: electricity_price_tomorrow.png
-        timeout: "00:00:30"
-        continue_on_timeout: true
-      - delay:
-          seconds: 2
       - choose:
           - conditions:
               - condition: state
                 entity_id: sensor.nordpool_energy_price
                 state:
-                  - 'unavailable'
-                  - 'unknown'
-                  - 'none'
-                  - ''
+                  - "unavailable"
+                  - "unknown"
+                  - "none"
+                  - ""
             sequence:
               - action: notify.mobile_app_blokmeisterp9pro
                 data:
                   title: "Error: Electricity Price Tomorrow"
-                  message: "Nordpool price sensor is unavailable, so there’s nothing sane to graph."
+                  message: >-
+                    Tried to send tomorrow's electricity price graph, but the
+                    Nordpool price sensor is unavailable.
                   data:
+                    ttl: 0
+                    priority: high
                     tag: "electricity_price_graph"
                     channel: "Energy"
               - stop: "Nordpool sensor unavailable"
           - conditions:
-              - condition: state
-                entity_id: sensor.nordpool_energy_price
-                attribute: tomorrow_valid
-                state: 'false'
+              - condition: template
+                value_template: >-
+                  {{ state_attr('sensor.nordpool_energy_price', 'tomorrow_valid') is sameas false }}
             sequence:
               - action: notify.mobile_app_blokmeisterp9pro
                 data:
                   title: "Error: Electricity Price Tomorrow"
-                  message: "Tomorrow’s Nordpool prices are not valid yet (tomorrow_valid=false)."
+                  message: >-
+                    Tried to send tomorrow's electricity price graph, but
+                    tomorrow's Nordpool prices are not available yet.
                   data:
                     ttl: 0
                     priority: high
                     tag: "electricity_price_graph"
                     channel: "Energy"
               - stop: "Tomorrow prices not valid"
-          - conditions:
-              - condition: template
-                value_template: >-
-                  {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_completed' }}
-            sequence:
-              - action: notify.mobile_app_blokmeisterp9pro
+      - parallel:
+          - sequence: # Start the file download from the puppet endpoint after a 500ms delay so the event listener has time to start as well.
+              - delay:
+                  milliseconds: 500
+              - action: downloader.download_file
+                continue_on_error: true
                 data:
-                  title: "Electricity Price Tomorrow"
-                  message: "Tomorrow's Electricity Graph"
-                  data:
-                    ttl: 0
-                    priority: high
-                    image: "{{ attachment_url }}"
-                    tag: "electricity_price_graph"
-                    channel: "Energy"
-          - conditions:
-              - condition: template
-                value_template: >-
-                  {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_failed' }}
-            sequence:
-              - action: notify.mobile_app_blokmeisterp9pro
-                data:
-                  title: "Error: Electricity price Tomorrow"
-                  message: "Electricity price graph download failed (puppet endpoint didn’t deliver)."
-                  data:
-                    ttl: 0
-                    priority: high
-                    tag: "electricity_price_graph"
-                    channel: "Energy"
-        default:
-          - action: notify.mobile_app_blokmeisterp9pro
-            data:
-              title: "Error: Electricity price Tomorrow"
-              message: "Timed out waiting for the electricity price graph to finish."
-              data:
-                ttl: 0
-                priority: high
-
-                tag: "electricity_price_graph"
-                channel: "Energy"
+                  overwrite: true
+                  url: "{{ screenshot_url }}"
+                  filename: "{{ filename }}"
+          - sequence: # Listen in parallel for the download result event, and continue after either a success or failure event, or after a 30 second timeout.
+              - wait_for_trigger:
+                  - platform: event
+                    event_type: downloader_download_completed
+                    event_data:
+                      filename: electricity_price_tomorrow.png
+                  - platform: event
+                    event_type: downloader_download_failed
+                    event_data:
+                      filename: electricity_price_tomorrow.png
+                timeout: "00:00:30"
+                continue_on_timeout: true
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_completed' }}
+                    sequence:
+                      - delay:
+                          seconds: 1
+                      - action: notify.mobile_app_blokmeisterp9pro
+                        data:
+                          title: "Electricity Price Tomorrow"
+                          message: "Tomorrow's Electricity Graph"
+                          data:
+                            ttl: 0
+                            priority: high
+                            image: "{{ attachment_url }}"
+                            tag: "electricity_price_graph"
+                            channel: "Energy"
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {{ wait.trigger and wait.trigger.event.event_type == 'downloader_download_failed' }}
+                    sequence:
+                      - action: notify.mobile_app_blokmeisterp9pro
+                        data:
+                          title: "Error: Electricity Price Tomorrow"
+                          message: >-
+                            Tried to send tomorrow's electricity price graph,
+                            but the downloader reported a failed download.
+                          data:
+                            ttl: 0
+                            priority: high
+                            tag: "electricity_price_graph"
+                            channel: "Energy"
+                default:
+                  - action: notify.mobile_app_blokmeisterp9pro
+                    data:
+                      title: "Error: Electricity Price Tomorrow"
+                      message: >-
+                        Tried to send tomorrow's electricity price graph, but
+                        timed out waiting for the downloader result.
+                      data:
+                        ttl: 0
+                        priority: high
+                        tag: "electricity_price_graph"
+                        channel: "Energy"
 
 ################
 #    SCENES    #
