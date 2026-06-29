@@ -191,9 +191,7 @@ BUTTONS: tuple[ButtonEntityDescription, ...] = (
             if not device.status.dust_collection_available
             else "mdi:delete-restore" if device.status.auto_emptying else "mdi:delete-empty"
         ),
-        exists_fn=lambda description, device: bool(
-            DreameVacuumEntityDescription().exists_fn(description, device) and device.capability.auto_empty_base
-        ),
+        exists_fn=lambda description, device: device.capability.auto_empty_base,
     ),
     DreameVacuumButtonEntityDescription(
         action_key=DreameVacuumAction.CLEAR_WARNING,

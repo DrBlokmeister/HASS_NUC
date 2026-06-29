@@ -753,7 +753,7 @@ SEGMENT_SELECTS: tuple[DreameVacuumSelectEntityDescription, ...] = (
         options=lambda device, segment: (
             (
                 device.status.segment_order_list(segment)
-                if device.capability.cleaning_sequence_v2
+                if device.status.cleaning_sequence_v2
                 else ([STATE_NOT_SET] + device.status.segment_order_list(segment))
             )
             if segment and device.status.current_segments
@@ -764,17 +764,17 @@ SEGMENT_SELECTS: tuple[DreameVacuumSelectEntityDescription, ...] = (
             device.status.current_segments
             and segment.order is not None
             and not device.status.started
-            and (device.capability.cleaning_sequence_v2 or device.status.custom_order)
+            and (device.status.cleaning_sequence_v2 or device.status.custom_order)
             and not device.status.scheduled_clean
             and not device.status.cruising
             and device.status.has_saved_map
             and not device.status.fast_mapping
-            and (device.capability.cleaning_sequence_v2 or segment.id in device.status.current_segments)
+            and (device.status.cleaning_sequence_v2 or segment.id in device.status.current_segments)
         ),
         value_fn=lambda device, segment: str(segment.order) if segment.order else STATE_NOT_SET,
         exists_fn=lambda description, device: device.capability.customized_cleaning,
         segment_list_fn=lambda device: (
-            device.status.segments if device.capability.cleaning_sequence_v2 else device.status.current_segments
+            device.status.segments if device.status.cleaning_sequence_v2 else device.status.current_segments
         ),
     ),
     DreameVacuumSelectEntityDescription(

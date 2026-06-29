@@ -228,7 +228,7 @@ SWITCHES: tuple[DreameVacuumSwitchEntityDescription, ...] = (
         value_fn=lambda value, device: device.status.custom_order,
         exists_fn=lambda description, device: device.capability.customized_cleaning
         and device.capability.map
-        and not device.capability.cleaning_sequence_v2,
+        and not device.status.cleaning_sequence_v2,
         set_fn=lambda device, value: device.set_cleaning_sequence(
             []
             if not value

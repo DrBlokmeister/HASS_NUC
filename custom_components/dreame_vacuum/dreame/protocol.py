@@ -16,6 +16,8 @@ from paho.mqtt.client import Client
 from typing import Any, Dict, Final, Optional, Tuple
 from Crypto.Cipher import ARC4
 from miio.miioprotocol import MiIOProtocol
+from urllib.parse import urlparse, parse_qs
+import re
 
 from .exceptions import DeviceException
 
@@ -953,7 +955,7 @@ class DreameVacuumMiHomeCloudProtocol:
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
                 cookies={"deviceId": self._client_id},
-                timeout=5,
+                timeout=10,
             )
             if response is not None:
                 if response.status_code == 200:
@@ -1001,7 +1003,7 @@ class DreameVacuumMiHomeCloudProtocol:
                 data=data,
                 params=params,
                 cookies=cookies,
-                timeout=5,
+                timeout=10,
             )
             if response is not None:
                 if response.status_code == 200:
@@ -1042,7 +1044,7 @@ class DreameVacuumMiHomeCloudProtocol:
                     "User-Agent": self._useragent,
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
-                timeout=5,
+                timeout=10,
             )
             if response is not None:
                 if response.status_code == 200 and "serviceToken" in response.cookies:
@@ -1086,9 +1088,13 @@ class DreameVacuumMiHomeCloudProtocol:
                 self.login_error = "2fa_send_failed"
                 self.verification_dest = None
                 try:
+                    self._session.get(verification_url, headers={"User-Agent": self._useragent}, timeout=10)
+                    context = parse_qs(urlparse(verification_url).query).get("context", [""])[0]
+
                     response = self._session.get(
-                        verification_url.replace(path, "identity/list"),
-                        timeout=5,
+                        "https://account.xiaomi.com/identity/list",
+                        params={"sid": "xiaomiio", "context": context, "_locale": str(self._locale)},
+                        timeout=10,
                     )
                     if response and response.status_code == 200:
                         identity_session = response.cookies.get("identity_session")
@@ -1104,9 +1110,16 @@ class DreameVacuumMiHomeCloudProtocol:
 
                             key = "Phone" if flag == 4 else "Email"
                             verify_response = self._session.get(
-                                verification_url.replace(path, f"identity/auth/verify{key}"),
+                                f"https://account.xiaomi.com/identity/auth/verify{key}",
                                 cookies={"identity_session": identity_session},
-                                params={"_flag": flag, "_json": "true"},
+                                params={
+                                    "_flag": flag,
+                                    "_json": "true",
+                                    "sid": "xiaomiio",
+                                    "context": context,
+                                    "mask": "0",
+                                    "_locale": str(self._locale),
+                                },
                                 timeout=10,
                             )
                             if not verify_response or verify_response.status_code != 200:
@@ -1131,9 +1144,21 @@ class DreameVacuumMiHomeCloudProtocol:
                                 return False
 
                             send_response = self._session.post(
-                                verification_url.replace(path, f"identity/auth/send{key}Ticket"),
-                                data={"retry": 0, "icode": "", "_json": "true"},
+                                f"https://account.xiaomi.com/identity/auth/send{key}Ticket",
                                 cookies={"identity_session": identity_session},
+                                params={
+                                    "_dc": str(int(time.time() * 1000)),
+                                    "sid": "xiaomiio",
+                                    "context": context,
+                                    "mask": "0",
+                                    "_locale": str(self._locale),
+                                },
+                                data={
+                                    "retry": 0,
+                                    "icode": "",
+                                    "_json": "true",
+                                    "ick": self._session.cookies.get("ick", ""),
+                                },
                                 timeout=10,
                             )
                             if not send_response or send_response.status_code != 200:
@@ -1168,68 +1193,186 @@ class DreameVacuumMiHomeCloudProtocol:
         return False
 
     def verify_code(self, code) -> bool:
-        path = "fe/service/identity/authStart"
-        if code and self.verification_url and self._session and path in self.verification_url:
+        verification_url = self.verification_url
+        if not (code and verification_url and self._session and "fe/service/identity/authStart" in verification_url):
+            _LOGGER.error("2FA failed: Missing code, session, or invalid verification URL.")
+            return False
+
+        headers = {"User-Agent": self._useragent, "Content-Type": "application/x-www-form-urlencoded"}
+
+        try:
+            context = parse_qs(urlparse(verification_url).query).get("context", [""])[0]
+            if not context:
+                _LOGGER.error("2FA failed: 'context' parameter missing from verification_url.")
+                return False
+
+            response = self._session.get(
+                "https://account.xiaomi.com/identity/list",
+                params={"sid": "xiaomiio", "context": context, "_locale": str(self._locale)},
+                headers=headers,
+                timeout=10,
+            )
+            if response is None:
+                _LOGGER.error(f"2FA failed: identity/list endpoint failed!")
+                return False
+            elif response.status_code != 200:
+                _LOGGER.error(f"2FA failed: identity/list endpoint returned HTTP {response.status_code}!")
+                return False
+
             try:
-                response = self._session.get(
-                    self.verification_url.replace(path, "identity/list"),
-                    timeout=10,
-                )
-                if response and response.status_code == 200:
-                    identity_session = response.cookies.get("identity_session")
-                    if identity_session:
-                        data = self.to_json(response.text)
-                        options = data.get("options", [])
-                        if 4 in options:
-                            flag = 4
-                        elif 8 in options:
-                            flag = 8
-                        else:
-                            flag = data.get("flag", 4)
+                data = self.to_json(response.text)
+                options = data.get("options", [])
+                if 4 in options:
+                    flag = 4
+                elif 8 in options:
+                    flag = 8
+                else:
+                    flag = data.get("flag", 4)
+            except Exception as e:
+                _LOGGER.error(f"2FA failed: Could not parse identity/list JSON. Error: {e}")
+                return False
 
-                        response = self._session.post(
-                            self.verification_url.replace(
-                                path,
-                                ("/identity/auth/verifyPhone" if flag == 4 else "/identity/auth/verifyEmail"),
-                            ),
-                            params={
-                                "_dc": int(time.time() * 1000),
-                            },
-                            data={
-                                "_flag": flag,
-                                "ticket": code,
-                                "trust": "true",
-                                "_json": "true",
-                            },
-                            cookies={
-                                "identity_session": identity_session,
-                            },
-                            timeout=10,
-                        )
+            if not self._session.cookies.get("identity_session"):
+                _LOGGER.error("2FA failed: Missing 'identity_session' cookie.")
+                return False
 
-                        if response and response.status_code == 200:
-                            data = self.to_json(response.text)
-                            if data.get("code") == 0 and "location" in data:
-                                response = self._session.get(
-                                    data["location"],
-                                    allow_redirects=True,
-                                    timeout=10,
-                                )
-                                if response and response.status_code == 200:
-                                    self.verification_url = None
-                                    self.captcha_url = None
-                                    self._logged_in = self.login_step_1() and self.login_step_3()
-                                    if self._logged_in:
-                                        self._auth_failed = False
-                                        self._fail_count = 0
-                                        self._connected = True
-                                    return True
-                            else:
-                                self.login_error = data.get("description") or data.get("message") or "2fa_failed"
-                                _LOGGER.warning("2FA Verification Failed! %s", response.text)
-            except Exception as ex:
-                raise DeviceException("2FA Verification Failed! %s", ex) from None
-        return False
+            response = self._session.post(
+                f"https://account.xiaomi.com/identity/auth/verify{'Phone' if flag == 4 else 'Email'}",
+                headers=headers,
+                params={
+                    "_flag": flag,
+                    "_json": "true",
+                    "sid": "xiaomiio",
+                    "context": context,
+                    "mask": "0",
+                    "_locale": str(self._locale),
+                },
+                data={
+                    "_flag": flag,
+                    "ticket": code,
+                    "trust": "false",
+                    "_json": "true",
+                    "ick": self._session.cookies.get("ick", ""),
+                },
+                timeout=15,
+            )
+
+            location_url = None
+            if response is None:
+                _LOGGER.error("2FA failed: verify endpoint request failed!")
+            elif response.status_code == 200:
+                try:
+                    verify_data_resp = self.to_json(response.text)
+                    if verify_data_resp.get("code") != 0:
+                        return False
+                    location_url = verify_data_resp.get("location")
+                except Exception:
+                    location_url = response.headers.get("Location")
+            elif response.status_code in (301, 302):
+                location_url = response.headers.get("Location")
+
+            if location_url:
+                response = self._session.get(location_url, headers=headers, allow_redirects=True, timeout=10)
+                if response is not None and response.status_code == 200:
+                    for c in self._session.cookies:
+                        if c.name in ("userId", "cUserId") and c.value:
+                            self._userId = str(c.value)
+                            break
+
+                    if self.login_step_1() and self.login_step_3():
+                        self.verification_url = None
+                        self.captcha_url = None
+                        self._logged_in = True
+                        self._auth_failed = False
+                        self._fail_count = 0
+                        self._connected = True
+                        return True
+
+            response = self._session.get(
+                "https://account.xiaomi.com/identity/result/check",
+                params={"sid": "xiaomiio", "context": context, "_locale": str(self._locale)},
+                headers=headers,
+                allow_redirects=False,
+                timeout=10,
+            )
+
+            if response is None:
+                _LOGGER.error("2FA failed: result/check API failed!")
+                return False
+
+            location_url = response.headers.get("Location") if response.status_code in (301, 302) else None
+            if not location_url and response.status_code == 200 and response.text:
+                location_url = self.to_json(response.text).get("location")
+
+            if not location_url:
+                _LOGGER.error(f"2FA failed: 'location_url' missing from check API. HTTP {response.status_code}")
+                return False
+
+            response = self._session.get(location_url, headers=headers, allow_redirects=False, timeout=10)
+            if response is None:
+                _LOGGER.error("2FA failed: sts_init failed!")
+                return False
+
+            if response.status_code == 200 and "Xiaomi Account - Tips" in response.text:
+                response = self._session.get(location_url, headers=headers, allow_redirects=False, timeout=10)
+
+            extension_pragma = response.headers.get("extension-pragma")
+            if extension_pragma and extension_pragma.startswith("{"):
+                try:
+                    self._ssecurity = json.loads(extension_pragma).get("ssecurity", self._ssecurity)
+                except Exception:
+                    _LOGGER.error("2FA failed: Could not parse extension-pragma JSON!")
+            else:
+                _LOGGER.error("2FA failed: 'extension-pragma' header is missing or invalid!")
+                return False
+
+            location_url = response.headers.get("Location")
+            if not location_url and response.text:
+                match = re.search(r'(https://[a-zA-Z0-9-]*\.?sts\.api\.io\.mi\.com/sts[^"\'\s]*)', response.text)
+                if match:
+                    location_url = match.group(1)
+
+            if not location_url:
+                _LOGGER.error("2FA failed: Could not find STS redirect URL!")
+                return False
+
+            response = self._session.get(location_url, headers=headers, allow_redirects=True, timeout=10)
+            if response is None or response.status_code != 200:
+                _LOGGER.error(f"2FA failed: Final STS connection failed!")
+                return False
+            elif response.status_code != 200:
+                _LOGGER.error(f"2FA failed: Final STS connection returned HTTP {response.status_code}!")
+                return False
+
+            self._service_token = self._session.cookies.get(
+                "serviceToken", domain=".sts.api.io.mi.com"
+            ) or self._session.cookies.get("serviceToken")
+
+            for c in self._session.cookies:
+                if c.name in ("userId", "cUserId") and c.value:
+                    self._userId = str(c.value)
+                    break
+
+            if not self._service_token or not self._userId:
+                _LOGGER.error("2FA failed: Missing 'serviceToken' or 'userId' after STS connection.")
+                return False
+
+            for d in [".api.io.mi.com", ".io.mi.com", ".mi.com"]:
+                self._session.cookies.set("serviceToken", self._service_token, domain=d)
+                self._session.cookies.set("yetAnotherServiceToken", self._service_token, domain=d)
+
+            self._auth_key = f"{self._service_token} {self._ssecurity} {self._userId} {self._client_id}"
+            self.verification_url = None
+            self.captcha_url = None
+            self._logged_in = True
+            self._auth_failed = False
+            self._fail_count = 0
+            self._connected = True
+            return True
+
+        except Exception as ex:
+            _LOGGER.error(f"2FA Exception: {ex}")
+            return False
 
     def verify_captcha(self, code) -> bool:
         self._captcha_code = code

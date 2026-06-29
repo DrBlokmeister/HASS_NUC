@@ -1373,7 +1373,7 @@ class DreameVacuumDevice:
                 self._map_manager.editor.refresh_map()
 
     def _faults_changed(self, previous_faults: Any = None) -> None:
-        previous_faults = self.status.faults.copy()
+        current_faults = self.status.faults.copy()
         faults = self.get_property(DreameVacuumProperty.FAULTS)
         if faults and faults != "" and faults != " " and faults != 0 and faults != "0":
             try:
@@ -1395,14 +1395,14 @@ class DreameVacuumDevice:
             self.status.faults = []
 
         for fault in self.status.faults:
-            if fault not in previous_faults:
+            if fault not in current_faults:
                 self.status._last_updated_time[f"fault_{fault}"] = int(time.time())
 
-        for fault in previous_faults:
+        for fault in current_faults:
             if fault not in self.status.faults:
                 self.status._last_updated_time.pop(f"fault_{fault}", None)
 
-        if sorted(previous_faults) != sorted(self.status.faults):
+        if previous_faults is None or sorted(current_faults) != sorted(self.status.faults):
             self.status._last_updated_time["faults"] = int(time.time())
         self._property_changed()
 
@@ -3304,11 +3304,7 @@ class DreameVacuumDevice:
                     render_map_data.docked = False
                     render_map_data.robot_position = None
 
-            if (
-                not render_map_data.history_map
-                and not render_map_data.cleaning_map
-                and (render_map_data.saved_map or render_map_data.recovery_map)
-            ):
+            if render_map_data.saved_map or render_map_data.recovery_map:
                 render_map_data.active_areas = None
                 render_map_data.active_points = None
                 render_map_data.active_segments = None
@@ -6874,11 +6870,7 @@ class DreameVacuumDevice:
         if cleaning_sequence == "" or not cleaning_sequence:
             cleaning_sequence = []
 
-        cleaning_sequence_v2 = (
-            bool(self.status.selected_map.version > 1)
-            if self.status.selected_map
-            else self.capability.cleaning_sequence_v2
-        )
+        cleaning_sequence_v2 = self.status.cleaning_sequence_v2
         if self._map_manager:
             if not self.status.has_saved_map:
                 raise InvalidActionException("Cannot set cleaning sequence on current map")
@@ -6906,8 +6898,8 @@ class DreameVacuumDevice:
         elif cleaning_sequence_v2:
             raise InvalidActionException("Cannot set cleaning sequence without map data on this device")
 
-        if not cleaning_sequence:
-            raise InvalidActionException("Cannot set cleaning sequence current map")
+        if cleaning_sequence_v2 and not cleaning_sequence:
+            raise InvalidActionException("Cleaning sequence is required")
 
         return self.update_map_data_async(
             {"cleanareaorder": [{str(item): i} for i, item in enumerate(cleaning_sequence, 1)]}
@@ -7412,11 +7404,7 @@ class DreameVacuumDevice:
             cleaning_sequence = self._map_manager.editor.set_segment_order(segment_id, order)
             return self.update_map_data_async(
                 {"cleanareaorder": [{str(item): i} for i, item in enumerate(cleaning_sequence, 1)]}
-                if (
-                    bool(self.status.selected_map.version > 1)
-                    if self.status.selected_map
-                    else self.capability.cleaning_sequence_v2
-                )
+                if self.status.cleaning_sequence_v2
                 else {"cleanOrder": cleaning_sequence}
             )
 
@@ -9935,10 +9923,13 @@ class DreameVacuumDeviceStatus:
             return int((1 - (progress / 100)) * drying_time)
         return 0
 
+    def cleaning_sequence_v2(self) -> bool:
+        return bool(self.selected_map.version > 1) if self.selected_map else self._capability.cleaning_sequence_v2
+
     @property
     def custom_order(self) -> bool:
         """Returns true when custom cleaning sequence is set."""
-        if bool(self.selected_map.version > 1) if self.selected_map else self._capability.cleaning_sequence_v2:
+        if bool(self.selected_map.version > 1) if self.selected_map else self.cleaning_sequence_v2:
             return True
         if self.cleangenius_cleaning and not self._capability.cleangenius_mode:
             return False
@@ -10176,8 +10167,6 @@ class DreameVacuumDeviceStatus:
             (DreameVacuumProperty.SCHEDULED_CLEAN, False),
             (DreameVacuumProperty.VOICE_ASSISTANT, True),
             (DreameVacuumProperty.VOICE_ASSISTANT_LANGUAGE, False),
-            (DreameVacuumProperty.AUTO_DUST_COLLECTING, False),
-            (DreameVacuumProperty.AUTO_EMPTY_STATUS, False),
             (DreameVacuumProperty.SELF_CLEAN, True),
             (DreameVacuumProperty.OBSTACLE_AVOIDANCE, True),
             (DreameVacuumProperty.VOLUME, False),
@@ -10191,6 +10180,10 @@ class DreameVacuumDeviceStatus:
             (DreameVacuumProperty.BATTERY_CHARGE_LEVEL, False),
             (DreameVacuumProperty.RING_LIGHT_ALWAYS_ON, True),
         ]
+
+        if self._capability.auto_emptying:
+            properties.append((DreameVacuumProperty.AUTO_DUST_COLLECTING, False))
+            properties.append((DreameVacuumProperty.AUTO_EMPTY_STATUS, False))
 
         if self._capability.cleaning_progress:
             properties.append((DreameVacuumProperty.CLEANING_PROGRESS, False))
@@ -10888,7 +10881,7 @@ class DreameVacuumDeviceStatus:
 
     def segment_order_list(self, segment) -> list[int] | None:
         order = []
-        segments = self.segments if self._capability.cleaning_sequence_v2 else self.current_segments
+        segments = self.segments if self.cleaning_sequence_v2 else self.current_segments
         if segments:
             order = [
                 v.order
