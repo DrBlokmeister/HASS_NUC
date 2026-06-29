@@ -221,6 +221,19 @@ automation:
       - service: switch.turn_off
         continue_on_error: true
         entity_id: switch.ambilight_hyperhdr
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: media_player.coreelec
+                state:
+                  - "playing"
+                  - "paused"
+            sequence:
+              - service: media_player.media_stop
+                continue_on_error: true
+                target:
+                  entity_id: media_player.coreelec
+        default: []
       - delay:
           seconds: 2
       - service: scene.turn_on
