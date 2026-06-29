@@ -4103,3 +4103,75 @@ cards:
                     {% else %}
                       blue
                     {% endif %}
+
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-template-card
+        entity: light.bathroom_mirror_hue
+        primary: Bathroom mirror Hue
+        secondary: >-
+          {%- set s = states('light.bathroom_mirror_hue') -%}
+          {%- set bri = states('sensor.bathroom_mirror_light_brightness') -%}
+          {%- set ct = states('sensor.bathroom_mirror_light_color_temperature') -%}
+          {%- if s in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+            Unavailable
+          {%- else -%}
+            {{ s | title }} · {{ bri }}% · {{ ct }} K
+          {%- endif -%}
+        icon: >-
+          {%- if is_state('light.bathroom_mirror_hue', 'on') -%}
+            mdi:mirror-rectangle
+          {%- else -%}
+            mdi:mirror
+          {%- endif -%}
+        icon_color: >-
+          {%- if is_state('light.bathroom_mirror_hue', 'on') -%}
+            amber
+          {%- elif is_state('light.bathroom_mirror_hue', 'unavailable') -%}
+            red
+          {%- else -%}
+            grey
+          {%- endif -%}
+        multiline_secondary: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+        double_tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 82px;
+            }
+      - type: entities
+        title: Bathroom mirror live state
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - entity: light.bathroom_mirror_hue
+            name: Mirror light
+            secondary_info: last-changed
+          - entity: sensor.bathroom_mirror_light_brightness
+            name: Brightness
+            secondary_info: last-changed
+          - entity: sensor.bathroom_mirror_light_color_temperature
+            name: Color temperature
+            secondary_info: last-changed
+      - type: logbook
+        title: Bathroom mirror log
+        hours_to_show: 24
+        entities:
+          - light.bathroom_mirror_hue
+          - sensor.bathroom_mirror_light_brightness
+          - sensor.bathroom_mirror_light_color_temperature
+      - type: history-graph
+        title: Bathroom mirror history
+        hours_to_show: 24
+        entities:
+          - entity: light.bathroom_mirror_hue
+            name: Light
+          - entity: sensor.bathroom_mirror_light_brightness
+            name: Brightness
+          - entity: sensor.bathroom_mirror_light_color_temperature
+            name: Color temp

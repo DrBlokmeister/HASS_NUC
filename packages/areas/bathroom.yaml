@@ -43,6 +43,27 @@ template:
               states('sensor.water_usage') in [None, 'unavailable', 'unknown'] or
               states('sensor.tapwater_temperature_change_1min') in [None, 'unavailable', 'unknown']
             ) }}
+      - name: "Bathroom Mirror Light Brightness"
+        unique_id: yaml_template_sensor_bathroom_mirror_light_brightness
+        unit_of_measurement: "%"
+        state: >
+          {% if state_attr('light.bathroom_mirror_hue', 'brightness') is not none %}
+            {{ state_attr('light.bathroom_mirror_hue', 'brightness') }}
+          {% else %}
+            0
+          {% endif %}
+        availability: "{{ not is_state('light.bathroom_mirror_hue', 'unavailable') }}"
+      - name: "Bathroom Mirror Light Color Temperature"
+        unique_id: yaml_template_sensor_bathroom_mirror_light_color_temperature
+        unit_of_measurement: "K"
+        state: >
+          {% if state_attr('light.bathroom_mirror_hue', 'color_temp_kelvin') is not none %}
+            {{ state_attr('light.bathroom_mirror_hue', 'color_temp_kelvin') }}
+          {% else %}
+            0
+          {% endif %}
+        availability: "{{ not is_state('light.bathroom_mirror_hue', 'unavailable') }}"
+
 
   - binary_sensor:
       - name: "Bathroom Shower Occupied"
