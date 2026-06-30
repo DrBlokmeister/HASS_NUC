@@ -4,6 +4,11 @@ substitutions:
   hlw_8012_voltage_div: "${voltage_div}"
   hlw8012_sf1_pin: 'GPIO04' #Default for SP111. GPIO14 is default for SHP6
 
+  # Settings for calibration mode:
+  plug_power_component_file: "/config/esphome/templates/plug_functions/hlw8012_default.yaml"
+  plug_power_update_interval: "0.5s"
+  hlw8012_change_mode_every: "4"
+
 esphome:
   name: ${espname}
   friendly_name: ${device_name}
@@ -34,16 +39,17 @@ packages:
     vars:
       status_led_gpio_pin: "GPIO02"
       relay_gpio_pin: "GPIO15"
+  plug_power: !include ${plug_power_component_file}
 
-sensor:
-  - platform: hlw8012
-    sel_pin:
-      number: GPIO12
-      inverted: True
-    cf_pin: GPIO05
-    cf1_pin: ${hlw8012_sf1_pin}
-    change_mode_every: 4
-    current_resistor: ${current_res}
-    voltage_divider: ${hlw_8012_voltage_div}
-    update_interval: 0.5s
-    <<: !include plug_functions/plug_default_power_sensor_settings.yaml
+# sensor:
+#   - platform: hlw8012
+#     sel_pin:
+#       number: GPIO12
+#       inverted: True
+#     cf_pin: GPIO05
+#     cf1_pin: ${hlw8012_sf1_pin}
+#     change_mode_every: 4
+#     current_resistor: ${current_res}
+#     voltage_divider: ${hlw_8012_voltage_div}
+#     update_interval: 0.5s
+#     <<: !include ${plug_power_sensor_settings_file}

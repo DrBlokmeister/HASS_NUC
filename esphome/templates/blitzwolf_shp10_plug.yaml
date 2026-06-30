@@ -2,6 +2,10 @@ substitutions:
   voltage_multiplier: "${voltage_div}"
   current_multiplier: "1.0"
 
+  # Settings for calibration mode:
+  plug_power_component_file: "/config/esphome/templates/plug_functions/bl0940_default.yaml"
+  plug_power_update_interval: "0.5s"
+
 esphome:
   name: ${espname}
   friendly_name: ${device_name}
@@ -27,6 +31,7 @@ packages:
     vars:
       status_led_gpio_pin: "GPIO04"
       relay_gpio_pin: "GPIO05"
+  plug_power: !include ${plug_power_component_file}
 
 uart:
   id: uart_bus
@@ -35,21 +40,21 @@ uart:
   baud_rate: 4800
   stop_bits: 1
 
-sensor:
-  - platform: bl0940
-    uart_id: uart_bus
-    update_interval: 1s
-    <<: !include plug_functions/plug_default_power_sensor_settings.yaml
+# sensor:
+#   - platform: bl0940
+#     uart_id: uart_bus
+#     update_interval: 1s
+#     <<: !include plug_functions/plug_default_power_sensor_settings.yaml
 
-    internal_temperature:
-      name: "${device_name} Internal temperature"
-      unit_of_measurement: °C
-      accuracy_decimals: 1
-      id: internal_temp
-      icon: mdi:thermometer
-      filters:
-        - throttle_average: 5s
-        - or:
-          - throttle_average: 60s
-          - delta: 1.0
-        - round: 1
+#     internal_temperature:
+#       name: "${device_name} Internal temperature"
+#       unit_of_measurement: °C
+#       accuracy_decimals: 1
+#       id: internal_temp
+#       icon: mdi:thermometer
+#       filters:
+#         - throttle_average: 5s
+#         - or:
+#           - throttle_average: 60s
+#           - delta: 1.0
+#         - round: 1
