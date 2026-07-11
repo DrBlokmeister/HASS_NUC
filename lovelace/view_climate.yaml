@@ -93,7 +93,6 @@ cards:
                 icon: mdi:thermometer-water
               - entity: number.heatpump_tapwater_target_temperature
                 name: "Internal Target"
-
       - type: custom:apexcharts-card
         header:
           show_states: true
@@ -185,12 +184,473 @@ cards:
           - entity: binary_sensor.heatpump_dhw_circulation_pump
             name: DHW Pump
 
-
-          # - entity: number.heatpump_heating_target_correction
-          #   name: "Target Correction"
-          #   type: area
-          #   color: yellow
-          #   opacity: 0.4
+  - type: vertical-stack
+    cards:
+      - type: custom:mushroom-climate-card
+        entity: climate.portable_split_air_conditioner
+        name: Portable Split Air Conditioner
+        icon: mdi:air-conditioner
+        hvac_modes:
+          - "off"
+          - cool
+        show_temperature_control: true
+        collapsible_controls: false
+        fill_container: true
+      - type: custom:collapsable-cards
+        title: Climate Details
+        defaultOpen: false
+        cards:
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.portable_split_air_conditioner_hvac_mode
+                primary: HVAC Mode
+                secondary: >-
+                  {%- set value = states('sensor.portable_split_air_conditioner_hvac_mode') -%}
+                  {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                    Unavailable
+                  {%- else -%}
+                    {{ value | replace('_', ' ') | title }}
+                  {%- endif -%}
+                icon: mdi:air-conditioner
+                icon_color: >-
+                  {%- set value = states('sensor.portable_split_air_conditioner_hvac_mode') | lower -%}
+                  {%- if value == 'cool' -%}
+                    blue
+                  {%- elif value == 'off' -%}
+                    grey
+                  {%- else -%}
+                    orange
+                  {%- endif -%}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.portable_split_air_conditioner_fan_mode
+                primary: Fan Mode
+                secondary: >-
+                  {%- set value = states('sensor.portable_split_air_conditioner_fan_mode') -%}
+                  {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                    Unavailable
+                  {%- else -%}
+                    {{ value | title }}
+                  {%- endif -%}
+                icon: mdi:fan
+                icon_color: >-
+                  {%- set value = states('sensor.portable_split_air_conditioner_fan_mode') | lower -%}
+                  {%- if value == 'off' -%}
+                    grey
+                  {%- elif value == 'silent' -%}
+                    cyan
+                  {%- elif value == 'low' -%}
+                    light-blue
+                  {%- elif value == 'mid' -%}
+                    blue
+                  {%- elif value == 'high' -%}
+                    orange
+                  {%- elif value == 'turbo' -%}
+                    red
+                  {%- else -%}
+                    grey
+                  {%- endif -%}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.portable_split_air_conditioner_current_temperature
+                primary: Current Temperature
+                secondary: >-
+                  {%- set value = states('sensor.portable_split_air_conditioner_current_temperature') -%}
+                  {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                    Unavailable
+                  {%- else -%}
+                    {{ value | float(0) | round(1) }} °C
+                  {%- endif -%}
+                icon: mdi:thermometer
+                icon_color: cyan
+                tap_action:
+                  action: fire-dom-event
+                  browser_mod:
+                    service: browser_mod.popup
+                    data:
+                      title: Current Temperature
+                      content:
+                        type: custom:apexcharts-card
+                        graph_span: 24h
+                        span:
+                          start: day
+                        header:
+                          show: true
+                          title: Air Conditioner Current Temperature
+                          show_states: true
+                          colorize_states: true
+                        now:
+                          show: true
+                        chart_type: line
+                        update_interval: 1m
+                        apex_config:
+                          chart:
+                            height: 320px
+                          legend:
+                            show: false
+                          grid:
+                            borderColor: rgba(255, 255, 255, 0.08)
+                          tooltip:
+                            shared: true
+                          stroke:
+                            curve: smooth
+                        yaxis:
+                          - min: ~16
+                            max: ~30
+                            decimals: 1
+                            align_to: 2
+                            apex_config:
+                              tickAmount: 5
+                              forceNiceScale: true
+                        all_series_config:
+                          stroke_width: 2
+                          float_precision: 1
+                          unit: °C
+                          fill_raw: last
+                          group_by:
+                            func: avg
+                            duration: 10min
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                            offset_in_name: false
+                        series:
+                          - entity: sensor.portable_split_air_conditioner_current_temperature
+                            offset: "-3d"
+                            name: 3 Days Ago
+                            color: "#819BB3"
+                            opacity: 0.25
+                          - entity: sensor.portable_split_air_conditioner_current_temperature
+                            offset: "-2d"
+                            name: 2 Days Ago
+                            color: "#66A9DB"
+                            opacity: 0.42
+                          - entity: sensor.portable_split_air_conditioner_current_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#58B0EE"
+                            opacity: 0.58
+                          - entity: sensor.portable_split_air_conditioner_current_temperature
+                            name: Today
+                            color: "#4682B4"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                              name_in_header: false
+                hold_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.portable_split_air_conditioner_target_temperature
+                primary: Target Temperature
+                secondary: >-
+                  {%- set value = states('sensor.portable_split_air_conditioner_target_temperature') -%}
+                  {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                    Unavailable
+                  {%- else -%}
+                    {{ value | float(0) | round(1) }} °C
+                  {%- endif -%}
+                icon: mdi:thermometer-chevron-up
+                icon_color: orange
+                tap_action:
+                  action: fire-dom-event
+                  browser_mod:
+                    service: browser_mod.popup
+                    data:
+                      title: Target Temperature
+                      content:
+                        type: custom:apexcharts-card
+                        graph_span: 24h
+                        span:
+                          start: day
+                        header:
+                          show: true
+                          title: Air Conditioner Target Temperature
+                          show_states: true
+                          colorize_states: true
+                        now:
+                          show: true
+                        chart_type: line
+                        update_interval: 1m
+                        apex_config:
+                          chart:
+                            height: 320px
+                          legend:
+                            show: false
+                          grid:
+                            borderColor: rgba(255, 255, 255, 0.08)
+                          tooltip:
+                            shared: true
+                          stroke:
+                            curve: stepline
+                        yaxis:
+                          - min: ~16
+                            max: ~30
+                            decimals: 1
+                            align_to: 2
+                            apex_config:
+                              tickAmount: 5
+                              forceNiceScale: true
+                        all_series_config:
+                          stroke_width: 2
+                          float_precision: 1
+                          unit: °C
+                          fill_raw: last
+                          group_by:
+                            func: last
+                            duration: 10min
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                            offset_in_name: false
+                        series:
+                          - entity: sensor.portable_split_air_conditioner_target_temperature
+                            offset: "-3d"
+                            name: 3 Days Ago
+                            color: "#A88972"
+                            opacity: 0.25
+                          - entity: sensor.portable_split_air_conditioner_target_temperature
+                            offset: "-2d"
+                            name: 2 Days Ago
+                            color: "#C18A5F"
+                            opacity: 0.42
+                          - entity: sensor.portable_split_air_conditioner_target_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#DD8A49"
+                            opacity: 0.58
+                          - entity: sensor.portable_split_air_conditioner_target_temperature
+                            name: Today
+                            color: "#FF8C32"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+                              name_in_header: false
+                hold_action:
+                  action: more-info
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: switch.plug_air_conditioner_switch
+            primary: Mains
+            secondary: >-
+              {%- if is_state('switch.plug_air_conditioner_switch', 'on') -%}
+                On
+              {%- elif is_state('switch.plug_air_conditioner_switch', 'off') -%}
+                Off
+              {%- else -%}
+                Unavailable
+              {%- endif -%}
+            icon: >-
+              {%- if is_state('switch.plug_air_conditioner_switch', 'on') -%}
+                mdi:power-plug
+              {%- else -%}
+                mdi:power-plug-off
+              {%- endif -%}
+            icon_color: >-
+              {%- if is_state('switch.plug_air_conditioner_switch', 'on') -%}
+                green
+              {%- elif is_state('switch.plug_air_conditioner_switch', 'off') -%}
+                red
+              {%- else -%}
+                grey
+              {%- endif -%}
+            tap_action:
+              action: toggle
+              confirmation:
+                title: Toggle air conditioner power?
+                text: >-
+                  This will toggle mains power to the portable air conditioner.
+                confirm_text: Toggle
+                cancel_text: Cancel
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.plug_air_conditioner_power
+            primary: Power
+            secondary: >-
+              {%- set value = states('sensor.plug_air_conditioner_power') -%}
+              {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ value | float(0) | round(0) | int }} W
+              {%- endif -%}
+            icon: mdi:flash
+            icon_color: >-
+              {%- set state = states('sensor.plug_air_conditioner_power') -%}
+              {%- set value = state | float(0) -%}
+              {%- if state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif value < 10 -%}
+                grey
+              {%- elif value < 500 -%}
+                green
+              {%- elif value < 1200 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Air Conditioner Power
+                  content:
+                    type: custom:apexcharts-card
+                    graph_span: 24h
+                    span:
+                      start: day
+                    header:
+                      show: true
+                      title: Air Conditioner Power
+                      show_states: true
+                      colorize_states: true
+                    now:
+                      show: true
+                    chart_type: line
+                    update_interval: 1m
+                    apex_config:
+                      chart:
+                        height: 320px
+                      legend:
+                        show: false
+                      grid:
+                        borderColor: rgba(255, 255, 255, 0.08)
+                      tooltip:
+                        shared: true
+                      stroke:
+                        curve: smooth
+                    yaxis:
+                      - min: 0
+                        max: ~2000
+                        decimals: 0
+                        align_to: 500
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+                    all_series_config:
+                      stroke_width: 2
+                      float_precision: 0
+                      transform: "return Math.round(x);"
+                      unit: W
+                      fill_raw: last
+                      group_by:
+                        func: avg
+                        duration: 10min
+                      show:
+                        in_header: false
+                        legend_value: false
+                        name_in_header: false
+                        offset_in_name: false
+                    series:
+                      - entity: sensor.plug_air_conditioner_power
+                        offset: "-3d"
+                        name: 3 Days Ago
+                        color: "#819BB3"
+                        opacity: 0.25
+                      - entity: sensor.plug_air_conditioner_power
+                        offset: "-2d"
+                        name: 2 Days Ago
+                        color: "#66A9DB"
+                        opacity: 0.42
+                      - entity: sensor.plug_air_conditioner_power
+                        offset: "-1d"
+                        name: Yesterday
+                        color: "#58B0EE"
+                        opacity: 0.58
+                      - entity: sensor.plug_air_conditioner_power
+                        name: Today
+                        color: "#4682B4"
+                        opacity: 1
+                        stroke_width: 4
+                        extend_to: now
+                        show:
+                          in_header: true
+                          legend_value: true
+                          name_in_header: false
+            hold_action:
+              action: more-info
+          - type: custom:mushroom-template-card
+            entity: sensor.plug_air_conditioner_energy_today
+            primary: Energy Today
+            secondary: >-
+              {%- set value = states('sensor.plug_air_conditioner_energy_today') -%}
+              {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                Unavailable
+              {%- else -%}
+                {{ value | float(0) | round(2) }} kWh
+              {%- endif -%}
+            icon: mdi:lightning-bolt
+            icon_color: >-
+              {%- set state = states('sensor.plug_air_conditioner_energy_today') -%}
+              {%- set value = state | float(0) -%}
+              {%- if state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                grey
+              {%- elif value < 1 -%}
+                green
+              {%- elif value < 2 -%}
+                light-green
+              {%- elif value < 3 -%}
+                yellow
+              {%- elif value < 4 -%}
+                orange
+              {%- else -%}
+                red
+              {%- endif -%}
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Air Conditioner Energy
+                  content:
+                    type: custom:mini-graph-card
+                    entity: sensor.plug_air_conditioner_energy_today
+                    name: Daily Energy Usage
+                    icon: mdi:lightning-bolt
+                    hours_to_show: 120
+                    group_by: date
+                    lower_bound: 0
+                    upper_bound: ~5
+                    show:
+                      graph: bar
+                      labels: true
+                      name: true
+                      icon: true
+                      state: true
+                    color_thresholds_transition: smooth
+                    color_thresholds:
+                      - value: 0
+                        color: "#46ff33"
+                      - value: 1
+                        color: "#beff33"
+                      - value: 2
+                        color: "#ffd433"
+                      - value: 3
+                        color: "#ffaf33"
+                      - value: 4
+                        color: "#ff5733"
+                    entities:
+                      - entity: sensor.plug_air_conditioner_energy_today
+                        aggregate_func: max
+                        name: Energy
+            hold_action:
+              action: more-info
 
   #Thermostat Cards
   - type: grid

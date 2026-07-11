@@ -94,6 +94,57 @@ template:
           {{ (((0.0012 * states('input_number.tapwater_heat_up_temperature') | float(0)**2) + (-0.0593 * states('input_number.tapwater_heat_up_temperature') | float(0)) + 0.6177) -
               ((0.0012 * states('sensor.heatpump_tapwater_temperature') | float(0)**2) + (-0.0593 * states('sensor.heatpump_tapwater_temperature') | float(0)) + 0.6177))|round(2) }}
         availability: "{{ states('input_number.tapwater_heat_up_temperature')|is_number and states('sensor.heatpump_tapwater_temperature')|is_number }}"
+
+  # Split Air Conditioner Templates
+  - sensor:
+      - name: "Portable Split Air Conditioner Current Temperature"
+        default_entity_id: sensor.portable_split_air_conditioner_current_temperature
+        unique_id: yaml_template_sensor_portable_split_air_conditioner_current_temperature
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.portable_split_air_conditioner', 'current_temperature') }}"
+        availability: "{{ state_attr('climate.portable_split_air_conditioner', 'current_temperature') | is_number }}"
+      - name: "Portable Split Air Conditioner Target Temperature"
+        default_entity_id: sensor.portable_split_air_conditioner_target_temperature
+        unique_id: yaml_template_sensor_portable_split_air_conditioner_target_temperature
+        icon: mdi:thermometer-check
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.portable_split_air_conditioner', 'temperature') }}"
+        availability: "{{ state_attr('climate.portable_split_air_conditioner', 'temperature') | is_number }}"
+      - name: "Portable Split Air Conditioner Fan Mode"
+        default_entity_id: sensor.portable_split_air_conditioner_fan_mode
+        unique_id: yaml_template_sensor_portable_split_air_conditioner_fan_mode
+        icon: mdi:fan
+        state: >
+          {% if is_state('climate.portable_split_air_conditioner', 'off') %}
+            Off
+          {% else %}
+            {% set fan_modes = {
+              '1': 'Silent',
+              '2': 'Low',
+              '3': 'Mid',
+              '4': 'High',
+              '5': 'Turbo'
+            } %}
+            {{ fan_modes.get(
+              state_attr('climate.portable_split_air_conditioner', 'fan_mode'),
+              'Unknown'
+            ) }}
+          {% endif %}
+        availability: >
+          {{
+            states('climate.portable_split_air_conditioner')
+              not in ['unknown', 'unavailable']
+          }}
+      - name: "Portable Split Air Conditioner HVAC Mode"
+        default_entity_id: sensor.portable_split_air_conditioner_hvac_mode
+        unique_id: yaml_template_sensor_portable_split_air_conditioner_hvac_mode
+        icon: mdi:air-conditioner
+        state: "{{ states('climate.portable_split_air_conditioner') }}"
+        availability: "{{ states('climate.portable_split_air_conditioner') not in ['unknown', 'unavailable'] }}"
+
 #######################
 #    INPUT SELECTS    #
 #######################
