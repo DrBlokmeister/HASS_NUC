@@ -549,15 +549,10 @@ automation:
   - alias: "[home|vacuum] Notify phone if vacuum is in error"
     id: home_vacuum_notify_phone_if_vacuum_is_in_error
     description: >
-      Sends a high-priority notification when Dustin, Moeke, or Alfred reports an
-      error. Dustin and Moeke use Dreame-style camera maps; Alfred keeps the
-      existing image map behavior.
+      Sends a high-priority notification when Moeke or Alfred reports an error.
+      Moeke uses a Dreame-style camera map, while Alfred uses an image map.
     mode: parallel
     trigger:
-      - platform: state
-        entity_id: vacuum.dustin
-        to: "error"
-        id: Dustin
       - platform: state
         entity_id: vacuum.moeke
         to: "error"
@@ -568,47 +563,11 @@ automation:
         id: Alfred
     action:
       - variables:
-          vacuum_entity_id: "{{ trigger.entity_id }}"
           vacuum_slug: "{{ trigger.entity_id.split('.')[1] }}"
-          map_entity_id: >-
-            {% if trigger.id in ['Dustin', 'Moeke'] %}
-              camera.{{ vacuum_slug }}_map
-            {% else %}
-              image.{{ vacuum_slug }}_map
-            {% endif %}
-          map_type: >-
-            {% if trigger.id in ['Dustin', 'Moeke'] %}
-              camera
-            {% else %}
-              image
-            {% endif %}
+          map_entity_id: "{{ 'camera.moeke_map' if trigger.id == 'Moeke' else 'image.alfred_map' }}"
+          map_type: "{{ 'camera' if trigger.id == 'Moeke' else 'image' }}"
+          notification_tag: "vacuumerror_{{ vacuum_slug }}"
       - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.id == 'Dustin' }}"
-            sequence:
-              - service: homeassistant.update_entity
-                continue_on_error: true
-                target:
-                  entity_id: "{{ map_entity_id }}"
-              - service: conversation.process
-                response_variable: gpt_vacuum_error_response
-                data:
-                  agent_id: conversation.chatgpt_5d1
-                  text: >-
-                    Write a short phone notification message for the user. The ground floor robot vacuum "Dustin"
-                    has reported an error. Keep it to max 2 short sentences and max about 200 characters.
-                    Be clear and useful. Add one relevant emoji.
-
-                    Sensor data:
-                    - Current state: {{ states('vacuum.dustin') }}
-                    - Error description: {{ state_attr('vacuum.dustin', 'error') }}
-                    - Error sensor: {{ states('sensor.dustin_error') }}
-                    - Low water warning: {{ states('sensor.dustin_low_water_warning') }}
-                    - Clean water tank: {{ states('sensor.dustin_clean_water_tank_status') }}
-                    - Dirty water tank: {{ states('sensor.dustin_dirty_water_tank_status') }}
-                    - Mop pad: {{ states('sensor.dustin_mop_pad') }}
-
           - conditions:
               - condition: template
                 value_template: "{{ trigger.id == 'Moeke' }}"
@@ -622,49 +581,45 @@ automation:
                 data:
                   agent_id: conversation.chatgpt_5d1
                   text: >-
-                    You are a helpful assistant. Write a short phone notification message
-                    to inform the user that their first-floor robot vacuum cleaner "Moeke"
-                    has reported an error.
-
-                    Goal: Help the user understand what might be wrong using the sensor data below.
-                    Write no more than 2 short sentences, max about 200 characters total.
+                    You are a helpful assistant. Write a short phone notification
+                    message to inform the user that their first-floor robot
+                    vacuum cleaner "Moeke" has reported an error. Help the user
+                    understand what might be wrong using the sensor data below.
+                    Write no more than 2 short sentences and about 200 characters.
                     Be friendly and clear.
-
                     Sensor data:
                     - Current state: {{ states('vacuum.moeke') }}
                     - Error description: {{ state_attr('vacuum.moeke', 'error') }}
                     - Error sensor: {{ states('sensor.moeke_error') }}
                     - Low water warning from vacuum: {{ state_attr('vacuum.moeke', 'low_water_warning') }}
                     - Water detected in clean reservoir leak sensor: {{ states('binary_sensor.moeke_reservoir_leak_sensor') }}
-
-                    Context notes:
+                    Context:
                     - Moeke uses clean water for mop washing. The leak sensor hangs inside this reservoir.
-                    - If the leak sensor is 'off', the tank is truly empty.
-                    - If the leak sensor is 'on' and low water warning is 'No warning', everything is fine — do not mention a water issue.
-                    - A water refill might be needed if leak sensor is 'off' or low water warning indicates this.
-                    - If there is a known error description, summarize it briefly and clearly.
-                    - If everything seems okay but a transient error occurred, say it might be a fluke.
-                    - End with a relevant emoji: 💧 if water, 🧼 if cleaning-related, 🤖 otherwise.
-                    - No markdown, titles, or formatting — just plain text.
+                    - If the leak sensor is off, the tank is truly empty.
+                    - If the leak sensor is on and the low-water warning is No warning, do not mention a water issue.
+                    - A refill may be needed if the leak sensor is off or the low-water warning indicates this.
+                    - If a known error description exists, summarize it briefly.
+                    - If everything appears normal but a transient error occurred, say it might be a fluke.
+                    - End with 💧 for water, 🧼 for cleaning-related problems, or 🤖 otherwise.
+                    - Use plain text without markdown, titles, or formatting.
         default:
           - service: conversation.process
             response_variable: gpt_vacuum_error_response
             data:
               agent_id: conversation.chatgpt_5d1
               text: >-
-                Write a short and clear phone notification to inform the user
-                that their second-floor robot vacuum cleaner "Alfred" encountered an error.
-
+                Write a short and clear phone notification informing the user
+                that their second-floor robot vacuum cleaner "Alfred" encountered
+                an error.
                 Entity state: {{ states('vacuum.alfred') }}
                 Error description: {{ state_attr('vacuum.alfred', 'error') }}
-
-                Extra information regarding different errors:
-                - Error description: None means no error description or no error.
-                - Device Stuck, clean area: the device is stuck, the area around the robot needs to be cleared.
-                - Wheels on top of void, move robot: the robot's wheels are suspended and needs to be moved.
-
-                Mention the floor and the name, say it is in error, clearly describe the type of error if available,
-                and be brief, around 150 characters. One friendly sentence is enough. Add a relevant emoji.
+                Error information:
+                - None means no error description is available.
+                - Device Stuck, clean area means the device is stuck and the area around it needs clearing.
+                - Wheels on top of void, move robot means the wheels are suspended and the robot needs moving.
+                Mention the second floor and Alfred by name, clearly describe the
+                error when available, and keep the message to one friendly
+                sentence of about 150 characters. Add a relevant emoji.
       - service: notify.sander_and_tamara_phones
         continue_on_error: true
         data:
@@ -673,9 +628,9 @@ automation:
           data:
             ttl: 0
             priority: high
-            sticky: "true"
+            sticky: true
             group: vacuum
-            tag: vacuumerror
+            tag: "{{ notification_tag }}"
             notification_icon: mdi:robot-vacuum
             image: "/api/{{ map_type }}_proxy/{{ map_entity_id }}"
       - service: scene.create
@@ -693,26 +648,140 @@ automation:
           rgb_color: [255, 0, 0]
           effect: "Fast Pulse"
       - wait_template: >-
-          {% if trigger.id == 'Dustin' %}
-            {{ states('sensor.dustin_error') in ['no_error', 'clean_mop_pad', 'unavailable']
-               or not is_state('vacuum.dustin', 'error') }}
-          {% elif trigger.id == 'Moeke' %}
+          {% if trigger.id == 'Moeke' %}
             {{ states('sensor.moeke_error') in ['no_error', 'clean_mop_pad', 'unavailable']
-               or not is_state('vacuum.moeke', 'error') }}
+                or not is_state('vacuum.moeke', 'error') }}
           {% else %}
-            {{ not is_state('vacuum.alfred', 'error') and not is_state('vacuum.alfred', 'paused') }}
+            {{ not is_state('vacuum.alfred', 'error')
+                and not is_state('vacuum.alfred', 'paused') }}
           {% endif %}
       - service: scene.turn_on
         data:
           entity_id: scene.atmoorb_bulbs_before
           transition: 1
       - service: notify.sander_and_tamara_phones
+        continue_on_error: true
         data:
           message: "clear_notification"
           data:
             ttl: 0
             priority: high
-            tag: vacuumerror
+            tag: "{{ notification_tag }}"
+
+  - alias: "[home|vacuum] Notify phone if Dustin has an operational error"
+    id: yaml_automation_home_vacuum_notify_phone_if_dustin_has_an_operational_error
+    description: >
+      Sends a high-priority notification when Dustin reports a non-water-related
+      operational error while it is not docked. Transient errors are captured
+      from the trigger and remain visible for at least two minutes.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: sensor.dustin_error
+        not_from:
+          - "unknown"
+          - "unavailable"
+        not_to:
+          - "no_error"
+          - "unknown"
+          - "unavailable"
+        id: dustin_error
+    condition:
+      - condition: template
+        value_template: >-
+          {% set reported_error = trigger.to_state.state | default('unknown', true) | lower %}
+          {{ reported_error not in ['no_error', 'clean_mop_pad', 'unknown', 'unavailable', 'none', '']
+              and 'water' not in reported_error
+              and not is_state('vacuum.dustin', 'docked') }}
+    action:
+      - variables:
+          triggered_issue: "{{ trigger.to_state.state }}"
+      - service: homeassistant.update_entity
+        continue_on_error: true
+        target:
+          entity_id: camera.dustin_map
+      - service: conversation.process
+        continue_on_error: true
+        response_variable: gpt_vacuum_error_response
+        data:
+          agent_id: conversation.chatgpt_5d1
+          text: >-
+            Write a short phone notification informing the user that their
+            ground-floor robot vacuum "Dustin" reported an operational error.
+            Describe only the captured error below. Do not add clean-water or
+            dirty-water tank warnings, because those are handled separately.
+            Keep the message to no more than 2 short sentences and about 200
+            characters. Be clear and useful, use plain text, and add one
+            relevant emoji.
+            Captured error: {{ triggered_issue }}
+            Current vacuum state: {{ states('vacuum.dustin') }}
+            Current detailed state: {{ states('sensor.dustin_state') }}
+            Current error sensor: {{ states('sensor.dustin_error') }}
+            Battery level: {{ state_attr('vacuum.dustin', 'battery_level') }}
+            Interpretation:
+            - battery_low means Dustin stopped cleaning or is returning because its battery is low.
+            - dust_bag_full means the dock dust bag should be checked or replaced.
+            - The captured error is authoritative even if the current error sensor has already returned to no_error.
+            - Do not mention unknown or unavailable values unless no useful information is available.
+      - variables:
+          notification_message: >-
+            {% set response = gpt_vacuum_error_response | default({}) %}
+            {% set speech = response.get('response', {}).get('speech', {}).get('plain', {}).get('speech', '') %}
+            {{ speech if speech else
+                'Dustin reported '
+                ~ (triggered_issue | replace('_', ' '))
+                ~ ' while cleaning. Please check the robot. 🤖' }}
+      - service: notify.sander_and_tamara_phones
+        continue_on_error: true
+        data:
+          title: "Error with Dustin"
+          message: "{{ notification_message }}"
+          data:
+            ttl: 0
+            priority: high
+            sticky: true
+            group: vacuum
+            tag: vacuumerror_dustin
+            notification_icon: mdi:robot-vacuum
+            image: "/api/camera_proxy/camera.dustin_map"
+      - service: scene.create
+        data:
+          scene_id: atmoorb_bulbs_before_dustin_vacuum_error
+          snapshot_entities:
+            - light.atmoorb_left
+            - light.atmoorb_right
+      - service: light.turn_on
+        target:
+          entity_id:
+            - light.atmoorb_left
+            - light.atmoorb_right
+        data:
+          rgb_color: [255, 0, 0]
+          effect: "Fast Pulse"
+      - delay: "00:02:00"
+      - wait_template: >-
+          {% set current_error = states('sensor.dustin_error') | lower %}
+          {{ current_error in ['no_error', 'clean_mop_pad', 'unknown', 'unavailable']
+              or 'water' in current_error
+              or is_state('vacuum.dustin', 'docked') }}
+        timeout:
+          hours: 12
+        continue_on_timeout: true
+      - service: scene.turn_on
+        continue_on_error: true
+        target:
+          entity_id: scene.atmoorb_bulbs_before_dustin_vacuum_error
+        data:
+          transition: 1
+      - service: notify.sander_and_tamara_phones
+        continue_on_error: true
+        data:
+          message: "clear_notification"
+          data:
+            ttl: 0
+            priority: high
+            tag: vacuumerror_dustin
 
   - alias: "[home|vacuum] Notify if Moeke clean water reservoir is empty"
     id: home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty
