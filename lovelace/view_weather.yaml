@@ -1862,6 +1862,418 @@ cards:
                   min-height: 72px;
                   --icon-size: 30px;
                 }
+          ###########################################################################
+          # HALLWAY 1ST FLOOR
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.hallway_1st_floor_temperature
+            primary: Hallway 1st Floor
+            secondary: >-
+              {%- set t = states('sensor.hallway_1st_floor_temperature') -%}
+              {%- set h = states('sensor.hallway_1st_floor_humidity') -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] or not t | is_number -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float | round(1) }} °C
+              {%- endif -%}
+              {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] and h | is_number %}
+              {{ h | float | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:stairs-up
+            icon_color: >-
+              {%- set v = states('sensor.hallway_1st_floor_temperature') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] or not v | is_number -%}
+                grey
+              {%- else -%}
+                {%- set t = v | float -%}
+                {%- if t >= 27 -%}
+                  red
+                {%- elif t >= 24 -%}
+                  orange
+                {%- elif t >= 20 -%}
+                  cyan
+                {%- elif t >= 17 -%}
+                  blue
+                {%- else -%}
+                  indigo
+                {%- endif -%}
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Hallway 1st Floor Climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          show: true
+                          title: Hallway 1st Floor Temperature · Today vs Last 4 Days
+                          show_states: true
+                          colorize_states: true
+                        graph_span: 24h
+                        span:
+                          start: day
+                        update_interval: 1min
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 200px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~16
+                            max: ~28
+                            decimals: 1
+                            align_to: 2
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: "°C"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.hallway_1st_floor_temperature
+                            offset: "-4d"
+                            name: 4d Ago
+                            color: "#00B8D9"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.hallway_1st_floor_temperature
+                            offset: "-3d"
+                            name: 3d Ago
+                            color: "#00B8D9"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.hallway_1st_floor_temperature
+                            offset: "-2d"
+                            name: 2d Ago
+                            color: "#00B8D9"
+                            opacity: 0.38
+                          - entity: sensor.hallway_1st_floor_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#00B8D9"
+                            opacity: 0.55
+                          - entity: sensor.hallway_1st_floor_temperature
+                            name: Today
+                            color: "#00B8D9"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          show: true
+                          title: Hallway 1st Floor Humidity · Today vs Last 4 Days
+                          show_states: true
+                          colorize_states: true
+                        graph_span: 24h
+                        span:
+                          start: day
+                        update_interval: 1min
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 200px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.hallway_1st_floor_humidity
+                            offset: "-4d"
+                            name: 4d Ago
+                            color: "#00B8D9"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.hallway_1st_floor_humidity
+                            offset: "-3d"
+                            name: 3d Ago
+                            color: "#00B8D9"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.hallway_1st_floor_humidity
+                            offset: "-2d"
+                            name: 2d Ago
+                            color: "#00B8D9"
+                            opacity: 0.38
+                          - entity: sensor.hallway_1st_floor_humidity
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#00B8D9"
+                            opacity: 0.55
+                          - entity: sensor.hallway_1st_floor_humidity
+                            name: Today
+                            color: "#00B8D9"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
+          ###########################################################################
+          # HALLWAY 2ND FLOOR
+          ###########################################################################
+          - type: custom:mushroom-template-card
+            entity: sensor.hallway_2nd_floor_temperature
+            primary: Hallway 2nd Floor
+            secondary: >-
+              {%- set t = states('sensor.hallway_2nd_floor_temperature') -%}
+              {%- set h = states('sensor.hallway_2nd_floor_humidity') -%}
+              {%- if t in ['unknown', 'unavailable', 'none', 'None', ''] or not t | is_number -%}
+                Temp unavailable
+              {%- else -%}
+                {{ t | float | round(1) }} °C
+              {%- endif -%}
+              {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] and h | is_number %}
+              {{ h | float | round(0) | int }}% RH
+              {%- endif -%}
+            icon: mdi:stairs
+            icon_color: >-
+              {%- set v = states('sensor.hallway_2nd_floor_temperature') -%}
+              {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] or not v | is_number -%}
+                grey
+              {%- else -%}
+                {%- set t = v | float -%}
+                {%- if t >= 27 -%}
+                  red
+                {%- elif t >= 24 -%}
+                  orange
+                {%- elif t >= 20 -%}
+                  green
+                {%- elif t >= 17 -%}
+                  blue
+                {%- else -%}
+                  indigo
+                {%- endif -%}
+              {%- endif -%}
+            fill_container: true
+            multiline_secondary: true
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Hallway 2nd Floor Climate
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:apexcharts-card
+                        header:
+                          show: true
+                          title: Hallway 2nd Floor Temperature · Today vs Last 4 Days
+                          show_states: true
+                          colorize_states: true
+                        graph_span: 24h
+                        span:
+                          start: day
+                        update_interval: 1min
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 200px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: ~16
+                            max: ~28
+                            decimals: 1
+                            align_to: 2
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 1
+                          unit: "°C"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.hallway_2nd_floor_temperature
+                            offset: "-4d"
+                            name: 4d Ago
+                            color: "#FF8A3D"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.hallway_2nd_floor_temperature
+                            offset: "-3d"
+                            name: 3d Ago
+                            color: "#FF8A3D"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.hallway_2nd_floor_temperature
+                            offset: "-2d"
+                            name: 2d Ago
+                            color: "#FF8A3D"
+                            opacity: 0.38
+                          - entity: sensor.hallway_2nd_floor_temperature
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#FF8A3D"
+                            opacity: 0.55
+                          - entity: sensor.hallway_2nd_floor_temperature
+                            name: Today
+                            color: "#FF8A3D"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+
+                      - type: custom:apexcharts-card
+                        header:
+                          show: true
+                          title: Hallway 2nd Floor Humidity · Today vs Last 4 Days
+                          show_states: true
+                          colorize_states: true
+                        graph_span: 24h
+                        span:
+                          start: day
+                        update_interval: 1min
+                        now:
+                          show: true
+                        apex_config:
+                          chart:
+                            height: 200px
+                          legend:
+                            show: false
+                          grid:
+                            show: true
+                            padding:
+                              left: 0
+                              right: 0
+                              bottom: 0
+                              top: -10
+                        yaxis:
+                          - min: 0
+                            max: 100
+                            decimals: 0
+                            align_to: 10
+                            apex_config:
+                              forceNiceScale: true
+                        all_series_config:
+                          group_by:
+                            func: median
+                            duration: 10min
+                          fill_raw: last
+                          stroke_width: 3
+                          float_precision: 0
+                          unit: "%"
+                          show:
+                            in_header: false
+                            legend_value: false
+                            name_in_header: false
+                        series:
+                          - entity: sensor.hallway_2nd_floor_humidity
+                            offset: "-4d"
+                            name: 4d Ago
+                            color: "#FF8A3D"
+                            opacity: 0.20
+                            stroke_width: 2
+                          - entity: sensor.hallway_2nd_floor_humidity
+                            offset: "-3d"
+                            name: 3d Ago
+                            color: "#FF8A3D"
+                            opacity: 0.28
+                            stroke_width: 2
+                          - entity: sensor.hallway_2nd_floor_humidity
+                            offset: "-2d"
+                            name: 2d Ago
+                            color: "#FF8A3D"
+                            opacity: 0.38
+                          - entity: sensor.hallway_2nd_floor_humidity
+                            offset: "-1d"
+                            name: Yesterday
+                            color: "#FF8A3D"
+                            opacity: 0.55
+                          - entity: sensor.hallway_2nd_floor_humidity
+                            name: Today
+                            color: "#FF8A3D"
+                            opacity: 1
+                            stroke_width: 4
+                            extend_to: now
+                            show:
+                              in_header: true
+                              legend_value: true
+            hold_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  min-height: 72px;
+                  --icon-size: 30px;
+                }
 
       - type: custom:apexcharts-card
         header:
@@ -1941,10 +2353,21 @@ cards:
           - entity: sensor.baby_room_aqm_temperature
             name: Baby Room AQM
             color: '#ff33cc'
+          - entity: sensor.hallway_1st_floor_temperature
+            name: Hallway 1st Floor
+            color: "#00B8D9"
+          - entity: sensor.hallway_2nd_floor_temperature
+            name: Hallway 2nd Floor
+            color: "#FF8A3D"
           - entity: sensor.shed_aqm_temperature
             name: Shed AQM
             color: '#33ff63'
-            stroke_width: 3
+            stroke_width: 2
+            stroke_dash: 5
+          - entity: sensor.temperature_outside
+            name: Outside
+            color: '#00A878'
+            stroke_width: 2
             stroke_dash: 5
 
       - type: custom:apexcharts-card
@@ -2027,6 +2450,12 @@ cards:
           - entity: sensor.humidity_bathroom
             name: Bathroom
             color: '#9933FF'  # Purple
+          - entity: sensor.hallway_1st_floor_humidity
+            name: Hallway 1st Floor
+            color: "#00B8D9"
+          - entity: sensor.hallway_2nd_floor_humidity
+            name: Hallway 2nd Floor
+            color: "#FF8A3D"
           - entity: sensor.guest_room_aqm_humidity
             name: Guest Room AQM
             color: '#B266FF'  # Light purple
@@ -4308,4 +4737,268 @@ cards:
               --card-primary-font-size: 15px;
               --card-secondary-font-size: 13px;
               --card-secondary-line-height: 1.35;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.hallway_1st_floor_temperature
+        primary: Hallway 1st Floor
+        secondary: >-
+          {%- set t = states('sensor.hallway_1st_floor_temperature') -%}
+          {%- set h = states('sensor.hallway_1st_floor_humidity') -%}
+          {%- if t not in ['unknown', 'unavailable', 'none', 'None', ''] and t | is_number -%}
+            {{ t | float | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%}
+          ·
+          {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] and h | is_number -%}
+            {{ h | float | round(0) | int }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:stairs-up
+        icon_color: >-
+          {%- set v = states('sensor.hallway_1st_floor_temperature') -%}
+          {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] or not v | is_number -%}
+            grey
+          {%- else -%}
+            {%- set t = v | float -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} cyan
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Hallway 1st Floor Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Hallway 1st Floor Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.hallway_1st_floor_temperature
+                        name: Hallway
+                        color: "#00B8D9"
+
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Hallway 1st Floor Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.hallway_1st_floor_humidity
+                        name: Hallway
+                        color: "#00B8D9"
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 72px;
+              --icon-size: 30px;
+            }
+      - type: custom:mushroom-template-card
+        entity: sensor.hallway_2nd_floor_temperature
+        primary: Hallway 2nd Floor
+        secondary: >-
+          {%- set t = states('sensor.hallway_2nd_floor_temperature') -%}
+          {%- set h = states('sensor.hallway_2nd_floor_humidity') -%}
+          {%- if t not in ['unknown', 'unavailable', 'none', 'None', ''] and t | is_number -%}
+            {{ t | float | round(1) }} °C
+          {%- else -%}
+            —
+          {%- endif -%}
+          ·
+          {%- if h not in ['unknown', 'unavailable', 'none', 'None', ''] and h | is_number -%}
+            {{ h | float | round(0) | int }} %
+          {%- else -%}
+            —
+          {%- endif -%}
+        icon: mdi:stairs
+        icon_color: >-
+          {%- set v = states('sensor.hallway_2nd_floor_temperature') -%}
+          {%- if v in ['unknown', 'unavailable', 'none', 'None', ''] or not v | is_number -%}
+            grey
+          {%- else -%}
+            {%- set t = v | float -%}
+            {%- if t < 18 -%} blue
+            {%- elif t < 23 -%} green
+            {%- elif t < 26 -%} amber
+            {%- else -%} red
+            {%- endif -%}
+          {%- endif -%}
+        fill_container: true
+        multiline_secondary: true
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Hallway 2nd Floor Climate
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Hallway 2nd Floor Temperature - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~16
+                        max: ~28
+                        decimals: 1
+                        align_to: 2
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 1
+                      unit: "°C"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.hallway_2nd_floor_temperature
+                        name: Hallway
+                        color: "#FF8A3D"
+
+                  - type: custom:apexcharts-card
+                    header:
+                      show: true
+                      title: Hallway 2nd Floor Humidity - Last 12h
+                      show_states: true
+                      colorize_states: true
+                    graph_span: 12h
+                    update_interval: 1min
+                    now:
+                      show: true
+                    apex_config:
+                      chart:
+                        height: 190px
+                      legend:
+                        show: false
+                    yaxis:
+                      - min: ~30
+                        max: ~80
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          forceNiceScale: true
+                    all_series_config:
+                      type: line
+                      curve: smooth
+                      stroke_width: 3
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      extend_to: now
+                      group_by:
+                        func: median
+                        duration: 5min
+                      show:
+                        in_header: true
+                        legend_value: false
+                        name_in_header: true
+                    series:
+                      - entity: sensor.hallway_2nd_floor_humidity
+                        name: Hallway
+                        color: "#FF8A3D"
+        hold_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              min-height: 72px;
+              --icon-size: 30px;
             }
