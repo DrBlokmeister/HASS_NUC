@@ -313,12 +313,13 @@ climate_apexchart:
         show:
           in_header: true
           legend_value: true
-      - entity: sensor.heatpump_status
-        name: "Heating On"
+      - entity: '[[valve]]'
+        name: Heating
         yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'heating' ? 1 : 0;"
+        curve: stepline
+        transform: "return x === 'on' && hass.states['sensor.heatpump_status']?.state === 'heating' ? 1 : 0;"
         color: "#FF7043"
         extend_to: now
         opacity: 0.3
@@ -329,12 +330,29 @@ climate_apexchart:
           legend_value: false
           in_header: false
       - entity: '[[valve]]'
-        name: "Valve Open"
+        name: Cooling
         yaxis_id: binary
         stroke_width: 0
         type: area
-        transform: "return x === 'on' ? 1 : 0;"
-        color: "#81fa73ff"
+        curve: stepline
+        transform: "return x === 'on' && hass.states['sensor.heatpump_status']?.state === 'cooling' ? 1 : 0;"
+        color: "#42A5F5"
+        extend_to: now
+        opacity: 0.3
+        group_by:
+          func: last
+          duration: 5min
+        show:
+          legend_value: false
+          in_header: false
+      - entity: '[[valve]]'
+        name: Valve Open
+        yaxis_id: binary
+        stroke_width: 0
+        type: area
+        curve: stepline
+        transform: "const s = hass.states['sensor.heatpump_status']?.state; return x === 'on' && s !== 'heating' && s !== 'cooling' ? 1 : 0;"
+        color: "#66BB6A"
         extend_to: now
         opacity: 0.3
         group_by:
