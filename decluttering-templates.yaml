@@ -602,33 +602,42 @@ energy_price_apexchart_15min:
 ############################
 last_7_days_apexcharts_card:
   default:
-    - title: "Last 7 Days"
+    - title: Last 7 Days
+    - graph_span: 24h
+    - chart_type: line
+    - update_interval: 1m
+    - span_offset: +0h
+    - color_today: "#4682B4"
+    - color_1day_ago: "#A0A4A8"
+    - color_2days_ago: "#A0A4A8"
+    - color_3days_ago: "#A0A4A8"
+    - color_4days_ago: "#A0A4A8"
+    - color_5days_ago: "#A0A4A8"
+    - color_6days_ago: "#A0A4A8"
+    - unit: ""
+    - float_precision: 0
+    - transform: "return x;"
+    - fill_raw: last
+    - group_by_func: avg
+    - group_by_duration: 15min
+    - stroke_width_history: 2
+    - stroke_width_today: 4
     - yaxis:
         - min: 0
           max: 100
           decimals: 0
           align_to: 10
-    - graph_span: 24h
-    - chart_type: line
-    - update_interval: 1m
-    - span_offset: +0h
-    - color_today: '#57c785'
-    - color_1day_ago: '#0da035'
-    - color_2days_ago: '#0da035'
-    - color_3days_ago: '#0da035'
-    - color_4days_ago: '#0da035'
-    - color_5days_ago: '#0da035'
-    - color_6days_ago: '#0da035'
-    - all_series_config:
-        stroke_width: 2
-        float_precision: 0
-        group_by:
-          func: avg
-          duration: 15min
-        show:
-          in_header: false
-          legend_value: false
-    - apex_config: []
+    - apex_config:
+        chart:
+          height: 320px
+        legend:
+          show: false
+        grid:
+          borderColor: rgba(255, 255, 255, 0.08)
+        tooltip:
+          shared: true
+        stroke:
+          curve: smooth
   card:
     type: custom:apexcharts-card
     graph_span: '[[graph_span]]'
@@ -645,48 +654,63 @@ last_7_days_apexcharts_card:
     now:
       show: true
     yaxis: '[[yaxis]]'
-    all_series_config: '[[all_series_config]]'
     apex_config: '[[apex_config]]'
+    all_series_config:
+      stroke_width: '[[stroke_width_history]]'
+      float_precision: '[[float_precision]]'
+      transform: '[[transform]]'
+      unit: '[[unit]]'
+      fill_raw: '[[fill_raw]]'
+      group_by:
+        func: '[[group_by_func]]'
+        duration: '[[group_by_duration]]'
+      show:
+        in_header: false
+        legend_value: false
+        name_in_header: false
+        offset_in_name: false
     series:
       - entity: '[[entity]]'
-        offset: '-6d'
+        offset: "-6d"
         name: 6 Days Ago
         color: '[[color_6days_ago]]'
-        opacity: 0.10
+        opacity: 0.12
       - entity: '[[entity]]'
-        offset: '-5d'
+        offset: "-5d"
         name: 5 Days Ago
         color: '[[color_5days_ago]]'
-        opacity: 0.15
+        opacity: 0.18
       - entity: '[[entity]]'
-        offset: '-4d'
+        offset: "-4d"
         name: 4 Days Ago
         color: '[[color_4days_ago]]'
-        opacity: 0.20
-      - entity: '[[entity]]'
-        offset: '-3d'
-        name: 3 Days Ago
-        color: '[[color_3days_ago]]'
         opacity: 0.25
       - entity: '[[entity]]'
-        offset: '-2d'
+        offset: "-3d"
+        name: 3 Days Ago
+        color: '[[color_3days_ago]]'
+        opacity: 0.33
+      - entity: '[[entity]]'
+        offset: "-2d"
         name: 2 Days Ago
         color: '[[color_2days_ago]]'
-        opacity: 0.50
+        opacity: 0.44
       - entity: '[[entity]]'
-        offset: '-1d'
+        offset: "-1d"
         name: Yesterday
         color: '[[color_1day_ago]]'
-        opacity: 0.75
+        opacity: 0.60
       - entity: '[[entity]]'
         name: Today
         color: '[[color_today]]'
-        stroke_width: 4
+        opacity: 1
+        stroke_width: '[[stroke_width_today]]'
         extend_to: now
-        opacity: 1.00
         show:
           in_header: true
           legend_value: true
+          name_in_header: false
+          offset_in_name: false
 
 ###############################
 ## DISK HEALTH TEMPLATE CARD ##
@@ -1111,93 +1135,38 @@ co2_pop_up_grid_card:
         data:
           title: '[[title]] CO₂'
           content:
-            type: custom:apexcharts-card
-            graph_span: 24h
-            span:
-              start: day
-            header:
-              show: true
-              title: '[[title]] CO₂'
-              show_states: true
-              colorize_states: true
-            now:
-              show: true
-            chart_type: line
-            update_interval: 1m
-            apex_config:
-              chart:
-                height: 320px
-              legend:
-                show: false
-              grid:
-                borderColor: rgba(255, 255, 255, 0.08)
-              tooltip:
-                shared: true
-              stroke:
-                curve: smooth
-            yaxis:
-              - min: 400
-                max: ~1000
-                decimals: 0
-                align_to: 200
-                apex_config:
-                  tickAmount: 4
-                  forceNiceScale: true
-            all_series_config:
-              stroke_width: 2
-              float_precision: 0
-              transform: "return Math.round(x);"
-              unit: ppm
-              fill_raw: last
-              group_by:
-                func: avg
-                duration: 15min
-              show:
-                in_header: false
-                legend_value: false
-                name_in_header: false
-                offset_in_name: false
-            series:
+            type: custom:decluttering-card
+            template: last_7_days_apexcharts_card
+            variables:
               - entity: '[[entity_id]]'
-                offset: "-6d"
-                name: 6 Days Ago
-                color: "#8F9499"
-                opacity: 0.16
-              - entity: '[[entity_id]]'
-                offset: "-5d"
-                name: 5 Days Ago
-                color: "#8996A3"
-                opacity: 0.20
-              - entity: '[[entity_id]]'
-                offset: "-4d"
-                name: 4 Days Ago
-                color: "#819BB3"
-                opacity: 0.25
-              - entity: '[[entity_id]]'
-                offset: "-3d"
-                name: 3 Days Ago
-                color: "#75A2C7"
-                opacity: 0.32
-              - entity: '[[entity_id]]'
-                offset: "-2d"
-                name: 2 Days Ago
-                color: "#66A9DB"
-                opacity: 0.42
-              - entity: '[[entity_id]]'
-                offset: "-1d"
-                name: Yesterday
-                color: "#58B0EE"
-                opacity: 0.58
-              - entity: '[[entity_id]]'
-                name: Today
-                color: "#4682B4"
-                opacity: 1
-                stroke_width: 4
-                extend_to: now
-                show:
-                  in_header: true
-                  legend_value: true
-                  name_in_header: false
+              - title: '[[title]] CO₂'
+              - color_today: "#4682B4"
+              - color_history: "#A0A4A8"
+              - unit: ppm
+              - float_precision: 0
+              - transform: "return Math.round(x);"
+              - fill_raw: last
+              - group_by_func: avg
+              - group_by_duration: 15min
+              - yaxis:
+                  - min: 400
+                    max: ~1000
+                    decimals: 0
+                    align_to: 200
+                    apex_config:
+                      tickAmount: 4
+                      forceNiceScale: true
+              - apex_config:
+                  chart:
+                    height: 320px
+                  legend:
+                    show: false
+                  grid:
+                    borderColor: rgba(255, 255, 255, 0.08)
+                  tooltip:
+                    shared: true
+                  stroke:
+                    curve: smooth
     hold_action:
       action: more-info
     card_mod:
