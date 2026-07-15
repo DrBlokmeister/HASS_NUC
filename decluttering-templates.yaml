@@ -136,37 +136,123 @@ epaper_device_card:
 ###########################
 energy_bar_graph_card:
   default:
-    - icon: mdi:lightning-bolt
-    - upper_bound: 5
+    - upper_bound: ~5
     - lower_bound: 0
-    - aggregate: max
+    - color: "#46ff33"
+    - graph_span_offset: -6d
+    - graph_span: 7d
+    - yaxis_float_precision: 0
+    - float_precision: 2
+    - unit: kWh
     - graph_color_thresholds:
         - value: 0
-          color: "#46ff33"
+          color: "#00BFA5"
+        - value: 0.333
+          color: "#00C990"
+        - value: 0.667
+          color: "#00D47A"
         - value: 1
-          color: "#beff33"
+          color: "#16D860"
+        - value: 1.333
+          color: "#42D645"
+        - value: 1.667
+          color: "#72D230"
         - value: 2
-          color: "#ffd433"
+          color: "#A6CE28"
+        - value: 2.333
+          color: "#D3CE24"
+        - value: 2.667
+          color: "#F5D523"
         - value: 3
-          color: "#ffaf33"
+          color: "#FFC41F"
+        - value: 3.333
+          color: "#FFA91A"
+        - value: 3.667
+          color: "#FF8618"
         - value: 4
-          color: "#ff5733"
+          color: "#FF5F1F"
+        - value: 5
+          color: "#E83A24"
+        - value: 6
+          color: "#B71F20"
+        - value: 7
+          color: "#641416"
+        - value: 8
+          color: "#111111"
   card:
-    type: custom:mini-graph-card
-    name: '[[name]]'
-    icon: '[[icon]]'
-    hours_to_show: 120
-    group_by: date
-    lower_bound: '[[lower_bound]]'
-    upper_bound: '[[upper_bound]]'
-    show:
-      graph: bar
-    color_thresholds_transition: smooth
-    color_thresholds: '[[graph_color_thresholds]]'
-    entities:
+    type: custom:apexcharts-card
+    graph_span: '[[graph_span]]'
+    update_interval: 5min
+    span:
+      start: day
+      offset: '[[graph_span_offset]]'
+    header:
+      show: true
+      title: '[[name]]'
+      show_states: true
+      colorize_states: true
+    experimental:
+      color_threshold: true
+    apex_config:
+      chart:
+        height: 150px
+      legend:
+        show: false
+      grid:
+        show: true
+        borderColor: rgba(127, 127, 127, 0.15)
+        padding:
+          left: 0
+          right: 0
+          top: -18
+          bottom: -15
+      plotOptions:
+        bar:
+          borderRadius: 4
+          columnWidth: 55%
+      dataLabels:
+        enabled: true
+        offsetY: -8
+        style:
+          fontSize: 11px
+          fontWeight: 500
+        background:
+          enabled: false
+      xaxis:
+        labels:
+          format: ddd
+          datetimeUTC: false
+      tooltip:
+        x:
+          format: dddd dd MMM
+    yaxis:
+      - min: '[[lower_bound]]'
+        max: '[[upper_bound]]'
+        decimals: '[[yaxis_float_precision]]'
+        apex_config:
+          forceNiceScale: true
+          labels:
+            formatter: |
+              EVAL:function(value) {
+                return value.toFixed([[yaxis_float_precision]]);
+              }
+    series:
       - entity: '[[entity]]'
-        aggregate_func: '[[aggregate]]'
-        name: Max
+        name: Daily
+        type: column
+        unit: '[[unit]]'
+        float_precision: '[[float_precision]]'
+        color: '[[color]]'
+        group_by:
+          func: last
+          duration: 1d
+          fill: last
+        color_threshold: '[[graph_color_thresholds]]'
+        show:
+          in_header: raw
+          name_in_header: false
+          legend_value: false
+          datalabels: true
 
 ###########################
 ## MINI POWER GRAPH CARD ##

@@ -256,9 +256,13 @@ cards:
                   {%- endif -%}
                 tap_action:
                   action: more-info
+          - type: grid
+            columns: 3
+            square: false
+            cards:
               - type: custom:mushroom-template-card
                 entity: sensor.portable_split_air_conditioner_current_temperature
-                primary: Current Temperature
+                primary: Current Temp
                 secondary: >-
                   {%- set value = states('sensor.portable_split_air_conditioner_current_temperature') -%}
                   {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
@@ -275,77 +279,75 @@ cards:
                     data:
                       title: Current Temperature
                       content:
-                        type: custom:apexcharts-card
-                        graph_span: 24h
-                        span:
-                          start: day
-                        header:
-                          show: true
-                          title: Air Conditioner Current Temperature
-                          show_states: true
-                          colorize_states: true
-                        now:
-                          show: true
-                        chart_type: line
-                        update_interval: 1m
-                        apex_config:
-                          chart:
-                            height: 320px
-                          legend:
-                            show: false
-                          grid:
-                            borderColor: rgba(255, 255, 255, 0.08)
-                          tooltip:
-                            shared: true
-                          stroke:
-                            curve: smooth
-                        yaxis:
-                          - min: ~16
-                            max: ~30
-                            decimals: 1
-                            align_to: 2
-                            apex_config:
-                              tickAmount: 5
-                              forceNiceScale: true
-                        all_series_config:
-                          stroke_width: 2
-                          float_precision: 1
-                          unit: °C
-                          fill_raw: last
-                          group_by:
-                            func: avg
-                            duration: 10min
-                          show:
-                            in_header: false
-                            legend_value: false
-                            name_in_header: false
-                            offset_in_name: false
-                        series:
+                        type: custom:decluttering-card
+                        template: last_7_days_apexcharts_card
+                        variables:
                           - entity: sensor.portable_split_air_conditioner_current_temperature
-                            offset: "-3d"
-                            name: 3 Days Ago
-                            color: "#819BB3"
-                            opacity: 0.25
-                          - entity: sensor.portable_split_air_conditioner_current_temperature
-                            offset: "-2d"
-                            name: 2 Days Ago
-                            color: "#66A9DB"
-                            opacity: 0.42
-                          - entity: sensor.portable_split_air_conditioner_current_temperature
-                            offset: "-1d"
-                            name: Yesterday
-                            color: "#58B0EE"
-                            opacity: 0.58
-                          - entity: sensor.portable_split_air_conditioner_current_temperature
-                            name: Today
-                            color: "#4682B4"
-                            opacity: 1
-                            stroke_width: 4
-                            extend_to: now
-                            show:
-                              in_header: true
-                              legend_value: true
-                              name_in_header: false
+                          - title: Air Conditioner Current Temperature
+                          - unit: °C
+                          - float_precision: 1
+                          - group_by_func: avg
+                          - group_by_duration: 10min
+                          - color_today: "#4682B4"
+                          - color_1day_ago: "#6B91B0"
+                          - color_2days_ago: "#7796AF"
+                          - color_3days_ago: "#839BAE"
+                          - color_4days_ago: "#8FA0AC"
+                          - color_5days_ago: "#9BA5AA"
+                          - color_6days_ago: "#A7AAA8"
+                          - yaxis:
+                              - min: ~16
+                                max: ~30
+                                decimals: 1
+                                align_to: 2
+                                apex_config:
+                                  tickAmount: 5
+                                  forceNiceScale: true
+                hold_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.split_ac_outside_temperature
+                primary: Outside Temp
+                secondary: >-
+                  {%- set value = states('sensor.split_ac_outside_temperature') -%}
+                  {%- if value in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                    Unavailable
+                  {%- else -%}
+                    {{ value | float(0) | round(1) }} °C
+                  {%- endif -%}
+                icon: mdi:thermometer
+                icon_color: cyan
+                tap_action:
+                  action: fire-dom-event
+                  browser_mod:
+                    service: browser_mod.popup
+                    data:
+                      title: Outside Temperature
+                      content:
+                        type: custom:decluttering-card
+                        template: last_7_days_apexcharts_card
+                        variables:
+                          - entity: sensor.split_ac_outside_temperature
+                          - title: Air Conditioner Outside Temperature
+                          - unit: °C
+                          - float_precision: 1
+                          - group_by_func: avg
+                          - group_by_duration: 10min
+                          - color_today: "#00ACC1"
+                          - color_1day_ago: "#31B1BE"
+                          - color_2days_ago: "#4BB4BA"
+                          - color_3days_ago: "#62B5B5"
+                          - color_4days_ago: "#76B5B0"
+                          - color_5days_ago: "#89B3AA"
+                          - color_6days_ago: "#9AAFA5"
+                          - yaxis:
+                              - min: ~16
+                                max: ~30
+                                decimals: 1
+                                align_to: 2
+                                apex_config:
+                                  tickAmount: 5
+                                  forceNiceScale: true
                 hold_action:
                   action: more-info
               - type: custom:mushroom-template-card
@@ -365,79 +367,43 @@ cards:
                   browser_mod:
                     service: browser_mod.popup
                     data:
-                      title: Target Temperature
+                      title: Target Temp
                       content:
-                        type: custom:apexcharts-card
-                        graph_span: 24h
-                        span:
-                          start: day
-                        header:
-                          show: true
-                          title: Air Conditioner Target Temperature
-                          show_states: true
-                          colorize_states: true
-                        now:
-                          show: true
-                        chart_type: line
-                        update_interval: 1m
-                        apex_config:
-                          chart:
-                            height: 320px
-                          legend:
-                            show: false
-                          grid:
-                            borderColor: rgba(255, 255, 255, 0.08)
-                          tooltip:
-                            shared: true
-                          stroke:
-                            curve: stepline
-                        yaxis:
-                          - min: ~16
-                            max: ~30
-                            decimals: 1
-                            align_to: 2
-                            apex_config:
-                              tickAmount: 5
-                              forceNiceScale: true
-                        all_series_config:
-                          stroke_width: 2
-                          float_precision: 1
-                          unit: °C
-                          fill_raw: last
-                          group_by:
-                            func: last
-                            duration: 10min
-                          show:
-                            in_header: false
-                            legend_value: false
-                            name_in_header: false
-                            offset_in_name: false
-                        series:
+                        type: custom:decluttering-card
+                        template: last_7_days_apexcharts_card
+                        variables:
                           - entity: sensor.portable_split_air_conditioner_target_temperature
-                            offset: "-3d"
-                            name: 3 Days Ago
-                            color: "#A88972"
-                            opacity: 0.25
-                          - entity: sensor.portable_split_air_conditioner_target_temperature
-                            offset: "-2d"
-                            name: 2 Days Ago
-                            color: "#C18A5F"
-                            opacity: 0.42
-                          - entity: sensor.portable_split_air_conditioner_target_temperature
-                            offset: "-1d"
-                            name: Yesterday
-                            color: "#DD8A49"
-                            opacity: 0.58
-                          - entity: sensor.portable_split_air_conditioner_target_temperature
-                            name: Today
-                            color: "#FF8C32"
-                            opacity: 1
-                            stroke_width: 4
-                            extend_to: now
-                            show:
-                              in_header: true
-                              legend_value: true
-                              name_in_header: false
+                          - title: Air Conditioner Target Temperature
+                          - unit: °C
+                          - float_precision: 1
+                          - group_by_func: last
+                          - group_by_duration: 10min
+                          - color_today: "#FF8C32"
+                          - color_1day_ago: "#E5904D"
+                          - color_2days_ago: "#D09562"
+                          - color_3days_ago: "#BE9974"
+                          - color_4days_ago: "#AF9D84"
+                          - color_5days_ago: "#A3A094"
+                          - color_6days_ago: "#9DA19E"
+                          - yaxis:
+                              - min: ~16
+                                max: ~30
+                                decimals: 1
+                                align_to: 2
+                                apex_config:
+                                  tickAmount: 5
+                                  forceNiceScale: true
+                          - apex_config:
+                              chart:
+                                height: 320px
+                              legend:
+                                show: false
+                              grid:
+                                borderColor: rgba(255, 255, 255, 0.08)
+                              tooltip:
+                                shared: true
+                              stroke:
+                                curve: stepline
                 hold_action:
                   action: more-info
           - type: grid
@@ -511,78 +477,31 @@ cards:
                     data:
                       title: Air Conditioner Power
                       content:
-                        type: custom:apexcharts-card
-                        graph_span: 24h
-                        span:
-                          start: day
-                        header:
-                          show: true
-                          title: Air Conditioner Power
-                          show_states: true
-                          colorize_states: true
-                        now:
-                          show: true
-                        chart_type: line
-                        update_interval: 1m
-                        apex_config:
-                          chart:
-                            height: 320px
-                          legend:
-                            show: false
-                          grid:
-                            borderColor: rgba(255, 255, 255, 0.08)
-                          tooltip:
-                            shared: true
-                          stroke:
-                            curve: smooth
-                        yaxis:
-                          - min: 0
-                            max: ~2000
-                            decimals: 0
-                            align_to: 500
-                            apex_config:
-                              tickAmount: 4
-                              forceNiceScale: true
-                        all_series_config:
-                          stroke_width: 2
-                          float_precision: 0
-                          transform: "return Math.round(x);"
-                          unit: W
-                          fill_raw: last
-                          group_by:
-                            func: avg
-                            duration: 10min
-                          show:
-                            in_header: false
-                            legend_value: false
-                            name_in_header: false
-                            offset_in_name: false
-                        series:
+                        type: custom:decluttering-card
+                        template: last_7_days_apexcharts_card
+                        variables:
                           - entity: sensor.plug_air_conditioner_power
-                            offset: "-3d"
-                            name: 3 Days Ago
-                            color: "#819BB3"
-                            opacity: 0.25
-                          - entity: sensor.plug_air_conditioner_power
-                            offset: "-2d"
-                            name: 2 Days Ago
-                            color: "#66A9DB"
-                            opacity: 0.42
-                          - entity: sensor.plug_air_conditioner_power
-                            offset: "-1d"
-                            name: Yesterday
-                            color: "#58B0EE"
-                            opacity: 0.58
-                          - entity: sensor.plug_air_conditioner_power
-                            name: Today
-                            color: "#4682B4"
-                            opacity: 1
-                            stroke_width: 4
-                            extend_to: now
-                            show:
-                              in_header: true
-                              legend_value: true
-                              name_in_header: false
+                          - title: Air Conditioner Power
+                          - unit: W
+                          - float_precision: 0
+                          - transform: "return Math.round(x);"
+                          - group_by_func: avg
+                          - group_by_duration: 10min
+                          - color_today: "#00ACC1"
+                          - color_1day_ago: "#31B1BE"
+                          - color_2days_ago: "#4BB4BA"
+                          - color_3days_ago: "#62B5B5"
+                          - color_4days_ago: "#76B5B0"
+                          - color_5days_ago: "#89B3AA"
+                          - color_6days_ago: "#9AAFA5"
+                          - yaxis:
+                              - min: 0
+                                max: ~2000
+                                decimals: 0
+                                align_to: 500
+                                apex_config:
+                                  tickAmount: 4
+                                  forceNiceScale: true
                 hold_action:
                   action: more-info
               - type: custom:mushroom-template-card
@@ -602,12 +521,14 @@ cards:
                   {%- if state in ['unknown', 'unavailable', 'none', 'None', ''] -%}
                     grey
                   {%- elif value < 1 -%}
-                    green
+                    teal
                   {%- elif value < 2 -%}
-                    light-green
-                  {%- elif value < 3 -%}
-                    yellow
+                    green
                   {%- elif value < 4 -%}
+                    lime
+                  {%- elif value < 6 -%}
+                    yellow
+                  {%- elif value < 8 -%}
                     orange
                   {%- else -%}
                     red
@@ -619,36 +540,47 @@ cards:
                     data:
                       title: Air Conditioner Energy
                       content:
-                        type: custom:mini-graph-card
-                        entity: sensor.plug_air_conditioner_energy_today
-                        name: Daily Energy Usage
-                        icon: mdi:lightning-bolt
-                        hours_to_show: 120
-                        group_by: date
-                        lower_bound: 0
-                        upper_bound: ~5
-                        show:
-                          graph: bar
-                          labels: true
-                          name: true
-                          icon: true
-                          state: true
-                        color_thresholds_transition: smooth
-                        color_thresholds:
-                          - value: 0
-                            color: "#46ff33"
-                          - value: 1
-                            color: "#beff33"
-                          - value: 2
-                            color: "#ffd433"
-                          - value: 3
-                            color: "#ffaf33"
-                          - value: 4
-                            color: "#ff5733"
-                        entities:
+                        type: custom:decluttering-card
+                        template: energy_bar_graph_card
+                        variables:
+                          - name: Air Conditioner Energy
                           - entity: sensor.plug_air_conditioner_energy_today
-                            aggregate_func: max
-                            name: Energy
+                          - upper_bound: ~10
+                          - graph_span: 14d
+                          - graph_span_offset: -13d
+                          - unit: kWh
+                          - float_precision: 2
+                          - graph_color_thresholds:
+                              - value: 0
+                                color: "#00BFA5"
+                              - value: 0.5
+                                color: "#00C990"
+                              - value: 1
+                                color: "#00D47A"
+                              - value: 1.5
+                                color: "#16D860"
+                              - value: 2
+                                color: "#42D645"
+                              - value: 2.5
+                                color: "#72D230"
+                              - value: 3
+                                color: "#A6CE28"
+                              - value: 3.5
+                                color: "#D3CE24"
+                              - value: 4
+                                color: "#F5D523"
+                              - value: 5
+                                color: "#FFC41F"
+                              - value: 6
+                                color: "#FFAA1A"
+                              - value: 7
+                                color: "#FF8618"
+                              - value: 8
+                                color: "#FF5F1F"
+                              - value: 9
+                                color: "#C52920"
+                              - value: 10
+                                color: "#641416"
                 hold_action:
                   action: more-info
 
