@@ -785,21 +785,44 @@ class SimulatedBatteryHandle:
         return
 
     def reset_sim_sensor(self, target_sensor_key):
-        """Reset the Simulated Sensor."""
+        """Sync the simulated sensor to its source entity, falling back to zero."""
         _LOGGER.debug(f"Reset {target_sensor_key} sim sensor")
 
         self._sensors[target_sensor_key] = 0.0
 
         for input_details in self._inputs:
-            if input_details[SIMULATED_SENSOR] == target_sensor_key:
-                _LOGGER.warning(input_details[SENSOR_ID])
-                if self._hass.states.get(input_details[SENSOR_ID]).state not in [
-                    STATE_UNAVAILABLE,
-                    STATE_UNKNOWN,
-                ]:
-                    self._sensors[target_sensor_key] = float(
-                        self._hass.states.get(input_details[SENSOR_ID]).state
-                    )
+            if input_details[SIMULATED_SENSOR] != target_sensor_key:
+                continue
+            source_state = self._hass.states.get(input_details[SENSOR_ID])
+            if source_state is None or source_state.state in [
+                STATE_UNAVAILABLE,
+                STATE_UNKNOWN,
+            ]:
+                continue
+            units = source_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+            if units not in [UnitOfEnergy.KILO_WATT_HOUR, UnitOfEnergy.WATT_HOUR]:
+                _LOGGER.warning(
+                    "(%s) Cannot sync %s to source %s: unsupported energy unit "
+                    "'%s'; expected kWh or Wh",
+                    self._name,
+                    target_sensor_key,
+                    input_details[SENSOR_ID],
+                    units,
+                )
+                continue
+            conversion_factor = 1.0 if units == UnitOfEnergy.KILO_WATT_HOUR else 0.001
+            try:
+                self._sensors[target_sensor_key] = (
+                    float(source_state.state) * conversion_factor
+                )
+            except ValueError:
+                _LOGGER.warning(
+                    "(%s) Cannot sync %s to source %s: state '%s' is not numeric",
+                    self._name,
+                    target_sensor_key,
+                    input_details[SENSOR_ID],
+                    source_state.state,
+                )
 
         dispatcher_send(self._hass, f"{self._name}-{MESSAGE_TYPE_BATTERY_UPDATE}")
 

@@ -37,6 +37,7 @@ from .const import (
     ATTR_LAST_DISCHARGE_EFFICIENCY,
     ATTR_SOURCE_ID,
     ATTR_STATUS,
+    PRECISION,
     ATTR_ENERGY_SAVED,
     ATTR_DATE_RECORDING_STARTED,
     BATTERY_MODE,
@@ -267,6 +268,15 @@ class DisplayOnlySensor(RestoreEntity, SensorEntity):
         else:
             _LOGGER.debug("No sensor state - presume new battery.")
             self._available = False
+            if any(
+                input_details[SIMULATED_SENSOR] == self._sensor_type
+                for input_details in self._handle._inputs
+            ):
+                # New battery: start the simulated grid meters in sync with
+                # their source entities, exactly like a battery reset does.
+                self._handle.reset_sim_sensor(self._sensor_type)
+                self._available = True
+                await self.async_update_ha_state(True)
 
         async def async_update_state():
             """Update sensor state."""
@@ -303,7 +313,7 @@ class DisplayOnlySensor(RestoreEntity, SensorEntity):
         if self._sensor_type == ATTR_MONEY_SAVED:
             return round(sensor_value, 2)
         else:
-            return round(sensor_value, 3)
+            return round(sensor_value, PRECISION)
 
     @property
     def device_class(self):
@@ -385,7 +395,7 @@ class DisplayOnlySensor(RestoreEntity, SensorEntity):
         ]:
             return round(sensor_value, 2)
         else:
-            return round(sensor_value, 3)
+            return round(sensor_value, PRECISION)
 
     def update(self):
         """Not used."""
@@ -477,7 +487,7 @@ class SimulatedBattery(RestoreEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the state of the sensor."""
-        return round(float(self.handle._charge_state), 3)
+        return round(float(self.handle._charge_state), PRECISION)
 
     @property
     def device_class(self):
@@ -534,7 +544,7 @@ class SimulatedBattery(RestoreEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return round(float(self.handle._charge_state), 3)
+        return round(float(self.handle._charge_state), PRECISION)
 
 
 class BatteryStatus(SensorEntity):
