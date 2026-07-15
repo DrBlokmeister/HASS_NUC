@@ -717,6 +717,7 @@ sensor:
     method: left
     unit_time: h
     round: 2
+
 # Integration sensors for power consumption W -> kWh
   - platform: integration
     source: sensor.total_power_consumption_watt
@@ -742,6 +743,16 @@ sensor:
     source: sensor.heatpump_tapwater_power_estimate
     name: Tapwater Energy
     unique_id: sensor_integration_heatpump_energy_usage
+    unit_time: h
+    unit_prefix: k
+    method: left
+    round: 2
+    max_sub_interval:
+      minutes: 10
+  - platform: integration # Plug computer requires its own energy integration sensor because frequent power cycles cause its built-in sensor to reset to 0.
+    source: sensor.plug_computer_power
+    name: Computer Energy Fallback
+    unique_id: yaml_integration_sensor_computer_energy_fallback
     unit_time: h
     unit_prefix: k
     method: left
