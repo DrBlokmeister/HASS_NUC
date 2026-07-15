@@ -1,0 +1,152 @@
+/**
+ * LVGL Chart Plugin
+ */
+
+const render = (el, widget, { getColorStyle }) => {
+    const props = widget.props || {};
+    const pColor = getColorStyle(props.color || "black");
+
+    el.innerHTML = "";
+    el.style.backgroundColor = "white";
+    el.style.border = `1px solid ${pColor}`;
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+
+    const title = document.createElement("div");
+    title.style.textAlign = "center";
+    title.style.fontSize = "12px";
+    title.style.color = pColor;
+    title.textContent = props.title || "Chart";
+    el.appendChild(title);
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.style.flex = "1";
+    svg.style.width = "100%";
+    el.appendChild(svg);
+
+    for (let i = 1; i < 4; i++) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", "0%");
+        line.setAttribute("y1", `${i * 25}%`);
+        line.setAttribute("x2", "100%");
+        line.setAttribute("y2", `${i * 25}%`);
+        line.setAttribute("stroke", "#eee");
+        line.setAttribute("stroke-width", "1");
+        svg.appendChild(line);
+    }
+
+    const points = [];
+    for (let i = 0; i <= 10; i++) {
+        const x = (i / 10) * 100;
+        const y = 50 + Math.sin(i) * 30;
+        points.push(`${x},${y}`);
+    }
+
+    const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    polyline.setAttribute("points", points.join(" "));
+    polyline.setAttribute("fill", "none");
+    polyline.setAttribute("stroke", pColor);
+    polyline.setAttribute("stroke-width", "2");
+
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    svg.appendChild(polyline);
+};
+
+const exportLVGL = (w, { common, convertColor, formatOpacity }) => {
+    const p = w.props || {};
+    const chart = {
+        ...common,
+        type: p.type || 'line',
+        point_count: p.point_count || 10,
+        border_color: convertColor(p.color || 'black'),
+        border_width: 1,
+        opa: formatOpacity(p.opa || p.opacity || 255),
+        series: [{ color: convertColor(p.color || 'black') }],
+        y_axis: {
+            show_labels: true,
+            num_ticks: p.y_div_lines !== undefined ? p.y_div_lines + 1 : 5
+        },
+        widgets: [{
+            label: {
+                align: 'top_mid',
+                text: `"${p.title || 'Chart'}"`,
+                text_color: convertColor(p.color || 'black')
+            }
+        }]
+    };
+
+    if (p.bg_color === 'transparent' || !p.bg_color) {
+        chart.bg_opa = 'transp';
+    } else {
+        chart.bg_color = convertColor(p.bg_color || 'white');
+    }
+
+    if (p.x_div_lines !== undefined || p.y_div_lines !== undefined) {
+        chart.div_line_count = {
+            x: p.x_div_lines,
+            y: p.y_div_lines
+        };
+    }
+
+    const entityId = (w.entity_id || p.entity_id || '').trim();
+    if (entityId) {
+        chart.series[0].sensor = entityId.replace(/[^a-zA-Z0-9_]/g, '_');
+        chart.y_min = p.min ?? 0;
+        chart.y_max = p.max ?? 100;
+    }
+
+    return { chart: chart };
+};
+
+export default {
+    id: "lvgl_chart",
+    name: "Chart",
+    category: "LVGL",
+    defaults: {
+        entity_id: "",
+        min: 0,
+        max: 100,
+        color: "blue",
+        title: "Chart",
+        type: "line",
+        point_count: 10,
+        x_div_lines: 3,
+        y_div_lines: 3,
+        bg_color: "transparent",
+        opa: 255,
+        opacity: 255
+    },
+    schema: [
+        {
+            section: "Content",
+            fields: [
+                { key: "title", label: "Chart Title", type: "text", default: "Chart" },
+                { key: "entity_id", target: "root", label: "Entity ID", type: "entity_picker", default: "" }
+            ]
+        },
+        {
+            section: "Data Source",
+            fields: [
+                { key: "min", label: "Min Value", type: "number", default: 0 },
+                { key: "max", label: "Max Value", type: "number", default: 100 },
+                { key: "point_count", label: "Points", type: "number", default: 10 }
+            ]
+        },
+        {
+            section: "Appearance",
+            fields: [
+                { key: "type", label: "Chart Type", type: "select", options: ["line", "bar", "scatter"], default: "line" },
+                { key: "color", label: "Recolor", type: "color", default: "blue" },
+                { key: "bg_color", label: "Background color", type: "color", default: "transparent" },
+                { key: "x_div_lines", label: "X Grid Lines", type: "number", default: 3 },
+                { key: "y_div_lines", label: "Y Grid Lines", type: "number", default: 3 },
+                { key: "opa", label: "Opacity (0 - 255)", type: "number", default: 255 },
+                { key: "opacity", label: "Opacity (0 - 255)", type: "number", default: 255 }
+            ]
+        }
+    ],
+    render,
+    exportLVGL
+};

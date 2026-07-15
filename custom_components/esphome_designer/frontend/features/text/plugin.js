@@ -1,0 +1,428 @@
+import { AppState } from '@core/state';
+import { wordWrap, parseColorMarkup, evaluateTemplatePreview } from '../../js/utils/text_utils.js';
+import { getWeightsForFont, clampFontWeight } from '../../js/core/font_weights.js';
+import { openDisplayTextPosition } from '../../js/io/adapters/opendisplay_helpers.js';
+const render = (el, widget, { getColorStyle }) => {
+    const props = widget.props || {};
+    el.innerHTML = "";
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+    el.style.overflow = "hidden"; // Match device behavior: clip text at widget boundary
+
+    const textRaw = props.text || props.value || widget.title || "Text";
+    // Evaluate template for designer preview
+    const text = evaluateTemplatePreview(textRaw, AppState?.entityStates);
+
+    const fontSize = props.font_size || 20;
+    const fontFamily = props.font_family || "Roboto";
+    const textAlign = props.text_align || "TOP_LEFT";
+
+    // Handle template colors in preview
+    let effectiveColor = props.color || "black";
+    if (typeof effectiveColor === 'string' && effectiveColor.includes('{{')) {
+        effectiveColor = 'black';
+    }
+
+    const body = document.createElement("div");
+    body.style.fontSize = `${fontSize}px`;
+    body.style.fontFamily = `${fontFamily}, sans-serif`;
+    body.style.fontWeight = String(props.font_weight || 400);
+    body.style.fontStyle = props.italic ? "italic" : "normal";
+    body.style.whiteSpace = "pre-wrap"; // Preserve line breaks in preview
+    body.style.width = "100%";
+    body.style.minHeight = "100%";
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.overflow = "visible"; // Let text flow naturally; parent el clips at boundary
+    body.style.flexShrink = "0";
+
+    // Set alignment
+    // Fix #268: Robust alignment for preview (Flex Column: alignItems=Horizontal, justifyContent=Vertical)
+
+    // Horizontal Alignment (Cross Axis)
+    if (textAlign.includes("RIGHT")) {
+        body.style.alignItems = "flex-end";
+        body.style.textAlign = "right";
+    } else if (textAlign.includes("LEFT")) {
+        body.style.alignItems = "flex-start";
+        body.style.textAlign = "left";
+    } else {
+        // CENTER, TOP_CENTER, BOTTOM_CENTER
+        body.style.alignItems = "center";
+        body.style.textAlign = "center";
+    }
+
+    // Vertical Alignment (Main Axis)
+    if (textAlign.includes("BOTTOM")) {
+        body.style.justifyContent = "flex-end";
+    } else if (textAlign.includes("TOP")) {
+        body.style.justifyContent = "flex-start";
+    } else {
+        // CENTER_*, or just CENTER
+        body.style.justifyContent = "center";
+    }
+
+    // Check if we should parse colors
+    const shouldParseColors = !!props.parse_colors;
+
+    // Calculate wrapping
+    const maxWidth = widget.width || 200;
+    const wrappedLines = shouldParseColors ? wordWrap(text, maxWidth, fontSize, fontFamily) : text.split("\n");
+
+    // Apply Border & Background
+    const borderWidth = props.border_width !== undefined ? props.border_width : 0;
+    const hasBackground = props.fill || (props.bg_color && props.bg_color !== "transparent") || (props.background_color && props.background_color !== "transparent");
+
+    if (borderWidth > 0 || hasBackground) {
+        // Resolve theme colors manually
+        const borderColorProp = props.border_color || "black";
+        let resolvedBorderColor = borderColorProp;
+        if (borderColorProp === "theme_auto") {
+            resolvedBorderColor = (AppState?.settings?.darkMode) ? "white" : "black";
+        }
+
+        if (borderWidth > 0) {
+            body.style.border = `${borderWidth}px solid ${getColorStyle(resolvedBorderColor)}`;
+        }
+
+        if (hasBackground) {
+            const bgCol = props.background_color || props.bg_color || (props.fill ? (props.color || "white") : "transparent");
+            body.style.backgroundColor = getColorStyle(bgCol);
+        }
+
+        body.style.borderRadius = `${props.border_radius || 0}px`;
+        body.style.boxSizing = "border-box"; // Include border in width/height
+    }
+
+    if (shouldParseColors) {
+        wrappedLines.forEach((line, i) => {
+            if (i > 0) body.appendChild(document.createTextNode("\n"));
+            body.appendChild(parseColorMarkup(line, effectiveColor, getColorStyle));
+        });
+    } else {
+        const span = document.createElement("span");
+        span.style.color = getColorStyle(effectiveColor);
+        span.textContent = wrappedLines.join('\n');
+        body.appendChild(span);
+    }
+
+    el.appendChild(body);
+};
+
+const exportLVGL = (w, { common, convertColor, _convertAlign, getLVGLFont, formatOpacity }) => {
+    const p = w.props || {};
+
+    // Fix #268: Properly map composite alignments to valid LVGL text_align (LEFT/CENTER/RIGHT)
+    let textAlign = "left";
+    const rawAlign = p.text_align || "TOP_LEFT";
+
+    if (rawAlign.includes("RIGHT")) {
+        textAlign = "right";
+    } else if (rawAlign.includes("CENTER") && !rawAlign.includes("LEFT")) {
+        // "CENTER_RIGHT" -> right (caught above), "CENTER_LEFT" -> left (default), "CENTER" -> center
+        // "TOP_CENTER", "BOTTOM_CENTER" -> center
+        textAlign = "center";
+    }
+
+    return {
+        label: {
+            ...common,
+            text: `"${p.text || 'Text'}"`,
+            text_font: getLVGLFont(p.font_family, p.font_size, p.font_weight, p.italic),
+            text_color: convertColor(p.color || p.text_color),
+            text_align: textAlign,
+            bg_color: p.bg_color === "transparent" ? undefined : convertColor(p.bg_color),
+            opa: formatOpacity(p.opa),
+            border_width: p.border_width || 0,
+            border_color: convertColor(p.border_color || "black"),
+            border_side: (p.border_width > 0) ? "full" : "none",
+            radius: p.border_radius || 0
+        }
+    };
+};
+
+export default {
+    id: "text", // also used for 'label'
+    name: "Text",
+    category: "Core",
+    supportedModes: ['lvgl', 'direct', 'oepl', 'opendisplay'],
+    defaults: {
+        text: "Text",
+        font_size: 20,
+        font_family: "Roboto",
+        color: "theme_auto",
+        font_weight: 400,
+        italic: false,
+        bpp: 1,
+        text_align: "TOP_LEFT",
+        bg_color: "transparent",
+        opa: 255,
+        border_width: 0,
+        border_color: "black",
+        border_radius: 0,
+        truncate: false
+    },
+    renderProperties: (panel, widget) => {
+        const props = widget.props || {};
+        const updateProp = (key, val) => {
+            const newProps = { ...widget.props, [key]: val };
+            AppState.updateWidget(widget.id, { props: newProps });
+        };
+
+        panel.createSection("Content", true);
+        panel.addLabeledInput("Text content", "textarea", props.text || "Text", (v) => updateProp("text", v));
+        panel.endSection();
+
+        panel.createSection("Typography", true);
+        panel.addLabeledInput("Font Size", "number", props.font_size || 20, (v) => updateProp("font_size", parseInt(v, 10)));
+        const fontOptions = ["Roboto", "Inter", "Open Sans", "Lato", "Montserrat", "Poppins", "Raleway", "Roboto Mono", "Ubuntu", "Nunito", "Playfair Display", "Merriweather", "Work Sans", "Source Sans Pro", "Quicksand", "Custom..."];
+        const currentFont = props.font_family || "Roboto";
+        const isCustom = !fontOptions.slice(0, -1).includes(currentFont);
+
+        panel.addSelect("Font Family", isCustom ? "Custom..." : currentFont, fontOptions, (v) => {
+            const newProps = { ...widget.props };
+            if (v !== "Custom...") {
+                newProps.font_family = v;
+                newProps.custom_font_family = "";
+                newProps.font_weight = clampFontWeight(v, newProps.font_weight || 400);
+            } else {
+                newProps.font_family = "Custom...";
+            }
+            AppState.updateWidget(widget.id, { props: newProps });
+        });
+
+        if (isCustom || props.font_family === "Custom...") {
+            panel.addLabeledInput("Custom Font Name", "text", props.custom_font_family || (isCustom ? currentFont : ""), (v) => {
+                const newProps = { ...widget.props };
+                newProps.font_family = v || "Roboto";
+                newProps.custom_font_family = v;
+                newProps.font_weight = clampFontWeight(newProps.font_family, newProps.font_weight || 400);
+                AppState.updateWidget(widget.id, { props: newProps });
+            });
+            panel.addHint('Browse <a href="https://fonts.google.com" target="_blank">fonts.google.com</a>');
+        }
+
+        const validWeights = getWeightsForFont(props.font_family || "Roboto");
+        panel.addSelect("Font Weight", props.font_weight || 400, validWeights, (v) => updateProp("font_weight", parseInt(v, 10)));
+        panel.addCheckbox("Italic", !!props.italic, (v) => updateProp("italic", v));
+        panel.addSelect("Alignment", props.text_align || "TOP_LEFT", ["TOP_LEFT", "TOP_CENTER", "TOP_RIGHT", "CENTER_LEFT", "CENTER", "CENTER_RIGHT", "BOTTOM_LEFT", "BOTTOM_CENTER", "BOTTOM_RIGHT"], (v) => updateProp("text_align", v));
+        panel.addCheckbox("Parse Color Tags", !!props.parse_colors, (v) => updateProp("parse_colors", v));
+        panel.addCheckbox("Truncate Overflow", !!props.truncate, (v) => updateProp("truncate", v));
+        if (props.parse_colors) {
+            panel.addHint("Usage: [red]Text[/red] or [#FF00AA]Colors[/#]");
+        }
+        panel.endSection();
+
+        panel.createSection("Appearance", false);
+        panel.addColorSelector("Text Color", props.color || "theme_auto", null, (v) => updateProp("color", v));
+        panel.addColorSelector("Background", props.bg_color || "transparent", null, (v) => updateProp("bg_color", v));
+        panel.addNumberWithSlider("Opacity (%)", props.opacity !== undefined ? props.opacity : (props.opa !== undefined ? Math.round(props.opa / 2.55) : 100), 0, 100, (v) => {
+            updateProp("opacity", v);
+            updateProp("opa", Math.round(v * 2.55));
+        });
+        panel.endSection();
+
+        panel.createSection("Border Settings", false);
+        panel.addLabeledInput("Border Width", "number", props.border_width || 0, (v) => updateProp("border_width", parseInt(v, 10)));
+        panel.addColorSelector("Border Color", props.border_color || "black", null, (v) => updateProp("border_color", v));
+        panel.addLabeledInput("Corner Radius", "number", props.border_radius || 0, (v) => updateProp("border_radius", parseInt(v, 10)));
+        panel.addDropShadowButton(panel.getContainer(), widget.id);
+        panel.endSection();
+
+        panel.createSection("Advanced", false);
+        panel.addLabeledInput("BPP / Antialias", "number", props.bpp || 1, (v) => updateProp("bpp", parseInt(v, 10)));
+        panel.endSection();
+    },
+    render,
+    exportOpenDisplay: (w, { layout, _page }) => {
+        const p = w.props || {};
+        const text = p.text || w.title || "Text";
+        const fontSize = p.font_size || 20;
+        const fontFamily = p.font_family || "Roboto";
+
+        // Convert theme_auto and internal colors to actual colors
+        let color = p.color || "black";
+        if (color === "theme_auto") {
+            color = layout?.darkMode ? "white" : "black";
+        }
+
+        const position = openDisplayTextPosition(w, p.text_align, "lt");
+
+        if (text.includes('\n') || text.includes('\r')) {
+            return {
+                type: "multiline",
+                value: text,
+                delimiter: "\n",
+                x: Math.round(w.x),
+                y: Math.round(w.y),
+                offset_y: fontSize + 5,
+                size: fontSize,
+                color: (color === "theme_auto") ? (layout?.darkMode ? "white" : "black") : color,
+                font: fontFamily?.includes("Mono") ? "mononoki.ttf" : "ppb.ttf"
+            };
+        }
+
+        // Preserve explicit widget widths so OpenDisplay can wrap natively.
+        if (!w.width) {
+            const wrappedLines = wordWrap(text, 200, fontSize, fontFamily);
+            if (wrappedLines.length > 1) {
+                return {
+                    type: "multiline",
+                    value: wrappedLines.join('\n'),
+                    delimiter: "\n",
+                    x: Math.round(w.x),
+                    y: Math.round(w.y),
+                    offset_y: fontSize + 5,
+                    size: fontSize,
+                    color: (color === "theme_auto") ? (layout?.darkMode ? "white" : "black") : color,
+                    font: fontFamily?.includes("Mono") ? "mononoki.ttf" : "ppb.ttf"
+                };
+            }
+        }
+
+        // Single line - use text
+        const result = {
+            type: "text",
+            x: position.x,
+            y: position.y,
+            value: text,
+            size: fontSize,
+            color: color,
+            anchor: position.anchor,
+            font: fontFamily?.includes("Mono") ? "mononoki.ttf" : "ppb.ttf",
+            parse_colors: !!p.parse_colors
+        };
+
+        if (w.width > 0) {
+            result.max_width = Math.round(w.width);
+            result.spacing = 5;
+            if (p.truncate) {
+                result.truncate = true;
+            }
+        }
+
+        return result;
+    },
+    exportLVGL,
+    exportOEPL: (w, { layout, _page }) => {
+        const p = w.props || {};
+        const text = p.text || w.title || "Text";
+        const fontSize = p.font_size || 20;
+        const lineSpacing = 5; // Default spacing between lines
+
+        // Convert theme_auto and internal colors to actual colors
+        let color = p.color || "black";
+        if (color === "theme_auto") {
+            color = layout?.darkMode ? "white" : "black";
+        }
+
+        // OEPL supports max_width for automatic text wrapping
+        // and \n characters for explicit line breaks
+        const result = {
+            type: "text",
+            value: text, // OEPL handles \n natively when max_width is set
+            x: Math.round(w.x),
+            y: Math.round(w.y),
+            size: fontSize,
+            font: p.font_family?.includes("Mono") ? "mononoki.ttf" : "ppb.ttf",
+            color: color,
+            align: (p.text_align || "TOP_LEFT").toLowerCase().replace("top_", "").replace("bottom_", "").replace("_", ""),
+            anchor: "lt", // Start with left-top for simplicity
+            parse_colors: !!p.parse_colors
+        };
+
+        // Add max_width for automatic text wrapping when widget has width
+        if (w.width && w.width > 0) {
+            result.max_width = Math.round(w.width);
+            result.spacing = lineSpacing; // Line spacing for wrapped text
+        }
+
+        return result;
+    },
+    export: (w, context) => {
+        const {
+            lines, getColorConst, addFont, getAlignX, getAlignY, getCondProps, getConditionCheck, Utils, isEpaper // eslint-disable-line no-unused-vars
+        } = context;
+
+        const p = w.props || {};
+        const colorProp = p.color || "theme_auto";
+        const fontSize = p.font_size || p.value_font_size || 20;
+        const fontFamily = p.font_family || "Roboto";
+        const fontId = addFont(fontFamily, p.font_weight || 400, fontSize, p.italic);
+        const text = p.text || w.title || "Text";
+        const textAlign = p.text_align || "TOP_LEFT";
+
+        // Check if gray text on e-paper - use dithering
+        const isGrayOnEpaper = isEpaper && Utils && Utils.isGrayColor && Utils.isGrayColor(colorProp);
+        const color = isGrayOnEpaper ? "COLOR_BLACK" : getColorConst(colorProp);
+
+        const cond = getConditionCheck(w);
+        if (cond) lines.push(`        ${cond}`);
+
+        // Robust alignment logic (Fix #268)
+        let x = w.x;
+        let y = w.y;
+
+        // Background fill
+        const bgColorProp = p.bg_color || p.background_color || "transparent";
+        if (bgColorProp && bgColorProp !== "transparent") {
+            const bgColorConst = getColorConst(bgColorProp);
+            lines.push(`        it.filled_rectangle(${w.x}, ${w.y}, ${w.width}, ${w.height}, ${bgColorConst});`);
+        }
+
+        // Horizontal Component
+        let alignH = "LEFT";
+        if (textAlign.includes("RIGHT")) {
+            x = Math.round(w.x + w.width);
+            alignH = "RIGHT";
+        } else if (textAlign.endsWith("CENTER") || textAlign === "CENTER") {
+            // "TOP_CENTER", "BOTTOM_CENTER" or just "CENTER"
+            x = Math.round(w.x + w.width / 2);
+            alignH = "CENTER";
+        }
+
+        // Vertical Component
+        let alignV = "TOP";
+        if (textAlign.includes("BOTTOM")) {
+            y = Math.round(w.y + w.height);
+            alignV = "BOTTOM";
+        } else if (textAlign.startsWith("CENTER") || textAlign === "CENTER") {
+            // "CENTER_LEFT", "CENTER_RIGHT" or just "CENTER"
+            y = Math.round(w.y + w.height / 2);
+            alignV = "CENTER";
+        }
+
+        // Construct ESPHome Enum
+        let esphomeAlign = `TextAlign::${alignV}_${alignH}`;
+        if (esphomeAlign === "TextAlign::CENTER_CENTER") esphomeAlign = "TextAlign::CENTER";
+
+        // Apply word-wrap based on widget width (skip for narrow widgets where wrapping is nonsensical)
+        const effectiveWidth = w.width || 200;
+        const wrappedLines = effectiveWidth >= fontSize * 3 ? wordWrap(text, effectiveWidth, fontSize, fontFamily) : [text];
+        const lineHeight = fontSize + 4; // Font size plus line spacing
+
+        // Output each wrapped line
+        let currentY = y;
+        for (const line of wrappedLines) {
+            const escapedLine = line.replace(/"/g, '\\"').replace(/%/g, '%%');
+            lines.push(`        it.printf(${x}, ${currentY}, id(${fontId}), ${color}, ${esphomeAlign}, "${escapedLine}");`);
+            currentY += lineHeight;
+        }
+
+        // Apply dithering for gray text on e-paper
+        if (isGrayOnEpaper) {
+            lines.push(`        apply_grey_dither_to_text(${w.x}, ${w.y}, ${w.width}, ${w.height});`);
+        }
+
+        // Draw Border if defined
+        const borderWidth = p.border_width || 0;
+        if (borderWidth > 0) {
+            const borderColor = getColorConst(p.border_color || "black");
+            for (let i = 0; i < borderWidth; i++) {
+                lines.push(`        it.rectangle(${w.x} + ${i}, ${w.y} + ${i}, ${w.width} - 2 * ${i}, ${w.height} - 2 * ${i}, ${borderColor});`);
+            }
+        }
+
+        if (cond) lines.push(`        }`);
+    }
+};

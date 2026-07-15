@@ -1,0 +1,324 @@
+/**
+ * Hardware Generator for Custom Profiles
+ * Generates an ESPHome YAML Recipe based on user inputs.
+ * @param {any} config
+ * @returns {string}
+ */
+
+export function generateCustomHardwareYaml(config) {
+    const {
+        name,
+        chip,
+        _tech,
+        resWidth,
+        resHeight,
+        shape,
+        psram,
+        displayDriver,
+        pins,
+        touchTech
+    } = config;
+
+    const lines = [];
+    const driver = displayDriver || "st7789v";
+    const noSpiDisplay = driver === "mipi_dsi" || driver === "mipi_rgb" || driver === "rpi_dpi_rgb";
+    const usesDimensionsBlock = driver === "mipi_dsi" || driver === "mipi_spi" || driver === "mipi_rgb" || driver === "rpi_dpi_rgb" || driver === "st7701s";
+
+    // Metadata Header
+    lines.push("# ============================================================================");
+    lines.push(`# TARGET DEVICE: ${name}`);
+    lines.push(`# Name: ${name}`);
+    lines.push(`# Resolution: ${resWidth}x${resHeight}`);
+    lines.push(`# Shape: ${shape}`);
+    lines.push("#");
+    const unsupportedChips = ["esp32-c3", "esp32-c6", "esp8266"];
+    const isUnsupported = unsupportedChips.some(c => (chip || "").toLowerCase().includes(c));
+    const effectivePsram = psram && !isUnsupported;
+
+    lines.push(`#         - Display Platform: ${driver || "Unknown"}`);
+    lines.push(`#         - Touchscreen: ${touchTech || "None"}`);
+    lines.push(`#         - PSRAM: ${effectivePsram ? 'Yes' : 'No'}`);
+    lines.push("# ============================================================================");
+    lines.push("#");
+    lines.push("# SETUP INSTRUCTIONS:");
+    lines.push("#");
+    lines.push("# STEP 1: Copy the Material Design Icons font file");
+    lines.push("#         - From this repo: font_ttf/font_ttf/materialdesignicons-webfont.ttf");
+    lines.push("#         - To ESPHome: /config/esphome/fonts/materialdesignicons-webfont.ttf");
+    lines.push("#         (Create the fonts folder if it doesn't exist)");
+    lines.push("#");
+    lines.push("# STEP 2: Create a new device in ESPHome");
+    lines.push("#         - Click \"New Device\"");
+    lines.push("#         - Name: your-device-name");
+
+    if (chip === "esp32") {
+        lines.push("#         - Select: ESP32");
+        lines.push("#         - Board: esp32dev (or specific board)");
+        lines.push("#         - Framework: esp-idf (Recommended) or arduino");
+    } else if (chip === "esp8266") {
+        lines.push("#         - Select: ESP8266");
+        lines.push("#         - Board: nodemcuv2 (or specific board)");
+        lines.push("#         - Framework: arduino (Default)");
+    } else if (chip === "esp32-c3") {
+        lines.push("#         - Select: ESP32-C3");
+        lines.push("#         - Board: esp32-c3-devkitm-1");
+        lines.push("#         - Framework: esp-idf (Recommended) or arduino");
+    } else if (chip === "esp32-c6") {
+        lines.push("#         - Select: ESP32-C6");
+        lines.push("#         - Board: esp32-c6-devkitc-1");
+        lines.push("#         - Framework: esp-idf (Recommended)");
+    } else if (chip === "esp32-p4") {
+        lines.push("#         - Select: ESP32-P4");
+        lines.push("#         - Board: esp32-p4-evboard");
+        lines.push("#         - Framework: esp-idf (Required)");
+    } else {
+        lines.push("#         - Select: ESP32-S3");
+        lines.push("#         - Board: esp32-s3-devkitc-1");
+        lines.push("#         - Framework: esp-idf (Recommended) or arduino");
+    }
+
+    lines.push("#");
+    lines.push("# ============================================================================");
+    lines.push("");
+
+    // infrastructure section (Commented out by default to follow snippet philosophy)
+    lines.push("# Infrastructure (Comment out if pasting into existing config)");
+    lines.push("# esphome: # (Auto-commented)");
+    lines.push(`#   name: ${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`);
+    lines.push("#");
+    if (chip === "esp8266") {
+        lines.push("# esp8266: # (Auto-commented)");
+    } else {
+        lines.push("# esp32: # (Auto-commented)");
+    }
+    lines.push(`#   board: ${getBoardForChip(chip)}`);
+    if (chip === "esp32-p4") {
+        lines.push("#   variant: esp32p4");
+    }
+
+    if (chip !== "esp8266") {
+        lines.push("#   framework:");
+        lines.push("#     type: esp-idf");
+    }
+    if (chip === "esp32-p4") {
+        lines.push("#     advanced:");
+        lines.push("#       enable_idf_experimental_features: true");
+    } else if (effectivePsram && chip.includes("s3")) {
+        lines.push("#     # For stability on S3 devices with high-res displays/LVGL:");
+        lines.push("#     advanced:");
+        lines.push("#       execute_from_psram: true");
+    }
+    lines.push("");
+
+    // PSRAM (Commented out by default)
+    if (effectivePsram) {
+        lines.push("# psram: # (Auto-commented)");
+        if (chip.includes("s3")) {
+            lines.push("#   # Quad or Octal depending on your board");
+            lines.push("#   mode: quad");
+            lines.push("#   speed: 80MHz");
+        } else if (chip === "esp32-p4") {
+            lines.push("#   mode: hex");
+            lines.push("#   speed: 200MHz");
+        }
+        lines.push("");
+    }
+
+    // SPI Bus (Common for most displays)
+    if (!noSpiDisplay && pins.clk && pins.mosi) {
+        lines.push("spi:");
+        lines.push(`  clk_pin: ${pins.clk}`);
+        lines.push(`  mosi_pin: ${pins.mosi}`);
+        if (pins.miso) lines.push(`  miso_pin: ${pins.miso}`);
+        lines.push("");
+    }
+
+    // I2C Bus (For Touch)
+    if (pins.sda && pins.scl) {
+        lines.push("i2c:");
+        lines.push(`  sda: ${pins.sda}`);
+        lines.push(`  scl: ${pins.scl}`);
+        lines.push("  scan: true");
+        lines.push("");
+    }
+
+    // Display
+    // Fix #330: Always emit a display id so scripts can reference it
+    const isLcdTech = config.tech === 'lcd' || (!config.tech);
+    const displayIdValue = isLcdTech ? 'my_display' : 'epaper_display';
+    lines.push("display:");
+    lines.push(`  - platform: ${driver}`);
+    lines.push(`    id: ${displayIdValue}`);
+    if (!noSpiDisplay && pins.cs) lines.push(`    cs_pin: ${pins.cs}`);
+    if (!noSpiDisplay && pins.dc) lines.push(`    dc_pin: ${pins.dc}`);
+    if (pins.rst) lines.push(`    reset_pin: ${pins.rst}`);
+    if (!noSpiDisplay && pins.busy) lines.push(`    busy_pin: ${pins.busy}`);
+
+    // Model specific configuration
+    if (config.displayModel) {
+        lines.push(`    model: "${config.displayModel}"`);
+    }
+
+    if (usesDimensionsBlock) {
+        lines.push("    dimensions:");
+        lines.push(`      width: ${resWidth}`);
+        lines.push(`      height: ${resHeight}`);
+        if (driver === "mipi_spi") {
+            lines.push("      offset_height: 0");
+            lines.push("      offset_width: 0");
+        }
+    }
+
+    // Resolution specifics (often handled by the designer but useful in template)
+    // For many drivers, we need model or specific init
+    if (driver === "st7789v" && !config.displayModel) {
+        lines.push("    model: Custom");
+        lines.push(`    width: ${resWidth}`);
+        lines.push(`    height: ${resHeight}`);
+        lines.push("    offset_height: 0");
+        lines.push("    offset_width: 0");
+    } else if (driver === "st7789v") {
+        // If model IS provided for st7789v (rare but possible custom), still might need dims
+        lines.push(`    width: ${resWidth}`);
+        lines.push(`    height: ${resHeight}`);
+    }
+
+    if (driver === "mipi_rgb" || driver === "rpi_dpi_rgb" || driver === "st7701s") {
+        lines.push("    # TODO: Add panel-specific de_pin, hsync_pin, vsync_pin, pclk_pin, timings, and data_pins.");
+    }
+
+    // Rotation Logic
+    // Native Portrait detection (Height > Width)
+    const isNativePortrait = resHeight > resWidth;
+    const isRequestedPortrait = config.orientation === 'portrait' || config.orientation === 'portrait_inverted';
+    const isRequestedInverted = config.orientation === 'landscape_inverted' || config.orientation === 'portrait_inverted';
+
+    let rotation = 0;
+    if (isNativePortrait) {
+        // If native is portrait, and we want landscape, we rotate 90
+        rotation = isRequestedPortrait ? 0 : 90;
+    } else {
+        // If native is landscape, and we want portrait, we rotate 90
+        rotation = isRequestedPortrait ? 90 : 0;
+    }
+
+    if (isRequestedInverted) rotation = (rotation + 180) % 360;
+
+    // Apply rotation
+    lines.push(`    rotation: ${rotation}`);
+
+    lines.push("    lambda: |-");
+    lines.push("      # __LAMBDA_PLACEHOLDER__");
+    lines.push("");
+
+    // Backlight (PWM) with brightness control
+    if (pins.backlight) {
+        const minPower = config.backlightMinPower ?? 0.07;
+        const initialBrightness = config.backlightInitial ?? 0.8;
+        const antiburn = !!config.antiburn;
+
+        lines.push("output:");
+        lines.push("  - platform: ledc");
+        lines.push(`    pin: ${pins.backlight}`);
+        lines.push("    id: backlight_brightness_output");
+        lines.push(`    min_power: "${minPower}"`);
+        lines.push("    zero_means_zero: true");
+        lines.push("");
+        lines.push("light:");
+        lines.push("  - platform: monochromatic");
+        lines.push("    output: backlight_brightness_output");
+        lines.push("    id: display_backlight");
+        lines.push("    name: LCD Backlight");
+        lines.push("    icon: mdi:wall-sconce-flat-outline");
+        lines.push("    restore_mode: ALWAYS_ON");
+        lines.push("    initial_state:");
+        lines.push(`      brightness: "${initialBrightness}"`);
+        if (antiburn && config.isLvgl) {
+            lines.push("    on_turn_off:");
+            lines.push("      - script.execute: start_antiburn");
+            lines.push("    on_turn_on:");
+            lines.push("      - script.execute: stop_antiburn");
+        }
+        lines.push("");
+
+        // Antiburn scripts and switch (only if enabled)
+        if (antiburn && config.isLvgl) {
+            lines.push("script:");
+            lines.push("  - id: start_antiburn");
+            lines.push("    then:");
+            lines.push("      - delay: 5min");
+            lines.push("      - logger.log: Starting automatic antiburn.");
+            lines.push("      - switch.turn_on: switch_antiburn");
+            lines.push("  - id: stop_antiburn");
+            lines.push("    then:");
+            lines.push("      - script.stop: start_antiburn");
+            lines.push("      - switch.turn_off: switch_antiburn");
+            lines.push("");
+            // Anti-burn logic
+            lines.push("switch:");
+            lines.push("  - platform: template");
+            lines.push("    name: \"Antiburn (Snow)\"");
+            lines.push("    id: switch_antiburn");
+            lines.push("    icon: mdi:snowflake");
+            lines.push("    optimistic: true");
+            lines.push("    entity_category: config");
+            lines.push("    turn_on_action:");
+            lines.push("      - logger.log: \"Starting Antiburn\"");
+            lines.push("      - if:");
+            lines.push("          condition: lvgl.is_paused");
+            lines.push("          then:");
+            lines.push("            - lvgl.resume:");
+            lines.push("            - lvgl.widget.redraw:");
+            lines.push("      - lvgl.pause:");
+            lines.push("          show_snow: true");
+            lines.push("    turn_off_action:");
+            lines.push("      - logger.log: \"Stopping Antiburn\"");
+            lines.push("      - if:");
+            lines.push("          condition: lvgl.is_paused");
+            lines.push("          then:");
+            lines.push("            - lvgl.resume:");
+            lines.push("            - lvgl.widget.redraw:");
+            lines.push("");
+        }
+    }
+
+
+    // Touchscreen
+    if (touchTech !== "none") {
+        lines.push("touchscreen:");
+        lines.push(`  - platform: ${touchTech}`);
+        if (pins.touch_int) lines.push(`    interrupt_pin: ${pins.touch_int}`);
+        if (pins.touch_rst) lines.push(`    reset_pin: ${pins.touch_rst}`);
+
+        // Wake up logic for LVGL
+        if (config.isLvgl) {
+            lines.push("    on_release:");
+            lines.push("      - if:");
+            lines.push("          condition: lvgl.is_paused");
+            lines.push("          then:");
+            lines.push("            - lvgl.resume:");
+            lines.push("            - lvgl.widget.redraw:");
+            lines.push("            - light.turn_on: display_backlight");
+        }
+        lines.push("");
+    }
+
+    return lines.join('\n');
+}
+
+/**
+ * Returns a sensible default ESPHome board string based on the chip type.
+ * @param {string} chip
+ * @returns {string}
+ */
+function getBoardForChip(chip) {
+    switch (chip) {
+        case 'esp32-s3': return 'esp32-s3-devkitc-1';
+        case 'esp32-p4': return 'esp32-p4-evboard';
+        case 'esp32-c3': return 'esp32-c3-devkitm-1';
+        case 'esp32-c6': return 'esp32-c6-devkitc-1';
+        case 'esp32': return 'esp32dev';
+        case 'esp8266': return 'nodemcuv2';
+        default: return 'esp32-s3-devkitc-1';
+    }
+}

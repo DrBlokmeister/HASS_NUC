@@ -1,0 +1,108 @@
+/**
+ * LVGL Spinner Plugin
+ */
+
+const render = (el, widget, { getColorStyle }) => {
+    const props = widget.props || {};
+    const width = widget.width || 60;
+    const height = widget.height || 60;
+    const trackColor = getColorStyle(props.track_color || "white");
+    const arcColor = getColorStyle(props.arc_color || "blue");
+    const thickness = 6;
+
+    el.innerHTML = "";
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    el.style.boxSizing = "border-box";
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const size = Math.min(width, height);
+    svg.setAttribute("width", String(size));
+    svg.setAttribute("height", String(size));
+    svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+
+    const cx = size / 2;
+    const cy = size / 2;
+    const radius = (size / 2) - thickness;
+
+    const track = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    track.setAttribute("cx", String(cx));
+    track.setAttribute("cy", String(cy));
+    track.setAttribute("r", String(radius));
+    track.setAttribute("fill", "none");
+    track.setAttribute("stroke", trackColor);
+    track.setAttribute("stroke-width", String(thickness));
+    svg.appendChild(track);
+
+    const rawArcLen = props.arc_length !== undefined ? parseFloat(props.arc_length) : 60;
+    const arcLen = (isNaN(rawArcLen) ? 60 : rawArcLen) * (Math.PI / 180);
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + arcLen;
+
+    const x1 = cx + radius * Math.cos(startAngle);
+    const y1 = cy + radius * Math.sin(startAngle);
+    const x2 = cx + radius * Math.cos(endAngle);
+    const y2 = cy + radius * Math.sin(endAngle);
+    const largeArc = arcLen > Math.PI ? 1 : 0;
+
+    const arc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arc.setAttribute("d", `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`);
+    arc.setAttribute("fill", "none");
+    arc.setAttribute("stroke", arcColor);
+    arc.setAttribute("stroke-width", String(thickness));
+    arc.setAttribute("stroke-linecap", "round");
+    svg.appendChild(arc);
+
+    el.appendChild(svg);
+};
+
+export default {
+    id: "lvgl_spinner",
+    name: "Spinner",
+    category: "LVGL",
+    defaults: {
+        spin_time: 1000,
+        arc_length: 60,
+        arc_color: "blue",
+        track_color: "white",
+        opa: 255,
+        opacity: 255
+    },
+    schema: [
+        {
+            section: "Settings",
+            fields: [
+                { key: "spin_time", label: "Spin Time (ms)", type: "number", default: 1000 },
+                { key: "arc_length", label: "Arc Length (deg)", type: "number", default: 60 }
+            ]
+        },
+        {
+            section: "Appearance",
+            fields: [
+                { key: "arc_color", label: "Spinner Color", type: "color", default: "blue" },
+                { key: "track_color", label: "Track Color", type: "color", default: "white" },
+                { key: "opa", label: "Opacity (0 - 255)", type: "number", default: 255 },
+                { key: "opacity", label: "Opacity (0 - 255)", type: "number", default: 255 }
+            ]
+        }
+    ],
+    render,
+    exportLVGL: (w, { common, convertColor }) => {
+        const props = w.props || {};
+        const spinTime = props.spin_time ?? props.time ?? 1000;
+        return {
+            "spinner": {
+                ...common,
+                "arc_length": props.arc_length || 60,
+                "spin_time": `${spinTime}ms`,
+                "indicator": {
+                    "arc_color": convertColor(props.arc_color || "blue")
+                },
+                "main": {
+                    "arc_color": convertColor(props.track_color || "white")
+                }
+            }
+        };
+    }
+};

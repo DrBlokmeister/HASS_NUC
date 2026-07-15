@@ -1,0 +1,257 @@
+import { AppState } from '@core/state';
+import { mdiIconCodesByName, mdiIconNamesByCode } from '../../js/core/mdi_icon_names.js';
+import { evaluateTemplatePreview } from '../../js/utils/text_utils.js';
+
+const resolveIconForegroundColor = (colorProp, getColorConst) => {
+    if (colorProp === "theme_auto") return "color_on";
+    if (colorProp === "theme_auto_inverse") return "color_off";
+    if (colorProp === "white") return "color_off";
+    if (colorProp === "black") return "color_on";
+    return getColorConst(colorProp || "black");
+};
+
+const resolveIconBackgroundColor = (colorProp, getColorConst) => {
+    if (!colorProp || colorProp === "transparent") return null;
+    if (colorProp === "theme_auto") return "color_off";
+    if (colorProp === "theme_auto_inverse") return "color_on";
+    if (colorProp === "white") return "color_off";
+    if (colorProp === "black") return "color_on";
+    return getColorConst(colorProp);
+};
+
+const normalizeMdiIconCode = (value, fallback = "F0595") => {
+    const raw = String(value || "").trim();
+    const withoutPrefix = raw.replace(/^0x/i, "").replace(/^mdi:/i, "").toUpperCase();
+    if (/^F[0-9A-F]{4,5}$/.test(withoutPrefix)) return withoutPrefix;
+
+    const name = raw.replace(/^mdi:/i, "").trim().toLowerCase();
+    return mdiIconCodesByName[name] || fallback;
+};
+
+const resolveMdiIconName = (value, fallback = "information") => {
+    const raw = String(value || "").trim();
+    const name = raw.replace(/^mdi:/i, "").trim().toLowerCase();
+    if (/^mdi:/i.test(raw) && /^[a-z0-9][a-z0-9-]*$/i.test(name)) return name;
+    if (name && !/^F[0-9A-F]{4,5}$/i.test(name) && mdiIconCodesByName[name]) return name;
+
+    const code = normalizeMdiIconCode(raw, "");
+    if (!code) return fallback;
+
+    return mdiIconNamesByCode[code] || fallback;
+};
+
+const render = (el, widget, { getColorStyle }) => {
+    const props = widget.props || {};
+
+    let iconCode = "F0595"; // Default
+    let size = props.size || 24;
+    const color = props.color || "theme_auto";
+    const bgColor = props.bg_color || "transparent";
+
+    // Handle template colors in preview: use a fallback if it looks like a template
+    let effectiveColor = color;
+    if (typeof color === 'string' && color.includes('{{')) {
+        // If it's a template, use a default visible color for the designer
+        effectiveColor = 'black';
+    }
+
+    const colorStyle = getColorStyle(effectiveColor);
+    const bgColorStyle = getColorStyle(bgColor);
+
+    const codeRaw = props.code || "";
+    // Handle template in icon code
+    const code = evaluateTemplatePreview(codeRaw, AppState?.entityStates).trim().toUpperCase();
+
+    if (code.includes('{{')) {
+        // Still has template - show placeholder
+        el.innerText = "?";
+        el.style.fontSize = `${size}px`;
+        el.style.color = colorStyle;
+        el.style.fontFamily = "inherit";
+        return;
+    }
+
+    const normalizedCode = normalizeMdiIconCode(code, "");
+    if (normalizedCode) {
+        iconCode = normalizedCode;
+    }
+
+    if (props.fit_icon_to_frame) {
+        const padding = 4;
+        const maxDim = Math.max(8, Math.min((widget.width || 0) - padding * 2, (widget.height || 0) - padding * 2));
+        size = Math.round(maxDim);
+    }
+
+    const cp = 0xf0000 + parseInt(iconCode.slice(1), 16);
+    const ch = String.fromCodePoint(cp);
+
+    el.innerText = ch;
+    el.style.fontSize = `${size}px`;
+    el.style.color = colorStyle;
+    el.style.backgroundColor = bgColorStyle;
+    el.style.fontFamily = "MDI, system-ui, -apple-system, BlinkMacSystemFont, -sans-serif";
+    el.style.lineHeight = "1";
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+
+    // Border
+    if (props.border_width) {
+        const borderColor = getColorStyle(props.border_color || "black");
+        el.style.border = `${props.border_width}px solid ${borderColor}`;
+        el.style.borderRadius = `${props.border_radius || 0}px`;
+        el.style.boxSizing = "border-box";
+    }
+};
+
+export default {
+    id: "icon",
+    name: "MDI Icon",
+    category: "Core",
+    supportedModes: ['lvgl', 'direct', 'oepl', 'opendisplay'],
+    defaults: {
+        code: "F07D0",
+        width: 60,
+        height: 60,
+        size: 48,
+        color: "theme_auto",
+        bg_color: "transparent",
+        font_ref: "font_mdi_medium",
+        fit_icon_to_frame: true,
+        border_width: 0,
+        border_color: "theme_auto",
+        border_radius: 0,
+        opa: 255
+    },
+    renderProperties: (panel, widget) => {
+        const props = widget.props || {};
+        const updateProp = (key, val) => {
+            const newProps = { ...widget.props, [key]: val };
+            AppState.updateWidget(widget.id, { props: newProps });
+        };
+
+        panel.createSection("Icon", true);
+        panel.addIconPicker("Select Icon", props.code || "F07D0", (v) => updateProp("code", v), widget);
+        panel.addCheckbox("Fit icon to frame", props.fit_icon_to_frame !== false, (v) => updateProp("fit_icon_to_frame", v));
+        if (!props.fit_icon_to_frame) {
+            panel.addLabeledInput("Fixed Icon Size", "number", props.size || 48, (v) => updateProp("size", parseInt(v, 10)));
+        }
+        panel.endSection();
+
+        panel.createSection("Appearance", true);
+        panel.addColorSelector("Icon Color", props.color || "theme_auto", null, (v) => updateProp("color", v));
+        panel.addColorSelector("Background", props.bg_color || "transparent", null, (v) => updateProp("bg_color", v));
+        panel.addNumberWithSlider("Opacity (%)", props.opacity !== undefined ? props.opacity : (props.opa !== undefined ? Math.round(props.opa / 2.55) : 100), 0, 100, (v) => {
+            updateProp("opacity", v);
+            updateProp("opa", Math.round(v * 2.55));
+        });
+        panel.endSection();
+
+        panel.createSection("Border Style", false);
+        panel.addLabeledInput("Border Width", "number", props.border_width || 0, (v) => updateProp("border_width", parseInt(v, 10)));
+        panel.addColorSelector("Border Color", props.border_color || "theme_auto", null, (v) => updateProp("border_color", v));
+        panel.addLabeledInput("Corner Radius", "number", props.border_radius || 0, (v) => updateProp("border_radius", parseInt(v, 10)));
+        panel.addDropShadowButton(panel.getContainer(), widget.id);
+        panel.endSection();
+    },
+    collectRequirements: (w, context) => {
+        const p = w.props || {};
+        const size = parseInt(p.size || 48, 10);
+        if (p.code) {
+            context.trackIcon(p.code, size);
+        }
+        // Register Font for LVGL and Direct
+        context.addFont("Material Design Icons", 400, size);
+    },
+    render,
+    exportOpenDisplay: (w, { layout, _page }) => {
+        const p = w.props || {};
+        const name = resolveMdiIconName(p.code || "F0595");
+
+        return {
+            type: "icon",
+            value: name,
+            x: Math.round(w.x + (w.width || 0) / 2),
+            y: Math.round(w.y + (w.height || 0) / 2),
+            size: p.size || 48,
+            fill: (p.color === "theme_auto") ? (layout?.darkMode ? "white" : "black") : (p.color || "black"),
+            anchor: "mm"
+        };
+    },
+    exportOEPL: (w, { _layout, _page }) => {
+        const p = w.props || {};
+        const name = resolveMdiIconName(p.code || "F0595"); // Default fallback
+
+        return {
+            type: "icon",
+            value: name,
+            x: Math.round(w.x),
+            y: Math.round(w.y),
+            size: p.size || 48,
+            color: p.color || "theme_auto",
+            anchor: "lt"
+        };
+    },
+    exportLVGL: (w, { common, convertColor, getLVGLFont }) => {
+        const p = w.props || {};
+        const code = normalizeMdiIconCode(p.code || "F0595");
+        const size = parseInt(p.size || 48, 10);
+        const color = convertColor(p.color || "theme_auto");
+
+        return {
+            label: {
+                ...common,
+                text: `"\\U000${code}"`,
+                text_font: getLVGLFont("Material Design Icons", size, 400),
+                text_color: color,
+                text_align: "center"
+            }
+        };
+    },
+    export: (w, context) => {
+        const {
+            lines, addFont, getColorConst, addDitherMask, getCondProps, getConditionCheck, isEpaper // eslint-disable-line no-unused-vars
+        } = context;
+
+        const p = w.props || {};
+        const code = normalizeMdiIconCode(p.code || "F0595");
+        const size = parseInt(p.size || 48, 10);
+        const colorProp = p.color || "theme_auto";
+
+        const color = resolveIconForegroundColor(colorProp, getColorConst);
+
+        // Register Icon Font
+        const fontRef = addFont("Material Design Icons", 400, size);
+
+
+        // Background fill
+        const bgColorProp = p.bg_color || p.background_color || "transparent";
+        const bgColorConst = resolveIconBackgroundColor(bgColorProp, getColorConst);
+        if (bgColorConst) {
+            lines.push(`        it.filled_rectangle(${w.x}, ${w.y}, ${w.width}, ${w.height}, ${bgColorConst});`);
+        }
+
+        // Draw Border if defined
+        const borderWidth = p.border_width || 0;
+        if (borderWidth > 0) {
+            const borderColor = resolveIconForegroundColor(p.border_color || "theme_auto", getColorConst);
+            for (let i = 0; i < borderWidth; i++) {
+                lines.push(`        it.rectangle(${w.x} + ${i}, ${w.y} + ${i}, ${w.width} - 2 * ${i}, ${w.height} - 2 * ${i}, ${borderColor});`);
+            }
+        }
+
+        const cond = getConditionCheck(w);
+        if (cond) lines.push(`        ${cond}`);
+
+        const centerX = Math.round(w.x + w.width / 2);
+        const centerY = Math.round(w.y + w.height / 2);
+
+        // Use printf for icons to handle unicode safely
+        lines.push(`        it.printf(${centerX}, ${centerY}, id(${fontRef}), ${color}, TextAlign::CENTER, "%s", "\\U000${code}");`);
+
+        // Apply grey dithering if color is gray (e-paper specific)
+        addDitherMask(lines, colorProp, isEpaper, w.x, w.y, size, size);
+
+        if (cond) lines.push(`        }`);
+    }
+};

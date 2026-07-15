@@ -1,0 +1,62 @@
+import { render as previewRender } from './render.js';
+import { renderProperties } from './properties.js';
+import {
+    collectRequirements,
+    exportDirect,
+    exportLVGL,
+    exportOEPL,
+    exportOpenDisplay,
+    onExportNumericSensors,
+    onExportTextSensors
+} from './exports.js';
+
+export default {
+    id: "sensor_text",
+    name: "Sensor Text",
+    category: "Sensors",
+    supportedModes: ['lvgl', 'direct', 'oepl', 'opendisplay'],
+    defaults: {
+        entity_id: "",
+        title: "",
+        value_format: "label_value",
+        label_font_size: 14,
+        value_font_size: 20,
+        unit: "",
+        precision: 2,
+        text_align: "TOP_LEFT",
+        color: "theme_auto",
+        dynamic_color_enabled: false,
+        dynamic_color_low: "#3498db",
+        dynamic_color_high: "#e74c3c",
+        dynamic_value_low: 0,
+        dynamic_value_high: 100,
+        font_family: "Roboto",
+        parse_colors: false,
+        bg_color: "transparent",
+        opa: 255,
+        opacity: 100,
+        border_width: 0,
+        border_color: "theme_auto",
+        border_radius: 0,
+        bpp: 1,
+        custom_font_family: "",
+        font_weight: 400,
+        italic: false,
+        label_align: "TOP_LEFT",
+        value_align: "TOP_LEFT",
+        hide_unit: false,
+        is_local_sensor: false,
+        is_text_sensor: false,
+        separator: " ~ ",
+        truncate: false
+    },
+    render: previewRender,
+    exportLVGL,
+    exportOpenDisplay,
+    exportOEPL,
+    collectRequirements,
+    export: exportDirect,
+    onExportTextSensors,
+    renderProperties,
+    onExportNumericSensors
+};

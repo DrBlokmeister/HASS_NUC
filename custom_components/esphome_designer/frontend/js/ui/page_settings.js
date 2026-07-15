@@ -1,0 +1,162 @@
+import { AppState } from '../core/state';
+import { hasHaBackend } from '../utils/env.js';
+import { saveLayoutToBackend } from '../io/ha_api.js';
+import { Logger } from '../utils/logger.js';
+
+export class PageSettings {
+    constructor() {
+        this.modal = /** @type {HTMLElement|null} */ (document.getElementById('pageSettingsModal'));
+        this.closeBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById('pageSettingsClose'));
+        this.saveBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById('pageSettingsSave'));
+        this.nameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pageSettingsName'));
+        this.refreshInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pageSettingsRefresh'));
+        this.refreshModeInput = /** @type {HTMLSelectElement|null} */ (document.getElementById('pageSettingsRefreshMode'));
+        this.refreshTimeInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pageSettingsRefreshTime'));
+        this.fieldInterval = /** @type {HTMLElement|null} */ (document.getElementById('field-refresh-interval'));
+        this.fieldTime = /** @type {HTMLElement|null} */ (document.getElementById('field-refresh-time'));
+        this.darkModeInput = /** @type {HTMLSelectElement|null} */ (document.getElementById('pageSettingsDarkMode'));
+        // Grid layout fields
+        this.layoutModeInput = /** @type {HTMLSelectElement|null} */ (document.getElementById('pageSettingsLayoutMode'));
+        this.gridSizeInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pageSettingsGridSize'));
+        this.fieldGridSize = /** @type {HTMLElement|null} */ (document.getElementById('field-grid-size'));
+        this.visibleFromInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pageSettingsVisibleFrom'));
+        this.visibleToInput = /** @type {HTMLInputElement|null} */ (document.getElementById('pageSettingsVisibleTo'));
+        this.pageIndex = -1;
+    }
+
+    init() {
+        if (!this.modal) return;
+        if (this.closeBtn) this.closeBtn.addEventListener('click', () => this.close());
+        if (this.saveBtn) this.saveBtn.addEventListener('click', () => this.save());
+        if (this.refreshModeInput) {
+            this.refreshModeInput.addEventListener('change', () => this.updateVisibility());
+        }
+        // Grid layout mode toggle
+        if (this.layoutModeInput) {
+            this.layoutModeInput.addEventListener('change', () => this.updateGridVisibility());
+        }
+    }
+
+    updateVisibility() {
+        if (!this.refreshModeInput) return;
+        const mode = this.refreshModeInput.value;
+        if (this.fieldInterval) this.fieldInterval.style.display = (mode === 'interval') ? 'block' : 'none';
+        if (this.fieldTime) this.fieldTime.style.display = (mode === 'daily') ? 'block' : 'none';
+    }
+
+    updateGridVisibility() {
+        if (!this.layoutModeInput || !this.fieldGridSize) return;
+        const mode = this.layoutModeInput.value;
+        this.fieldGridSize.style.display = (mode === 'grid') ? 'block' : 'none';
+    }
+
+    /**
+     * @param {number} index
+     */
+    open(index) {
+        if (!this.modal) return;
+        this.pageIndex = index;
+        const page = AppState.pages[index];
+        if (!page) return;
+
+        if (this.nameInput) this.nameInput.value = page.name || "";
+
+        // Refresh Settings
+        const mode = page.refresh_type || 'interval';
+        if (this.refreshModeInput) this.refreshModeInput.value = mode;
+        if (this.refreshInput) this.refreshInput.value = page.refresh_s || "";
+        if (this.refreshTimeInput) this.refreshTimeInput.value = page.refresh_time || "08:00";
+
+        // Dark Mode
+        if (this.darkModeInput) {
+            this.darkModeInput.value = page.dark_mode || "inherit";
+        }
+
+        // Grid Layout
+        if (this.layoutModeInput) {
+            this.layoutModeInput.value = page.layout ? 'grid' : 'absolute';
+        }
+        if (this.gridSizeInput) {
+            this.gridSizeInput.value = page.layout || "4x4";
+        }
+        if (this.visibleFromInput) {
+            this.visibleFromInput.value = page.visible_from || "";
+        }
+        if (this.visibleToInput) {
+            this.visibleToInput.value = page.visible_to || "";
+        }
+
+        this.updateVisibility();
+        this.updateGridVisibility();
+        this.modal.classList.remove('hidden');
+        this.modal.style.display = 'flex';
+    }
+
+    close() {
+        if (this.modal) {
+            this.modal.classList.add('hidden');
+            this.modal.style.display = 'none';
+        }
+    }
+
+    save() {
+        if (this.pageIndex === -1) return;
+        const page = AppState.pages[this.pageIndex];
+        if (!page) return;
+
+        const name = this.nameInput ? this.nameInput.value : page.name;
+        const mode = this.refreshModeInput ? this.refreshModeInput.value : 'interval';
+        const refresh = this.refreshInput ? parseInt(this.refreshInput.value, 10) : NaN;
+        const time = this.refreshTimeInput ? this.refreshTimeInput.value : "08:00";
+        const darkMode = this.darkModeInput ? this.darkModeInput.value : "inherit";
+
+        // Grid Layout
+        const layoutMode = this.layoutModeInput ? this.layoutModeInput.value : 'absolute';
+        const gridSize = this.gridSizeInput ? this.gridSizeInput.value.trim() : "";
+        const visibleFrom = this.visibleFromInput ? this.visibleFromInput.value : "";
+        const visibleTo = this.visibleToInput ? this.visibleToInput.value : "";
+
+        page.name = name;
+        page.refresh_type = mode;
+
+        if (mode === 'interval') {
+            if (!isNaN(refresh) && refresh >= 0) {
+                // allow 0 for manual
+                page.refresh_s = refresh;
+            } else {
+                delete page.refresh_s;
+            }
+            delete page.refresh_time;
+        } else {
+            // Daily
+            page.refresh_time = time;
+            delete page.refresh_s;
+        }
+
+        page.dark_mode = darkMode;
+
+        // Grid Layout - validate and save
+        if (layoutMode === 'grid' && /^\d+x\d+$/.test(gridSize)) {
+            page.layout = gridSize;
+        } else {
+            page.layout = null;
+        }
+
+        if (visibleFrom) page.visible_from = visibleFrom;
+        else delete page.visible_from;
+
+        if (visibleTo) page.visible_to = visibleTo;
+        else delete page.visible_to;
+
+        AppState.setPages(AppState.pages); // Trigger update
+
+        // Persist to backend
+        if (hasHaBackend() && typeof saveLayoutToBackend === "function") {
+            saveLayoutToBackend()
+                .then(() => Logger.log("[PageSettings] Pages persisted to backend"))
+                .catch(err => Logger.warn("[PageSettings] Failed to save pages to backend:", err));
+        }
+
+        this.close();
+    }
+}

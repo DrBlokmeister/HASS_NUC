@@ -1,0 +1,554 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+import {
+    isEntityStateNonNumeric,
+    collectNumericSensors,
+    collectTextSensors,
+    collectBinarySensors,
+    collectHomeAssistantSwitches,
+    HA_TEXT_DOMAINS, // eslint-disable-line no-unused-vars
+    collectCustomStateTriggerActions,
+    collectVisibilityTriggers,
+    buildPendingTriggerLookupKey
+} from '../../js/io/adapters/entity_dedup.js';
+
+describe('Entity Deduplication & Registration', () => {
+
+    describe('isEntityStateNonNumeric', () => {
+        let mockAppState;
+
+        beforeEach(() => {
+            mockAppState = {
+                entityStates: {
+                    'sensor.temperature': { state: '22.5' },
+                    'sensor.status': { state: 'online' },
+                    'sensor.empty': { state: '' },
+                    'sensor.with_attrs': { state: '20', attributes: { mode: 'auto', level: '5' } }
+                }
+            };
+        });
+
+        it('returns false for numeric states', () => {
+            expect(isEntityStateNonNumeric('sensor.temperature', mockAppState)).toBe(false);
+        });
+
+        it('returns true for text/string states', () => {
+            expect(isEntityStateNonNumeric('sensor.status', mockAppState)).toBe(true);
+        });
+
+        it('returns false for empty states', () => {
+            expect(isEntityStateNonNumeric('sensor.empty', mockAppState)).toBe(false);
+        });
+
+        it('evaluates specific attributes correctly', () => {
+            expect(isEntityStateNonNumeric('sensor.with_attrs', mockAppState, 'level')).toBe(false); // '5' is numeric
+            expect(isEntityStateNonNumeric('sensor.with_attrs', mockAppState, 'mode')).toBe(true); // 'auto' is text
+        });
+
+        it('returns false if entity or appState is missing', () => {
+            expect(isEntityStateNonNumeric('sensor.unknown', mockAppState)).toBe(false);
+            expect(isEntityStateNonNumeric('sensor.temperature', null)).toBe(false);
+            expect(isEntityStateNonNumeric(null, mockAppState)).toBe(false);
+        });
+    });
+
+    describe('collectNumericSensors', () => {
+        let context;
+
+        beforeEach(() => {
+            context = {
+                seenEntityIds: new Set(),
+                seenSensorIds: new Set(),
+                appState: {}
+            };
+        });
+
+        it('generates configs for HA numeric sensors', () => {
+            const pages = [{ widgets: [{ type: 'sensor_text', entity_id: 'sensor.cpu_temp' }] }];
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('- platform: homeassistant');
+            expect(result).toContain('  id: sensor_cpu_temp');
+            expect(result).toContain('  entity_id: sensor.cpu_temp');
+
+            expect(context.seenEntityIds.has('sensor.cpu_temp')).toBe(true);
+            expect(context.seenSensorIds.has('sensor_cpu_temp')).toBe(true);
+        });
+
+        it('prefixes missing domain for specific numeric widget types', () => {
+            const pages = [{ widgets: [{ type: 'progress_bar', entity_id: 'cpu_usage' }] }];
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('  entity_id: sensor.cpu_usage');
+            expect(result).toContain('  id: sensor_cpu_usage');
+        });
+
+        it('registers a sensor_text secondary numeric entity independently', () => {
+            const pages = [{ widgets: [{
+                type: 'sensor_text',
+                entity_id: 'sensor.temperature',
+                entity_id_2: 'humidity'
+            }] }];
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('  entity_id: sensor.temperature');
+            expect(result).toContain('  entity_id: sensor.humidity');
+            expect(result).toContain('  id: sensor_temperature');
+            expect(result).toContain('  id: sensor_humidity');
+        });
+
+        it('leaves a secondary text attribute for the text-sensor collector', () => {
+            context.appState = {
+                entityStates: {
+                    'sensor.status': { state: '0', attributes: { label: 'Online' } }
+                }
+            };
+            const pages = [{ widgets: [{
+                type: 'sensor_text',
+                entity_id: 'sensor.temperature',
+                entity_id_2: 'sensor.status',
+                props: { attribute2: 'label' }
+            }] }];
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('  entity_id: sensor.temperature');
+            expect(result).not.toContain('  entity_id: sensor.status');
+        });
+
+        it('skips entities with is_local_sensor prop', () => {
+            const pages = [{ widgets: [{ type: 'sensor_text', entity_id: 'sensor.local', props: { is_local_sensor: true } }] }];
+            const result = collectNumericSensors(pages, context);
+            expect(result.length).toBe(0);
+        });
+
+        it('skips HA text domains and binary domains', () => {
+            const pages = [{
+                widgets: [
+                    { type: 'sensor_text', entity_id: 'weather.home' },
+                    { type: 'sensor_text', entity_id: 'switch.relay' }
+                ]
+            }];
+            const result = collectNumericSensors(pages, context);
+            expect(result.length).toBe(0); // Handled by text/binary collectors
+        });
+
+        it('does not import action-only LVGL button entities as sensors', () => {
+            const pages = [{
+                widgets: [
+                    { type: 'lvgl_button', entity_id: 'input_button.trigger_sleep_flow' },
+                    { type: 'lvgl_button', entity_id: 'button.doorbell' }
+                ]
+            }];
+            const numericResult = collectNumericSensors(pages, context);
+            const textResult = collectTextSensors(pages, context);
+
+            expect(numericResult).toEqual([]);
+            expect(textResult).toEqual([]);
+        });
+
+        it('lets LVGL media-player sliders own their volume sensor import', () => {
+            const pages = [{
+                widgets: [
+                    { type: 'lvgl_slider', entity_id: 'media_player.office_speaker' }
+                ]
+            }];
+
+            const numericResult = collectNumericSensors(pages, context);
+            const textResult = collectTextSensors(pages, context);
+
+            expect(numericResult).toEqual([]);
+            expect(textResult).toEqual([]);
+        });
+
+        it('truncates IDs to 63 characters', () => {
+            const longId = 'sensor.' + 'a'.repeat(80);
+            const pages = [{ widgets: [{ type: 'sensor_text', entity_id: longId }] }];
+            const result = collectNumericSensors(pages, context);
+
+            const expectedId = makeSafeId(longId);
+            expect(result).toContain(`  id: ${expectedId}`);
+        });
+
+        it('generates mqtt_subscribe config when widget has mqtt_topic', () => {
+            const pages = [{ widgets: [{ type: 'sensor_text', entity_id: 'sensor.cpu_temp', props: { mqtt_topic: 'home/cpu/temp' } }] }];
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('- platform: mqtt_subscribe');
+            expect(result).toContain('  id: sensor_cpu_temp');
+            expect(result).toContain('  topic: "home/cpu/temp"');
+            expect(result).not.toContain('  entity_id: sensor.cpu_temp');
+        });
+
+        it('generates mqtt_subscribe config when entity_id has mqtt: prefix', () => {
+            const pages = [{ widgets: [{ type: 'sensor_text', entity_id: 'mqtt:home/cpu/temp' }] }];
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('- platform: mqtt_subscribe');
+            expect(result).toContain('  id: mqtt_home_cpu_temp');
+            expect(result).toContain('  topic: "home/cpu/temp"');
+        });
+
+        it('registers standalone custom on_value trigger entities as numeric sensors', () => {
+            const pages = [{
+                widgets: [{
+                    id: 'text_1',
+                    type: 'text',
+                    props: {
+                        state_trigger_entity: 'sensor.room_temperature',
+                        state_trigger_actions: '- script.execute: refresh_layout'
+                    }
+                }]
+            }];
+
+            const result = collectNumericSensors(pages, context);
+
+            expect(result).toContain('  entity_id: sensor.room_temperature');
+            expect(result).toContain('  id: sensor_room_temperature');
+        });
+    });
+
+    describe('collectTextSensors', () => {
+        let context;
+
+        beforeEach(() => {
+            context = {
+                seenEntityIds: new Set(),
+                seenSensorIds: new Set(),
+                appState: {}
+            };
+        });
+
+        it('generates configs for defined text domains', () => {
+            const pages = [{ widgets: [{ type: 'text', entity_id: 'weather.home' }] }];
+            const result = collectTextSensors(pages, context);
+
+            expect(result).toContain('- platform: homeassistant');
+            expect(result).toContain('  id: weather_home_txt');
+            expect(result).toContain('  entity_id: weather.home');
+        });
+
+        it('generates configs for entities used in string conditions', () => {
+            const pages = [{
+                widgets: [{
+                    type: 'icon',
+                    condition_entity: 'sensor.state_name',
+                    condition_operator: '==',
+                    condition_state: 'Playing' // Non-numeric condition triggers text sensor inclusion
+                }]
+            }];
+            const result = collectTextSensors(pages, context);
+
+            expect(result).toContain('  entity_id: sensor.state_name');
+            expect(result).toContain('  id: sensor_state_name_txt');
+        });
+
+        it('keeps binary condition entities out of text sensor registration', () => {
+            const pages = [{
+                widgets: [{
+                    type: 'icon',
+                    condition_entity: 'input_boolean.night_mode',
+                    condition_state: 'on'
+                }]
+            }];
+            const result = collectTextSensors(pages, context);
+            expect(result.length).toBe(0);
+        });
+
+        it('registers input_select conditions as text sensors even for keyword-like values', () => {
+            const pages = [{
+                widgets: [{
+                    type: 'icon',
+                    condition_entity: 'input_select.house_mode',
+                    condition_operator: '==',
+                    condition_state: 'home'
+                }]
+            }];
+            const result = collectTextSensors(pages, context);
+
+            expect(result).toContain('  entity_id: input_select.house_mode');
+            expect(result).toContain('  id: input_select_house_mode_txt');
+        });
+
+        it('generates config with attribute parsed cleanly', () => {
+            const pages = [{
+                widgets: [{
+                    type: 'text',
+                    entity_id: 'weather.home',
+                    props: { attribute: 'forecast[0].condition' }
+                }]
+            }];
+            const result = collectTextSensors(pages, context);
+
+            // Should strip array indices and properties for the ID/Attr
+            expect(result).toContain('  attribute: forecast');
+            expect(result).toContain('  id: weather_home_forecast_txt');
+        });
+
+        it('generates mqtt_subscribe config when widget has mqtt_topic', () => {
+            const pages = [{ widgets: [{ type: 'text', entity_id: 'weather.home', props: { mqtt_topic: 'home/weather/state' } }] }];
+            const result = collectTextSensors(pages, context);
+
+            expect(result).toContain('- platform: mqtt_subscribe');
+            expect(result).toContain('  id: weather_home_txt');
+            expect(result).toContain('  topic: "home/weather/state"');
+            expect(result).not.toContain('  entity_id: weather.home');
+        });
+
+        it('generates mqtt_subscribe config when entity_id has mqtt: prefix', () => {
+            const pages = [{ widgets: [{ type: 'text', entity_id: 'mqtt:home/weather/state' }] }];
+            const result = collectTextSensors(pages, context);
+
+            expect(result).toContain('- platform: mqtt_subscribe');
+            expect(result).toContain('  id: mqtt_home_weather_state_txt');
+            expect(result).toContain('  topic: "home/weather/state"');
+        });
+
+        it('registers standalone custom on_value trigger entities as text sensors', () => {
+            const pages = [{
+                widgets: [{
+                    id: 'label_1',
+                    type: 'text',
+                    props: {
+                        state_trigger_entity: 'text_sensor.panel_status',
+                        state_trigger_actions: '- lvgl.widget.refresh: label_1'
+                    }
+                }]
+            }];
+
+            const result = collectTextSensors(pages, context);
+
+            expect(result).toContain('  entity_id: text_sensor.panel_status');
+            expect(result).toContain('  id: text_sensor_panel_status_txt');
+        });
+    });
+
+    describe('collectBinarySensors', () => {
+        let context;
+
+        beforeEach(() => {
+            context = {
+                seenEntityIds: new Set(),
+                seenSensorIds: new Set(),
+                appState: {}
+            };
+        });
+
+        it('generates configs for binary domains without treating HA switches as binary sensors', () => {
+            const pages = [{
+                widgets: [
+                    { type: 'button', entity_id: 'switch.relay' },
+                    { type: 'icon', condition_entity: 'binary_sensor.door' }
+                ]
+            }];
+            const result = collectBinarySensors(pages, context);
+
+            expect(result).not.toContain('  entity_id: switch.relay');
+            expect(result).toContain('  entity_id: binary_sensor.door');
+        });
+
+        it('generates switch imports for Home Assistant switch-compatible domains', () => {
+            const pages = [{
+                widgets: [
+                    { type: 'button', entity_id: 'switch.relay' },
+                    { type: 'button', entity_id: 'light.living_room' }
+                ]
+            }];
+            const result = collectHomeAssistantSwitches(pages, context);
+
+            expect(result).toContain('  entity_id: switch.relay');
+            expect(result).toContain('  entity_id: light.living_room');
+        });
+
+        it('keeps imported native LVGL buttons as one HA switch definition per entity', () => {
+            const pages = [{
+                widgets: [
+                    {
+                        id: 'w_water_koud_btn',
+                        type: 'lvgl_button',
+                        entity_id: 'switch.overkapping_water_koud_1057',
+                        props: {
+                            entity_id: 'switch.overkapping_water_koud_1057',
+                            sync_state: true
+                        }
+                    },
+                    {
+                        id: 'w_water_warm_btn',
+                        type: 'lvgl_button',
+                        entity_id: 'switch.overkapping_water_warm_1058',
+                        props: {
+                            entity_id: 'switch.overkapping_water_warm_1058',
+                            sync_state: true
+                        }
+                    }
+                ]
+            }];
+
+            const binaryResult = collectBinarySensors(pages, context);
+            const switchResult = collectHomeAssistantSwitches(pages, context);
+            const switchYaml = switchResult.join('\n');
+
+            expect(binaryResult).toEqual([]);
+            expect((switchYaml.match(/entity_id: switch\.overkapping_water_koud_1057/g) || [])).toHaveLength(1);
+            expect((switchYaml.match(/entity_id: switch\.overkapping_water_warm_1058/g) || [])).toHaveLength(1);
+            expect(switchResult.filter((line) => line.trim() === '- platform: homeassistant')).toHaveLength(2);
+        });
+
+        it('registers standalone custom on_state trigger switch entities as switches', () => {
+            const pages = [{
+                widgets: [{
+                    id: 'label_1',
+                    type: 'text',
+                    props: {
+                        state_trigger_entity: 'switch.water_pump',
+                        state_trigger_mode: 'on_state',
+                        state_trigger_actions: '- script.execute: refresh_layout'
+                    }
+                }]
+            }];
+
+            const result = collectHomeAssistantSwitches(pages, context);
+
+            expect(result).toContain('  entity_id: switch.water_pump');
+            expect(result).toContain('  id: switch_water_pump');
+        });
+
+        it('registers switch condition entities as switches', () => {
+            const pages = [{
+                widgets: [{
+                    id: 'image_1',
+                    type: 'image',
+                    condition_entity: 'switch.prise_piscine',
+                    props: {}
+                }]
+            }];
+
+            const result = collectHomeAssistantSwitches(pages, context);
+
+            expect(result).toContain('  entity_id: switch.prise_piscine');
+            expect(result).toContain('  id: switch_prise_piscine');
+        });
+
+        it('skips numeric sensors', () => {
+            const pages = [{ widgets: [{ type: 'button', entity_id: 'sensor.temperature' }] }];
+            const result = collectBinarySensors(pages, context);
+            expect(result.length).toBe(0);
+        });
+
+        it('generates mqtt_subscribe config when widget has mqtt_topic', () => {
+            const pages = [{ widgets: [{ type: 'button', entity_id: 'switch.relay', props: { mqtt_topic: 'home/relay/state' } }] }];
+            const result = collectBinarySensors(pages, context);
+
+            expect(result).toContain('- platform: mqtt_subscribe');
+            expect(result).toContain('  id: switch_relay');
+            expect(result).toContain('  topic: "home/relay/state"');
+            expect(result).not.toContain('  entity_id: switch.relay');
+        });
+
+        it('generates mqtt_subscribe config when entity_id has mqtt: prefix', () => {
+            const pages = [{ widgets: [{ type: 'button', entity_id: 'mqtt:home/relay/state' }] }];
+            const result = collectBinarySensors(pages, context);
+
+            expect(result).toContain('- platform: mqtt_subscribe');
+            expect(result).toContain('  id: mqtt_home_relay_state');
+            expect(result).toContain('  topic: "home/relay/state"');
+        });
+
+        it('registers standalone custom on_state trigger entities as binary sensors', () => {
+            const pages = [{
+                widgets: [{
+                    id: 'label_1',
+                    type: 'text',
+                    props: {
+                        state_trigger_entity: 'binary_sensor.front_door',
+                        state_trigger_mode: 'on_state',
+                        state_trigger_actions: '- script.execute: refresh_layout'
+                    }
+                }]
+            }];
+
+            const result = collectBinarySensors(pages, context);
+
+            expect(result).toContain('  entity_id: binary_sensor.front_door');
+            expect(result).toContain('  id: binary_sensor_front_door');
+        });
+    });
+
+    describe('collectCustomStateTriggerActions', () => {
+        it('adds marked pending trigger actions for supported widget-level triggers', () => {
+            const pendingTriggers = new Map();
+
+            collectCustomStateTriggerActions([{
+                id: 'label_1',
+                props: {
+                    state_trigger_entity: 'binary_sensor.front_door',
+                    state_trigger_actions: '- lvgl.label.update:\n    id: label_1\n    text: "Open"'
+                }
+            }], pendingTriggers);
+
+            const [action] = Array.from(pendingTriggers.get(buildPendingTriggerLookupKey('binary_sensor.front_door', 'on_state')) || []);
+            expect(action).toContain('# esphome-designer-state-trigger: label_1');
+            expect(action).toContain('- lvgl.label.update:');
+        });
+
+        it('preserves an explicit on_value trigger mode when the widget asks for it', () => {
+            const pendingTriggers = new Map();
+
+            collectCustomStateTriggerActions([{
+                id: 'label_2',
+                props: {
+                    state_trigger_entity: 'sensor.energy_usage',
+                    state_trigger_mode: 'on_value',
+                    state_trigger_actions: '- script.execute: refresh_energy'
+                }
+            }], pendingTriggers);
+
+            expect(Array.from(pendingTriggers.keys())).toEqual([
+                buildPendingTriggerLookupKey('sensor.energy_usage', 'on_value')
+            ]);
+        });
+
+        it('falls back to the trimmed entity id when a lookup key is missing a trigger name', () => {
+            expect(buildPendingTriggerLookupKey(' sensor.energy_usage ', '')).toBe('sensor.energy_usage');
+            expect(buildPendingTriggerLookupKey('', 'on_value')).toBe('');
+        });
+    });
+
+    describe('collectVisibilityTriggers', () => {
+        it('adds pending triggers for visibility entities (binary sensor/on_state)', () => {
+            const pendingTriggers = new Map();
+            const widgets = [
+                {
+                    id: 'widget_1',
+                    condition_entity: 'binary_sensor.motion_detected'
+                }
+            ];
+
+            collectVisibilityTriggers(widgets, pendingTriggers, 'display_1', false);
+
+            const lookupKey = buildPendingTriggerLookupKey('binary_sensor.motion_detected', 'on_state');
+            expect(pendingTriggers.has(lookupKey)).toBe(true);
+            const actions = Array.from(pendingTriggers.get(lookupKey));
+            expect(actions).toContain('- component.update: display_1');
+        });
+
+        it('adds pending triggers for non-binary sensor visibility entities (on_value)', () => {
+            const pendingTriggers = new Map();
+            const widgets = [
+                {
+                    id: 'widget_2',
+                    props: {
+                        condition_entity: 'sensor.lux_level'
+                    }
+                }
+            ];
+
+            collectVisibilityTriggers(widgets, pendingTriggers, 'display_1', true);
+
+            const lookupKey = buildPendingTriggerLookupKey('sensor.lux_level', 'on_value');
+            expect(pendingTriggers.has(lookupKey)).toBe(true);
+            const actions = Array.from(pendingTriggers.get(lookupKey));
+            expect(actions).toContain('- lvgl.widget.refresh: widget_2');
+        });
+    });
+
+});
