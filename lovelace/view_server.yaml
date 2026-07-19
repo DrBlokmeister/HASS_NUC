@@ -1773,16 +1773,245 @@ cards:
   - type: custom:collapsable-cards
     title: Remote backup server
     cards:
-      - type: entities
-        title: Remote backup server status
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.rpi4_omv
-            name: OMV server reachable
-            icon: mdi:server
-          - entity: sensor.rpi4_omv_round_trip_time_average
-            name: Avg RTT
-            icon: mdi:speedometer
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.rpi4_omv_reachable
+            primary: Remote backup server
+            secondary: >-
+              {% if is_state('binary_sensor.rpi4_omv_reachable', 'on') %}
+                Online · {{ states('sensor.rpi4_omv_cpu_temperature') }} °C ·
+                Load {{ states('sensor.rpi4_omv_load_1_minute') }}
+              {% else %}
+                Offline
+              {% endif %}
+            icon: mdi:nas
+            icon_color: >-
+              {% if is_state('binary_sensor.rpi4_omv_reachable', 'on') %}
+                green
+              {% else %}
+                red
+              {% endif %}
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Remote backup server details
+                  content:
+                    type: entities
+                    show_header_toggle: false
+                    entities:
+                      - type: section
+                        label: Connectivity
+                      - entity: binary_sensor.rpi4_omv
+                        name: Ping reachable
+                        icon: mdi:server-network
+                      - entity: binary_sensor.rpi4_omv_reachable
+                        name: System details reachable
+                      - entity: sensor.rpi4_omv_round_trip_time_average
+                        name: Average RTT
+                        icon: mdi:speedometer
+
+                      - type: section
+                        label: System
+                      - entity: sensor.rpi4_omv_cpu_usage
+                        name: CPU usage
+                      - entity: sensor.rpi4_omv_cpu_temperature
+                        name: CPU temperature
+                      - entity: sensor.rpi4_omv_load_1_minute
+                        name: Load average
+                      - entity: sensor.rpi4_omv_memory_usage
+                        name: Memory usage
+                      - entity: sensor.rpi4_omv_memory_available
+                        name: Memory available
+                      - entity: sensor.rpi4_omv_uptime
+                        name: Uptime
+
+                      - type: section
+                        label: Storage
+                      - entity: binary_sensor.rpi4_omv_disk_1_available
+                        name: Disk 1 available
+                      - entity: binary_sensor.rpi4_omv_disk_1_read_write
+                        name: Disk 1 read/write
+                      - entity: sensor.rpi4_omv_disk_1_usage
+                        name: Disk 1 usage
+                      - entity: sensor.rpi4_omv_disk_1_free
+                        name: Disk 1 free
+                      - entity: binary_sensor.rpi4_omv_disk_2_available
+                        name: Disk 2 available
+                      - entity: binary_sensor.rpi4_omv_disk_2_read_write
+                        name: Disk 2 read/write
+                      - entity: sensor.rpi4_omv_disk_2_usage
+                        name: Disk 2 usage
+                      - entity: sensor.rpi4_omv_disk_2_free
+                        name: Disk 2 free
+                      - entity: binary_sensor.rpi4_omv_root_filesystem_read_write
+                        name: Root filesystem read/write
+                      - entity: sensor.rpi4_omv_root_usage
+                        name: Root filesystem usage
+
+                      - type: section
+                        label: OMV and SMB
+                      - entity: binary_sensor.rpi4_omv_service_active
+                        name: OMV service
+                      - entity: binary_sensor.rpi4_omv_smb_active
+                        name: SMB service
+                      - entity: binary_sensor.rpi4_omv_smb_port_445_listening
+                        name: SMB port 445
+                      - entity: binary_sensor.rpi4_omv_external_backups_share_available
+                        name: External Backups share
+                      - entity: binary_sensor.rpi4_omv_photos_share_available
+                        name: Photos share
+                      - entity: binary_sensor.rpi4_omv_backups_share_available
+                        name: Backups share
+
+                      - type: section
+                        label: Diagnostics
+                      - entity: sensor.rpi4_omv_failed_systemd_units
+                        name: Failed systemd units
+                      - entity: sensor.rpi4_omv_recent_storage_errors
+                        name: Recent storage errors
+            hold_action:
+              action: more-info
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.rpi4_omv_cpu_temperature
+                primary: CPU Temperature
+                secondary: >-
+                  {% set value = states('sensor.rpi4_omv_cpu_temperature') %}
+                  {% if value in ['unknown', 'unavailable'] %}
+                    Unavailable
+                  {% else %}
+                    {{ value }} °C
+                  {% endif %}
+                icon: mdi:thermometer
+                icon_color: >-
+                  {% set value = states('sensor.rpi4_omv_cpu_temperature') | float(0) %}
+                  {% if value >= 75 %}
+                    red
+                  {% elif value >= 60 %}
+                    orange
+                  {% else %}
+                    green
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.rpi4_omv_load_1_minute
+                primary: System Load
+                secondary: >-
+                  {% set value = states('sensor.rpi4_omv_load_1_minute') %}
+                  {% if value in ['unknown', 'unavailable'] %}
+                    Unavailable
+                  {% else %}
+                    {{ value }}
+                  {% endif %}
+                icon: mdi:chart-line
+                icon_color: >-
+                  {% set value = states('sensor.rpi4_omv_load_1_minute') | float(0) %}
+                  {% if value >= 3 %}
+                    red
+                  {% elif value >= 2 %}
+                    orange
+                  {% else %}
+                    blue
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.rpi4_omv_smb_active
+                primary: SMB Service
+                secondary: >-
+                  {% if is_state('binary_sensor.rpi4_omv_smb_active', 'on') %}
+                    Active
+                  {% else %}
+                    Inactive
+                  {% endif %}
+                icon: mdi:folder-network
+                icon_color: >-
+                  {% if is_state('binary_sensor.rpi4_omv_smb_active', 'on') %}
+                    green
+                  {% else %}
+                    red
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.rpi4_omv_round_trip_time_average
+                primary: Average RTT
+                secondary: >-
+                  {% set value = states('sensor.rpi4_omv_round_trip_time_average') %}
+                  {% if value in ['unknown', 'unavailable'] %}
+                    Unavailable
+                  {% else %}
+                    {{ value }} ms
+                  {% endif %}
+                icon: mdi:speedometer
+                icon_color: >-
+                  {% set value = states('sensor.rpi4_omv_round_trip_time_average') | float(0) %}
+                  {% if value >= 100 %}
+                    red
+                  {% elif value >= 50 %}
+                    orange
+                  {% else %}
+                    cyan
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.rpi4_omv_disk_1_available
+                primary: Disk 1
+                secondary: >-
+                  {% if is_state('binary_sensor.rpi4_omv_disk_1_available', 'off') %}
+                    Unavailable
+                  {% else %}
+                    {{ states('sensor.rpi4_omv_disk_1_usage') }}% used
+                  {% endif %}
+                icon: mdi:harddisk
+                icon_color: >-
+                  {% if is_state('binary_sensor.rpi4_omv_disk_1_available', 'off') %}
+                    red
+                  {% else %}
+                    {% set value = states('sensor.rpi4_omv_disk_1_usage') | float(0) %}
+                    {% if value >= 90 %}
+                      red
+                    {% elif value >= 80 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.rpi4_omv_disk_2_available
+                primary: Disk 2
+                secondary: >-
+                  {% if is_state('binary_sensor.rpi4_omv_disk_2_available', 'off') %}
+                    Unavailable
+                  {% else %}
+                    {{ states('sensor.rpi4_omv_disk_2_usage') }}% used
+                  {% endif %}
+                icon: mdi:harddisk
+                icon_color: >-
+                  {% if is_state('binary_sensor.rpi4_omv_disk_2_available', 'off') %}
+                    red
+                  {% else %}
+                    {% set value = states('sensor.rpi4_omv_disk_2_usage') | float(0) %}
+                    {% if value >= 90 %}
+                      red
+                    {% elif value >= 80 %}
+                      orange
+                    {% else %}
+                      green
+                    {% endif %}
+                  {% endif %}
+                tap_action:
+                  action: more-info
 
   - type: custom:collapsable-cards
     title: AirVPN
