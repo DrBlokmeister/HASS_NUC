@@ -130,6 +130,296 @@ template:
         unit_of_measurement: "°C"
         device_class: temperature
         availability: "{{ not is_state('sensor.pikvm_nas_system_details', 'unavailable') }}"
+
+template:
+  - sensor:
+      - name: RPI4 OMV CPU Usage
+        unique_id: yaml_template_sensor_rpi4_omv_cpu_usage
+        icon: mdi:cpu-64-bit
+        # device_class: power_factor
+        state_class: measurement
+        unit_of_measurement: "%"
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'cpu_usage_pct') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'cpu_usage_pct') is not none
+          }}
+      - name: RPI4 OMV CPU Temperature
+        unique_id: yaml_template_sensor_rpi4_omv_cpu_temperature
+        icon: mdi:thermometer
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'cpu_temp_c') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'cpu_temp_c') is not none
+          }}
+      - name: RPI4 OMV Load 1 Minute
+        unique_id: yaml_template_sensor_rpi4_omv_load_1_minute
+        icon: mdi:chart-line
+        state_class: measurement
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'load_1m') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'load_1m') is not none
+          }}
+      - name: RPI4 OMV Memory Usage
+        unique_id: yaml_template_sensor_rpi4_omv_memory_usage
+        icon: mdi:memory
+        state_class: measurement
+        unit_of_measurement: "%"
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'memory_usage_pct') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'memory_usage_pct') is not none
+          }}
+      - name: RPI4 OMV Memory Available
+        unique_id: yaml_template_sensor_rpi4_omv_memory_available
+        icon: mdi:memory
+        device_class: data_size
+        state_class: measurement
+        unit_of_measurement: MB
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'memory_available_mb') | int(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'memory_available_mb') is not none
+          }}
+      - name: RPI4 OMV Uptime
+        unique_id: yaml_template_sensor_rpi4_omv_uptime
+        icon: mdi:clock-start
+        device_class: duration
+        state_class: measurement
+        unit_of_measurement: s
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'uptime_seconds') | int(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'uptime_seconds') is not none
+          }}
+      - name: RPI4 OMV Disk 1 Usage
+        unique_id: yaml_template_sensor_rpi4_omv_disk_1_usage
+        icon: mdi:harddisk
+        state_class: measurement
+        unit_of_measurement: "%"
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk1_usage_pct') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk1_usage_pct') is not none
+          }}
+      - name: RPI4 OMV Disk 1 Free
+        unique_id: yaml_template_sensor_rpi4_omv_disk_1_free
+        icon: mdi:harddisk
+        device_class: data_size
+        state_class: measurement
+        unit_of_measurement: GB
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk1_free_gb') | int(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk1_free_gb') is not none
+          }}
+      - name: RPI4 OMV Disk 2 Usage
+        unique_id: yaml_template_sensor_rpi4_omv_disk_2_usage
+        icon: mdi:harddisk
+        state_class: measurement
+        unit_of_measurement: "%"
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk2_usage_pct') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk2_usage_pct') is not none
+          }}
+      - name: RPI4 OMV Disk 2 Free
+        unique_id: yaml_template_sensor_rpi4_omv_disk_2_free
+        icon: mdi:harddisk
+        device_class: data_size
+        state_class: measurement
+        unit_of_measurement: GB
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk2_free_gb') | int(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk2_free_gb') is not none
+          }}
+      - name: RPI4 OMV Root Usage
+        unique_id: yaml_template_sensor_rpi4_omv_root_usage
+        icon: mdi:harddisk
+        state_class: measurement
+        unit_of_measurement: "%"
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'root_usage_pct') | float(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'root_usage_pct') is not none
+          }}
+      - name: RPI4 OMV Failed Systemd Units
+        unique_id: yaml_template_sensor_rpi4_omv_failed_systemd_units
+        icon: mdi:alert-circle-outline
+        state_class: measurement
+        unit_of_measurement: units
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'failed_units') | int(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'failed_units') is not none
+          }}
+      - name: RPI4 OMV Recent Storage Errors
+        unique_id: yaml_template_sensor_rpi4_omv_recent_storage_errors
+        icon: mdi:harddisk-alert
+        state_class: measurement
+        unit_of_measurement: errors
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'recent_storage_errors') | int(0) }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'recent_storage_errors') is not none
+          }}
+
+  - binary_sensor:
+      - name: RPI4 OMV Reachable
+        unique_id: yaml_template_binary_sensor_rpi4_omv_reachable
+        icon: mdi:lan-connect
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'reachable') | default(false, true) | bool }}
+      - name: RPI4 OMV Disk 1 Available
+        unique_id: yaml_template_binary_sensor_rpi4_omv_disk_1_available
+        icon: mdi:harddisk
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk1_available') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk1_available') is not none
+          }}
+      - name: RPI4 OMV Disk 1 Read Write
+        unique_id: yaml_template_binary_sensor_rpi4_omv_disk_1_read_write
+        icon: mdi:database-edit
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk1_rw') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk1_rw') is not none
+          }}
+      - name: RPI4 OMV Disk 2 Available
+        unique_id: yaml_template_binary_sensor_rpi4_omv_disk_2_available
+        icon: mdi:harddisk
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk2_available') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk2_available') is not none
+          }}
+      - name: RPI4 OMV Disk 2 Read Write
+        unique_id: yaml_template_binary_sensor_rpi4_omv_disk_2_read_write
+        icon: mdi:database-edit
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'disk2_rw') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'disk2_rw') is not none
+          }}
+      - name: RPI4 OMV SMB Active
+        unique_id: yaml_template_binary_sensor_rpi4_omv_smb_active
+        icon: mdi:folder-network
+        device_class: running
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'smb_active') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'smb_active') is not none
+          }}
+      - name: RPI4 OMV SMB Port 445 Listening
+        unique_id: yaml_template_binary_sensor_rpi4_omv_smb_port_445_listening
+        icon: mdi:ethernet
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'smb_port_445') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'smb_port_445') is not none
+          }}
+      - name: RPI4 OMV External Backups Share Available
+        unique_id: yaml_template_binary_sensor_rpi4_omv_external_backups_share_available
+        icon: mdi:backup-restore
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'share_external_backups') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'share_external_backups') is not none
+          }}
+      - name: RPI4 OMV Photos Share Available
+        unique_id: yaml_template_binary_sensor_rpi4_omv_photos_share_available
+        icon: mdi:image-multiple
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'share_photos') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'share_photos') is not none
+          }}
+      - name: RPI4 OMV Backups Share Available
+        unique_id: yaml_template_binary_sensor_rpi4_omv_backups_share_available
+        icon: mdi:folder-sync
+        device_class: connectivity
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'share_backups') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'share_backups') is not none
+          }}
+      - name: RPI4 OMV Service Active
+        unique_id: yaml_template_binary_sensor_rpi4_omv_service_active
+        icon: mdi:nas
+        device_class: running
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'omv_active') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'omv_active') is not none
+          }}
+      - name: RPI4 OMV Root Filesystem Read Write
+        unique_id: yaml_template_binary_sensor_rpi4_omv_root_filesystem_read_write
+        icon: mdi:file-system
+        state: >-
+          {{ state_attr('sensor.rpi4_omv_system_details', 'root_rw') | default(false, true) | bool }}
+        availability: >-
+          {{
+            states('sensor.rpi4_omv_system_details') not in ['unknown', 'unavailable'] and
+            state_attr('sensor.rpi4_omv_system_details', 'root_rw') is not none
+          }}
 ##############
 #    REST    #
 ##############
@@ -385,7 +675,225 @@ command_line:
         - tx_retries
         - cpu_temp
 
+  - sensor:
+      name: RPI4 OMV System Details
+      unique_id: yaml_command_line_sensor_rpi4_omv_system_details
+      icon: mdi:nas
+      scan_interval: 300
+      command_timeout: 30
+      state_class: measurement
+      unit_of_measurement: "%"
+      command: >-
+        ssh
+        -i /config/.ssh/NUC_id_rsa
+        -o BatchMode=yes
+        -o StrictHostKeyChecking=accept-new
+        -o ConnectTimeout=8
+        -o ConnectionAttempts=1
+        -q
+        homeassistant@10.0.70.2 '
+          PATH=$PATH:/usr/sbin:/sbin;
 
+          u1=06ea6125-0061-44c4-9139-d06e8cfe9f8c;
+          u2=e6ca1630-5eae-4019-aa30-d9ee3beb08a1;
+          p1=/srv/dev-disk-by-uuid-06ea6125-0061-44c4-9139-d06e8cfe9f8c;
+          p2=/srv/dev-disk-by-uuid-e6ca1630-5eae-4019-aa30-d9ee3beb08a1;
+
+          set -- $(head -n 1 /proc/stat);
+          u_1=$2;
+          n_1=$3;
+          s_1=$4;
+          i_1=$5;
+          w_1=$6;
+          q_1=$7;
+          sq_1=$8;
+          st_1=$9;
+          total_1=$((u_1+n_1+s_1+i_1+w_1+q_1+sq_1+st_1));
+          idle_1=$((i_1+w_1));
+
+          sleep 1;
+
+          set -- $(head -n 1 /proc/stat);
+          u_2=$2;
+          n_2=$3;
+          s_2=$4;
+          i_2=$5;
+          w_2=$6;
+          q_2=$7;
+          sq_2=$8;
+          st_2=$9;
+          total_2=$((u_2+n_2+s_2+i_2+w_2+q_2+sq_2+st_2));
+          idle_2=$((i_2+w_2));
+
+          dt=$((total_2-total_1));
+          di=$((idle_2-idle_1));
+          cpu_usage=0;
+
+          if [ "$dt" -gt 0 ]; then
+            cpu_usage=$(((100*(dt-di)+dt/2)/dt));
+          fi;
+
+          set -- $(grep "^MemTotal:" /proc/meminfo);
+          mem_total_kb=$2;
+          set -- $(grep "^MemAvailable:" /proc/meminfo);
+          mem_available_kb=$2;
+
+          memory_usage=0;
+
+          if [ "$mem_total_kb" -gt 0 ]; then
+            memory_usage=$(((mem_total_kb-mem_available_kb)*100/mem_total_kb));
+          fi;
+
+          memory_available_mb=$((mem_available_kb/1024));
+
+          set -- $(cat /proc/loadavg);
+          load_1m=$1;
+
+          set -- $(cat /proc/uptime);
+          uptime_seconds=${1%.*};
+
+          temp_milli=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0);
+          temp_tenths=$(((temp_milli+50)/100));
+          cpu_temp=$((temp_tenths/10)).$((temp_tenths%10));
+
+          disk1_available=false;
+          disk1_rw=false;
+          disk1_usage=null;
+          disk1_free_gb=null;
+
+          if
+            test -b "/dev/disk/by-uuid/$u1" &&
+            findmnt -rn -S "UUID=$u1" -M "$p1" >/dev/null &&
+            timeout 3 stat -f "$p1" >/dev/null;
+          then
+            disk1_available=true;
+
+            if findmnt -rn -M "$p1" -o OPTIONS | grep -qw rw; then
+              disk1_rw=true;
+            fi;
+
+            disk1_usage=$(df --output=pcent "$p1" | tail -n 1 | tr -dc "0-9");
+            set -- $(df -Pk "$p1" | tail -n 1);
+            disk1_free_gb=$(($4/1048576));
+          fi;
+
+          disk2_available=false;
+          disk2_rw=false;
+          disk2_usage=null;
+          disk2_free_gb=null;
+
+          if
+            test -b "/dev/disk/by-uuid/$u2" &&
+            findmnt -rn -S "UUID=$u2" -M "$p2" >/dev/null &&
+            timeout 3 stat -f "$p2" >/dev/null;
+          then
+            disk2_available=true;
+
+            if findmnt -rn -M "$p2" -o OPTIONS | grep -qw rw; then
+              disk2_rw=true;
+            fi;
+
+            disk2_usage=$(df --output=pcent "$p2" | tail -n 1 | tr -dc "0-9");
+            set -- $(df -Pk "$p2" | tail -n 1);
+            disk2_free_gb=$(($4/1048576));
+          fi;
+
+          smb_active=false;
+          smb_port_445=false;
+          omv_active=false;
+
+          systemctl is-active --quiet smbd && smb_active=true;
+          ss -ltn | grep -q ":445 " && smb_port_445=true;
+          systemctl is-active --quiet openmediavault-engined && omv_active=true;
+
+          share_external_backups=false;
+          share_photos=false;
+          share_backups=false;
+
+          if
+            [ "$disk1_available" = true ] &&
+            [ "$smb_active" = true ] &&
+            test -n "$(testparm -s --parameter-name=path --section-name=External_Backups 2>/dev/null)" &&
+            timeout 3 stat -f "$p1/External_Backups" >/dev/null;
+          then
+            share_external_backups=true;
+          fi;
+
+          if
+            [ "$disk1_available" = true ] &&
+            [ "$smb_active" = true ] &&
+            test -n "$(testparm -s --parameter-name=path --section-name=Photos 2>/dev/null)" &&
+            timeout 3 stat -f "$p1/Photos" >/dev/null;
+          then
+            share_photos=true;
+          fi;
+
+          if
+            [ "$disk2_available" = true ] &&
+            [ "$smb_active" = true ] &&
+            test -n "$(testparm -s --parameter-name=path --section-name=Backups 2>/dev/null)" &&
+            timeout 3 stat -f "$p2/Backups" >/dev/null;
+          then
+            share_backups=true;
+          fi;
+
+          root_rw=false;
+          findmnt -rn -M / -o OPTIONS | grep -qw rw && root_rw=true;
+          root_usage=$(df --output=pcent / | tail -n 1 | tr -dc "0-9");
+
+          failed_units=$(systemctl --failed --no-legend --plain | wc -l | tr -d " ");
+
+          recent_storage_errors=$(journalctl -k --since "-10 minutes" --no-pager -q 2>/dev/null | grep -Eic "USB disconnect|reset (high-speed|SuperSpeed) USB device|I/O error|Buffer I/O error|blk_update_request|EXT4-fs error|uas_eh_abort_handler|device offline" || true);
+
+          overall_health=0;
+
+          if
+            [ "$disk1_available" = true ] &&
+            [ "$disk1_rw" = true ] &&
+            [ "$disk2_available" = true ] &&
+            [ "$disk2_rw" = true ] &&
+            [ "$smb_active" = true ] &&
+            [ "$smb_port_445" = true ] &&
+            [ "$share_external_backups" = true ] &&
+            [ "$share_photos" = true ] &&
+            [ "$share_backups" = true ] &&
+            [ "$omv_active" = true ] &&
+            [ "$root_rw" = true ] &&
+            [ "$recent_storage_errors" -eq 0 ];
+          then
+            overall_health=100;
+          fi;
+
+          printf "{\"overall_health\":%s,\"reachable\":true,\"cpu_usage_pct\":%s,\"cpu_temp_c\":%s,\"load_1m\":%s,\"memory_usage_pct\":%s,\"memory_available_mb\":%s,\"uptime_seconds\":%s,\"disk1_available\":%s,\"disk1_rw\":%s,\"disk1_usage_pct\":%s,\"disk1_free_gb\":%s,\"disk2_available\":%s,\"disk2_rw\":%s,\"disk2_usage_pct\":%s,\"disk2_free_gb\":%s,\"smb_active\":%s,\"smb_port_445\":%s,\"share_external_backups\":%s,\"share_photos\":%s,\"share_backups\":%s,\"omv_active\":%s,\"root_rw\":%s,\"root_usage_pct\":%s,\"failed_units\":%s,\"recent_storage_errors\":%s}\n" "$overall_health" "$cpu_usage" "$cpu_temp" "$load_1m" "$memory_usage" "$memory_available_mb" "$uptime_seconds" "$disk1_available" "$disk1_rw" "$disk1_usage" "$disk1_free_gb" "$disk2_available" "$disk2_rw" "$disk2_usage" "$disk2_free_gb" "$smb_active" "$smb_port_445" "$share_external_backups" "$share_photos" "$share_backups" "$omv_active" "$root_rw" "$root_usage" "$failed_units" "$recent_storage_errors";
+        ' 2>/dev/null || printf '{"overall_health":0,"reachable":false}\n'
+      value_template: >-
+        {{ value_json.overall_health | default(0) | int }}
+      json_attributes:
+        - reachable
+        - cpu_usage_pct
+        - cpu_temp_c
+        - load_1m
+        - memory_usage_pct
+        - memory_available_mb
+        - uptime_seconds
+        - disk1_available
+        - disk1_rw
+        - disk1_usage_pct
+        - disk1_free_gb
+        - disk2_available
+        - disk2_rw
+        - disk2_usage_pct
+        - disk2_free_gb
+        - smb_active
+        - smb_port_445
+        - share_external_backups
+        - share_photos
+        - share_backups
+        - omv_active
+        - root_rw
+        - root_usage_pct
+        - failed_units
+        - recent_storage_errors
 
 #################
 #    SENSORS    #
