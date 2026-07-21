@@ -713,6 +713,43 @@ automation:
                 data:
                   display_device_id: 29d7d4483b27d042b60d86ac92541aa2
 
+  - alias: "[misc|epaperlink] Update Air Conditioner Statistics Display"
+    id: yaml_automation_misc_epaperlink_update_air_conditioner_statistics_display
+    description: >-
+      Updates the portable air-conditioner e-paper display every 30 minutes
+      while cooling, and always at 07:00 and 18:00.
+    mode: restart
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"
+        id: periodic
+      - platform: time
+        at:
+          - "07:00:00"
+          - "18:00:00"
+        id: scheduled
+      - platform: state
+        entity_id: climate.portable_split_air_conditioner
+        to: "cool"
+        id: ac_started
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "23:30:00"
+      - condition: template
+        value_template: >-
+          {{ trigger.id == 'scheduled'
+              or is_state('climate.portable_split_air_conditioner', 'cool') }}
+    action:
+      - delay:
+          seconds: 10
+      - service: script.update_portable_split_air_conditioner_display
+        data:
+          display_device_id: 97380d99b587db8ff95c34eec077e462
+          sleep_duration: >-
+            {% set interval = 30 %}
+            {{ ((interval - now().minute % interval + 1) * 60) | int }}
+
   - alias: "[misc|epaperlink]Notify if tag not seen"
     id: yaml_automation_misc_epaperlink_notify_if_tag_not_seen
     mode: restart
@@ -6509,3 +6546,216 @@ script:
                 Script script.drawcustom_snapshot_examples received invalid display_device_id
                 '{{ display_device_id }}'; device was not found and the display
                 update was skipped.
+
+  update_portable_split_air_conditioner_display:
+    alias: "Update Portable Split Air Conditioner Display"
+    icon: mdi:air-conditioner
+    mode: queued
+    fields:
+      display_device_id:
+        name: Display device
+        description: "The device ID of the OpenEPaperLink display."
+        example: "97380d99b587db8ff95c34eec077e462"
+        required: true
+        selector:
+          device:
+            integration: open_epaper_link
+      sleep_duration:
+        name: Sleep duration
+        description: >-
+          How long, in seconds, the tag should sleep before checking for
+          another update.
+        example: 960
+        default: 960
+        required: false
+        advanced: true
+        selector:
+          number:
+            min: 60
+            max: 86400
+            step: 60
+            unit_of_measurement: s
+            mode: box
+    sequence:
+      - variables:
+          current_temperature: >-
+            {{ states('sensor.portable_split_air_conditioner_current_temperature')
+                | float(default=none) | round(1)
+                if states('sensor.portable_split_air_conditioner_current_temperature')
+                  | is_number else '--' }}
+          target_temperature: >-
+            {{ states('sensor.portable_split_air_conditioner_target_temperature')
+                | float(default=none) | round(1)
+                if states('sensor.portable_split_air_conditioner_target_temperature')
+                  | is_number else '--' }}
+          current_power: >-
+            {{ states('sensor.plug_air_conditioner_power')
+                | float(default=none) | round(0) | int
+                if states('sensor.plug_air_conditioner_power')
+                  | is_number else '--' }}
+          energy_today: >-
+            {{ states('sensor.plug_air_conditioner_energy_today')
+                | float(default=none) | round(2)
+                if states('sensor.plug_air_conditioner_energy_today')
+                  | is_number else '--' }}
+          operating_state: >-
+            {% set state = states('climate.portable_split_air_conditioner') %}
+            {{ {'cool': 'COOLING', 'off': 'OFF'}.get(
+              state, state | replace('_', ' ') | upper
+            ) }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ device_attr(display_device_id, 'name') is not none }}
+            sequence:
+              - action: open_epaper_link.drawcustom
+                target:
+                  device_id: "{{ display_device_id }}"
+                data:
+                  background: white
+                  rotate: 0
+                  ttl: "{{ sleep_duration | default(960) | int }}"
+                  payload:
+                    # Header
+                    - type: text
+                      value: "PORTABLE AC"
+                      font: ppb.ttf
+                      x: 3
+                      "y": 17
+                      size: 15
+                      color: black
+                      anchor: lb
+                    - type: text
+                      value: "{{ operating_state }}"
+                      font: ppb.ttf
+                      x: 149
+                      "y": 17
+                      size: 11
+                      color: "{{ 'red' if operating_state == 'COOLING' else 'black' }}"
+                      anchor: rb
+                    # Current temperature
+                    - type: text
+                      value: "CURRENT"
+                      font: ppb.ttf
+                      x: 3
+                      "y": 38
+                      size: 10
+                      color: black
+                      anchor: lb
+                    - type: text
+                      value: "{{ current_temperature }}"
+                      font: ppb.ttf
+                      x: 57
+                      "y": 69
+                      size: 29
+                      color: red
+                      anchor: rb
+                    - type: text
+                      value: "°C"
+                      font: ppb.ttf
+                      x: 73
+                      "y": 67
+                      size: 13
+                      color: black
+                      anchor: rb
+                    # Target temperature
+                    - type: text
+                      value: "TARGET"
+                      font: ppb.ttf
+                      x: 82
+                      "y": 38
+                      size: 10
+                      color: black
+                      anchor: lb
+                    - type: text
+                      value: "{{ target_temperature }}"
+                      font: ppb.ttf
+                      x: 135
+                      "y": 69
+                      size: 29
+                      color: red
+                      anchor: rb
+                    - type: text
+                      value: "°C"
+                      font: ppb.ttf
+                      x: 151
+                      "y": 67
+                      size: 13
+                      color: black
+                      anchor: rb
+                    # Current power
+                    - type: text
+                      value: "POWER"
+                      font: ppb.ttf
+                      x: 3
+                      "y": 89
+                      size: 10
+                      color: black
+                      anchor: lb
+                    - type: text
+                      value: "{{ current_power }}"
+                      font: ppb.ttf
+                      x: 57
+                      "y": 120
+                      size: 29
+                      color: red
+                      anchor: rb
+                    - type: text
+                      value: "W"
+                      font: ppb.ttf
+                      x: 73
+                      "y": 118
+                      size: 13
+                      color: black
+                      anchor: rb
+                    # Energy today
+                    - type: text
+                      value: "TODAY"
+                      font: ppb.ttf
+                      x: 82
+                      "y": 89
+                      size: 10
+                      color: black
+                      anchor: lb
+                    - type: text
+                      value: "{{ energy_today }}"
+                      font: ppb.ttf
+                      x: 125
+                      "y": 120
+                      size: 26
+                      color: red
+                      anchor: rb
+                    - type: text
+                      value: "kWh"
+                      font: ppb.ttf
+                      x: 151
+                      "y": 118
+                      size: 11
+                      color: black
+                      anchor: rb
+                    # Footer
+                    - type: text
+                      value: "Updated {{ now().strftime('%H:%M') }}"
+                      font: ppb.ttf
+                      x: 3
+                      "y": 149
+                      size: 10
+                      color: black
+                      anchor: lb
+                    - type: text
+                      value: "{{ now().strftime('%d %b') }}"
+                      font: ppb.ttf
+                      x: 150
+                      "y": 149
+                      size: 10
+                      color: black
+                      anchor: rb
+        default:
+          - action: system_log.write
+            data:
+              level: warning
+              message: >-
+                Script script.update_portable_split_air_conditioner_display
+                received invalid display_device_id '{{ display_device_id }}';
+                the device was not found and the update was skipped.
