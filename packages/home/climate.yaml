@@ -145,6 +145,71 @@ template:
         state: "{{ states('climate.portable_split_air_conditioner') }}"
         availability: "{{ states('climate.portable_split_air_conditioner') not in ['unknown', 'unavailable'] }}"
 
+  - number:
+      - name: "Portable Split Air Conditioner Target Temperature Control"
+        default_entity_id: number.portable_split_air_conditioner_target_temperature_control
+        unique_id: yaml_template_number_portable_split_air_conditioner_target_temperature_control
+        icon: mdi:thermometer-auto
+        unit_of_measurement: "°C"
+        min: 16
+        max: 30
+        step: 1
+        state: "{{ state_attr('climate.portable_split_air_conditioner', 'temperature') }}"
+        availability: "{{ state_attr('climate.portable_split_air_conditioner', 'temperature') | is_number }}"
+        set_value:
+          - condition: template
+            value_template: >
+              {{ value | float != state_attr('climate.portable_split_air_conditioner', 'temperature') | float(-1) }}
+          - action: climate.set_temperature
+            target:
+              entity_id: climate.portable_split_air_conditioner
+            data:
+              temperature: "{{ value | float }}"
+
+  - select:
+      - name: "Portable Split Air Conditioner Fan Speed Control"
+        default_entity_id: select.portable_split_air_conditioner_fan_speed_control
+        unique_id: yaml_template_select_portable_split_air_conditioner_fan_speed_control
+        icon: mdi:fan-auto
+        options: "{{ ['Silent', 'Low', 'Mid', 'High', 'Turbo'] }}"
+        state: >
+          {% set fan_modes = {
+            '1': 'Silent',
+            '2': 'Low',
+            '3': 'Mid',
+            '4': 'High',
+            '5': 'Turbo'
+          } %}
+          {{ fan_modes.get(state_attr('climate.portable_split_air_conditioner', 'fan_mode') | string, none) }}
+        availability: >
+          {{
+            states('climate.portable_split_air_conditioner') not in ['unknown', 'unavailable']
+            and state_attr('climate.portable_split_air_conditioner', 'fan_mode') | string in ['1', '2', '3', '4', '5']
+          }}
+        select_option:
+          - variables:
+              requested_fan_mode: >
+                {% set fan_modes = {
+                  'Silent': '1',
+                  'Low': '2',
+                  'Mid': '3',
+                  'High': '4',
+                  'Turbo': '5'
+                } %}
+                {{ fan_modes.get(option) }}
+          - condition: template
+            value_template: >
+              {{
+                requested_fan_mode is not none
+                and requested_fan_mode
+                  != state_attr('climate.portable_split_air_conditioner', 'fan_mode') | string
+              }}
+          - action: climate.set_fan_mode
+            target:
+              entity_id: climate.portable_split_air_conditioner
+            data:
+              fan_mode: "{{ requested_fan_mode }}"
+
 #######################
 #    INPUT SELECTS    #
 #######################
