@@ -53,6 +53,7 @@ from custom_components.powercalc.const import (
 )
 from custom_components.powercalc.flow_helper.common import PowercalcFormStep, Step, flatten_sections
 from custom_components.powercalc.flow_helper.schema import (
+    COST_DOCS_URI,
     SCHEMA_COST_APPLY,
     SCHEMA_ENERGY_OPTIONS,
     SCHEMA_GLOBAL_COST,
@@ -327,7 +328,7 @@ class GlobalConfigurationFlow:
             schema=SCHEMA_GLOBAL_COST,
             form_kwarg={
                 "description_placeholders": {
-                    "docs_uri": "https://docs.powercalc.nl/sensor-types/cost-sensor/",
+                    "docs_uri": COST_DOCS_URI,
                 },
             },
         )
@@ -415,11 +416,10 @@ class GlobalConfigurationOptionsFlow(GlobalConfigurationFlow):
             Step.GLOBAL_CONFIGURATION: "Basic options",
             Step.GLOBAL_CONFIGURATION_DISCOVERY: "Discovery options",
             Step.GLOBAL_CONFIGURATION_THROTTLING: "Throttling options",
+            Step.GLOBAL_CONFIGURATION_COST: "Cost options",
         }
         if self.flow.global_config.get(CONF_CREATE_ENERGY_SENSORS):
             menu[Step.GLOBAL_CONFIGURATION_ENERGY] = "Energy options"
-        if self.flow.global_config.get(CONF_CREATE_COST_SENSORS):
-            menu[Step.GLOBAL_CONFIGURATION_COST] = "Cost options"
         if self.flow.global_config.get(CONF_CREATE_UTILITY_METERS):
             menu[Step.GLOBAL_CONFIGURATION_UTILITY_METER] = "Utility meter options"
         return menu
