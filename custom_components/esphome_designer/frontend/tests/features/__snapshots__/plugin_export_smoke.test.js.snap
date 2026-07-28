@@ -1834,15 +1834,36 @@ exports[`Plugin Export Smoke Tests > Export for lvgl_tabview > should export LVG
     "tabs": [
       {
         "name": "Page 1",
-        "widgets": [],
+        "widgets": [
+          {
+            "label": {
+              "hidden": true,
+              "text": """",
+            },
+          },
+        ],
       },
       {
         "name": "Page 2",
-        "widgets": [],
+        "widgets": [
+          {
+            "label": {
+              "hidden": true,
+              "text": """",
+            },
+          },
+        ],
       },
       {
         "name": "Page 3",
-        "widgets": [],
+        "widgets": [
+          {
+            "label": {
+              "hidden": true,
+              "text": """",
+            },
+          },
+        ],
       },
     ],
   },
@@ -2226,6 +2247,7 @@ exports[`Plugin Export Smoke Tests > Export for ondevice_humidity > should expor
         "label": {
           "align": "top_mid",
           "height": 36,
+          "id": "w_test_icon",
           "text": "\\U000F058E",
           "text_color": "Color(black)",
           "text_font": "font_ptr",
@@ -2236,6 +2258,7 @@ exports[`Plugin Export Smoke Tests > Export for ondevice_humidity > should expor
         "label": {
           "align": "top_mid",
           "height": 22,
+          "id": "w_test_text",
           "text": "--%",
           "text_align": "center",
           "text_color": "Color(black)",
@@ -2328,6 +2351,7 @@ exports[`Plugin Export Smoke Tests > Export for ondevice_temperature > should ex
         "label": {
           "align": "top_mid",
           "height": 36,
+          "id": "w_test_icon",
           "text": "\\U000F050F",
           "text_color": "Color(black)",
           "text_font": "font_ptr",
@@ -2338,6 +2362,7 @@ exports[`Plugin Export Smoke Tests > Export for ondevice_temperature > should ex
         "label": {
           "align": "top_mid",
           "height": 22,
+          "id": "w_test_text",
           "text": "--°C",
           "text_align": "center",
           "text_color": "Color(black)",
@@ -2544,7 +2569,7 @@ exports[`Plugin Export Smoke Tests > Export for qr_code > should export OpenDisp
   "bgcolor": "white",
   "border": 1,
   "boxsize": 2,
-  "color": "theme_auto",
+  "color": "black",
   "data": "https://github.com/koosoli/ESPHomeDesigner/",
   "type": "qrcode",
   "x": 10,
@@ -3422,7 +3447,10 @@ exports[`Plugin Export Smoke Tests > Export for template_nav_bar > should export
           },
           "on_click": [
             {
-              "script.execute": "manage_run_and_sleep",
+              "script.execute": {
+                "id": "change_page_to",
+                "target_page": 0,
+              },
             },
           ],
           "pad_all": 0,
@@ -3498,7 +3526,24 @@ exports[`Plugin Export Smoke Tests > Export for template_nav_bar > should export
 ]
 `;
 
-exports[`Plugin Export Smoke Tests > Export for template_nav_bar > should handle onExportBinarySensors with stable output 1`] = `[]`;
+exports[`Plugin Export Smoke Tests > Export for template_nav_bar > should handle onExportBinarySensors with stable output 1`] = `
+[
+  "- platform: touchscreen",
+  "  id: nav_home_w_test",
+  "  touchscreen_id: my_touchscreen",
+  "  x_min: 10",
+  "  x_max: 110",
+  "  y_min: 10",
+  "  y_max: 110",
+  "  on_press:",
+  "    - if:",
+  "        condition:",
+  "          lambda: 'return id(display_page) == 0 && (millis() - id(last_touch_time) > 250);'",
+  "        then:",
+  "          - lambda: 'id(last_touch_time) = millis();'",
+  "          - script.execute: manage_run_and_sleep",
+]
+`;
 
 exports[`Plugin Export Smoke Tests > Export for template_sensor_bar > should export LVGL with stable output 1`] = `
 {
@@ -4605,6 +4650,7 @@ exports[`Plugin Export Smoke Tests > Export for wifi_signal > should export LVGL
         "label": {
           "align": "top_mid",
           "height": 28,
+          "id": "w_test_icon",
           "text": "!lambda |-
           if (id(wifi_signal_dbm).has_state()) {
             float sig = id(wifi_signal_dbm).state;
@@ -4624,6 +4670,7 @@ exports[`Plugin Export Smoke Tests > Export for wifi_signal > should export LVGL
         "label": {
           "align": "bottom_mid",
           "height": 16,
+          "id": "w_test_text",
           "text": "!lambda |-
           if (id(wifi_signal_dbm).has_state()) {
             return str_sprintf("%.0fdB", id(wifi_signal_dbm).state).c_str();

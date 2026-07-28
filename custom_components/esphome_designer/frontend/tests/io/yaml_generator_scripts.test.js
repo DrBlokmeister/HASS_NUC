@@ -20,7 +20,9 @@ describe('yaml_generator_scripts', () => {
 
         expect(lines).toContain('id: change_page_to');
         expect(lines).toContain('Page change ignored (debounce)');
-        expect(lines).toContain('id(my_display).update();');
+        expect(lines).not.toContain('id(my_display).update();');
+        expect(lines).toContain('lvgl.page.show: page_0');
+        expect(lines).toContain('lvgl.page.show: page_1');
         expect(lines).toContain('id(backlight_pwm).set_level(0.8);');
         expect(lines).toContain('id(last_page_switch_time) = now;');
         expect(lines).not.toContain('id(last_page_switch_time) = millis();');
@@ -82,6 +84,35 @@ describe('yaml_generator_scripts', () => {
         expect(lines).toContain('time_id: ha_time');
         expect(lines).not.toContain('int interval = id(page_refresh_default_s);');
         expect(lines).not.toContain('bool is_sleep_time = false;');
+    });
+
+    it('waits for the E1002 color e-paper refresh before entering deep sleep', () => {
+        const lines = generateScriptSection({
+            deepSleepEnabled: true,
+            sleepEnabled: false
+        }, [{ refresh_s: '300' }], {
+            displayId: 'epaper_display',
+            deepSleepDisplayRefreshDelay: '35s',
+            features: { epaper: true }
+        }).join('\n');
+
+        expect(lines).toContain([
+            '      - component.update: epaper_display',
+            '      - delay: 35s',
+            '      - script.execute: deep_sleep_cycle'
+        ].join('\n'));
+    });
+
+    it('does not generate unsupported deep-sleep actions for RP2 profiles', () => {
+        const lines = generateScriptSection({
+            deepSleepEnabled: true
+        }, [{ refresh_s: '300' }], {
+            supportsDeepSleep: false,
+            features: { epaper: true }
+        }).join('\n');
+
+        expect(lines).not.toContain('id: deep_sleep_cycle');
+        expect(lines).not.toContain('deep_sleep.enter:');
     });
 
     it('stops the automatic refresh loop in manual refresh mode', () => {

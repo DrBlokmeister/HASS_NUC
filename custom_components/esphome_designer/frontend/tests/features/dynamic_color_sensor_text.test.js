@@ -64,9 +64,11 @@ describe('Sensor Text Plugin - Dynamic Color', () => {
         const output = mockContext.lines.join('\n');
 
         expect(output).toContain('Color dyn_color(r, g, b);');
-        expect(output).toContain('float t = (val - (10)) / (float)(30 - (10));');
+        expect(output).toContain('float range = (float)((30) - (10));');
+        expect(output).toContain('float t = range == 0.0f ? 0.0f : (val - (10)) / range;');
         // Check RGB hex to int parsing logic checks out
-        expect(output).toContain('uint8_t r = 0 + (uint8_t)(t * (255 - 0));');
+        expect(output).toContain('auto to_linear = [](float c)');
+        expect(output).toContain('auto oklab = [&](float r, float g, float b');
         expect(output).toContain('dyn_color');
     });
 
@@ -93,7 +95,8 @@ describe('Sensor Text Plugin - Dynamic Color', () => {
 
         expect(textColor).toContain('!lambda |-');
         expect(textColor).toContain('return lv_color_make');
-        expect(textColor).toContain('float t = (val - (-10)) / (float)(40 - (-10));');
+        expect(textColor).toContain('float range = (float)((40) - (-10));');
+        expect(textColor).toContain('auto to_linear = [](float c)');
     });
 
     it('should fall back to uncomputed color_low for ODP and OEPL', () => {
@@ -115,6 +118,7 @@ describe('Sensor Text Plugin - Dynamic Color', () => {
         expect(d.dynamic_color_high).toBe('#e74c3c');
         expect(d.dynamic_value_low).toBe(0);
         expect(d.dynamic_value_high).toBe(100);
+        expect(d.dynamic_mid_enabled).toBe(false);
     });
 
     it('should not emit dynamic color block when value range is zero', () => {

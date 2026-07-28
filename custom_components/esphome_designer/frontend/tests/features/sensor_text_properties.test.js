@@ -89,6 +89,21 @@ describe('sensor_text properties', () => {
         panel = createPanel();
     });
 
+    it('shows midpoint dynamic-color controls when enabled', () => {
+        panel = createPanel({
+            checkboxValues: { 'Enable Dynamic Color': true, 'Enable Midpoint Color': true }
+        });
+
+        renderProperties(panel, {
+            id: 'sensor_text_midpoint',
+            props: { dynamic_color_enabled: true, dynamic_mid_enabled: true }
+        });
+
+        expect(panel.labels).toContain('Color Mid');
+        expect(panel.labels).toContain('Value Mid');
+        expect(panel.labels).toContain('Datetime Format (strftime, optional)');
+    });
+
     it('renders full color-display controls, trims attributes, and keeps align fields in sync', () => {
         panel = createPanel({
             pickerValues: {
@@ -119,7 +134,8 @@ describe('sensor_text properties', () => {
                 'Hide default unit': true,
                 Italic: true,
                 'Parse Color Tags': true,
-                'Enable Dynamic Color': true
+                'Enable Dynamic Color': true,
+                'Enable Midpoint Color': true
             },
             selectValues: {
                 'Display Format': 'value_only',
@@ -134,6 +150,7 @@ describe('sensor_text properties', () => {
                 Color: '#ff0000',
                 'Color Low': '#0000ff',
                 'Color High': '#00ff00',
+                'Color Mid': '#ffff00',
                 'Border Color': '#111111',
                 Background: '#ffffff'
             }
@@ -154,6 +171,7 @@ describe('sensor_text properties', () => {
         expect(panel.autoPopulateTitleFromEntity).toHaveBeenCalledWith('sensor_text_1', 'sensor.energy');
         expect(panel.addDropShadowButton).toHaveBeenCalledWith(panel.getContainer(), 'sensor_text_1');
         expect(panel.labels).toContain('Enable Dynamic Color');
+        expect(panel.labels).toContain('Custom Text Lambda (ESPHome C++)');
         expect(mockAppState.updateWidget).toHaveBeenCalledWith('sensor_text_1', { entity_id: 'sensor.energy' });
         expect(mockAppState.updateWidget).toHaveBeenCalledWith('sensor_text_1', { entity_id_2: 'sensor.energy_total' });
         expect(mockAppState.updateWidget).toHaveBeenCalledWith('sensor_text_1', { title: 'Battery' });
@@ -299,6 +317,48 @@ describe('sensor_text properties', () => {
                 bpp: 4
             })
         }));
+    });
+
+    it('updates a title previously generated from the replaced entity', () => {
+        mockAppState.entityStates = {
+            'sensor.old_temperature': {
+                attributes: { friendly_name: 'Old Temperature' }
+            }
+        };
+        panel = createPanel({
+            pickerValues: { 'Entity ID': 'sensor.new_temperature' },
+            inputValues: { 'Title/Label': 'Old Temperature' }
+        });
+
+        renderProperties(panel, {
+            id: 'sensor_text_1',
+            title: 'Old Temperature',
+            entity_id: 'sensor.old_temperature',
+            props: {}
+        });
+
+        expect(panel.autoPopulateTitleFromEntity).toHaveBeenCalledWith('sensor_text_1', 'sensor.new_temperature');
+    });
+
+    it('preserves a custom title when replacing the entity', () => {
+        mockAppState.entityStates = {
+            'sensor.old_temperature': {
+                attributes: { friendly_name: 'Old Temperature' }
+            }
+        };
+        panel = createPanel({
+            pickerValues: { 'Entity ID': 'sensor.new_temperature' },
+            inputValues: { 'Title/Label': 'Kitchen' }
+        });
+
+        renderProperties(panel, {
+            id: 'sensor_text_1',
+            title: 'Kitchen',
+            entity_id: 'sensor.old_temperature',
+            props: {}
+        });
+
+        expect(panel.autoPopulateTitleFromEntity).not.toHaveBeenCalled();
     });
 
     it('skips dynamic color controls for monochrome or explicit text-sensor setups', () => {

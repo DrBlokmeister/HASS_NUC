@@ -24,11 +24,15 @@ export function generateScriptSection(payload, pages, profile) {
     const isLcd = !!(profile.features && (profile.features.lcd || profile.features.oled));
     const isEpaper = !!(profile.features && (profile.features.epaper || profile.features.epd));
     const isOled = !!(profile.features && profile.features.oled);
+    const isLvgl = payload.renderingMode === 'lvgl' || !!(profile.features && (profile.features.lvgl || profile.features.lv_display));
     const debounceMs = getPageSwitchDebounceMs(profile);
     const backlightPin = profile.backlight?.pin || profile.pins?.backlight || null;
     const lcdStrategy = payload.lcdEcoStrategy || 'backlight_off';
     const isBacklightStrategy = isLcd && lcdStrategy === 'backlight_off' && backlightPin;
-    const isDeepSleep = isEpaper && payload.deepSleepEnabled;
+    const isDeepSleep = isEpaper && payload.deepSleepEnabled && profile.supportsDeepSleep !== false;
+    const deepSleepDisplayRefreshDelay = typeof profile.deepSleepDisplayRefreshDelay === 'string'
+        ? profile.deepSleepDisplayRefreshDelay.trim()
+        : '';
 
     /** @param {string} baseIndent */
     const appendFirmwareGuardDelay = (baseIndent) => {
@@ -130,15 +134,24 @@ export function generateScriptSection(payload, pages, profile) {
         lines.push("");
         lines.push("          if (id(display_page) != target) {");
         lines.push("            // Set debounce time BEFORE display update (update takes ~1.6s)");
-        lines.push("            id(last_page_switch_time) = now;");
-        lines.push("            id(display_page) = target;");
-        lines.push(`            id(${displayId}).update();`);
-        lines.push(`            ESP_LOGI("display", "Switched to page %d", target);`);
+            lines.push("            id(last_page_switch_time) = now;");
+            lines.push("            id(display_page) = target;");
+            if (!isLvgl) lines.push(`            id(${displayId}).update();`);
+            lines.push(`            ESP_LOGI("display", "Switched to page %d", target);`);
         if (isBacklightStrategy) {
             lines.push(`            // LCD Strategy: Wake up backlight on interaction/page change`);
             lines.push(`            id(backlight_pwm).set_level(0.8); // Restore brightness`);
         }
         lines.push("          }");
+        if (isLvgl) {
+            pages.forEach((_page, index) => {
+                lines.push("      - if:");
+                lines.push("          condition:");
+                lines.push(`            lambda: 'return id(display_page) == ${index};'`);
+                lines.push("          then:");
+                lines.push(`            - lvgl.page.show: page_${index}`);
+            });
+        }
     }
 
     if (isDeepSleep) {
@@ -340,12 +353,15 @@ export function generateScriptSection(payload, pages, profile) {
         lines.push("              }");
         lines.push("              return true; // Not sleep time, update display");
         lines.push("          then:");
-        if (!isLcd) lines.push(`            - component.update: ${displayId}`);
-        else lines.push('            - logger.log: "Display update managed by hardware timer."');
+        if (!isLcd) {
+            lines.push(`            - component.update: ${displayId}`);
+            if (deepSleepDisplayRefreshDelay) lines.push(`            - delay: ${deepSleepDisplayRefreshDelay}`);
+        } else lines.push('            - logger.log: "Display update managed by hardware timer."');
         lines.push("          else:");
         lines.push('            - logger.log: "Night-time sleep active, skipping display update."');
     } else if (!isLcd) {
         lines.push(`      - component.update: ${displayId}`);
+        if (isDeepSleep && deepSleepDisplayRefreshDelay) lines.push(`      - delay: ${deepSleepDisplayRefreshDelay}`);
     }
 
     const isManualRefresh = !!payload.manualRefreshOnly;

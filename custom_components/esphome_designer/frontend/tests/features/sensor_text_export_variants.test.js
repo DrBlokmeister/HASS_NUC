@@ -116,6 +116,26 @@ describe('sensor_text export variants', () => {
         expect(output).toContain('it.printf(10, 20, id(sensor_font),');
     });
 
+    it('keeps the value visible when an automatic label is wider than the widget', () => {
+        const lines = [];
+        exportDirect({
+            id: 'sensor_narrow', x: 10, y: 20, width: 147, height: 40,
+            entity_id: 'sensor.openweathermap_temperature',
+            props: { value_format: 'label_value', text_align: 'TOP_LEFT' }
+        }, {
+            lines,
+            addFont: vi.fn(() => 'sensor_font'),
+            getColorConst: (value) => `Color(${value})`,
+            getConditionCheck: () => '',
+            profile: { name: 'Color Display' }
+        });
+
+        const output = lines.join('\n');
+        expect(output).toContain('if (w1 >= 147) {');
+        expect(output).toContain('it.printf(10, 20, id(sensor_font),');
+        expect(output).toContain('print_wrapped_text(10 + w1, 20 +');
+    });
+
     it('exports direct-mode vertical layout with center/middle alignment', () => {
         const lines = [];
         exportDirect({
@@ -189,6 +209,36 @@ describe('sensor_text export variants', () => {
         expect(output).toContain('id(weather_home_forecast_txt).state.c_str()');
         expect(output).toContain('id(sensor_detail_friendly_name_txt).state.c_str()');
         expect(output).toContain('%s / %s');
+    });
+
+    it('exports a custom text lambda without requiring an entity', () => {
+        const lines = [];
+        exportDirect({
+            id: 'custom_text', x: 10, y: 20, width: 100, height: 30,
+            props: { custom_text_lambda: 'return str_sprintf("%d%%", 42).c_str();' }
+        }, {
+            lines,
+            addFont: vi.fn(() => 'sensor_font'),
+            getColorConst: (value) => `Color(${value})`,
+            getConditionCheck: () => ''
+        });
+
+        const output = lines.join('\n');
+        expect(output).toContain('const std::string custom_text = [&]() -> std::string {');
+        expect(output).toContain('return str_sprintf("%d%%", 42).c_str();');
+        expect(output).toContain('custom_text.c_str()');
+
+        const lvgl = exportLVGL({
+            id: 'custom_text_lvgl',
+            props: { custom_text_lambda: 'return std::string("Ready");' }
+        }, {
+            common: { id: 'custom_text_lvgl' },
+            convertColor: (value) => value,
+            getLVGLFont: () => 'font_lvgl',
+            formatOpacity: (value) => value,
+            profile: {}
+        });
+        expect(lvgl.label.text).toBe('!lambda |-\n          return std::string("Ready");');
     });
 
     it('exports LVGL, OpenDisplay, and OEPL variants with stable text formatting', () => {
@@ -519,7 +569,7 @@ describe('sensor_text export variants', () => {
         expect(isStrictlyNumeric(' 12.5 ')).toBe(true);
         expect(isStrictlyNumeric('12abc')).toBe(false);
         expect(hexToRgb('#123456')).toEqual({ r: 18, g: 52, b: 86 });
-        expect(lerpColor('#000000', '#ffffff', 0.5)).toBe('rgb(128, 128, 128)');
+        expect(lerpColor('#000000', '#ffffff', 0.5)).toBe('rgb(99, 99, 99)');
         expect(HA_TEXT_DOMAINS).toContain('weather.');
         expect(isColorDisplay({ features: { lcd: true } })).toBe(true);
         expect(isColorDisplay({ name: '6-Color Panel' })).toBe(true);

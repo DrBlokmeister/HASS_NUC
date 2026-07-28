@@ -15,6 +15,7 @@ export const exportDirect = (w, context) => {
         } = context;
 
         const p = w.props || {};
+        const customTextLambda = String(p.custom_text_lambda || "").trim();
         let entityId = (w.entity_id || "").trim();
         let entityId2 = (w.entity_id_2 || "").trim();
 
@@ -106,7 +107,7 @@ export const exportDirect = (w, context) => {
             }
         }
 
-        if (!entityId && !p.is_local_sensor) {
+        if (!entityId && !p.is_local_sensor && !customTextLambda) {
             lines.push(`        // Sensor ID missing for this widget`);
             return;
         }
@@ -209,6 +210,21 @@ export const exportDirect = (w, context) => {
         if (textAlign.includes("BOTTOM")) yVal = Math.round(w.y + w.height);
         else if (!textAlign.includes("TOP")) yVal = Math.round(w.y + w.height / 2); // Middle
 
+        if (customTextLambda) {
+            lines.push(`        {`);
+            lines.push(`          const std::string custom_text = [&]() -> std::string {`);
+            customTextLambda.split(/\r?\n/).forEach((line) => lines.push(`            ${line}`));
+            lines.push(`          }();`);
+            if (w.width && w.width > 50) {
+                lines.push(`          print_wrapped_text(${xVal}, ${yVal}, ${w.width}, ${valueFS + 4}, id(${valueFontId}), ${color}, ${valueAlign}, custom_text.c_str());`);
+            } else {
+                lines.push(`          it.printf(${xVal}, ${yVal}, id(${valueFontId}), ${color}, ${valueAlign}, "%s", custom_text.c_str());`);
+            }
+            lines.push(`        }`);
+            if (cond) lines.push(`        }`);
+            return;
+        }
+
         // Determine format string for values
         // When unit is exported separately (different font/align), omit it from the main format string
         const useUnitSplit = splitUnitExport && !!displayUnitStr && !v2;
@@ -228,17 +244,35 @@ export const exportDirect = (w, context) => {
             colorVar = "dyn_color";
             const hexL = hexToRgb(p.dynamic_color_low || "#3498db");
             const hexH = hexToRgb(p.dynamic_color_high || "#e74c3c");
+            const hexM = hexToRgb(p.dynamic_color_mid || "#f1c40f");
             const low = p.dynamic_value_low !== undefined ? p.dynamic_value_low : 0;
             const high = p.dynamic_value_high !== undefined ? p.dynamic_value_high : 100;
+            const mid = p.dynamic_value_mid !== undefined ? p.dynamic_value_mid : (Number(low) + Number(high)) / 2;
+            const useMid = !!p.dynamic_mid_enabled && mid > low && mid < high;
 
             lines.push(`        {`);
             lines.push(`          float val = ${arg1};`);
-            lines.push(`          float t = (val - (${low})) / (float)(${high} - (${low}));`);
+            lines.push(`          float range = (float)((${high}) - (${low}));`);
+            if (useMid) {
+                lines.push(`          bool low_segment = val <= (${mid});`);
+                lines.push(`          range = low_segment ? (float)((${mid}) - (${low})) : (float)((${high}) - (${mid}));`);
+                lines.push(`          float t = range == 0.0f ? 0.0f : (val - (low_segment ? (${low}) : (${mid}))) / range;`);
+            } else {
+                lines.push(`          float t = range == 0.0f ? 0.0f : (val - (${low})) / range;`);
+            }
             lines.push(`          if (t < 0.0f) t = 0.0f;`);
             lines.push(`          if (t > 1.0f) t = 1.0f;`);
-            lines.push(`          uint8_t r = ${hexL.r} + (uint8_t)(t * (${hexH.r} - ${hexL.r}));`);
-            lines.push(`          uint8_t g = ${hexL.g} + (uint8_t)(t * (${hexH.g} - ${hexL.g}));`);
-            lines.push(`          uint8_t b = ${hexL.b} + (uint8_t)(t * (${hexH.b} - ${hexL.b}));`);
+            lines.push(`          auto to_linear = [](float c) { return c <= 0.04045f ? c / 12.92f : powf((c + 0.055f) / 1.055f, 2.4f); };`);
+            lines.push(`          auto to_srgb = [](float c) { return c <= 0.0031308f ? c * 12.92f : 1.055f * powf(c, 1.0f / 2.4f) - 0.055f; };`);
+            lines.push(`          float r0 = ${hexL.r} / 255.0f, g0 = ${hexL.g} / 255.0f, b0 = ${hexL.b} / 255.0f;`);
+            lines.push(`          float r1 = ${hexH.r} / 255.0f, g1 = ${hexH.g} / 255.0f, b1 = ${hexH.b} / 255.0f;`);
+            if (useMid) lines.push(`          if (low_segment) { r1 = ${hexM.r} / 255.0f; g1 = ${hexM.g} / 255.0f; b1 = ${hexM.b} / 255.0f; } else { r0 = ${hexM.r} / 255.0f; g0 = ${hexM.g} / 255.0f; b0 = ${hexM.b} / 255.0f; }`);
+            lines.push(`          auto oklab = [&](float r, float g, float b, float *L, float *a, float *bb) { float l = cbrtf(0.4122214708f * to_linear(r) + 0.5363325363f * to_linear(g) + 0.0514459929f * to_linear(b)); float m = cbrtf(0.2119034982f * to_linear(r) + 0.6806995451f * to_linear(g) + 0.1073969566f * to_linear(b)); float s = cbrtf(0.0883024619f * to_linear(r) + 0.2817188376f * to_linear(g) + 0.6299787005f * to_linear(b)); *L = 0.2104542553f*l + 0.7936177850f*m - 0.0040720468f*s; *a = 1.9779984951f*l - 2.4285922050f*m + 0.4505937099f*s; *bb = 0.0259040371f*l + 0.7827717662f*m - 0.8086757660f*s; };`);
+            lines.push(`          float L0,a0,b0l,L1,a1,b1l; oklab(r0,g0,b0,&L0,&a0,&b0l); oklab(r1,g1,b1,&L1,&a1,&b1l);`);
+            lines.push(`          float L=L0+t*(L1-L0), a=a0+t*(a1-a0), bb=b0l+t*(b1l-b0l); float l=L+0.3963377774f*a+0.2158037573f*bb, m=L-0.1055613458f*a-0.0638541728f*bb, s=L-0.0894841775f*a-1.2914855480f*bb; l*=l*l; m*=m*m*m; s*=s*s*s;`);
+            lines.push(`          uint8_t r = (uint8_t)roundf(fminf(1.0f, fmaxf(0.0f, to_srgb(4.0767416621f*l - 3.3077115913f*m + 0.2309699292f*s))) * 255.0f);`);
+            lines.push(`          uint8_t g = (uint8_t)roundf(fminf(1.0f, fmaxf(0.0f, to_srgb(-1.2684380046f*l + 2.6097574011f*m - 0.3413193965f*s))) * 255.0f);`);
+            lines.push(`          uint8_t b = (uint8_t)roundf(fminf(1.0f, fmaxf(0.0f, to_srgb(-0.0041960863f*l - 0.7034186147f*m + 1.7076147010f*s))) * 255.0f);`);
             lines.push(`          Color dyn_color(r, g, b);`);
         }
 
@@ -324,12 +358,14 @@ export const exportDirect = (w, context) => {
                     lines.push(`          // Align baselines for first line: yVal + bl1 = yVal2 + bl2`);
                     lines.push(`          // Note: we can't easily align baselines perfectly without measuring the value's first line first,`);
                     lines.push(`          // but we can approximate or just use top-aligned reference.`);
-                    lines.push(`          // For wrapped text, we print the label, then wrap the rest.`);
-                    lines.push(`          it.printf(${xVal}, ${yVal}, id(${labelFontId}), ${colorVar}, ${align}, "${labelStr}");`);
-                    lines.push(`          int val_max_w = ${w.width} - w1;`);
-                    lines.push(`          // Heuristic: if label is taller than value font, adjust y? mostly fine to align tops or just let baselines float.`);
-                    lines.push(`          // Let's assume top alignment is safer for multi-line flow.`);
-                    lines.push(`          print_wrapped_text(${xVal} + w1, ${yVal} + (bl1 - ${Math.round(valueFS * 0.8)}), val_max_w, ${lineHeight}, id(${valueFontId}), ${colorVar}, ${align}, value_buf);`);
+                    lines.push(`          // Omit an auto-generated label when it leaves no room for the value.`);
+                    lines.push(`          if (w1 >= ${w.width}) {`);
+                    lines.push(`            it.printf(${xVal}, ${yVal}, id(${valueFontId}), ${colorVar}, ${valueAlign}, "%s", value_buf);`);
+                    lines.push(`          } else {`);
+                    lines.push(`            it.printf(${xVal}, ${yVal}, id(${labelFontId}), ${colorVar}, ${align}, "${labelStr}");`);
+                    lines.push(`            int val_max_w = ${w.width} - w1;`);
+                    lines.push(`            print_wrapped_text(${xVal} + w1, ${yVal} + (bl1 - ${Math.round(valueFS * 0.8)}), val_max_w, ${lineHeight}, id(${valueFontId}), ${colorVar}, ${align}, value_buf);`);
+                    lines.push(`          }`);
                 } else {
                     lines.push(`          id(${valueFontId})->measure(value_buf, &w2, &xoff2, &bl2, &h2);`);
                     lines.push(`          // Align baselines: yVal + bl1 = yVal2 + bl2 => yVal2 = yVal + bl1 - bl2`);

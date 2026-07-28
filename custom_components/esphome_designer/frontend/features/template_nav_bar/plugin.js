@@ -1,4 +1,5 @@
 import { getTouchDebounceMs } from '../../js/io/navigation_debounce.js';
+import { resolveTouchscreenId } from '../../js/io/display_ids.js';
 
 /**
  * Template Navigation Bar Plugin
@@ -195,7 +196,7 @@ const onExportBinarySensors = (context) => {
 
                 lines.push(`- platform: touchscreen`);
                 lines.push(`  id: nav_${action}_${w.id.replace(/-/g, '_')}`);
-                lines.push(`  touchscreen_id: my_touchscreen`);
+                lines.push(`  touchscreen_id: ${resolveTouchscreenId(profile)}`);
                 lines.push(`  x_min: ${xMin}`);
                 lines.push(`  x_max: ${xMax}`);
                 lines.push(`  y_min: ${yMin}`);
@@ -215,7 +216,13 @@ const onExportBinarySensors = (context) => {
                 else if (action === "next") target = p.next_target || "relative_next";
 
                 if (target === "home") {
-                    lines.push(`          - script.execute: manage_run_and_sleep`);
+                    if (allowPaging) {
+                        lines.push(`          - script.execute:`);
+                        lines.push(`              id: change_page_to`);
+                        lines.push(`              target_page: 0`);
+                    } else {
+                        lines.push(`          - script.execute: manage_run_and_sleep`);
+                    }
                 } else {
                     let targetVal = "";
                     if (target === "relative_prev") targetVal = "!lambda 'return id(display_page) - 1;'";
@@ -317,7 +324,9 @@ export default {
 
         const getTargetScript = (target) => {
             if (target === "home") {
-                return [{ "script.execute": "manage_run_and_sleep" }];
+                return allowPaging
+                    ? [{ "script.execute": { id: "change_page_to", target_page: 0 } }]
+                    : [{ "script.execute": "manage_run_and_sleep" }];
             }
             let targetVal = "";
             if (target === "relative_prev") targetVal = "!lambda 'return id(display_page) - 1;'";
@@ -387,4 +396,3 @@ export default {
         if (p.show_next !== false) trackIcon("F0142", iconSize);
     }
 };
-

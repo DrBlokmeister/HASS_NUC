@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { YamlGenerator } from '../../js/io/adapters/yaml_generator.js';
-import { generateBinarySensorSection, generatePSRAMSection } from '../../js/io/hardware_generators.js';
+import { resolveAdapterProfile } from '../../js/io/adapters/esphome_adapter_profile.js';
+import { generateBinarySensorSection, generateOutputSection, generatePSRAMSection } from '../../js/io/hardware_generators.js';
 
 const fetchDynamicHardwareProfilesMock = vi.fn(async () => []);
 const getOfflineProfilesFromStorageMock = vi.fn(() => ({}));
@@ -34,6 +35,26 @@ describe('built-in device profiles', async () => {
         expect(profile.isUntestedProfile).toBe(true);
         expect(profile.external_components?.join('\n')).toContain('cjb0001/esphome-components');
         expect(profile.system_section_overrides?.esp32?.join('\n')).toContain('type: arduino');
+    });
+
+    it('preserves the built-in profile key as its resolved id', () => {
+        const profile = resolveAdapterProfile('reterminal_e1001', {}, devices.DEVICE_PROFILES);
+
+        expect(profile.id).toBe('reterminal_e1001');
+    });
+
+    it('uses the vendor E1001 model and configures E1003 battery and touch hardware without GPIO21 conflicts', () => {
+        expect(devices.DEVICE_PROFILES.reterminal_e1001.displayModel).toBe('7.50inv2p');
+        const e1003 = devices.DEVICE_PROFILES.reterminal_e1003;
+        expect(e1003.pins.batteryEnable).toBe('GPIO40');
+        expect(e1003.touch).toMatchObject({
+            platform: 'gt911',
+            i2c_id: 'bus_a',
+            address: '0x5D',
+            interrupt_pin: 'GPIO2',
+            reset_pin: 'GPIO48'
+        });
+        expect(generateOutputSection(e1003).join('\n')).toContain('pin: GPIO40\n    id: bsp_battery_enable\n    restore_mode: ALWAYS_ON');
     });
 
     it('excludes untested built-ins from the tested profile id list', () => {
@@ -155,6 +176,43 @@ describe('built-in device profiles', async () => {
         // Home button has allow_other_uses due to GPIO2 sharing
         expect(profile.pins.buttons.home).toMatchObject({ number: 'GPIO2', allow_other_uses: true });
         expect(devices.SUPPORTED_DEVICE_IDS).toContain('reterminal_e1004');
+    });
+
+    it('includes verified E1003, Pico, and Elecrow P4 profiles', () => {
+        const e1003 = devices.DEVICE_PROFILES.reterminal_e1003;
+        const picoW = devices.DEVICE_PROFILES.raspberry_pi_pico_w_waveshare_2_13_v3;
+        const pico2W = devices.DEVICE_PROFILES.raspberry_pi_pico_2_w_waveshare_2_13_v3;
+        const elecrow = devices.DEVICE_PROFILES.elecrow_esp32_p4_9inch_v1_2;
+
+        expect(e1003).toMatchObject({
+            chip: 'esp32-s3',
+            displayPlatform: 'it8951',
+            displayModel: 'Seeed-reTerminal-E1003',
+            resolution: { width: 1872, height: 1404 }
+        });
+        expect(e1003.frameworkHint).toContain('ESP-IDF');
+        expect(e1003.pins.spi).toEqual({ clk: 'GPIO7', mosi: 'GPIO9', miso: 'GPIO8' });
+        expect(e1003.features.epaper).toBe(true);
+        expect(e1003.features.inverted_colors).toBe(false);
+        // #449: Home GPIO2 removed to avoid conflict with GT911 touch controller
+        expect(e1003.pins.buttons.home).toBeUndefined();
+        // GT911 touchscreen added per #449 user report
+        expect(e1003.features.touch).toBe(true);
+        expect(e1003.touch).toMatchObject({ platform: 'gt911' });
+
+        expect(picoW).toMatchObject({ chip: 'rp2040', board: 'rpipicow', displayModel: '2.13inv3', rotation_offset: 90 });
+        expect(pico2W).toMatchObject({ chip: 'rp2350', board: 'rpipico2w', displayModel: '2.13inv3', rotation_offset: 90 });
+        expect(pico2W.supportsDeepSleep).toBe(false);
+
+        expect(elecrow).toMatchObject({
+            chip: 'esp32-p4',
+            displayPlatform: 'mipi_dsi',
+            hardwarePackage: 'hardware/elecrow-esp32-p4-9inch-v1.2.yaml',
+            resolution: { width: 1024, height: 600 }
+        });
+        expect(devices.SUPPORTED_DEVICE_IDS).toContain('reterminal_e1003');
+        expect(devices.SUPPORTED_DEVICE_IDS).toContain('raspberry_pi_pico_2_w_waveshare_2_13_v3');
+        expect(devices.SUPPORTED_DEVICE_IDS).toContain('elecrow_esp32_p4_9inch_v1_2');
     });
 
     it('recomputes supported ids after loading external profiles', async () => {
