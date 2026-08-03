@@ -16,6 +16,8 @@ from custom_components.powercalc.const import CONF_AREA, DUMMY_ENTITY_ID
 
 _LOGGER = logging.getLogger(__name__)
 
+_HAS_SINGLE_CONFIG_ENTRY = hasattr(DeviceEntry, "config_entry_id")
+
 
 def is_composite_device_id(hass: HomeAssistant, device_id: str) -> bool:
     """
@@ -27,6 +29,31 @@ def is_composite_device_id(hass: HomeAssistant, device_id: str) -> bool:
     if not callable(is_composite):
         return False
     return bool(is_composite(device_id))
+
+
+def get_config_entry_ids(device: DeviceEntry) -> set[str]:
+    """
+    Return the config entry IDs a device belongs to.
+    HA >=2026.8 splits composite devices, so a device belongs to exactly one config entry and
+    carries a single config_entry_id. Older versions track the set of entries on the device itself.
+    """
+    if _HAS_SINGLE_CONFIG_ENTRY:
+        return {device.config_entry_id}
+    return set(getattr(device, "config_entries", set()))
+
+
+def get_first_device_for_config_entry(hass: HomeAssistant, config_entry_id: str) -> DeviceEntry | None:
+    """Return the first non-composite device belonging to a config entry."""
+    return next(iter(get_devices_for_config_entry(hass, config_entry_id)), None)
+
+
+def get_devices_for_config_entry(hass: HomeAssistant, config_entry_id: str) -> list[DeviceEntry]:
+    """Return all non-composite devices belonging to a config entry."""
+    return [
+        device
+        for device in device_registry.async_get(hass).devices.values()
+        if config_entry_id in get_config_entry_ids(device) and not is_composite_device_id(hass, device.id)
+    ]
 
 
 def attach_configured_device_entry(
@@ -44,7 +71,7 @@ def attach_configured_device_entry(
     return source_entity
 
 
-async def attach_entities_to_resolved_device(
+def attach_entities_to_resolved_device(
     config_entry: ConfigEntry | None,
     entities_to_add: list[Entity],
     hass: HomeAssistant,
@@ -60,6 +87,7 @@ async def attach_entities_to_resolved_device(
     for entity in entities_to_add:
         try:
             entity.device_entry = device_entry
+            setattr(entity, "_powercalc_device_entry", device_entry)  # noqa: B010
         except AttributeError:  # pragma: no cover
             _LOGGER.error("%s: Cannot set device id on entity", entity.entity_id)
 
@@ -84,7 +112,7 @@ def get_device_entry(
             return None
         return device_registry.async_get(hass).async_get(device_id)
 
-    if source_entity:
+    if source_entity and not source_entity.config_entry_id:
         return source_entity.device_entry or async_entity_id_to_device(hass, source_entity.entity_id)
 
     return None

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -48,6 +46,7 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.json import JSONEncoder
 from homeassistant.helpers.singleton import singleton
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.typing import ConfigType
 
 from custom_components.powercalc.analytics.analytics import collect_analytics
 from custom_components.powercalc.const import (
@@ -112,7 +111,7 @@ from custom_components.powercalc.sensors.abstract import (
     generate_power_sensor_entity_id,
     generate_power_sensor_name,
 )
-from custom_components.powercalc.sensors.energy import EnergySensor, VirtualEnergySensor
+from custom_components.powercalc.sensors.energy import EnergySensor, VirtualEnergySensor, VirtualStandbyEnergySensor
 from custom_components.powercalc.sensors.energy_related import create_energy_related_sensors
 from custom_components.powercalc.sensors.power import PowerSensor
 from custom_components.powercalc.unit import (
@@ -124,6 +123,11 @@ from custom_components.powercalc.unit import (
 ENTITY_ID_FORMAT = SENSOR_DOMAIN + ".{}"
 
 _LOGGER = logging.getLogger(__name__)
+
+# Predicate used to narrow a list of entities down to the group members.
+EntityPredicate = Callable[[Entity], bool]
+# Shape persisted by PreviousStateStoreStore: group id -> entity id -> serialized State.
+StoredStates = dict[str, dict[str, Any]]
 STORAGE_KEY = "powercalc_group"
 STORAGE_VERSION = 2
 # How long between periodically saving the current states to disk
@@ -134,7 +138,7 @@ def create_group_sensors_yaml(
     hass: HomeAssistant,
     sensor_config: dict[str, Any],
     entities: list[Entity],
-    filters: list[Callable] | None = None,
+    filters: list[EntityPredicate] | None = None,
 ) -> list[Entity]:
     """Create grouped power and energy sensors."""
     power_sensor_ids = filter_entity_list_by_class(entities, SensorDeviceClass.POWER, filters)
@@ -155,7 +159,7 @@ def create_group_sensors_yaml(
 async def create_group_sensors_gui(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    sensor_config: dict,
+    sensor_config: ConfigType,
 ) -> list[Entity]:
     """Create group sensors based on a config_entry."""
     group_name = str(entry.data.get(CONF_NAME))
@@ -220,15 +224,16 @@ def create_group_sensors_custom(
 
 
 def filter_entity_list_by_class(
-    all_entities: list,
+    all_entities: list[Entity],
     device_class: SensorDeviceClass,
-    default_filters: list[Callable] | None = None,
+    default_filters: list[EntityPredicate] | None = None,
 ) -> set[str]:
     """Filter entity list to only include entities of the given class."""
     class_name = PowerSensor if device_class == SensorDeviceClass.POWER else EnergySensor
     filter_list = default_filters.copy() if default_filters else []
     filter_list.append(lambda elm: not isinstance(elm, GroupedSensor))
     filter_list.append(lambda elm: isinstance(elm, class_name))
+    filter_list.append(lambda elm: not isinstance(elm, VirtualStandbyEnergySensor))
     return {
         x.entity_id
         for x in filter(
@@ -346,7 +351,7 @@ def create_grouped_power_sensor(
     hass: HomeAssistant,
     group_name: str,
     group_type: GroupType,
-    sensor_config: dict,
+    sensor_config: ConfigType,
     power_sensor_ids: set[str],
 ) -> GroupedPowerSensor:
     name = generate_power_sensor_name(sensor_config, group_name)
@@ -378,7 +383,7 @@ def create_grouped_energy_sensor(
     hass: HomeAssistant,
     group_name: str,
     group_type: GroupType,
-    sensor_config: dict,
+    sensor_config: ConfigType,
     energy_sensor_ids: set[str],
     power_sensor: GroupedPowerSensor | None,
 ) -> EnergySensor:
@@ -941,7 +946,7 @@ class PreviousStateStore:
         return instance
 
     def __init__(self, hass: HomeAssistant) -> None:
-        self.store: Store = PreviousStateStoreStore(
+        self.store: Store[StoredStates] = PreviousStateStoreStore(
             hass,
             STORAGE_VERSION,
             STORAGE_KEY,
@@ -1007,7 +1012,7 @@ class PreviousStateStore:
         )
 
 
-class PreviousStateStoreStore(Store):
+class PreviousStateStoreStore(Store[StoredStates]):
     """Store area registry data."""
 
     async def _async_migrate_func(  # type: ignore

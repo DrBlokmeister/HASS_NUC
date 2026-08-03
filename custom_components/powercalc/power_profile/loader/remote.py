@@ -53,7 +53,7 @@ class RemoteLoader(Loader):
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
-        self.library_contents: dict = {}
+        self.library_contents: dict[str, Any] = {}
         self.model_infos: dict[str, LibraryModel] = {}
         self.manufacturer_models: dict[str, list[LibraryModel]] = {}
         self.model_lookup: dict[str, dict[str, list[LibraryModel]]] = {}
@@ -78,51 +78,69 @@ class RemoteLoader(Loader):
         manufacturers: list[LibraryManufacturer] = self.library_contents.get("manufacturers", [])
 
         for manufacturer in manufacturers:
-            manufacturer_name = str(manufacturer.get("dir_name"))
-            models: list[LibraryModel] = manufacturer.get("models", []) or []
+            self._index_manufacturer(manufacturer, powercalc_version)
 
-            # manufacturer alias map (alias -> {canonical manufacturer_name})
-            self.manufacturer_lookup.setdefault(manufacturer_name.lower(), set()).add(manufacturer_name)
-            for alias in manufacturer.get("aliases", []) or []:
-                self.manufacturer_lookup.setdefault(str(alias).lower(), set()).add(manufacturer_name)
+    def _index_manufacturer(self, manufacturer: LibraryManufacturer, powercalc_version: AwesomeVersion) -> None:
+        """Register a manufacturer, its aliases and all of its supported models in the lookup tables."""
+        manufacturer_name = str(manufacturer.get("dir_name"))
+        models: list[LibraryModel] = manufacturer.get("models", []) or []
 
-            # per-manufacturer model lookup
-            kept_models: list[LibraryModel] = []
-            lookup: dict[str, list[LibraryModel]] = {}
+        # manufacturer alias map (alias -> {canonical manufacturer_name})
+        self.manufacturer_lookup.setdefault(manufacturer_name.lower(), set()).add(manufacturer_name)
+        for alias in manufacturer.get("aliases", []) or []:
+            self.manufacturer_lookup.setdefault(str(alias).lower(), set()).add(manufacturer_name)
 
-            for model in models:
-                min_version = model.get("min_version")
-                model_id = str(model.get("id"))
-                model_id_lower = model_id.lower()
+        # per-manufacturer model lookup
+        kept_models: list[LibraryModel] = []
+        lookup: dict[str, list[LibraryModel]] = {}
 
-                self.model_infos[f"{manufacturer_name}/{model_id!s}"] = model
+        for model in models:
+            model_id = str(model.get("id"))
+            self.model_infos[f"{manufacturer_name}/{model_id}"] = model
 
-                if min_version and powercalc_version < AwesomeVersion(min_version):
-                    _LOGGER.debug(
-                        "Skipping model %s/%s as it requires powercalc version %s (current: %s)",
-                        manufacturer_name,
-                        model_id,
-                        min_version,
-                        powercalc_version,
-                    )
-                    continue
+            if self._is_unsupported_version(manufacturer_name, model_id, model, powercalc_version):
+                continue
 
-                kept_models.append(model)
+            kept_models.append(model)
+            self._add_model_to_lookup(lookup, model, model_id.lower())
 
-                # Exact id bucket first (highest priority)
-                bucket = lookup.setdefault(model_id_lower, [])
-                bucket.insert(0, model)
+        self.manufacturer_models[manufacturer_name] = kept_models
+        self.model_lookup[manufacturer_name] = lookup
 
-                # Alias buckets afterwards (lower priority)
-                for alias in model.get("aliases", []) or []:
-                    alias_lower = str(alias).lower()
-                    if alias_lower == model_id_lower:
-                        continue
-                    # Append to the end to ensure aliased models are always last
-                    lookup.setdefault(alias_lower, []).append(model)
+    @staticmethod
+    def _is_unsupported_version(
+        manufacturer_name: str,
+        model_id: str,
+        model: LibraryModel,
+        powercalc_version: AwesomeVersion,
+    ) -> bool:
+        """Check whether the model requires a newer powercalc version than the one installed."""
+        min_version = model.get("min_version")
+        if not min_version or powercalc_version >= AwesomeVersion(min_version):
+            return False
 
-            self.manufacturer_models[manufacturer_name] = kept_models
-            self.model_lookup[manufacturer_name] = lookup
+        _LOGGER.debug(
+            "Skipping model %s/%s as it requires powercalc version %s (current: %s)",
+            manufacturer_name,
+            model_id,
+            min_version,
+            powercalc_version,
+        )
+        return True
+
+    @staticmethod
+    def _add_model_to_lookup(lookup: dict[str, list[LibraryModel]], model: LibraryModel, model_id_lower: str) -> None:
+        """Bucket a model by its id and aliases. Exact ids take priority over aliases."""
+        # Exact id bucket first (highest priority)
+        lookup.setdefault(model_id_lower, []).insert(0, model)
+
+        # Alias buckets afterwards (lower priority)
+        for alias in model.get("aliases", []) or []:
+            alias_lower = str(alias).lower()
+            if alias_lower == model_id_lower:
+                continue
+            # Append to the end to ensure aliased models are always last
+            lookup.setdefault(alias_lower, []).append(model)
 
     def _clear_caches(self) -> None:
         """Clear cached lookups backed by mutable library state."""
@@ -269,7 +287,7 @@ class RemoteLoader(Loader):
         model: str,
         force_update: bool = False,
         retry_count: int = 0,
-    ) -> tuple[dict, str] | None:
+    ) -> tuple[dict[str, Any], str] | None:
         """Load a model, downloading it if necessary, with retry logic."""
         model_info = self._get_library_model(manufacturer, model)
         storage_path = self.get_storage_path(manufacturer, model)
@@ -344,7 +362,7 @@ class RemoteLoader(Loader):
         """Check profile paths from the executor."""
         return os.path.exists(model_path), os.path.exists(storage_path)
 
-    async def _load_model_json(self, model_path: str) -> dict:
+    async def _load_model_json(self, model_path: str) -> dict[str, Any]:
         """Load the JSON data from the model file."""
 
         def _load_json() -> dict[str, Any]:
@@ -359,7 +377,7 @@ class RemoteLoader(Loader):
         manufacturer: str,
         model: str,
         retry_count: int,
-    ) -> tuple[dict, str] | None:
+    ) -> tuple[dict[str, Any], str] | None:
         """Handle JSON decode errors with retry logic."""
         _LOGGER.error("model.json file is not valid JSON for manufacturer: %s, model: %s", manufacturer, model)
         if retry_count < 2:
