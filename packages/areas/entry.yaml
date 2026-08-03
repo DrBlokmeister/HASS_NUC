@@ -282,10 +282,11 @@ automation:
                   entity_id: camera.g4_doorbell_pro_high_resolution_channel
                   filename: "/config/www/tmp/doorbell_snapshot.jpg"
                 continue_on_error: true
-              - service: openai_conversation.generate_content
+              - service: ai_task.generate_data
                 data:
-                  config_entry: 01JXMECP3GC7BHJNM2DH3A4KPD
-                  prompt: >-
+                  entity_id: ai_task.openai_ai_task_fast
+                  task_name: "Doorbell Image Analysis"
+                  instructions: >-
                     Someone has just rang my video doorbell and I want to know who is at the
                     door or what is happening. Very briefly describe what you see in this image
                     from my doorbell camera. Don't describe stationary objects like bushes or
@@ -294,12 +295,28 @@ automation:
                     describe the person and make an educated guess. For context, I'm in The Netherlands.
 
                     Your message needs to be around 150 characters.
-                  filenames: "/config/www/tmp/doorbell_snapshot.jpg"
-                response_variable: openai_response
-                continue_on_error: true
+                  attachments:
+                    media_content_id: "/config/www/tmp/doorbell_snapshot.jpg"
+                    media_content_type: image/jpeg
+                response_variable: result
+              # - service: openai_conversation.generate_content
+              #   data:
+              #     config_entry: 01JXMECP3GC7BHJNM2DH3A4KPD
+              #     prompt: >-
+              #       Someone has just rang my video doorbell and I want to know who is at the
+              #       door or what is happening. Very briefly describe what you see in this image
+              #       from my doorbell camera. Don't describe stationary objects like bushes or
+              #       buildings. Focus on who is standing in front of my door. If it is clear who
+              #       this person is (package delivery, charity, etc), mention this. Otherwise
+              #       describe the person and make an educated guess. For context, I'm in The Netherlands.
+
+              #       Your message needs to be around 150 characters.
+              #     filenames: "/config/www/tmp/doorbell_snapshot.jpg"
+              #   response_variable: openai_response
+              #   continue_on_error: true
               - service: notify.sander_and_tamara_phones
                 data:
-                  message: "{{ openai_response.text }}"
+                  message: "{{ result.data }}"
                   title: "Doorbell Alert"
                   data:
                     #image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
