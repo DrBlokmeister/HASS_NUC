@@ -90,14 +90,186 @@ one_wire:
     id: one_wire_bus
     pin: ${temp_sens_pin}
 
+select:
+  - platform: template
+    name: "NAS Fan Control Mode"
+    id: nas_fan_control_mode
+    icon: "mdi:fan-cog"
+    options:
+      - "Auto"
+      - "Fixed"
+      - "Individual"
+    initial_option: "Auto"
+    optimistic: true
+    restore_value: true
+
+number:
+  - platform: template
+    name: "NAS Fan Base Speed"
+    id: nas_fan_base_speed
+    icon: "mdi:fan-speed-1"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 20
+    optimistic: true
+    restore_value: true
+  - platform: template
+    name: "NAS Fan Maximum Speed"
+    id: nas_fan_maximum_speed
+    icon: "mdi:fan-speed-3"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 70
+    optimistic: true
+    restore_value: true
+  - platform: template
+    name: "NAS Fan Base Temperature"
+    id: nas_fan_base_temperature
+    icon: "mdi:thermometer-low"
+    unit_of_measurement: "°C"
+    min_value: 20
+    max_value: 50
+    step: 1
+    initial_value: 30
+    optimistic: true
+    restore_value: true
+  - platform: template
+    name: "NAS Fan Maximum Temperature"
+    id: nas_fan_maximum_temperature
+    icon: "mdi:thermometer-high"
+    unit_of_measurement: "°C"
+    min_value: 30
+    max_value: 70
+    step: 1
+    initial_value: 50
+    optimistic: true
+    restore_value: true
+  - platform: template
+    name: "NAS Fan Fixed Speed"
+    id: nas_fan_fixed_speed
+    icon: "mdi:fan"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 40
+    optimistic: true
+    restore_value: true
+  - platform: template
+    name: "NAS Disk Hotspot Offset"
+    id: nas_disk_hotspot_offset
+    icon: "mdi:thermometer-chevron-down"
+    unit_of_measurement: "°C"
+    min_value: 0
+    max_value: 15
+    step: 1
+    initial_value: 5
+    optimistic: true
+    restore_value: true
+  - platform: template
+    name: "NAS Fan Minimum Valid RPM"
+    id: nas_fan_minimum_valid_rpm
+    icon: "mdi:speedometer-slow"
+    unit_of_measurement: "RPM"
+    min_value: 50
+    max_value: 1000
+    step: 50
+    initial_value: 300
+    optimistic: true
+    restore_value: true
+
 sensor:
+  # ---------------------------------------------------------------------------
+  # Disk temperatures imported from Home Assistant
+  #
+  # These are internal because they already exist in Home Assistant. The
+  # aggregated values below are exported instead.
+  # ---------------------------------------------------------------------------
+  - platform: homeassistant
+    id: ha_disk_1_temperature
+    entity_id: sensor.tower_disk_disk1_temperature
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_2_temperature
+    entity_id: sensor.tower_disk_disk2_temperature
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_3_temperature
+    entity_id: sensor.tower_disk_disk3_temperature
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_4_temperature
+    entity_id: sensor.tower_disk_disk4_temperature
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_5_temperature
+    entity_id: sensor.tower_disk_disk5_temperature
+    internal: true
+  - platform: homeassistant
+    id: ha_parity_temperature
+    entity_id: sensor.tower_disk_parity_temperature
+    internal: true
+
+  # ---------------------------------------------------------------------------
+  # Aggregated disk temperatures
+  # ---------------------------------------------------------------------------
+  - platform: template
+    name: "NAS Mean Disk Temperature"
+    id: nas_mean_disk_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+  - platform: template
+    name: "NAS Median Disk Temperature"
+    id: nas_median_disk_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+  - platform: template
+    name: "NAS Maximum Disk Temperature"
+    id: nas_max_disk_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+  - platform: template
+    name: "NAS Fan Control Temperature"
+    id: nas_fan_control_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+  - platform: template
+    name: "NAS Automatic Fan Speed"
+    id: nas_automatic_fan_speed
+    unit_of_measurement: "%"
+    icon: "mdi:fan-auto"
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: never
+  - platform: template
+    name: "NAS Available Disk Temperature Count"
+    id: nas_available_disk_temperature_count
+    icon: "mdi:harddisk"
+    accuracy_decimals: 0
+    update_interval: never
+
   # ---------------------------------------------------------------------------
   # Fan tachometer inputs
   #
   # Most PC fans output 2 tach pulses per revolution.
   # ESPHome pulse_counter reports pulses/minute, so multiply by 0.5 => RPM.
   # ---------------------------------------------------------------------------
-
   - platform: pulse_counter
     name: "NAS Fan 1 Speed"
     id: fanspeed_sensor_1
@@ -118,7 +290,6 @@ sensor:
       - or:
           - throttle_average: 60s
           - delta: 100
-
   - platform: pulse_counter
     name: "NAS Fan 2 Speed"
     id: fanspeed_sensor_2
@@ -139,7 +310,6 @@ sensor:
       - or:
           - throttle_average: 60s
           - delta: 100
-
   - platform: pulse_counter
     name: "NAS Fan 3 Speed"
     id: fanspeed_sensor_3
@@ -160,7 +330,6 @@ sensor:
       - or:
           - throttle_average: 60s
           - delta: 100
-
   - platform: pulse_counter
     name: "NAS Fan 4 Speed"
     id: fanspeed_sensor_4
@@ -181,7 +350,6 @@ sensor:
       - or:
           - throttle_average: 60s
           - delta: 100
-
   - platform: pulse_counter
     name: "NAS Fan 5 Speed"
     id: fanspeed_sensor_5
@@ -202,7 +370,6 @@ sensor:
       - or:
           - throttle_average: 60s
           - delta: 100
-
   - platform: pulse_counter
     name: "NAS Fan 6 Speed"
     id: fanspeed_sensor_6
@@ -281,13 +448,40 @@ sensor:
   #   name: "NAS Fan Controller Temperature 3"
   #   update_interval: 30s
 
+binary_sensor:
+  # ---------------------------------------------------------------------------
+  # Disk spin states imported from Home Assistant
+  #
+  # These are used to distinguish intentionally spun-down disks from missing
+  # or broken server telemetry.
+  # ---------------------------------------------------------------------------
+  - platform: homeassistant
+    id: ha_disk_1_spinning
+    entity_id: switch.tower_disk_disk1_spin
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_2_spinning
+    entity_id: switch.tower_disk_disk2_spin
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_3_spinning
+    entity_id: switch.tower_disk_disk3_spin
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_4_spinning
+    entity_id: switch.tower_disk_disk4_spin
+    internal: true
+  - platform: homeassistant
+    id: ha_disk_5_spinning
+    entity_id: switch.tower_disk_disk5_spin
+    internal: true
+
 output:
   # PWM is inverted because the PCB uses an NMOS open-drain driver:
   # ESP GPIO high  -> MOSFET on  -> fan PWM line low
   # ESP GPIO low   -> MOSFET off -> fan PWM line pulled high by fan
   #
   # So ESPHome's logical 60% needs to become 60% fan-side high duty.
-
   - platform: ledc
     id: fan_output_1
     pin: ${fan1_pwm_pin}
@@ -295,7 +489,6 @@ output:
     frequency: 25000 Hz
     inverted: true
     zero_means_zero: true
-
   - platform: ledc
     id: fan_output_2
     pin: ${fan2_pwm_pin}
@@ -303,7 +496,6 @@ output:
     frequency: 25000 Hz
     inverted: true
     zero_means_zero: true
-
   - platform: ledc
     id: fan_output_3
     pin: ${fan3_pwm_pin}
@@ -311,7 +503,6 @@ output:
     frequency: 25000 Hz
     inverted: true
     zero_means_zero: true
-
   - platform: ledc
     id: fan_output_4
     pin: ${fan4_pwm_pin}
@@ -319,7 +510,6 @@ output:
     frequency: 25000 Hz
     inverted: true
     zero_means_zero: true
-
   - platform: ledc
     id: fan_output_5
     pin: ${fan5_pwm_pin}
@@ -327,7 +517,6 @@ output:
     frequency: 25000 Hz
     inverted: true
     zero_means_zero: true
-
   - platform: ledc
     id: fan_output_6
     pin: ${fan6_pwm_pin}
@@ -343,38 +532,367 @@ fan:
     name: "NAS Fan 1"
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
-
   - platform: speed
     output: fan_output_2
     id: fan_2
     name: "NAS Fan 2"
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
-
   - platform: speed
     output: fan_output_3
     id: fan_3
     name: "NAS Fan 3"
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
-
   - platform: speed
     output: fan_output_4
     id: fan_4
     name: "NAS Fan 4"
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
-
   - platform: speed
     output: fan_output_5
     id: fan_5
     name: "NAS Fan 5"
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
-
   - platform: speed
     output: fan_output_6
     id: fan_6
     name: "NAS Fan 6"
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
+
+
+interval:
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            api.connected:
+          then:
+            - lambda: |-
+                const float configured_maximum_speed = std::clamp(
+                    id(nas_fan_maximum_speed).state,
+                    1.0f,
+                    100.0f
+                );
+
+                // The base speed may never exceed the configured maximum.
+                const float configured_base_speed = std::clamp(
+                    id(nas_fan_base_speed).state,
+                    1.0f,
+                    configured_maximum_speed
+                );
+
+                int available_spin_states = 0;
+                int spinning_disk_count = 0;
+
+                const auto process_spin_state =
+                    [&available_spin_states, &spinning_disk_count](
+                        auto *spin_sensor
+                    ) {
+                      if (!spin_sensor->has_state()) {
+                        return;
+                      }
+
+                      available_spin_states++;
+
+                      if (spin_sensor->state) {
+                        spinning_disk_count++;
+                      }
+                    };
+
+                process_spin_state(id(ha_disk_1_spinning));
+                process_spin_state(id(ha_disk_2_spinning));
+                process_spin_state(id(ha_disk_3_spinning));
+                process_spin_state(id(ha_disk_4_spinning));
+                process_spin_state(id(ha_disk_5_spinning));
+
+                const bool all_spin_states_available =
+                    available_spin_states == 5;
+
+                const bool all_data_disks_spun_down =
+                    all_spin_states_available &&
+                    spinning_disk_count == 0;
+
+                std::vector<float> temperatures;
+
+                const float disk_temperatures[] = {
+                    id(ha_disk_1_temperature).state,
+                    id(ha_disk_2_temperature).state,
+                    id(ha_disk_3_temperature).state,
+                    id(ha_disk_4_temperature).state,
+                    id(ha_disk_5_temperature).state,
+                    id(ha_parity_temperature).state,
+                };
+
+                for (const float temperature : disk_temperatures) {
+                  // Home Assistant unavailable/unknown values arrive as NAN.
+                  // Implausible values are ignored as an additional guard.
+                  if (
+                      std::isfinite(temperature) &&
+                      temperature >= 5.0f &&
+                      temperature <= 80.0f
+                  ) {
+                    temperatures.push_back(temperature);
+                  }
+                }
+
+                id(nas_available_disk_temperature_count)
+                    ->publish_state(
+                        static_cast<float>(temperatures.size())
+                    );
+
+                // Intentionally spun-down disks take precedence over retained
+                // or stale temperature values. Run at the configured base
+                // speed while the complete disk set is asleep.
+                if (all_data_disks_spun_down) {
+                  id(nas_mean_disk_temperature)->publish_state(NAN);
+                  id(nas_median_disk_temperature)->publish_state(NAN);
+                  id(nas_max_disk_temperature)->publish_state(NAN);
+                  id(nas_fan_control_temperature)->publish_state(NAN);
+
+                  id(nas_automatic_fan_speed)
+                      ->publish_state(configured_base_speed);
+
+                  if (
+                      id(nas_fan_control_mode).current_option() ==
+                      "Auto"
+                  ) {
+                    const int commanded_speed = static_cast<int>(
+                        std::lround(configured_base_speed)
+                    );
+
+                    for (auto *fan : {
+                             id(fan_1),
+                             id(fan_2),
+                             id(fan_3),
+                         }) {
+                      auto call = fan->turn_on();
+                      call.set_speed(commanded_speed);
+                      call.perform();
+                    }
+                  }
+
+                  return;
+                }
+
+                // No temperature data while disks may be running means that
+                // server telemetry is incomplete. Use the configured maximum,
+                // not an unconditional 100%.
+                if (temperatures.empty()) {
+                  id(nas_mean_disk_temperature)->publish_state(NAN);
+                  id(nas_median_disk_temperature)->publish_state(NAN);
+                  id(nas_max_disk_temperature)->publish_state(NAN);
+                  id(nas_fan_control_temperature)->publish_state(NAN);
+
+                  id(nas_automatic_fan_speed)
+                      ->publish_state(configured_maximum_speed);
+
+                  if (
+                      id(nas_fan_control_mode).current_option() ==
+                      "Auto"
+                  ) {
+                    const int commanded_speed = static_cast<int>(
+                        std::lround(configured_maximum_speed)
+                    );
+
+                    for (auto *fan : {
+                             id(fan_1),
+                             id(fan_2),
+                             id(fan_3),
+                         }) {
+                      auto call = fan->turn_on();
+                      call.set_speed(commanded_speed);
+                      call.perform();
+                    }
+                  }
+
+                  return;
+                }
+
+                std::sort(
+                    temperatures.begin(),
+                    temperatures.end()
+                );
+
+                float sum = 0.0f;
+
+                for (const float temperature : temperatures) {
+                  sum += temperature;
+                }
+
+                const float mean =
+                    sum /
+                    static_cast<float>(temperatures.size());
+
+                float median;
+
+                if ((temperatures.size() % 2U) == 0U) {
+                  const size_t upper_index =
+                      temperatures.size() / 2U;
+
+                  const size_t lower_index =
+                      upper_index - 1U;
+
+                  median =
+                      (
+                          temperatures[lower_index] +
+                          temperatures[upper_index]
+                      ) /
+                      2.0f;
+                } else {
+                  median =
+                      temperatures[temperatures.size() / 2U];
+                }
+
+                const float maximum = temperatures.back();
+
+                // Median controls the general temperature. A sufficiently hot
+                // individual disk can raise the control temperature.
+                const float control_temperature = std::max(
+                    median,
+                    maximum - id(nas_disk_hotspot_offset).state
+                );
+
+                id(nas_mean_disk_temperature)
+                    ->publish_state(mean);
+
+                id(nas_median_disk_temperature)
+                    ->publish_state(median);
+
+                id(nas_max_disk_temperature)
+                    ->publish_state(maximum);
+
+                id(nas_fan_control_temperature)
+                    ->publish_state(control_temperature);
+
+                const float base_temperature =
+                    id(nas_fan_base_temperature).state;
+
+                const float maximum_temperature =
+                    id(nas_fan_maximum_temperature).state;
+
+                float requested_speed;
+
+                if (maximum_temperature <= base_temperature) {
+                  // Invalid temperature curve: fail safe, but still obey the
+                  // configured maximum fan speed.
+                  requested_speed = configured_maximum_speed;
+                } else if (
+                    control_temperature <= base_temperature
+                ) {
+                  requested_speed = configured_base_speed;
+                } else if (
+                    control_temperature >= maximum_temperature
+                ) {
+                  requested_speed = configured_maximum_speed;
+                } else {
+                  const float fraction =
+                      (
+                          control_temperature -
+                          base_temperature
+                      ) /
+                      (
+                          maximum_temperature -
+                          base_temperature
+                      );
+
+                  requested_speed =
+                      configured_base_speed +
+                      fraction *
+                          (
+                              configured_maximum_speed -
+                              configured_base_speed
+                          );
+                }
+
+                requested_speed = std::clamp(
+                    requested_speed,
+                    configured_base_speed,
+                    configured_maximum_speed
+                );
+
+                id(nas_automatic_fan_speed)
+                    ->publish_state(requested_speed);
+
+                int commanded_speed = static_cast<int>(
+                    std::lround(requested_speed)
+                );
+
+                if (
+                    id(nas_fan_control_mode).current_option() ==
+                    "Fixed"
+                ) {
+                  commanded_speed = static_cast<int>(
+                      std::lround(
+                          id(nas_fan_fixed_speed).state
+                      )
+                  );
+                } else if (
+                    id(nas_fan_control_mode).current_option() ==
+                    "Individual"
+                ) {
+                  // Leave all fan entities at their manually configured
+                  // speeds.
+                  return;
+                }
+
+                commanded_speed = std::clamp(
+                    commanded_speed,
+                    1,
+                    100
+                );
+
+                for (auto *fan : {
+                         id(fan_1),
+                         id(fan_2),
+                         id(fan_3),
+                     }) {
+                  auto call = fan->turn_on();
+                  call.set_speed(commanded_speed);
+                  call.perform();
+                }
+
+          else:
+            # ESPHome has lost its API connection to Home Assistant. The disk
+            # states and temperatures can no longer be trusted, so use the
+            # configured maximum speed in Auto mode.
+            - lambda: |-
+                if (
+                    id(nas_fan_control_mode).current_option() !=
+                    "Auto"
+                ) {
+                  return;
+                }
+
+                const float maximum_speed = std::clamp(
+                    id(nas_fan_maximum_speed).state,
+                    1.0f,
+                    100.0f
+                );
+
+                id(nas_mean_disk_temperature)->publish_state(NAN);
+                id(nas_median_disk_temperature)->publish_state(NAN);
+                id(nas_max_disk_temperature)->publish_state(NAN);
+                id(nas_fan_control_temperature)->publish_state(NAN);
+                id(nas_available_disk_temperature_count)
+                    ->publish_state(0.0f);
+
+                id(nas_automatic_fan_speed)
+                    ->publish_state(maximum_speed);
+
+                const int commanded_speed = static_cast<int>(
+                    std::lround(maximum_speed)
+                );
+
+                for (auto *fan : {
+                         id(fan_1),
+                         id(fan_2),
+                         id(fan_3),
+                     }) {
+                  auto call = fan->turn_on();
+                  call.set_speed(commanded_speed);
+                  call.perform();
+                }
