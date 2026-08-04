@@ -22,6 +22,8 @@
 #| Test Tag 2                 | 0000021DBA8E341F      | e76212580c62854dba3177bd312db385 | Range testing AP downstairs 20250703     |
 #| Test Tag 3                 | 0000021DCA1B3414      | b75bcc738e59bd0c656de14fcc3f30f9 | Range testing AP downstairs 20250703     |
 #| Test Tag 4                 | 0000021DC3E4341D      | 8c58bdceb5e736e3e5a8a55e2ee1da40 | Range testing AP downstairs 20250703     |
+#| Washing Machine Progress   | 0000021F86D83B1E      | 165750b668ea226052a89d9bf8239287 |                                          |
+#| Air Conditioner Stats      | 0000021DCA1C3413      | 97380d99b587db8ff95c34eec077e462 |                                          |
 
 ### TEMPLATE EXAMPLES ###
 # Find all battery voltage sensors for epaperlink tags and list their entity_id, friendly name, and associated device name (if any)
@@ -41,80 +43,76 @@ homeassistant:
 
 template:
   - trigger:
-      - platform: time_pattern
+      - trigger: time_pattern
         seconds: "/20"
     sensor:
       - name: "Median Epaper Tag Last Check-In Time"
-        device_class: timestamp
         unique_id: yaml_template_sensor_median_epaper_tag_last_check_in_time
+        device_class: timestamp
         icon: mdi:clock-in
         state: >
           {% set ns = namespace(times=[]) %}
-          {%- for sensor in [
+          {% set sensors = [
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.00000218736e3b1e_last_seen',
             'sensor.0000039223703418_last_seen',
-            'sensor.00000219a2923b10_last_seen',
+            'sensor.garbage_monitor_tag_last_seen',
             'sensor.0000021d7356341f_last_seen',
             'sensor.00007e225dc2b29f_last_seen',
             'sensor.00007e22cc92b292_last_seen',
             'sensor.00007e1f8b30b297_last_seen',
-            'sensor.0000021d1c8e3413_last_seen',
-            'sensor.0000021ef7993413_last_seen',
             'sensor.0000021dc9ca341b_last_seen',
-            'sensor.0000021dc3bf3413_last_seen',
+            'sensor.0000021d1c8e3413_last_seen',
             'sensor.780105561c817600_last_seen',
             'sensor.0000021f86d83b1e_last_seen',
             'sensor.0000021aea62341f_last_seen',
-            'sensor.00007e1f75f1b29b_last_seen',
-            'sensor.780105561a2ce800_last_seen'
-          ] -%}
-            {%- if states(sensor) not in ['unknown', 'unavailable', 'none', ''] -%}
-              {%- set timestamp = as_timestamp(states(sensor)) -%}
-              {%- if timestamp is not none -%}
-                {%- set ns.times = ns.times + [timestamp] -%}
-              {%- endif -%}
-            {%- endif -%}
-          {%- endfor -%}
-          {%- if ns.times | length > 0 -%}
-            {%- set ns.times = ns.times | sort -%}
-            {%- set mid = ns.times | length // 2 -%}
-            {%- if ns.times | length is odd -%}
-              {{ (ns.times[mid] | as_datetime | as_local).isoformat() }}
-            {%- else -%}
-              {{ (((ns.times[mid - 1] + ns.times[mid]) / 2) | as_datetime | as_local).isoformat() }}
-            {%- endif -%}
-          {%- else -%}
-            'unavailable'
-          {%- endif -%}
-        availability: >
-          {%- set all_sensors = [
-            'sensor.0000021c3bc6341b_last_seen',
-            'sensor.00000218736e3b1e_last_seen',
-            'sensor.0000039223703418_last_seen',
-            'sensor.00000219a2923b10_last_seen',
-            'sensor.0000021d7356341f_last_seen',
-            'sensor.00007e225dc2b29f_last_seen',
-            'sensor.00007e22cc92b292_last_seen',
-            'sensor.00007e1f8b30b297_last_seen',
-            'sensor.0000021d1c8e3413_last_seen',
-            'sensor.0000021ef7993413_last_seen',
-            'sensor.0000021dc9ca341b_last_seen',
-            'sensor.0000021dc3bf3413_last_seen',
-            'sensor.780105561c817600_last_seen',
-            'sensor.0000021f86d83b1e_last_seen',
-            'sensor.0000021aea62341f_last_seen',
+            'sensor.0000021dca1c3413_last_seen',
             'sensor.00007e1f75f1b29b_last_seen',
             'sensor.780105561a2ce800_last_seen'
           ] %}
-          {% set ns = namespace(available = false) %}
-          {% for sensor in all_sensors %}
+          {% for sensor in sensors %}
             {% if states(sensor) not in ['unknown', 'unavailable', 'none', ''] %}
-              {% set ns.available = true %}
-              {% break %}
+              {% set timestamp = as_timestamp(states(sensor), none) %}
+              {% if timestamp is not none %}
+                {% set ns.times = ns.times + [timestamp] %}
+              {% endif %}
             {% endif %}
           {% endfor %}
-          {{ ns.available }}
+          {% if ns.times %}
+            {% set ns.times = ns.times | sort %}
+            {% set mid = ns.times | length // 2 %}
+            {% if ns.times | length is odd %}
+              {{ (ns.times[mid] | as_datetime | as_local).isoformat() }}
+            {% else %}
+              {{ (((ns.times[mid - 1] + ns.times[mid]) / 2) | as_datetime | as_local).isoformat() }}
+            {% endif %}
+          {% else %}
+            unavailable
+          {% endif %}
+        availability: >
+          {{
+            [
+              states('sensor.0000021c3bc6341b_last_seen'),
+              states('sensor.00000218736e3b1e_last_seen'),
+              states('sensor.0000039223703418_last_seen'),
+              states('sensor.garbage_monitor_tag_last_seen'),
+              states('sensor.0000021d7356341f_last_seen'),
+              states('sensor.00007e225dc2b29f_last_seen'),
+              states('sensor.00007e22cc92b292_last_seen'),
+              states('sensor.00007e1f8b30b297_last_seen'),
+              states('sensor.0000021dc9ca341b_last_seen'),
+              states('sensor.0000021d1c8e3413_last_seen'),
+              states('sensor.780105561c817600_last_seen'),
+              states('sensor.0000021f86d83b1e_last_seen'),
+              states('sensor.0000021aea62341f_last_seen'),
+              states('sensor.0000021dca1c3413_last_seen'),
+              states('sensor.00007e1f75f1b29b_last_seen'),
+              states('sensor.780105561a2ce800_last_seen')
+            ]
+            | reject('in', ['unknown', 'unavailable', 'none', ''])
+            | list
+            | count > 0
+          }}
       - name: "Total Pending Epaperlink Transfers"
         unique_id: yaml_template_sensor_epaperlink_total_pending_transfers
         icon: mdi:transfer
@@ -183,36 +181,36 @@ sensor:
     ignore_non_numeric: true
     #unit_of_measurement: transfers
     entities: # Use template code:  - {{ states.sensor | selectattr('entity_id', 'search', '_pending_updates$') | map(attribute='entity_id') | list | join('\n - ') }}
-      - sensor.00007e1f7f9fb299_pending_updates
-      - sensor.00007e1f8b30b297_pending_updates
-      - sensor.780105561c92b300_pending_updates
-      - sensor.0000039223703418_pending_updates
-      - sensor.00007e225dceb293_pending_updates
-      - sensor.0000021c3bc6341b_pending_updates
-      - sensor.00007e225dd0b29c_pending_updates
-      - sensor.780105561a342201_pending_updates
-      - sensor.00007e22cc92b292_pending_updates
-      - sensor.780105561c817600_pending_updates
-      - sensor.780105561c294d00_pending_updates
-      - sensor.0000021e6b5b3b17_pending_updates
-      - sensor.00000218736e3b1e_pending_updates
-      - sensor.0000c87b913bdaec_pending_updates
-      - sensor.00007e1f8186b290_pending_updates
-      - sensor.garbage_monitor_tag_pending_updates
-      - sensor.0000021f86d83b1e_pending_updates
-      - sensor.780105561a2ce800_pending_updates
-      - sensor.00007e22b1d7b299_pending_updates
-      - sensor.00007e1f75f1b29b_pending_updates
-      - sensor.00007e225dc2b29f_pending_updates
-      - sensor.00007e22b1b2b29a_pending_updates
-      - sensor.000040866ce6fc84_pending_updates
-      - sensor.fd600b561a2ce800_pending_updates
-      - sensor.fd600bb900090900_pending_updates
-      - sensor.0000021d7356341f_pending_updates
-      - sensor.0000021dc9ca341b_pending_updates
-      - sensor.0000021d2ef23419_pending_updates
-      - sensor.fd600bd70007074d_pending_updates
-      - sensor.7801055600817600_pending_updates
+      # - sensor.00007e1f7f9fb299_pending_updates      # Unknown / unused tag
+      - sensor.00007e1f8b30b297_pending_updates        # Electricity Price Washroom
+      # - sensor.780105561c92b300_pending_updates      # Unknown / unused tag
+      - sensor.0000039223703418_pending_updates        # Study Energy
+      # - sensor.00007e225dceb293_pending_updates      # Unknown / unused tag
+      - sensor.0000021c3bc6341b_pending_updates        # Washing Machine
+      # - sensor.00007e225dd0b29c_pending_updates      # Unknown / unused tag
+      # - sensor.780105561a342201_pending_updates      # Unknown / unused tag
+      - sensor.00007e22cc92b292_pending_updates        # Electricity Price Study
+      - sensor.780105561c817600_pending_updates        # Study Calendar
+      # - sensor.780105561c294d00_pending_updates      # Unknown / unused tag
+      # - sensor.0000021e6b5b3b17_pending_updates      # Unknown / unused tag
+      - sensor.00000218736e3b1e_pending_updates        # Study Climate
+      # - sensor.0000c87b913bdaec_pending_updates      # Unknown / unused tag
+      # - sensor.00007e1f8186b290_pending_updates      # Unknown / unused tag
+      - sensor.garbage_monitor_tag_pending_updates     # Garbage Display
+      - sensor.0000021f86d83b1e_pending_updates        # Washing Machine Progress
+      - sensor.780105561a2ce800_pending_updates        # Weekly Weather Forecast
+      # - sensor.00007e22b1d7b299_pending_updates      # Electricity Price Washroom — old tag
+      - sensor.00007e1f75f1b29b_pending_updates        # Buienradar
+      - sensor.00007e225dc2b29f_pending_updates        # Electricity Price Kitchen
+      # - sensor.00007e22b1b2b29a_pending_updates      # Electricity Price Kitchen — old tag
+      # - sensor.000040866ce6fc84_pending_updates      # Unknown / unused tag
+      # - sensor.fd600b561a2ce800_pending_updates      # Unknown / unused tag
+      # - sensor.fd600bb900090900_pending_updates      # Unknown / unused tag
+      - sensor.0000021d7356341f_pending_updates        # Moeke Status
+      - sensor.0000021dc9ca341b_pending_updates        # Litterbox Status
+      # - sensor.0000021d2ef23419_pending_updates      # Unknown / unused tag
+      # - sensor.fd600bd70007074d_pending_updates      # Unknown / unused tag
+      # - sensor.7801055600817600_pending_updates      # Unknown / unused tag
 
 
   # Washing Machine
