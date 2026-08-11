@@ -31,6 +31,54 @@ def is_composite_device_id(hass: HomeAssistant, device_id: str) -> bool:
     return bool(is_composite(device_id))
 
 
+def get_related_device_ids(hass: HomeAssistant, device_id: str) -> set[str]:
+    """
+    Return the IDs of all devices representing the same physical device, including `device_id` itself.
+    Devices are related when they were split off from the same legacy composite device, or when they
+    share any identifier or connection. Both happen when a single physical device is provided by more
+    than one config entry.
+    `device_id` may be the ID of a registered device, or of a legacy composite device.
+    """
+    device_reg = device_registry.async_get(hass)
+    related = {device_id}
+    related.update(device.id for device in _get_composite_split_devices(device_reg, device_id))
+
+    device = device_reg.async_get(device_id)
+    if device is None:
+        return related
+
+    sibling_devices = _get_composite_split_devices(device_reg, getattr(device, "composite_device_id", None))
+    related.update(sibling_device.id for sibling_device in sibling_devices)
+
+    # Only available in HA >=2026.8. On older versions devices sharing an identifier or connection
+    # were merged into a single device, so there is nothing to relate.
+    get_devices = getattr(device_reg, "async_get_devices", None)
+    if callable(get_devices):
+        related.update(
+            linked_device.id
+            for linked_device in get_devices(identifiers=device.identifiers, connections=device.connections)
+        )
+
+    return related
+
+
+def _get_composite_split_devices(
+    device_reg: device_registry.DeviceRegistry,
+    composite_device_id: str | None,
+) -> list[DeviceEntry]:
+    """
+    Return the devices a legacy composite device was split into.
+    Returns an empty list when the ID does not identify a composite device, or when running on
+    HA <2026.8, which does not split composite devices at all.
+    """
+    if not composite_device_id:
+        return []
+    get_split_devices = getattr(device_reg, "async_get_devices_for_composite_device_id", None)
+    if not callable(get_split_devices):
+        return []  # pragma: no cover
+    return list(get_split_devices(composite_device_id))
+
+
 def get_config_entry_ids(device: DeviceEntry) -> set[str]:
     """
     Return the config entry IDs a device belongs to.
@@ -39,7 +87,7 @@ def get_config_entry_ids(device: DeviceEntry) -> set[str]:
     """
     if _HAS_SINGLE_CONFIG_ENTRY:
         return {device.config_entry_id}
-    return set(getattr(device, "config_entries", set()))
+    return set(getattr(device, "config_entries", set()))  # pragma: no cover
 
 
 def get_first_device_for_config_entry(hass: HomeAssistant, config_entry_id: str) -> DeviceEntry | None:
@@ -54,6 +102,18 @@ def get_devices_for_config_entry(hass: HomeAssistant, config_entry_id: str) -> l
         for device in device_registry.async_get(hass).devices.values()
         if config_entry_id in get_config_entry_ids(device) and not is_composite_device_id(hass, device.id)
     ]
+
+
+def get_related_devices(hass: HomeAssistant, device_id: str) -> list[DeviceEntry]:
+    """Return all non-composite devices belonging to the same config entry as the given device."""
+    device = device_registry.async_get(hass).async_get(device_id)
+    if device is None:
+        return []
+
+    devices: dict[str, DeviceEntry] = {}
+    for config_entry_id in get_config_entry_ids(device):
+        devices.update({related.id: related for related in get_devices_for_config_entry(hass, config_entry_id)})
+    return list(devices.values())
 
 
 def attach_configured_device_entry(

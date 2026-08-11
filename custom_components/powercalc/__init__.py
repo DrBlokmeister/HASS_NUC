@@ -212,7 +212,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     global_config = get_global_configuration(hass, config)
 
-    discovery_manager = await create_discovery_manager_instance(hass, config, global_config)
+    discovery_manager = create_discovery_manager_instance(hass, config, global_config)
     hass.data[DOMAIN] = {
         DATA_DISCOVERY_MANAGER: discovery_manager,
         DOMAIN_CONFIG: global_config,
@@ -225,6 +225,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         DATA_ANALYTICS: {},
     }
 
+    await discovery_manager.setup()
+
     register_services(hass)
 
     await async_load_platform(hass, Platform.SELECT, DOMAIN, {}, config)
@@ -235,8 +237,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     try:
         await repair_none_config_entries_issue(hass)
-    except Exception as e:  # pragma: no cover
-        _LOGGER.error("problem while cleaning up None entities", exc_info=e)  # pragma: no cover
+    except Exception:  # pragma: no cover
+        _LOGGER.exception("problem while cleaning up None entities")  # pragma: no cover
 
     await init_analytics(hass)
 
@@ -272,7 +274,7 @@ async def init_analytics(hass: HomeAssistant) -> None:
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, start_schedule)
 
 
-async def create_discovery_manager_instance(
+def create_discovery_manager_instance(
     hass: HomeAssistant,
     ha_config: ConfigType,
     global_powercalc_config: ConfigType,
@@ -284,15 +286,13 @@ async def create_discovery_manager_instance(
     exclude_self_usage = discovery_config.get(CONF_EXCLUDE_SELF_USAGE, False)
     enable_autodiscovery = discovery_config.get(CONF_ENABLED, True)
 
-    manager = DiscoveryManager(
+    return DiscoveryManager(
         hass,
         ha_config,
         exclude_device_types=exclude_device_types,
         exclude_self_usage_profiles=exclude_self_usage,
         enabled=enable_autodiscovery,
     )
-    await manager.setup()
-    return manager
 
 
 def register_services(hass: HomeAssistant) -> None:
@@ -579,8 +579,8 @@ async def repair_none_config_entries_issue(hass: HomeAssistant) -> None:
             object.__setattr__(entry, "unique_id", unique_id)
             hass.config_entries._entries._index_entry(entry)  # noqa: SLF001
             await hass.config_entries.async_remove(entry.entry_id)
-        except Exception as e:  # pragma: no cover
-            _LOGGER.error("problem while cleaning up None entities", exc_info=e)  # pragma: no cover
+        except Exception:  # pragma: no cover
+            _LOGGER.exception("problem while cleaning up None entities")  # pragma: no cover
 
 
 def _notify_message(

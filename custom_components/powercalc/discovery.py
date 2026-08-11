@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from enum import StrEnum
 import logging
@@ -8,14 +8,15 @@ from typing import Any, TypeVar
 from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY, SOURCE_USER, ConfigEntry
-from homeassistant.const import CONF_ENTITY_ID, CONF_PLATFORM, CONF_UNIQUE_ID
-from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.const import CONF_DEVICE, CONF_ENTITY_ID, CONF_PLATFORM, CONF_UNIQUE_ID
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import discovery_flow
 import homeassistant.helpers.device_registry as dr
 from homeassistant.helpers.entity import EntityCategory
 import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import IntegrationNotFound, async_get_integration
 
 from .common import SourceEntity, create_source_entity
 from .const import (
@@ -24,6 +25,7 @@ from .const import (
     CONF_MODEL,
     CONF_SENSORS,
     DATA_DISCOVERY_MANAGER,
+    DISCOVERY_INTEGRATION_NAME,
     DISCOVERY_POWER_PROFILES,
     DISCOVERY_SOURCE_ENTITY,
     DOMAIN,
@@ -31,7 +33,12 @@ from .const import (
     MANUFACTURER_WLED,
     CalculationStrategy,
 )
-from .device_binding import get_config_entry_ids, get_first_device_for_config_entry, is_composite_device_id
+from .device_binding import (
+    get_config_entry_ids,
+    get_first_device_for_config_entry,
+    get_related_device_ids,
+    is_composite_device_id,
+)
 from .group_include.filter import (
     CategoryFilter,
     CompositeFilter,
@@ -180,6 +187,8 @@ class DiscoveryManager:
                 continue  # pragma: no cover
 
             self.initialized_flows.add(entry.unique_id)
+            self._initialize_configured_device(entry)
+
             entity_id = entry.data.get(CONF_ENTITY_ID)
             if not entity_id or entity_id == DUMMY_ENTITY_ID:
                 continue
@@ -188,6 +197,23 @@ class DiscoveryManager:
             if entity and entity.device_entry:
                 self.initialized_flows.add(f"pc_{entity.device_entry.id}")
             self.initialized_flows.add(entity_id)
+
+    def _initialize_configured_device(self, entry: ConfigEntry) -> None:
+        """Mark the device a config entry was setup for as already setup.
+
+        A single physical device can be represented by several device registry entries. HA >=2026.8
+        splits devices belonging to multiple config entries into one device per entry, so the entry
+        may hold the composite device ID, which no longer resolves to a registered device, or one of
+        the split devices after the user resolved the composite device repair. Devices can also be
+        registered by several integrations, in which case they share identifiers or connections.
+        All of them are the device the user already configured, so none should be discovered again.
+        """
+        device_id = entry.data.get(CONF_DEVICE)
+        if not device_id:
+            return
+
+        for related_device_id in get_related_device_ids(self.hass, str(device_id)):
+            self.initialized_flows.add(f"pc_{related_device_id}")
 
     def remove_initialized_flow(self, entry: ConfigEntry) -> None:
         """Remove a flow from the initialized flows."""
@@ -199,17 +225,22 @@ class DiscoveryManager:
 
     async def perform_discovery(
         self,
-        source_provider: Callable[[], Awaitable[list[_DiscoverySourceT]]],
-        source_creator: Callable[[_DiscoverySourceT], Awaitable[SourceEntity]],
+        source_provider: Callable[[], list[_DiscoverySourceT]],
+        source_creator: Callable[[_DiscoverySourceT], SourceEntity],
         discovery_type: DiscoveryBy,
     ) -> None:
         """Generalized discovery procedure for entities and devices."""
-        for source in await source_provider():
+        library = await self._get_library()
+        ignored_domains = library.discovery_ignored_domains
+        for source in source_provider():
             log_identifier = str(
                 getattr(source, "entity_id", getattr(source, "id", getattr(source, "entry_id", "unknown"))),
             )
             try:
-                source_entity = await source_creator(source)
+                if self._is_domain_ignored(source, ignored_domains):
+                    _LOGGER.debug("%s: Integration domain is ignored, skipping discovery", log_identifier)
+                    continue
+                source_entity = source_creator(source)
                 model_info = await self.extract_model_info_from_device_info(
                     source_entity.entity_entry or source_entity.device_entry,
                 )
@@ -235,13 +266,19 @@ class DiscoveryManager:
                     )
                     continue
 
-                self._init_entity_discovery(model_info, unique_id, source_entity, log_identifier, power_profiles, {})
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.error(
-                    "%s: Error during %s discovery: %s",
+                await self._init_entity_discovery(
+                    model_info,
+                    unique_id,
+                    source_entity,
+                    log_identifier,
+                    power_profiles,
+                    {},
+                )
+            except Exception:
+                _LOGGER.exception(
+                    "%s: Error during %s discovery",
                     log_identifier,
                     discovery_type,
-                    err,
                 )
 
     async def discover_entity(
@@ -256,12 +293,12 @@ class DiscoveryManager:
 
         return await self.find_power_profiles(model_info, source_entity, discovery_type)
 
-    async def create_entity_source(self, entity_entry: er.RegistryEntry) -> SourceEntity:
+    def create_entity_source(self, entity_entry: er.RegistryEntry) -> SourceEntity:
         """Create SourceEntity for an entity."""
         return create_source_entity(entity_entry.entity_id, self.hass)
 
     @staticmethod
-    async def create_device_source(device_entry: dr.DeviceEntry) -> SourceEntity:
+    def create_device_source(device_entry: dr.DeviceEntry) -> SourceEntity:
         """Create SourceEntity for a device."""
         return SourceEntity(
             object_id=device_entry.name_by_user or device_entry.name or "",
@@ -271,7 +308,7 @@ class DiscoveryManager:
             device_entry=device_entry,
         )
 
-    async def create_config_entry_source(self, config_entry: ConfigEntry) -> SourceEntity:
+    def create_config_entry_source(self, config_entry: ConfigEntry) -> SourceEntity:
         """Create a source representing all devices belonging to a config entry."""
         device_entry = get_first_device_for_config_entry(self.hass, config_entry.entry_id)
         return SourceEntity(
@@ -341,6 +378,23 @@ class DiscoveryManager:
 
         return power_profiles
 
+    def _is_domain_ignored(self, source: _DiscoverySourceT, ignored_domains: set[str]) -> bool:
+        """Return whether a discovery source belongs to a globally ignored integration domain."""
+        if not ignored_domains:
+            return False
+
+        if isinstance(source, er.RegistryEntry):
+            return source.platform in ignored_domains
+        if isinstance(source, ConfigEntry):
+            return source.domain in ignored_domains
+
+        config_entry_id = next(iter(source.config_entries), None)
+        if config_entry_id is None:  # pragma: no cover
+            return False
+
+        config_entry = self.hass.config_entries.async_get_entry(config_entry_id)
+        return config_entry is not None and config_entry.domain in ignored_domains
+
     async def init_wled_flow(self, model_info: ModelInfo, source_entity: SourceEntity) -> None:
         """Initialize the discovery flow for a WLED light."""
         if DeviceType.LIGHT in self._exclude_device_types:
@@ -358,7 +412,7 @@ class DiscoveryManager:
             )
             return
 
-        self._init_entity_discovery(
+        await self._init_entity_discovery(
             model_info,
             unique_id,
             source_entity,
@@ -379,7 +433,7 @@ class DiscoveryManager:
             and not re.search("master|segment", str(entity_entry.entity_id), flags=re.IGNORECASE)
         )
 
-    async def get_entities(self) -> list[er.RegistryEntry]:
+    def get_entities(self) -> list[er.RegistryEntry]:
         """Get all entities from entity registry which qualifies for discovery."""
 
         def _check_already_configured(entity: er.RegistryEntry) -> bool:
@@ -409,7 +463,7 @@ class DiscoveryManager:
         )
         return get_filtered_entity_list(self.hass, NotFilter(entity_filter))
 
-    async def get_devices(self) -> list[dr.DeviceEntry]:
+    def get_devices(self) -> list[dr.DeviceEntry]:
         """Fetch device entries."""
         return [
             device
@@ -417,7 +471,7 @@ class DiscoveryManager:
             if not is_composite_device_id(self.hass, device.id)
         ]
 
-    async def get_config_entries(self) -> list[ConfigEntry]:
+    def get_config_entries(self) -> list[ConfigEntry]:
         """Fetch config entries which have at least one non-composite device."""
         config_entry_ids = {
             config_entry_id
@@ -518,8 +572,7 @@ class DiscoveryManager:
 
         return await self.get_model_information_from_device(device_entry)
 
-    @callback
-    def _init_entity_discovery(
+    async def _init_entity_discovery(
         self,
         model_info: ModelInfo,
         unique_id: str,
@@ -532,6 +585,7 @@ class DiscoveryManager:
 
         discovery_data: dict[str, Any] = {
             CONF_ENTITY_ID: source_entity.entity_id,
+            DISCOVERY_INTEGRATION_NAME: await self._get_integration_name(source_entity),
             DISCOVERY_SOURCE_ENTITY: source_entity,
             CONF_UNIQUE_ID: unique_id,
         }
@@ -563,6 +617,27 @@ class DiscoveryManager:
             context={"source": SOURCE_INTEGRATION_DISCOVERY},
             data=discovery_data,
         )
+
+    async def _get_integration_name(self, source_entity: SourceEntity) -> str | None:
+        """Return the display name of the integration which owns the discovery source."""
+        config_entry_id = source_entity.config_entry_id
+        if config_entry_id is None and source_entity.entity_entry:
+            config_entry_id = source_entity.entity_entry.config_entry_id
+        if config_entry_id is None and source_entity.device_entry:
+            config_entry_id = next(iter(get_config_entry_ids(source_entity.device_entry)), None)
+        if config_entry_id is None:
+            return None
+
+        config_entry = self.hass.config_entries.async_get_entry(config_entry_id)
+        if config_entry is None:
+            return None
+
+        try:
+            integration = await async_get_integration(self.hass, config_entry.domain)
+        except IntegrationNotFound:
+            _LOGGER.debug("Unable to resolve integration name for domain %s", config_entry.domain)
+            return None
+        return integration.name
 
     @property
     def status(self) -> DiscoveryStatus:

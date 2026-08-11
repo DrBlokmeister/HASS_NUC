@@ -240,7 +240,9 @@ DEFAULT_UTILITY_METER_TYPES = [DAILY, WEEKLY, MONTHLY]
 
 DISCOVERY_SOURCE_ENTITY = "source_entity"
 DISCOVERY_POWER_PROFILES = "power_profiles"
+DISCOVERY_INTEGRATION_NAME = "integration_name"
 DISCOVERY_TYPE = "discovery_type"
+LIBRARY_DISCOVERY_IGNORED_DOMAINS = "discovery_ignored_domains"
 
 LIBRARY_URL = "https://library.powercalc.nl"
 API_URL = "https://api.powercalc.nl"
