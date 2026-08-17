@@ -311,7 +311,7 @@ command_line:
       name: P1S Cam System Details
       unique_id: yaml_command_line_sensor_p1s_cam_system_details
       icon: mdi:cctv
-      scan_interval: 300
+      scan_interval: 60
       command_timeout: 20
       state_class: measurement
       command: >-
@@ -319,23 +319,26 @@ command_line:
           PATH=$PATH:/usr/sbin:/sbin:/usr/local/bin;
           iface=wlan0;
           cfg="/usr/local/etc/mediamtx/mediamtx.yml";
+
           iw=$(iwconfig "$iface" 2>/dev/null || true);
-          sig=$(echo "$iw" | grep -oP "Signal level=-?\K\d+" | head -n1);
-          lq_pair=$(echo "$iw" | grep -oP "Link Quality=\K\d+/\d+" | head -n1);
+          sig=$(printf "%s\n" "$iw" | grep -oP "Signal level=\K-?\d+" | head -n1);
+          lq_pair=$(printf "%s\n" "$iw" | grep -oP "Link Quality=\K\d+/\d+" | head -n1);
           lq_cur="${lq_pair%/*}";
           lq_max="${lq_pair#*/}";
           lq_pct=$(( ${lq_max:-0} > 0 ? ${lq_cur:-0} * 100 / ${lq_max:-1} : 0 ));
-          bit=$(echo "$iw" | grep -oP "Bit Rate=\K[0-9.]+" | head -n1);
-          txp=$(echo "$iw" | grep -oP "Tx-Power=\K\d+" | head -n1);
-          apm=$(echo "$iw" | grep -oP "Access Point: \K([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}" | head -n1);
-          missed=$(echo "$iw" | grep -oP "Missed beacon:\K\d+" | head -n1);
-          retry=$(echo "$iw" | grep -oP "Tx excessive retries:\K\d+" | head -n1);
+          bit=$(printf "%s\n" "$iw" | grep -oP "Bit Rate=\K[0-9.]+" | head -n1);
+          txp=$(printf "%s\n" "$iw" | grep -oP "Tx-Power=\K\d+" | head -n1);
+          apm=$(printf "%s\n" "$iw" | grep -oP "Access Point: \K([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}" | head -n1);
+          missed=$(printf "%s\n" "$iw" | grep -oP "Missed beacon:\K\d+" | head -n1);
+          retry=$(printf "%s\n" "$iw" | grep -oP "Tx excessive retries:\K\d+" | head -n1);
           ssid=$(iwgetid -r 2>/dev/null || true);
+
           load=$(cut -d" " -f1 /proc/loadavg);
           temp=$(awk "{printf \"%.1f\",\$1/1000}" /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0);
           mem=$(awk "/MemTotal:/ {t=\$2} /MemAvailable:/ {a=\$2} END {if(t>0) printf \"%.1f\",(t-a)*100/t; else print 0}" /proc/meminfo);
           up=$(cut -d"." -f1 /proc/uptime);
           thr=$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2 || echo "");
+
           active=$(systemctl is-active mediamtx 2>/dev/null || echo unknown);
           pid=$(systemctl show mediamtx -p MainPID --value 2>/dev/null || echo 0);
           helper=$(pgrep -f "mtxrpicam|rpicamera" >/dev/null && echo true || echo false);
@@ -343,22 +346,57 @@ command_line:
           webrtc=$(ss -lnt 2>/dev/null | grep -q ":8889 " && echo true || echo false);
           ice=$(ss -lun 2>/dev/null | grep -q ":8189 " && echo true || echo false);
 
-          rtsp_established=$(ss -Htn 2>/dev/null | awk "$4 ~ /:8554$/ && \$1 == \"ESTAB\" {c++} END {print c+0}");
-          webrtc_established=$(ss -Htn 2>/dev/null | awk "$4 ~ /:8889$/ && \$1 == \"ESTAB\" {c++} END {print c+0}");
-          rtsp_reader_sessions=$(journalctl -u mediamtx -n 80 --no-pager 2>/dev/null | grep -c "is reading from path .cam." || true);
-          stream_connected=$(( rtsp_established > 0 || webrtc_established > 0 ? 1 : 0 ));
+          metrics=$(curl -fsS --max-time 3 http://127.0.0.1:9998/metrics 2>/dev/null || true);
+          if [ -n "$metrics" ]; then metrics_available=true; else metrics_available=false; fi;
 
-          configured_bitrate=$(awk "$1 == \"rpiCameraBitrate:\" {print \$2; exit}" "$cfg" 2>/dev/null || echo 0);
-          configured_bitrate_mbps=$(awk -v b="${configured_bitrate:-0}" "BEGIN {printf \"%.1f\", b/1000000}");
+          stream_ready=$(printf "%s\n" "$metrics" |
+            grep "^paths{" |
+            grep "name=\"cam\"" |
+            grep "state=\"ready\"" |
+            awk "{n += \$2} END {print n+0}");
 
-          printf "{\"signal_level\":%s,\"link_quality\":%s,\"bit_rate\":%s,\"tx_power\":%s,\"ap_mac\":\"%s\",\"ssid\":\"%s\",\"missed_beacon\":%s,\"tx_retries\":%s,\"load_avg\":%s,\"cpu_temp\":%s,\"memory_used_pct\":%s,\"uptime_s\":%s,\"throttled\":\"%s\",\"mediamtx_active\":\"%s\",\"mediamtx_pid\":%s,\"camera_helper_running\":%s,\"rtsp_listening\":%s,\"webrtc_listening\":%s,\"ice_listening\":%s,\"rtsp_established_connections\":%s,\"webrtc_established_connections\":%s,\"rtsp_reader_sessions\":%s,\"stream_connected\":%s,\"configured_bitrate\":%s,\"configured_bitrate_mbps\":%s}\n" \
+          rtsp_readers=$(printf "%s\n" "$metrics" |
+            grep "^rtsp_sessions{" |
+            grep "path=\"cam\"" |
+            grep "state=\"read\"" |
+            grep -v "remoteAddr=\"127.0.0.1:" |
+            awk "{n += \$2} END {print n+0}");
+
+          webrtc_readers=$(printf "%s\n" "$metrics" |
+            grep "^mediamtx_webrtc_sessions{" |
+            grep "path=\"cam\"" |
+            grep "state=\"read\"" |
+            awk "{n += \$2} END {print n+0}");
+
+          encoded_bytes=$(printf "%s\n" "$metrics" |
+            grep "^mediamtx_paths_bytes_received{" |
+            grep "name=\"cam\"" |
+            awk "{n += \$2} END {printf \"%.0f\",n+0}");
+
+          external_readers=$(( ${rtsp_readers:-0} + ${webrtc_readers:-0} ));
+          stream_connected=$(( external_readers > 0 ? 1 : 0 ));
+
+          configured_bitrate=$(sed -n "s/^[[:space:]]*rpiCameraBitrate:[[:space:]]*//p" "$cfg" 2>/dev/null | head -n1);
+          case "${configured_bitrate:-}" in
+            ""|*[!0-9]*) configured_bitrate=0 ;;
+          esac;
+          configured_bitrate_mbps=$(awk -v b="$configured_bitrate" "BEGIN {printf \"%.1f\",b/1000000}");
+
+          watchdog_failures=$(cat /var/lib/p1s-cam-camera-watchdog/fail-count 2>/dev/null || echo 0);
+          case "$watchdog_failures" in
+            ""|*[!0-9]*) watchdog_failures=0 ;;
+          esac;
+
+          printf "{\"signal_level\":%s,\"link_quality\":%s,\"bit_rate\":%s,\"tx_power\":%s,\"ap_mac\":\"%s\",\"ssid\":\"%s\",\"missed_beacon\":%s,\"tx_retries\":%s,\"load_avg\":%s,\"cpu_temp\":%s,\"memory_used_pct\":%s,\"uptime_s\":%s,\"throttled\":\"%s\",\"mediamtx_active\":\"%s\",\"mediamtx_pid\":%s,\"camera_helper_running\":%s,\"rtsp_listening\":%s,\"webrtc_listening\":%s,\"ice_listening\":%s,\"metrics_available\":%s,\"stream_ready\":%s,\"rtsp_established_connections\":%s,\"webrtc_established_connections\":%s,\"rtsp_reader_sessions\":%s,\"external_readers\":%s,\"stream_connected\":%s,\"encoded_bytes\":%s,\"watchdog_failures\":%s,\"configured_bitrate\":%s,\"configured_bitrate_mbps\":%s}\n" \
             "${sig:-0}" "${lq_pct:-0}" "${bit:-0}" "${txp:-0}" \
             "${apm:-}" "${ssid:-}" "${missed:-0}" "${retry:-0}" \
             "${load:-0}" "${temp:-0}" "${mem:-0}" "${up:-0}" \
             "${thr:-}" "${active:-unknown}" "${pid:-0}" \
             "${helper:-false}" "${rtsp:-false}" "${webrtc:-false}" "${ice:-false}" \
-            "${rtsp_established:-0}" "${webrtc_established:-0}" "${rtsp_reader_sessions:-0}" "${stream_connected:-0}" \
-            "${configured_bitrate:-0}" "${configured_bitrate_mbps:-0}";
+            "$metrics_available" "${stream_ready:-0}" \
+            "${rtsp_readers:-0}" "${webrtc_readers:-0}" "${rtsp_readers:-0}" \
+            "${external_readers:-0}" "${stream_connected:-0}" "${encoded_bytes:-0}" \
+            "${watchdog_failures:-0}" "$configured_bitrate" "$configured_bitrate_mbps";
         ' || echo '{}'
       value_template: "{{ value_json.load_avg | default(0) }}"
       json_attributes:
@@ -386,6 +424,11 @@ command_line:
         - stream_connected
         - configured_bitrate
         - configured_bitrate_mbps
+        - metrics_available
+        - stream_ready
+        - external_readers
+        - encoded_bytes
+        - watchdog_failures
 
 ########################
 #    BINARY SENSORS    #
