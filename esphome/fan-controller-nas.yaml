@@ -83,6 +83,12 @@ one_wire:
     id: one_wire_bus
     pin: ${temp_sens_pin}
 
+globals:
+  - id: fan_calibration_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
 select:
   - platform: template
     name: "NAS Fan Control Mode"
@@ -95,6 +101,62 @@ select:
     initial_option: "Auto"
     optimistic: true
     restore_value: true
+
+button:
+  - platform: template
+    name: "Start NAS Fan Calibration"
+    id: start_nas_fan_calibration
+    icon: "mdi:fan-auto"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(fan_calibration_active);
+            then:
+              - script.execute: calibrate_nas_fans
+
+  - platform: template
+    name: "Stop NAS Fan Calibration"
+    id: stop_nas_fan_calibration
+    icon: "mdi:stop-circle-outline"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - script.stop: calibrate_nas_fans
+
+        - lambda: |-
+            id(fan_calibration_active) = false;
+
+            const int maximum_speed = std::clamp(
+                static_cast<int>(
+                    std::lround(
+                        id(nas_fan_maximum_speed).state
+                    )
+                ),
+                1,
+                100
+            );
+
+            for (auto *fan : {
+                     id(fan_1),
+                     id(fan_2),
+                     id(fan_3),
+                 }) {
+              auto call = fan->turn_on();
+              call.set_speed(maximum_speed);
+              call.perform();
+            }
+
+            ESP_LOGW(
+                "fan_calibration",
+                "Calibration stopped; fans set to configured maximum"
+            );
+
+        - select.set:
+            id: nas_fan_control_mode
+            option: "Auto"
 
 number:
   - platform: template
@@ -281,7 +343,7 @@ sensor:
     filters:
       - multiply: 0.5
       - or:
-          - throttle_average: 60s
+          - throttle_average: 5s
           - delta: 100
   - platform: pulse_counter
     name: "NAS Fan 2 Speed"
@@ -301,7 +363,7 @@ sensor:
     filters:
       - multiply: 0.5
       - or:
-          - throttle_average: 60s
+          - throttle_average: 5s
           - delta: 100
   - platform: pulse_counter
     name: "NAS Fan 3 Speed"
@@ -321,7 +383,7 @@ sensor:
     filters:
       - multiply: 0.5
       - or:
-          - throttle_average: 60s
+          - throttle_average: 5s
           - delta: 100
   - platform: pulse_counter
     name: "NAS Fan 4 Speed"
@@ -341,7 +403,7 @@ sensor:
     filters:
       - multiply: 0.5
       - or:
-          - throttle_average: 60s
+          - throttle_average: 5s
           - delta: 100
   - platform: pulse_counter
     name: "NAS Fan 5 Speed"
@@ -361,7 +423,7 @@ sensor:
     filters:
       - multiply: 0.5
       - or:
-          - throttle_average: 60s
+          - throttle_average: 5s
           - delta: 100
   - platform: pulse_counter
     name: "NAS Fan 6 Speed"
@@ -381,7 +443,7 @@ sensor:
     filters:
       - multiply: 0.5
       - or:
-          - throttle_average: 60s
+          - throttle_average: 5s
           - delta: 100
 
   # ---------------------------------------------------------------------------
@@ -556,6 +618,95 @@ fan:
     speed_count: 100
     restore_mode: RESTORE_DEFAULT_ON
 
+script:
+  - id: calibrate_nas_fans
+    mode: single
+    then:
+      - lambda: |-
+          id(fan_calibration_active) = true;
+
+          ESP_LOGI(
+              "fan_calibration",
+              "Starting fan calibration: 0-100-0%% in 5%% steps"
+          );
+
+      - select.set:
+          id: nas_fan_control_mode
+          option: "Individual"
+
+      # Ramp up: 0%, 5%, ..., 100%.
+      - repeat:
+          count: 21
+          then:
+            - lambda: |-
+                const int speed =
+                    static_cast<int>(iteration) * 5;
+
+                ESP_LOGI(
+                    "fan_calibration",
+                    "Ramp up: setting fans 1-3 to %d%%",
+                    speed
+                );
+
+                for (auto *fan : {
+                         id(fan_1),
+                         id(fan_2),
+                         id(fan_3),
+                     }) {
+                  if (speed == 0) {
+                    auto call = fan->turn_off();
+                    call.perform();
+                  } else {
+                    auto call = fan->turn_on();
+                    call.set_speed(speed);
+                    call.perform();
+                  }
+                }
+
+            - delay: 5min
+
+      # Ramp down: 100%, 95%, ..., 0%.
+      - repeat:
+          count: 21
+          then:
+            - lambda: |-
+                const int speed =
+                    100 - static_cast<int>(iteration) * 5;
+
+                ESP_LOGI(
+                    "fan_calibration",
+                    "Ramp down: setting fans 1-3 to %d%%",
+                    speed
+                );
+
+                for (auto *fan : {
+                         id(fan_1),
+                         id(fan_2),
+                         id(fan_3),
+                     }) {
+                  if (speed == 0) {
+                    auto call = fan->turn_off();
+                    call.perform();
+                  } else {
+                    auto call = fan->turn_on();
+                    call.set_speed(speed);
+                    call.perform();
+                  }
+                }
+
+            - delay: 5min
+
+      - lambda: |-
+          id(fan_calibration_active) = false;
+
+          ESP_LOGI(
+              "fan_calibration",
+              "Fan calibration completed; returning to Auto mode"
+          );
+
+      - select.set:
+          id: nas_fan_control_mode
+          option: "Auto"
 
 interval:
   - interval: 10s
@@ -565,6 +716,9 @@ interval:
             api.connected:
           then:
             - lambda: |-
+                if (id(fan_calibration_active)) {
+                  return;
+                }
                 const float configured_maximum_speed = std::clamp(
                     id(nas_fan_maximum_speed).state,
                     1.0f,
@@ -853,6 +1007,9 @@ interval:
             # states and temperatures can no longer be trusted, so use the
             # configured maximum speed in Auto mode.
             - lambda: |-
+                if (id(fan_calibration_active)) {
+                  return;
+                }
                 if (
                     id(nas_fan_control_mode).current_option() !=
                     "Auto"
