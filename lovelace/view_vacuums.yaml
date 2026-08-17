@@ -1,365 +1,555 @@
 ##########################################  HERE BEGINS THE VACUUMS TAB  ##########################################
+
 title: Vacuums
 icon: mdi:robot-vacuum
 badges: []
-cards:
-  - type: grid
-    columns: 5
-    cards:
-      - type: button
-        entity: input_select.vacuum_scheduled_cleaning_mode
-        name: Cleanup Mode
-        #icon: mdi:robot-vacuum
-        state_color: false
-        show_state: true
-        show_icon: false
-        # tap_action:
-        #   action: toggle
-      - type: button
-        icon: mdi:robot-vacuum
-        name: Start All
-        tap_action:
-          action: call-service
-          service: script.start_all_vacuums
-      - type: button
-        icon: mdi:robot-vacuum
-        name: Start Dustin
-        tap_action:
-          action: call-service
-          service: vacuum.start
-          service_data:
-            entity_id: vacuum.dustin
-      - type: button
-        icon: mdi:robot-vacuum
-        name: Start Moeke
-        tap_action:
-          action: call-service
-          service: vacuum.start
-          service_data:
-            entity_id: vacuum.moeke
-      - type: button
-        icon: mdi:robot-vacuum
-        name: Start Alfred
-        tap_action:
-          action: call-service
-          service: vacuum.start
-          service_data:
-            entity_id: vacuum.alfred
+panel: false
 
+cards:
   - type: vertical-stack
     cards:
-      - type: button
-        name: "Dustin: Go to Device Settings"
+      # GLOBAL STATE
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: input_select.vacuum_scheduled_cleaning_mode
+            primary: Scheduled Cleaning
+            secondary: "{{ states('input_select.vacuum_scheduled_cleaning_mode') }}"
+            icon: mdi:calendar-sync
+            icon_color: blue
+            tap_action:
+              action: more-info
+
+          # FLEET HEALTH
+          - type: custom:mushroom-template-card
+            primary: Fleet Health
+            secondary: >-
+              {%- set red =
+                states('vacuum.dustin') in ['unknown', 'unavailable', 'error']
+                or states('vacuum.moeke') in ['unknown', 'unavailable', 'error']
+                or states('vacuum.alfred') in ['unknown', 'unavailable', 'error']
+                or states('sensor.dustin_error') not in ['no_error', 'unknown', 'unavailable']
+                or states('sensor.moeke_error') not in ['no_error', 'unknown', 'unavailable']
+                or state_attr('vacuum.dustin', 'has_error') == true
+                or state_attr('vacuum.moeke', 'has_error') == true
+              -%}
+
+              {%- set amber =
+                states('sensor.dustin_low_water_warning') not in ['no_warning', 'unknown', 'unavailable']
+                or states('sensor.dustin_clean_water_tank_status') not in ['installed', 'unknown', 'unavailable']
+                or states('sensor.dustin_dirty_water_tank_status') not in ['installed', 'unknown', 'unavailable']
+                or states('sensor.moeke_low_water_warning') not in ['no_warning', 'unknown', 'unavailable']
+                or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+                or is_state('binary_sensor.alfred_water_box_attached', 'off')
+                or is_state('binary_sensor.alfred_water_shortage', 'on')
+              -%}
+
+              {%- set dustin_sensor = states('sensor.dustin_sensor_dirty_time_left') -%}
+              {%- set moeke_sensor = state_attr('vacuum.moeke', 'sensor_dirty_time_left') -%}
+              {%- set alfred_sensor = states('sensor.alfred_sensor_dirty_left') -%}
+              {%- set service =
+                (dustin_sensor not in ['unknown', 'unavailable'] and dustin_sensor | float(1) <= 0)
+                or (moeke_sensor is not none and moeke_sensor | float(1) <= 0)
+                or (alfred_sensor not in ['unknown', 'unavailable'] and alfred_sensor | float(1) <= 0)
+              -%}
+
+              {%- if red -%}
+                Attention required
+              {%- elif amber -%}
+                Operational · functionality limited
+              {%- elif service -%}
+                Operational · sensors need cleaning
+              {%- else -%}
+                All 3 vacuums OK
+              {%- endif -%}
+
+            icon: >-
+              {%- set red =
+                states('vacuum.dustin') in ['unknown', 'unavailable', 'error']
+                or states('vacuum.moeke') in ['unknown', 'unavailable', 'error']
+                or states('vacuum.alfred') in ['unknown', 'unavailable', 'error']
+                or states('sensor.dustin_error') not in ['no_error', 'unknown', 'unavailable']
+                or states('sensor.moeke_error') not in ['no_error', 'unknown', 'unavailable']
+                or state_attr('vacuum.dustin', 'has_error') == true
+                or state_attr('vacuum.moeke', 'has_error') == true
+              -%}
+              {%- set amber =
+                states('sensor.dustin_low_water_warning') not in ['no_warning', 'unknown', 'unavailable']
+                or states('sensor.dustin_clean_water_tank_status') not in ['installed', 'unknown', 'unavailable']
+                or states('sensor.dustin_dirty_water_tank_status') not in ['installed', 'unknown', 'unavailable']
+                or states('sensor.moeke_low_water_warning') not in ['no_warning', 'unknown', 'unavailable']
+                or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+                or is_state('binary_sensor.alfred_water_box_attached', 'off')
+                or is_state('binary_sensor.alfred_water_shortage', 'on')
+              -%}
+              {%- set service =
+                states('sensor.dustin_sensor_dirty_time_left') | float(1) <= 0
+                or state_attr('vacuum.moeke', 'sensor_dirty_time_left') | float(1) <= 0
+                or states('sensor.alfred_sensor_dirty_left') | float(1) <= 0
+              -%}
+              {% if red %}
+                mdi:alert-circle
+              {% elif amber %}
+                mdi:alert
+              {% elif service %}
+                mdi:check-circle-outline
+              {% else %}
+                mdi:check-circle
+              {% endif %}
+
+            icon_color: >-
+              {%- set red =
+                states('vacuum.dustin') in ['unknown', 'unavailable', 'error']
+                or states('vacuum.moeke') in ['unknown', 'unavailable', 'error']
+                or states('vacuum.alfred') in ['unknown', 'unavailable', 'error']
+                or states('sensor.dustin_error') not in ['no_error', 'unknown', 'unavailable']
+                or states('sensor.moeke_error') not in ['no_error', 'unknown', 'unavailable']
+                or state_attr('vacuum.dustin', 'has_error') == true
+                or state_attr('vacuum.moeke', 'has_error') == true
+              -%}
+              {%- set amber =
+                states('sensor.dustin_low_water_warning') not in ['no_warning', 'unknown', 'unavailable']
+                or states('sensor.dustin_clean_water_tank_status') not in ['installed', 'unknown', 'unavailable']
+                or states('sensor.dustin_dirty_water_tank_status') not in ['installed', 'unknown', 'unavailable']
+                or states('sensor.moeke_low_water_warning') not in ['no_warning', 'unknown', 'unavailable']
+                or is_state('binary_sensor.moeke_reservoir_leak_sensor', 'off')
+                or is_state('binary_sensor.alfred_water_box_attached', 'off')
+                or is_state('binary_sensor.alfred_water_shortage', 'on')
+              -%}
+              {%- set service =
+                states('sensor.dustin_sensor_dirty_time_left') | float(1) <= 0
+                or state_attr('vacuum.moeke', 'sensor_dirty_time_left') | float(1) <= 0
+                or states('sensor.alfred_sensor_dirty_left') | float(1) <= 0
+              -%}
+              {% if red %}
+                red
+              {% elif amber %}
+                amber
+              {% elif service %}
+                lime
+              {% else %}
+                green
+              {% endif %}
+
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: Fleet Health
+                  content:
+                    type: vertical-stack
+                    cards:
+                      - type: custom:decluttering-card
+                        template: vacuum_health_card
+                        variables:
+                          - name: Dustin
+                          - slug: dustin
+                          - status_entity: sensor.dustin_status
+                          - battery_entity: sensor.dustin_battery_level
+                          - error_entity: sensor.dustin_error
+                          - low_water_entity: sensor.dustin_low_water_warning
+                          - clean_water_entity: sensor.dustin_clean_water_tank_status
+                          - dirty_water_entity: sensor.dustin_dirty_water_tank_status
+                          - dock_entity: sensor.dustin_self_wash_base_status
+                          - auto_empty_entity: sensor.dustin_auto_empty_status
+                          - sensor_dirty_entity: sensor.dustin_sensor_dirty_time_left
+                          - device_id: 7fd9ba2df8849e21864f27b8c34df87b
+
+                      - type: custom:decluttering-card
+                        template: vacuum_health_card
+                        variables:
+                          - name: Moeke
+                          - slug: moeke
+                          - status_entity: sensor.moeke_status
+                          - battery_entity: sensor.moeke_battery_level
+                          - error_entity: sensor.moeke_error
+                          - low_water_entity: sensor.moeke_low_water_warning
+                          - dock_entity: sensor.moeke_self_wash_base_status
+                          - auto_empty_entity: sensor.moeke_auto_empty_status
+                          - reservoir_entity: binary_sensor.moeke_reservoir_leak_sensor
+                          - device_id: fbfd7b8ba43fffa14307a6d20c8e153d
+
+                      - type: custom:decluttering-card
+                        template: vacuum_health_card
+                        variables:
+                          - name: Alfred
+                          - slug: alfred
+                          - status_entity: vacuum.alfred
+                          - water_box_entity: binary_sensor.alfred_water_box_attached
+                          - water_shortage_entity: binary_sensor.alfred_water_shortage
+                          - sensor_dirty_entity: sensor.alfred_sensor_dirty_left
+                          - device_id: 8446220369c90de3748268e283022c41
+
+      # GLOBAL / INDIVIDUAL ACTIONS
+      - type: custom:mushroom-chips-card
+        alignment: center
+        chips:
+          - type: template
+            icon: mdi:play
+            icon_color: blue
+            content: All
+            tap_action:
+              action: call-service
+              service: vacuum.start
+              target:
+                entity_id:
+                  - vacuum.dustin
+                  - vacuum.moeke
+                  - vacuum.alfred
+
+          - type: template
+            icon: mdi:play
+            icon_color: blue
+            content: Dustin
+            tap_action:
+              action: call-service
+              service: vacuum.start
+              target:
+                entity_id: vacuum.dustin
+
+          - type: template
+            icon: mdi:play
+            icon_color: blue
+            content: Moeke
+            tap_action:
+              action: call-service
+              service: vacuum.start
+              target:
+                entity_id: vacuum.moeke
+
+          - type: template
+            icon: mdi:play
+            icon_color: blue
+            content: Alfred
+            tap_action:
+              action: call-service
+              service: vacuum.start
+              target:
+                entity_id: vacuum.alfred
+
+          - type: template
+            icon: mdi:pause
+            icon_color: amber
+            content: Pause
+            tap_action:
+              action: call-service
+              service: vacuum.pause
+              target:
+                entity_id:
+                  - vacuum.dustin
+                  - vacuum.moeke
+                  - vacuum.alfred
+
+          - type: template
+            icon: mdi:home-import-outline
+            icon_color: green
+            content: Dock
+            tap_action:
+              action: call-service
+              service: vacuum.return_to_base
+              target:
+                entity_id:
+                  - vacuum.dustin
+                  - vacuum.moeke
+                  - vacuum.alfred
+
+      # VACUUM STATUS
+      # DUSTIN
+      - type: custom:decluttering-card
+        template: vacuum_overview_card
+        variables:
+          - name: Dustin
+          - slug: dustin
+          - status_entity: sensor.dustin_status
+          - task_entity: sensor.dustin_task_status
+          - battery_entity: sensor.dustin_battery_level
+          - room_entity: sensor.dustin_current_room
+          - current_duration_entity: sensor.dustin_cleaning_time
+          - current_area_entity: sensor.dustin_cleaned_area
+          - progress_entity: sensor.dustin_cleaning_progress
+          - expected_area: 0
+          - expected_duration: 55
+          - last_time_entity: sensor.dustin_cleaning_history
+          - last_duration_entity: sensor.dustin_cleaning_time
+          - last_area_entity: sensor.dustin_cleaned_area
+          - map_entity: camera.dustin_map
+          - crop_top: 30
+          - crop_bottom: 50
+          - crop_left: 350
+          - crop_right: 20
+          - sensor_reset_button: button.dustin_reset_sensor
+          - device_id: 7fd9ba2df8849e21864f27b8c34df87b
+
+      # MOEKE
+      - type: custom:decluttering-card
+        template: vacuum_overview_card
+        variables:
+          - name: Moeke
+          - slug: moeke
+          - status_entity: sensor.moeke_status
+          - task_entity: sensor.moeke_task_status
+          - battery_entity: sensor.moeke_battery_level
+          - room_entity: sensor.moeke_current_room
+          - current_duration_entity: sensor.moeke_cleaning_time
+          - current_area_entity: sensor.moeke_cleaned_area
+          - progress_entity: sensor.none
+          - expected_area: 30
+          - expected_duration: 43
+          - last_time_entity: sensor.moeke_cleaning_history
+          - last_duration_entity: sensor.moeke_cleaning_time
+          - last_area_entity: sensor.moeke_cleaned_area
+          - map_entity: camera.moeke_map
+          - crop_top: 100
+          - crop_bottom: 240
+          - crop_left: 30
+          - crop_right: 30
+          - reservoir_entity: binary_sensor.moeke_reservoir_leak_sensor
+          - sensor_reset_button: button.moeke_reset_sensor
+          - device_id: fbfd7b8ba43fffa14307a6d20c8e153d
+
+      # ALFRED
+      - type: custom:decluttering-card
+        template: vacuum_overview_card
+        variables:
+          - name: Alfred
+          - slug: alfred
+          - status_entity: vacuum.alfred
+          - task_entity: sensor.none
+          - battery_entity: sensor.none
+          - room_entity: sensor.none
+          - current_duration_entity: sensor.alfred_current_clean_duration
+          - current_area_entity: sensor.alfred_current_clean_area
+          - progress_entity: sensor.none
+          - expected_area: 24
+          - expected_duration: 40
+          - last_time_entity: sensor.alfred_last_clean_end
+          - last_duration_entity: sensor.alfred_last_clean_duration
+          - last_area_entity: sensor.alfred_last_clean_area
+          - map_entity: image.alfred_map
+          - water_box_entity: binary_sensor.alfred_water_box_attached
+          - water_shortage_entity: binary_sensor.alfred_water_shortage
+          - sensor_reset_button: button.alfred_reset_sensor_dirty
+          - device_id: 8446220369c90de3748268e283022c41
+
+      # MAINTENANCE OVERVIEW
+      - type: custom:mushroom-template-card
+        primary: Maintenance
+        secondary: >-
+          {%- set d_filter = states('sensor.dustin_filter_time_left') | float(9999) -%}
+          {%- set d_main = states('sensor.dustin_main_brush_time_left') | float(9999) -%}
+          {%- set d_side = states('sensor.dustin_side_brush_time_left') | float(9999) -%}
+          {%- set m_filter = state_attr('vacuum.moeke', 'filter_time_left') | float(9999) -%}
+          {%- set m_main = state_attr('vacuum.moeke', 'main_brush_time_left') | float(9999) -%}
+          {%- set m_side = state_attr('vacuum.moeke', 'side_brush_time_left') | float(9999) -%}
+          {%- set a_filter = states('sensor.alfred_filter_left') | float(9999) -%}
+          {%- set a_main = states('sensor.alfred_main_brush_left') | float(9999) -%}
+          {%- set a_side = states('sensor.alfred_side_brush_left') | float(9999) -%}
+
+          {%- set replacement = [d_filter, d_main, d_side, m_filter, m_main, m_side, a_filter, a_main, a_side] -%}
+          {%- set overdue = replacement | select('le', 0) | list | count -%}
+          {%- set soon = replacement | select('gt', 0) | select('le', 24) | list | count -%}
+
+          {%- set sensors =
+            (states('sensor.dustin_sensor_dirty_time_left') | float(1) <= 0)
+            | int
+            + (state_attr('vacuum.moeke', 'sensor_dirty_time_left') | float(1) <= 0)
+            | int
+            + (states('sensor.alfred_sensor_dirty_left') | float(1) <= 0)
+            | int
+          -%}
+
+          {%- if overdue > 0 -%}
+            {{ overdue }} replacement{{ 's' if overdue != 1 }} overdue
+            {%- if sensors > 0 %} · {{ sensors }} sensor clean{{ 's' if sensors != 1 }} due{%- endif %}
+          {%- elif soon > 0 -%}
+            {{ soon }} replacement{{ 's' if soon != 1 }} within 24 h
+            {%- if sensors > 0 %} · {{ sensors }} sensor clean{{ 's' if sensors != 1 }} due{%- endif %}
+          {%- elif sensors > 0 -%}
+            {{ sensors }} sensor clean{{ 's' if sensors != 1 }} due
+          {%- else -%}
+            No maintenance due soon
+          {%- endif -%}
+
+        icon: mdi:wrench-clock
+        icon_color: >-
+          {%- set replacement = [
+            states('sensor.dustin_filter_time_left') | float(9999),
+            states('sensor.dustin_main_brush_time_left') | float(9999),
+            states('sensor.dustin_side_brush_time_left') | float(9999),
+            state_attr('vacuum.moeke', 'filter_time_left') | float(9999),
+            state_attr('vacuum.moeke', 'main_brush_time_left') | float(9999),
+            state_attr('vacuum.moeke', 'side_brush_time_left') | float(9999),
+            states('sensor.alfred_filter_left') | float(9999),
+            states('sensor.alfred_main_brush_left') | float(9999),
+            states('sensor.alfred_side_brush_left') | float(9999)
+          ] -%}
+          {%- set sensors =
+            states('sensor.dustin_sensor_dirty_time_left') | float(1) <= 0
+            or state_attr('vacuum.moeke', 'sensor_dirty_time_left') | float(1) <= 0
+            or states('sensor.alfred_sensor_dirty_left') | float(1) <= 0
+          -%}
+
+          {% if replacement | min <= 0 %}
+            red
+          {% elif replacement | min <= 24 %}
+            amber
+          {% elif sensors %}
+            lime
+          {% else %}
+            green
+          {% endif %}
+
         tap_action:
-          action: navigate
-          navigation_path: "/config/devices/device/7fd9ba2df8849e21864f27b8c34df87b"
-      - type: custom:xiaomi-vacuum-map-card
-        #title: Dustin
-        preset_name: Live map
-        map_locked: true
-        entity: vacuum.dustin
-        map_source:
-          camera: camera.dustin_map
-          crop:
-            top: 30
-            bottom: 50
-            left: 350
-            right: 20
-        calibration_source:
-          camera: true
-        debug: true
-        append_tiles: true
-        tiles:
-          - entity: sensor.dustin_battery_level
-            label: Battery
-          - entity: sensor.dustin_current_room
-            label: Current Room
-          - entity: sensor.dustin_status
-            label: Status
-      - type: entities
-        entities:
-          # - entity: sensor.dustin_cleaned_area
-          #   name: Dustin Cleaned Today
-          - entity: select.dustin_cleangenius
-          - entity: select.dustin_cleaning_mode
-          - entity: select.dustin_mop_pad_humidity
-          - entity: select.dustin_suction_level
-          - entity: select.dustin_washing_mode
-          - entity: select.dustin_water_temperature
-      - type: glance
-        title: Clean Areas
-        columns: 4
-        entities:
-          - entity: script.vacuum_entry_twice
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: Maintenance
+              content:
+                type: vertical-stack
+                cards:
+                  - type: custom:decluttering-card
+                    template: vacuum_maintenance_summary_card
+                    variables:
+                      - name: Dustin
+                      - slug: dustin
+                      - sensor_reset_button: button.dustin_reset_sensor
+
+                  - type: custom:decluttering-card
+                    template: vacuum_maintenance_summary_card
+                    variables:
+                      - name: Moeke
+                      - slug: moeke
+                      - sensor_reset_button: button.moeke_reset_sensor
+
+                  - type: custom:decluttering-card
+                    template: vacuum_maintenance_summary_card
+                    variables:
+                      - name: Alfred
+                      - slug: alfred
+                      - sensor_reset_button: button.alfred_reset_sensor_dirty
+
+      # QUICK CLEAN
+      - type: heading
+        heading: Quick Clean
+        heading_style: subtitle
+
+      - type: custom:mushroom-chips-card
+        alignment: start
+        chips:
+          - type: template
+            icon: mdi:home-floor-g
+            icon_color: blue
+            content: Ground · Dustin
+            tap_action:
+              action: none
+          - type: template
             icon: mdi:door
-            name: Entry
+            content: Entry
             tap_action:
               action: call-service
               service: script.vacuum_entry_twice
-          - entity: script.vacuum_kitchen_twice
+          - type: template
             icon: mdi:fridge-outline
-            name: Kitchen
+            content: Kitchen
             tap_action:
               action: call-service
               service: script.vacuum_kitchen_twice
-          - entity: script.vacuum_livingroom_twice
+          - type: template
             icon: mdi:table-chair
-            name: Living Room
+            content: Living Room
             tap_action:
               action: call-service
               service: script.vacuum_livingroom_twice
-        show_icon: true
-        show_name: true
-        show_state: false
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.dustin_area_cleaned_today
-            aggregate_func: last
-            name: Area Cleaned Today
-        name: Dustin Cleaned Area
-        line_color: '#8891d0'
-        hours_to_show: 336 # 14 days
-        group_by: date
-        points_per_hour: 1
-        line_width: 8
-        font_size: 75
-        font_size_header: 14
-        align_state: right
-        lower_bound: 0
-        upper_bound: ~60
-        show:
-          graph: bar
-          icon: false
-          points: false
 
-  - type: vertical-stack
-    cards:
-      - type: button
-        name: "Moeke: Go to Device Settings"
-        tap_action:
-          action: navigate
-          navigation_path: "/config/devices/device/fbfd7b8ba43fffa14307a6d20c8e153d"
-      - type: custom:xiaomi-vacuum-map-card
-        #title: Moeke
-        preset_name: Live map
-        map_locked: true
-        entity: vacuum.moeke
-        map_source:
-          camera: camera.moeke_map
-          crop:
-            top: 100
-            bottom: 240
-            left: 30
-            right: 30
-        calibration_source:
-          camera: true
-        debug: true
-        append_tiles: true
-        tiles:
-          - entity: sensor.moeke_detergent_left
-            label: Detergent
-            hold_action:
-              confirmation:
-                text: "Reset detergent level?"
-              action: call-service
-              service: button.press
-              target:
-                entity_id: button.moeke_reset_detergent
-          - entity: binary_sensor.moeke_reservoir_leak_sensor
-            label: Reservoir Leak
-          - entity: select.moeke_cleaning_mode
-            label: Cleaning Mode
-      - type: entities
-        entities:
-          # - entity: sensor.moeke_area_cleaned_today
-          #   name: Moeke Cleaned Today
-          - entity: select.moeke_cleaning_mode
-      - type: glance
-        title: Clean Areas
-        columns: 4
-        entities:
-          - entity: script.vacuum_bedroom_twice
+      - type: custom:mushroom-chips-card
+        alignment: start
+        chips:
+          - type: template
+            icon: mdi:home-floor-1
+            icon_color: green
+            content: First · Moeke
+            tap_action:
+              action: none
+          - type: template
             icon: mdi:bed
-            name: Bedroom
+            content: Bedroom
             tap_action:
               action: call-service
               service: script.vacuum_bedroom_twice
-          - entity: script.vacuum_bathroom_twice
+          - type: template
             icon: mdi:bathtub
-            name: Bathroom
+            content: Bathroom
             tap_action:
               action: call-service
               service: script.vacuum_bathroom_twice
-          - entity: script.vacuum_babyroom
+          - type: template
             icon: mdi:baby
-            name: Baby Room
+            content: Baby Room
             tap_action:
               action: call-service
               service: script.vacuum_babyroom
-        show_icon: true
-        show_name: true
-        show_state: false
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.moeke_area_cleaned_today
-            aggregate_func: last
-            name: Area Cleaned Today
-        name: Moeke Cleaned Area
-        line_color: '#8891d0'
-        hours_to_show: 336 # 14 days
-        group_by: date
-        points_per_hour: 1
-        line_width: 8
-        font_size: 75
-        font_size_header: 14
-        align_state: right
-        lower_bound: 0
-        upper_bound: ~60
-        show:
-          graph: bar
-          icon: false
-          points: false
 
-  - type: vertical-stack
-    cards:
-      - type: button
-        name: "Alfred: Go to Device Settings"
-        tap_action:
-          action: navigate
-          navigation_path: "/config/devices/device/63a45cb7ef7ef16a7cb28ab9d99936ea"
-      - type: custom:xiaomi-vacuum-map-card
-        #title: Alfred
-        preset_name: Live map
-        map_locked: true
-        entity: vacuum.alfred
-        map_source:
-          camera: image.alfred_map
-        calibration_source:
-          camera: true
-        debug: true
-      # - type: entities
-      #   entities:
-      #     - entity: sensor.alfred_area_cleaned_today
-      #       name: Alfred Cleaned Today
-      - type: glance
-        title: Clean Areas
-        columns: 5
-        entities:
-          - entity: script.vacuum_study_twice
+      - type: custom:mushroom-chips-card
+        alignment: start
+        chips:
+          - type: template
+            icon: mdi:home-floor-2
+            icon_color: purple
+            content: Second · Alfred
+            tap_action:
+              action: none
+          - type: template
             icon: mdi:desktop-tower-monitor
-            name: Study
+            content: Study
             tap_action:
               action: call-service
               service: script.vacuum_study_twice
-          - entity: script.vacuum_guestroom_twice
-            icon: mdi:bed
-            name: Guest Room
+          - type: template
+            icon: mdi:bed-outline
+            content: Guest Room
             tap_action:
               action: call-service
               service: script.vacuum_guestroom_twice
-          - entity: script.vacuum_washroom_twice
+          - type: template
             icon: mdi:tumble-dryer
-            name: Wash Room
+            content: Wash Room
             tap_action:
               action: call-service
               service: script.vacuum_washroom_twice
-          - entity: script.vacuum_tamarasroom_twice
+          - type: template
             icon: mdi:face-woman
-            name: Tamara's Room
+            content: Tamara's Room
             tap_action:
               action: call-service
               service: script.vacuum_tamarasroom_twice
-        show_icon: true
-        show_name: true
-        show_state: false
-      - type: custom:mini-graph-card
-        entities:
-          - entity: sensor.alfred_area_cleaned_today
-            aggregate_func: last
-            name: Area Cleaned Today
-        name: Alfred Cleaned Area
-        line_color: '#8891d0'
-        hours_to_show: 336 # 14 days
-        group_by: date
-        points_per_hour: 1
-        line_width: 8
-        font_size: 75
-        font_size_header: 14
-        align_state: right
-        lower_bound: 0
-        upper_bound: ~60
-        show:
-          graph: bar
-          icon: false
-          points: false
 
-  - type: custom:collapsable-cards
-    title: Argus
-    defaultOpen: false
-    cards:
-      - type: vertical-stack
+      # HISTORY
+      - type: custom:collapsable-cards
+        title: 14-Day Cleaning History
+        defaultOpen: false
         cards:
-          - type: button
-            name: "Argus: Go to Device Settings"
-            tap_action:
-              action: navigate
-              navigation_path: "/config/devices/device/5b526629f18568d13731a63d0c9b2ab4"
-          - type: custom:xiaomi-vacuum-map-card
-            #title: Argus
-            preset_name: Live map
-            map_locked: true
-            entity: vacuum.argus
-            map_source:
-              camera: image.argus_map
-            calibration_source:
-              camera: true
-            debug: true
-          # - type: entities
-          #   entities:
-          #     - entity: sensor.argus_area_cleaned_today
-          #       name: Argus Cleaned Today
-          - type: glance
-            title: Clean Areas
-            columns: 5
-            entities:
-              - entity: script.vacuum_bedroom_twice
-                icon: mdi:bed
-                name: Bedroom
-                tap_action:
-                  action: call-service
-                  service: script.vacuum_bedroom_twice
-              - entity: script.vacuum_bathroom_twice
-                icon: mdi:bathtub
-                name: Bathroom
-                tap_action:
-                  action: call-service
-                  service: script.vacuum_bathroom_twice
-              - entity: script.vacuum_babyroom
-                icon: mdi:baby
-                name: Baby Room
-                tap_action:
-                  action: call-service
-                  service: script.vacuum_babyroom
-            show_icon: true
-            show_name: true
-            show_state: false
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.argus_area_cleaned_today
-                aggregate_func: last
-                name: Area Cleaned Today
-            name: Argus Cleaned Area
-            line_color: '#8891d0'
-            hours_to_show: 336 # 14 days
-            group_by: date
-            points_per_hour: 1
-            line_width: 8
-            font_size: 75
-            font_size_header: 14
-            align_state: right
-            lower_bound: 0
-            upper_bound: ~60
-            show:
-              graph: bar
-              icon: false
-              points: false
+          - type: grid
+            columns: 3
+            square: false
+            cards:
+              - type: custom:decluttering-card
+                template: vacuum_history_card
+                variables:
+                  - name: Dustin
+                  - entity: sensor.dustin_area_cleaned_today
+
+              - type: custom:decluttering-card
+                template: vacuum_history_card
+                variables:
+                  - name: Moeke
+                  - entity: sensor.moeke_area_cleaned_today
+
+              - type: custom:decluttering-card
+                template: vacuum_history_card
+                variables:
+                  - name: Alfred
+                  - entity: sensor.alfred_area_cleaned_today

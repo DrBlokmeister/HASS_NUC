@@ -1269,3 +1269,1398 @@ co2_pop_up_grid_card:
           min-height: 56px;
           --icon-size: 28px;
         }
+
+##########################
+## VACUUM OVERVIEW CARD ##
+##########################
+vacuum_overview_card:
+  default:
+    - battery_entity: sensor.none
+    - room_entity: sensor.none
+    - task_entity: sensor.none
+    - progress_entity: sensor.none
+    - expected_area: 0
+    - expected_duration: 0
+    - reservoir_entity: sensor.none
+    - water_box_entity: sensor.none
+    - water_shortage_entity: sensor.none
+    - crop_top: 0
+    - crop_bottom: 0
+    - crop_left: 0
+    - crop_right: 0
+
+  card:
+    type: custom:button-card
+    entity: vacuum.[[slug]]
+    name: '[[name]]'
+    show_icon: true
+    show_name: true
+    show_state: false
+    show_label: false
+
+    triggers_update:
+      - '[[status_entity]]'
+      - '[[task_entity]]'
+      - '[[battery_entity]]'
+      - '[[room_entity]]'
+      - '[[current_duration_entity]]'
+      - '[[current_area_entity]]'
+      - '[[progress_entity]]'
+      - '[[last_time_entity]]'
+      - '[[last_duration_entity]]'
+      - '[[last_area_entity]]'
+
+    icon: mdi:robot-vacuum
+
+    custom_fields:
+      status: >-
+        [[[
+          const vacuum = states['vacuum.[[slug]]'];
+          const statusEntity = states['[[status_entity]]'];
+
+          let status = statusEntity?.state;
+
+          if (
+            '[[status_entity]]' === 'vacuum.[[slug]]' ||
+            !status ||
+            ['unknown', 'unavailable'].includes(status)
+          ) {
+            status = vacuum?.attributes?.status || vacuum?.state || 'Unavailable';
+          }
+
+          return status
+            .replaceAll('_', ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+        ]]]
+
+      detail: >-
+        [[[
+          const vacuum = states['vacuum.[[slug]]'];
+
+          const valid = value =>
+            value !== undefined &&
+            value !== null &&
+            !['unknown', 'unavailable', 'none', ''].includes(
+              String(value).toLowerCase()
+            );
+
+          const taskEntity = states['[[task_entity]]'];
+          let active;
+
+          if (
+            '[[task_entity]]' !== 'sensor.none' &&
+            taskEntity &&
+            valid(taskEntity.state)
+          ) {
+            const task = taskEntity.state.toLowerCase();
+
+            active = ![
+              'completed',
+              'complete',
+              'idle'
+            ].includes(task);
+          } else {
+            const state = vacuum?.state?.toLowerCase() || '';
+            const status =
+              (
+                vacuum?.attributes?.status ||
+                states['[[status_entity]]']?.state ||
+                state
+              ).toLowerCase();
+
+            active =
+              state === 'cleaning' ||
+              state === 'paused' ||
+              status.includes('cleaning') ||
+              status.includes('paused');
+          }
+
+          if (active) {
+            const room = states['[[room_entity]]']?.state;
+            const duration = states['[[current_duration_entity]]']?.state;
+            const area = states['[[current_area_entity]]']?.state;
+
+            const parts = [];
+
+            if (valid(room)) {
+              parts.push(room);
+            }
+
+            if (valid(duration)) {
+              parts.push(`${Math.round(Number(duration))} min`);
+            }
+
+            if (valid(area)) {
+              parts.push(`${Number(area).toFixed(1)} m²`);
+            }
+
+            return parts.join(' · ');
+          }
+
+          const last = states['[[last_time_entity]]']?.state;
+          const duration = states['[[last_duration_entity]]']?.state;
+          const area = states['[[last_area_entity]]']?.state;
+
+          const parts = [];
+
+          if (valid(last)) {
+            const date = new Date(last);
+            const minutes = Math.max(
+              0,
+              Math.floor((Date.now() - date.getTime()) / 60000)
+            );
+
+            let relative;
+
+            if (minutes < 2) {
+              relative = 'just now';
+            } else if (minutes < 60) {
+              relative = `${minutes} min ago`;
+            } else if (minutes < 1440) {
+              relative = `${Math.floor(minutes / 60)} h ago`;
+            } else {
+              relative = `${Math.floor(minutes / 1440)} d ago`;
+            }
+
+            parts.push(`Last clean ${relative}`);
+          } else {
+            parts.push('Last clean unknown');
+          }
+
+          if (valid(duration)) {
+            parts.push(`${Math.round(Number(duration))} min`);
+          }
+
+          if (valid(area)) {
+            parts.push(`${Number(area).toFixed(1)} m²`);
+          }
+
+          return parts.join(' · ');
+        ]]]
+
+      metric: >-
+        [[[
+          const valid = value =>
+            value !== undefined &&
+            value !== null &&
+            !['unknown', 'unavailable', 'none', ''].includes(
+              String(value).toLowerCase()
+            );
+
+          const battery = states['[[battery_entity]]']?.state;
+
+          if (valid(battery)) {
+            return `
+              <div style="
+                font-size: 22px;
+                font-weight: 600;
+                line-height: 1.1;
+                color: var(--primary-text-color);
+              ">
+                ${Math.round(Number(battery))}%
+              </div>
+              <div style="
+                margin-top: 4px;
+                font-size: 12px;
+                color: var(--secondary-text-color);
+              ">
+                Battery
+              </div>
+            `;
+          }
+
+          const vacuum = states['vacuum.[[slug]]'];
+          const taskEntity = states['[[task_entity]]'];
+
+          let active = false;
+
+          if (
+            '[[task_entity]]' !== 'sensor.none' &&
+            taskEntity &&
+            !['unknown', 'unavailable'].includes(taskEntity.state)
+          ) {
+            active = ![
+              'completed',
+              'complete',
+              'idle'
+            ].includes(taskEntity.state.toLowerCase());
+          } else {
+            const status =
+              (
+                vacuum?.attributes?.status ||
+                vacuum?.state ||
+                ''
+              ).toLowerCase();
+
+            active =
+              vacuum?.state === 'cleaning' ||
+              vacuum?.state === 'paused' ||
+              status.includes('cleaning') ||
+              status.includes('paused');
+          }
+
+          const area = active
+            ? states['[[current_area_entity]]']?.state
+            : states['[[last_area_entity]]']?.state;
+
+          if (valid(area)) {
+            return `
+              <div style="
+                font-size: 22px;
+                font-weight: 600;
+                line-height: 1.1;
+                color: var(--primary-text-color);
+              ">
+                ${Number(area).toFixed(1)}
+              </div>
+              <div style="
+                margin-top: 4px;
+                font-size: 12px;
+                color: var(--secondary-text-color);
+              ">
+                m² cleaned
+              </div>
+            `;
+          }
+
+          return '';
+        ]]]
+
+      state_badge: >-
+        [[[
+          const vacuum = states['vacuum.[[slug]]'];
+
+          const state = vacuum?.state?.toLowerCase() || '';
+          const status =
+            (
+              vacuum?.attributes?.status ||
+              states['[[status_entity]]']?.state ||
+              state
+            ).toLowerCase();
+
+          let icon = 'mdi:check';
+          let color = 'var(--success-color)';
+
+          if (
+            !vacuum ||
+            ['unknown', 'unavailable'].includes(state)
+          ) {
+            icon = 'mdi:help';
+            color = 'var(--disabled-text-color)';
+          } else if (
+            state === 'error' ||
+            vacuum?.attributes?.has_error === true
+          ) {
+            icon = 'mdi:alert';
+            color = 'var(--error-color)';
+          } else if (
+            state === 'cleaning' ||
+            status.includes('cleaning')
+          ) {
+            icon = 'mdi:play';
+            color = 'var(--info-color)';
+          } else if (
+            state === 'paused' ||
+            status.includes('paused')
+          ) {
+            icon = 'mdi:pause';
+            color = 'var(--warning-color)';
+          } else if (
+            state === 'returning' ||
+            status.includes('returning')
+          ) {
+            icon = 'mdi:home-import-outline';
+            color = 'var(--warning-color)';
+          } else if (
+            status.includes('charging')
+          ) {
+            icon = 'mdi:lightning-bolt';
+            color = 'var(--success-color)';
+          } else if (
+            state === 'docked' ||
+            status.includes('docked')
+          ) {
+            icon = 'mdi:home';
+            color = 'var(--success-color)';
+          }
+
+          return `
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 24px;
+              height: 24px;
+              border-radius: 50%;
+              background: ${color};
+              color: white;
+              box-shadow: 0 0 0 2px var(--ha-card-background);
+            ">
+              <ha-icon
+                icon="${icon}"
+                style="width: 15px; height: 15px;"
+              ></ha-icon>
+            </div>
+          `;
+        ]]]
+
+      # CLEANING PROGRESS + ETA
+      progress: >-
+        [[[
+          const vacuum = states['vacuum.[[slug]]'];
+
+          const valid = value =>
+            value !== undefined &&
+            value !== null &&
+            !['unknown', 'unavailable', 'none', ''].includes(
+              String(value).toLowerCase()
+            );
+
+          /*
+           * Dustin uses task_status as the authoritative indication
+           * that a cleaning task is still in progress.
+           *
+           * Moeke can use task_status as well.
+           *
+           * Alfred falls back to vacuum/status.
+           */
+          const taskEntity = states['[[task_entity]]'];
+          let active = false;
+
+          if (
+            '[[task_entity]]' !== 'sensor.none' &&
+            taskEntity &&
+            valid(taskEntity.state)
+          ) {
+            const task = taskEntity.state.toLowerCase();
+
+            active = ![
+              'completed',
+              'complete',
+              'idle'
+            ].includes(task);
+          } else {
+            const state = vacuum?.state?.toLowerCase() || '';
+            const status =
+              (
+                vacuum?.attributes?.status ||
+                states['[[status_entity]]']?.state ||
+                state
+              ).toLowerCase();
+
+            active =
+              state === 'cleaning' ||
+              state === 'paused' ||
+              status.includes('cleaning') ||
+              status.includes('paused');
+          }
+
+          if (!active) {
+            return '';
+          }
+
+          /*
+           * Progress:
+           * - Dustin: actual integration progress sensor.
+           * - Moeke / Alfred: cleaned area divided by expected full area.
+           */
+          const directProgress = states['[[progress_entity]]']?.state;
+
+          let progress;
+          let estimatedProgress = false;
+
+          if (valid(directProgress)) {
+            progress = Number(directProgress);
+          } else {
+            const area = Number(
+              states['[[current_area_entity]]']?.state
+            );
+
+            const expectedArea = Number('[[expected_area]]');
+
+            if (
+              !Number.isFinite(area) ||
+              !Number.isFinite(expectedArea) ||
+              expectedArea <= 0
+            ) {
+              return '';
+            }
+
+            progress = area / expectedArea * 100;
+            estimatedProgress = true;
+          }
+
+          progress = Math.max(0, Math.min(100, progress));
+
+          /*
+           * ETA is intentionally simple:
+           * expected full-clean duration - current cleaning time.
+           *
+           * These are empirical typical full-clean durations, so the
+           * result is shown as an approximation.
+           */
+          const elapsed = Number(
+            states['[[current_duration_entity]]']?.state
+          );
+
+          const expectedDuration = Number('[[expected_duration]]');
+
+          let eta = '';
+
+          if (
+            Number.isFinite(elapsed) &&
+            Number.isFinite(expectedDuration) &&
+            expectedDuration > 0
+          ) {
+            const remaining = Math.max(
+              0,
+              expectedDuration - elapsed
+            );
+
+            if (remaining < 1) {
+              eta = '<1 min left';
+            } else {
+              eta = `~${Math.ceil(remaining)} min left`;
+            }
+          }
+
+          const state = vacuum?.state?.toLowerCase() || '';
+          const status =
+            (
+              vacuum?.attributes?.status ||
+              states['[[status_entity]]']?.state ||
+              state
+            ).toLowerCase();
+
+          const paused =
+            state === 'paused' ||
+            status.includes('paused');
+
+          const barColor = paused
+            ? 'var(--warning-color)'
+            : 'var(--info-color)';
+
+          const progressText =
+            `${estimatedProgress ? '~' : ''}${Math.round(progress)}% complete`;
+
+          return `
+            <div style="width: 100%;">
+              <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 5px;
+                font-size: 12px;
+                line-height: 1.2;
+                color: var(--secondary-text-color);
+              ">
+                <span>${progressText}</span>
+                <span>${eta}</span>
+              </div>
+
+              <div style="
+                width: 100%;
+                height: 6px;
+                overflow: hidden;
+                border-radius: 999px;
+                background: var(--divider-color);
+              ">
+                <div style="
+                  width: ${progress}%;
+                  height: 100%;
+                  border-radius: 999px;
+                  background: ${barColor};
+                  transition: width 0.4s ease;
+                "></div>
+              </div>
+            </div>
+          `;
+        ]]]
+
+    styles:
+      card:
+        - min-height: 108px
+        - padding: 14px 18px
+        - overflow: visible
+
+      grid:
+        - position: relative
+        - grid-template-areas: |
+            "i n metric"
+            "i status metric"
+            "i detail metric"
+            "i progress progress"
+        - grid-template-columns: 60px 1fr 90px
+        - grid-template-rows: 30px 26px auto auto
+        - column-gap: 16px
+        - width: 100%
+
+      img_cell:
+        - width: 54px
+        - height: 54px
+        - border-radius: 50%
+        - justify-self: center
+        - align-self: center
+        - background-color: >-
+            [[[
+              const vacuum = states['vacuum.[[slug]]'];
+              const state = vacuum?.state?.toLowerCase() || '';
+              const status =
+                (
+                  vacuum?.attributes?.status ||
+                  states['[[status_entity]]']?.state ||
+                  state
+                ).toLowerCase();
+
+              if (
+                !vacuum ||
+                ['unknown', 'unavailable'].includes(state)
+              ) {
+                return 'rgba(128, 128, 128, 0.12)';
+              }
+
+              if (
+                state === 'error' ||
+                vacuum?.attributes?.has_error === true
+              ) {
+                return 'rgba(244, 67, 54, 0.14)';
+              }
+
+              if (
+                state === 'cleaning' ||
+                status.includes('cleaning')
+              ) {
+                return 'rgba(33, 150, 243, 0.14)';
+              }
+
+              if (
+                state === 'paused' ||
+                state === 'returning' ||
+                status.includes('paused') ||
+                status.includes('returning')
+              ) {
+                return 'rgba(255, 152, 0, 0.14)';
+              }
+
+              return 'rgba(76, 175, 80, 0.14)';
+            ]]]
+
+      icon:
+        - width: 36px
+        - color: >-
+            [[[
+              const vacuum = states['vacuum.[[slug]]'];
+              const state = vacuum?.state?.toLowerCase() || '';
+              const status =
+                (
+                  vacuum?.attributes?.status ||
+                  states['[[status_entity]]']?.state ||
+                  state
+                ).toLowerCase();
+
+              if (
+                !vacuum ||
+                ['unknown', 'unavailable'].includes(state)
+              ) {
+                return 'var(--disabled-text-color)';
+              }
+
+              if (
+                state === 'error' ||
+                vacuum?.attributes?.has_error === true
+              ) {
+                return 'var(--error-color)';
+              }
+
+              if (
+                state === 'cleaning' ||
+                status.includes('cleaning')
+              ) {
+                return 'var(--info-color)';
+              }
+
+              if (
+                state === 'paused' ||
+                state === 'returning' ||
+                status.includes('paused') ||
+                status.includes('returning')
+              ) {
+                return 'var(--warning-color)';
+              }
+
+              return 'var(--success-color)';
+            ]]]
+
+      name:
+        - justify-self: start
+        - align-self: end
+        - font-size: 20px
+        - font-weight: 600
+        - line-height: 1.2
+        - color: var(--primary-text-color)
+
+      custom_fields:
+        status:
+          - justify-self: start
+          - align-self: center
+          - font-size: 16px
+          - font-weight: 500
+          - line-height: 1.2
+          - color: var(--primary-text-color)
+
+        detail:
+          - justify-self: start
+          - align-self: start
+          - font-size: 15px
+          - line-height: 1.3
+          - color: var(--secondary-text-color)
+          - white-space: normal
+          - text-align: left
+
+        metric:
+          - justify-self: end
+          - align-self: center
+          - text-align: center
+          - min-width: 78px
+
+        state_badge:
+          - position: absolute
+          - left: 42px
+          - top: 42px
+          - z-index: 2
+
+        progress:
+          - grid-column: 2 / 4
+          - width: 100%
+          - margin-top: 8px
+          - padding-bottom: 1px
+          - display: >-
+              [[[
+                const vacuum = states['vacuum.[[slug]]'];
+
+                const valid = value =>
+                  value !== undefined &&
+                  value !== null &&
+                  !['unknown', 'unavailable', 'none', ''].includes(
+                    String(value).toLowerCase()
+                  );
+
+                const taskEntity = states['[[task_entity]]'];
+
+                if (
+                  '[[task_entity]]' !== 'sensor.none' &&
+                  taskEntity &&
+                  valid(taskEntity.state)
+                ) {
+                  return [
+                    'completed',
+                    'complete',
+                    'idle'
+                  ].includes(taskEntity.state.toLowerCase())
+                    ? 'none'
+                    : 'block';
+                }
+
+                const state = vacuum?.state?.toLowerCase() || '';
+                const status =
+                  (
+                    vacuum?.attributes?.status ||
+                    states['[[status_entity]]']?.state ||
+                    state
+                  ).toLowerCase();
+
+                return (
+                  state === 'cleaning' ||
+                  state === 'paused' ||
+                  status.includes('cleaning') ||
+                  status.includes('paused')
+                )
+                  ? 'block'
+                  : 'none';
+              ]]]
+
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[name]]'
+          content:
+            type: custom:decluttering-card
+            template: vacuum_robot_popup
+            variables:
+              - name: '[[name]]'
+              - slug: '[[slug]]'
+              - status_entity: '[[status_entity]]'
+              - battery_entity: '[[battery_entity]]'
+              - room_entity: '[[room_entity]]'
+              - current_duration_entity: '[[current_duration_entity]]'
+              - current_area_entity: '[[current_area_entity]]'
+              - last_time_entity: '[[last_time_entity]]'
+              - last_duration_entity: '[[last_duration_entity]]'
+              - last_area_entity: '[[last_area_entity]]'
+              - map_entity: '[[map_entity]]'
+              - crop_top: '[[crop_top]]'
+              - crop_bottom: '[[crop_bottom]]'
+              - crop_left: '[[crop_left]]'
+              - crop_right: '[[crop_right]]'
+              - reservoir_entity: '[[reservoir_entity]]'
+              - water_box_entity: '[[water_box_entity]]'
+              - water_shortage_entity: '[[water_shortage_entity]]'
+              - sensor_reset_button: '[[sensor_reset_button]]'
+              - device_id: '[[device_id]]'
+
+    hold_action:
+      action: more-info
+
+
+########################
+## VACUUM HEALTH CARD ##
+########################
+vacuum_health_card:
+  default:
+    - battery_entity: sensor.none
+    - error_entity: sensor.none
+    - low_water_entity: sensor.none
+    - clean_water_entity: sensor.none
+    - dirty_water_entity: sensor.none
+    - dock_entity: sensor.none
+    - auto_empty_entity: sensor.none
+    - reservoir_entity: sensor.none
+    - water_box_entity: sensor.none
+    - water_shortage_entity: sensor.none
+    - sensor_dirty_entity: sensor.none
+
+  card:
+    type: custom:mushroom-template-card
+    entity: vacuum.[[slug]]
+    primary: '[[name]]'
+    secondary: >-
+      {%- set status = states('[[status_entity]]') -%}
+      {%- if status in ['unknown', 'unavailable'] %}
+        {%- set status = state_attr('vacuum.[[slug]]', 'status') or states('vacuum.[[slug]]') -%}
+      {%- endif -%}
+
+      {%- set battery = states('[[battery_entity]]') -%}
+      {{ status | replace('_', ' ') | title }}
+      {%- if battery not in ['unknown', 'unavailable', 'none', ''] %}
+        · {{ battery | float(0) | round(0) | int }}%
+      {%- endif %}
+
+      {{- '\n' -}}
+
+      {%- set error = states('[[error_entity]]') -%}
+      {%- set low_water = states('[[low_water_entity]]') -%}
+      {%- set reservoir = states('[[reservoir_entity]]') -%}
+      {%- set box = states('[[water_box_entity]]') -%}
+      {%- set shortage = states('[[water_shortage_entity]]') -%}
+      {%- set sensor = states('[[sensor_dirty_entity]]') -%}
+      {%- if sensor in ['unknown', 'unavailable'] %}
+        {%- set sensor = state_attr('vacuum.[[slug]]', 'sensor_dirty_time_left') -%}
+      {%- endif -%}
+
+      {%- if states('vacuum.[[slug]]') in ['unknown', 'unavailable', 'error'] %}
+        Vacuum unavailable / error
+      {%- elif error not in ['no_error', 'unknown', 'unavailable'] %}
+        {{ error | replace('_', ' ') | title }}
+      {%- elif low_water not in ['no_warning', 'unknown', 'unavailable'] %}
+        Water warning · mopping limited
+      {%- elif reservoir == 'off' %}
+        Clean water empty · mopping unavailable
+      {%- elif box == 'off' %}
+        Water box missing · mopping unavailable
+      {%- elif shortage == 'on' %}
+        Water shortage · mopping unavailable
+      {%- elif sensor is not none and sensor | string not in ['unknown', 'unavailable'] and sensor | float(1) <= 0 %}
+        Operational · sensors need cleaning
+      {%- else %}
+        Operational · no issues
+      {%- endif %}
+
+    icon: mdi:robot-vacuum
+    icon_color: >-
+      {%- set error = states('[[error_entity]]') -%}
+      {%- set low_water = states('[[low_water_entity]]') -%}
+      {%- set sensor = states('[[sensor_dirty_entity]]') -%}
+      {%- if sensor in ['unknown', 'unavailable'] %}
+        {%- set sensor = state_attr('vacuum.[[slug]]', 'sensor_dirty_time_left') -%}
+      {%- endif %}
+
+      {% if states('vacuum.[[slug]]') in ['unknown', 'unavailable', 'error']
+            or error not in ['no_error', 'unknown', 'unavailable'] %}
+        red
+      {% elif low_water not in ['no_warning', 'unknown', 'unavailable']
+            or is_state('[[reservoir_entity]]', 'off')
+            or is_state('[[water_box_entity]]', 'off')
+            or is_state('[[water_shortage_entity]]', 'on') %}
+        amber
+      {% elif sensor is not none
+            and sensor | string not in ['unknown', 'unavailable']
+            and sensor | float(1) <= 0 %}
+        lime
+      {% else %}
+        green
+      {% endif %}
+
+    multiline_secondary: true
+    fill_container: true
+
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[name]] Health & Diagnostics'
+          content:
+            type: custom:decluttering-card
+            template: vacuum_health_popup
+            variables:
+              - name: '[[name]]'
+              - slug: '[[slug]]'
+              - error_entity: '[[error_entity]]'
+              - low_water_entity: '[[low_water_entity]]'
+              - clean_water_entity: '[[clean_water_entity]]'
+              - dirty_water_entity: '[[dirty_water_entity]]'
+              - dock_entity: '[[dock_entity]]'
+              - auto_empty_entity: '[[auto_empty_entity]]'
+              - reservoir_entity: '[[reservoir_entity]]'
+              - water_box_entity: '[[water_box_entity]]'
+              - water_shortage_entity: '[[water_shortage_entity]]'
+              - sensor_dirty_entity: '[[sensor_dirty_entity]]'
+              - device_id: '[[device_id]]'
+
+
+#####################################
+## VACUUM MAINTENANCE SUMMARY CARD ##
+#####################################
+vacuum_maintenance_summary_card:
+  card:
+    type: custom:mushroom-template-card
+    entity: vacuum.[[slug]]
+    primary: '[[name]]'
+    secondary: >-
+      {%- set filter_entity = 'sensor.[[slug]]_filter_time_left' -%}
+      {%- set main_entity = 'sensor.[[slug]]_main_brush_time_left' -%}
+      {%- set side_entity = 'sensor.[[slug]]_side_brush_time_left' -%}
+      {%- set sensor_entity = 'sensor.[[slug]]_sensor_dirty_time_left' -%}
+
+      {%- set filter = states(filter_entity) -%}
+      {%- if filter in ['unknown', 'unavailable'] %}
+        {%- set filter = states('sensor.[[slug]]_filter_left') -%}
+      {%- endif %}
+      {%- if filter in ['unknown', 'unavailable'] %}
+        {%- set filter = state_attr('vacuum.[[slug]]', 'filter_time_left') -%}
+      {%- endif %}
+
+      {%- set main = states(main_entity) -%}
+      {%- if main in ['unknown', 'unavailable'] %}
+        {%- set main = states('sensor.[[slug]]_main_brush_left') -%}
+      {%- endif %}
+      {%- if main in ['unknown', 'unavailable'] %}
+        {%- set main = state_attr('vacuum.[[slug]]', 'main_brush_time_left') -%}
+      {%- endif %}
+
+      {%- set side = states(side_entity) -%}
+      {%- if side in ['unknown', 'unavailable'] %}
+        {%- set side = states('sensor.[[slug]]_side_brush_left') -%}
+      {%- endif %}
+      {%- if side in ['unknown', 'unavailable'] %}
+        {%- set side = state_attr('vacuum.[[slug]]', 'side_brush_time_left') -%}
+      {%- endif %}
+
+      {%- set sensors = states(sensor_entity) -%}
+      {%- if sensors in ['unknown', 'unavailable'] %}
+        {%- set sensors = states('sensor.[[slug]]_sensor_dirty_left') -%}
+      {%- endif %}
+      {%- if sensors in ['unknown', 'unavailable'] %}
+        {%- set sensors = state_attr('vacuum.[[slug]]', 'sensor_dirty_time_left') -%}
+      {%- endif %}
+
+      Filter {{ filter | float(0) | round(0) | int }} h
+      · Main {{ main | float(0) | round(0) | int }} h
+      {{- '\n' -}}
+      Side {{ side | float(0) | round(0) | int }} h
+      · Sensors
+      {%- if sensors | float(0) <= 0 %}
+        {{ ' ' }}due
+      {%- else %}
+        {{ ' ' }}{{ sensors | float(0) | round(0) | int }} h
+      {%- endif %}
+
+    icon: mdi:wrench-clock
+    icon_color: >-
+      {%- set values = namespace(replacement=[]) -%}
+      {%- for metric in ['filter', 'main_brush', 'side_brush'] -%}
+        {%- set e1 = 'sensor.[[slug]]_' ~ metric ~ '_time_left' -%}
+        {%- set e2 = 'sensor.[[slug]]_' ~ metric ~ '_left' -%}
+        {%- set raw = states(e1) -%}
+        {%- if raw in ['unknown', 'unavailable'] %}{% set raw = states(e2) %}{% endif -%}
+        {%- if raw in ['unknown', 'unavailable'] %}{% set raw = state_attr('vacuum.[[slug]]', metric ~ '_time_left') %}{% endif -%}
+        {%- if raw is not none and raw | string not in ['unknown', 'unavailable'] %}
+          {%- set values.replacement = values.replacement + [raw | float] -%}
+        {%- endif %}
+      {%- endfor -%}
+
+      {%- set sensor = states('sensor.[[slug]]_sensor_dirty_time_left') -%}
+      {%- if sensor in ['unknown', 'unavailable'] %}{% set sensor = states('sensor.[[slug]]_sensor_dirty_left') %}{% endif -%}
+      {%- if sensor in ['unknown', 'unavailable'] %}{% set sensor = state_attr('vacuum.[[slug]]', 'sensor_dirty_time_left') %}{% endif -%}
+
+      {% if values.replacement | count > 0 and values.replacement | min <= 0 %}
+        red
+      {% elif values.replacement | count > 0 and values.replacement | min <= 24 %}
+        amber
+      {% elif sensor is not none and sensor | float(1) <= 0 %}
+        lime
+      {% else %}
+        green
+      {% endif %}
+
+    multiline_secondary: true
+    fill_container: true
+
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[name]] Maintenance'
+          content:
+            type: custom:decluttering-card
+            template: vacuum_maintenance_popup
+            variables:
+              - name: '[[name]]'
+              - slug: '[[slug]]'
+              - sensor_reset_button: '[[sensor_reset_button]]'
+
+
+##############################
+## VACUUM SERVICE ITEM CARD ##
+##############################
+vacuum_service_item_card:
+  card:
+    type: custom:mushroom-template-card
+    entity: vacuum.[[slug]]
+    primary: '[[name]]'
+    secondary: >-
+      {%- set e1 = 'sensor.[[slug]]_[[metric]]_time_left' -%}
+      {%- set e2 = 'sensor.[[slug]]_[[metric]]_left' -%}
+      {%- set value = states(e1) -%}
+      {%- if value in ['unknown', 'unavailable'] %}{% set value = states(e2) %}{% endif -%}
+      {%- if value in ['unknown', 'unavailable'] %}
+        {%- set value = state_attr('vacuum.[[slug]]', '[[metric]]_time_left') -%}
+      {%- endif -%}
+
+      {%- set value = value | float(0) -%}
+      {% if value < 0 %}
+        {{ (value | abs) | round(0) | int }} h overdue
+      {% elif value == 0 %}
+        Due now
+      {% else %}
+        {{ value | round(0) | int }} h left
+      {% endif %}
+
+    icon: '[[icon]]'
+    icon_color: >-
+      {%- set e1 = 'sensor.[[slug]]_[[metric]]_time_left' -%}
+      {%- set e2 = 'sensor.[[slug]]_[[metric]]_left' -%}
+      {%- set value = states(e1) -%}
+      {%- if value in ['unknown', 'unavailable'] %}{% set value = states(e2) %}{% endif -%}
+      {%- if value in ['unknown', 'unavailable'] %}
+        {%- set value = state_attr('vacuum.[[slug]]', '[[metric]]_time_left') -%}
+      {%- endif -%}
+      {%- set value = value | float(0) -%}
+
+      {% if '[[metric]]' == 'sensor_dirty' and value <= 0 %}
+        lime
+      {% elif value <= 0 %}
+        red
+      {% elif value <= 24 %}
+        amber
+      {% else %}
+        green
+      {% endif %}
+
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: '[[reset_button]]'
+      confirmation:
+        text: Reset [[name]] maintenance counter?
+
+    hold_action:
+      action: more-info
+
+
+########################
+## VACUUM ROBOT POPUP ##
+########################
+vacuum_robot_popup:
+  default:
+    - battery_entity: sensor.none
+    - room_entity: sensor.none
+    - reservoir_entity: sensor.none
+    - water_box_entity: sensor.none
+    - water_shortage_entity: sensor.none
+    - crop_top: 0
+    - crop_bottom: 0
+    - crop_left: 0
+    - crop_right: 0
+
+  card:
+    type: vertical-stack
+    cards:
+      # STATUS
+      - type: custom:mushroom-template-card
+        entity: vacuum.[[slug]]
+        primary: '[[name]]'
+        secondary: >-
+          {%- set status = states('[[status_entity]]') -%}
+          {%- if status in ['unknown', 'unavailable'] %}
+            {%- set status = state_attr('vacuum.[[slug]]', 'status') or states('vacuum.[[slug]]') -%}
+          {%- endif %}
+          {%- set battery = states('[[battery_entity]]') -%}
+          {%- set duration = states('[[current_duration_entity]]') -%}
+          {%- set area = states('[[current_area_entity]]') -%}
+
+          {{ status | replace('_', ' ') | title }}
+          {%- if battery not in ['unknown', 'unavailable', 'none', ''] %}
+            · {{ battery | float(0) | round(0) | int }}%
+          {%- endif %}
+          {{- '\n' -}}
+          {{ duration | float(0) | round(0) | int }} min
+          · {{ area | float(0) | round(1) }} m²
+        icon: mdi:robot-vacuum
+        icon_color: >-
+          {% if states('vacuum.[[slug]]') == 'cleaning' %}
+            blue
+          {% elif states('vacuum.[[slug]]') in ['paused', 'returning'] %}
+            amber
+          {% elif states('vacuum.[[slug]]') in ['error', 'unavailable'] %}
+            red
+          {% else %}
+            green
+          {% endif %}
+        multiline_secondary: true
+
+      # QUICK ROBOT ACTIONS
+      - type: custom:mushroom-chips-card
+        alignment: center
+        chips:
+          - type: template
+            icon: mdi:play
+            content: Start
+            tap_action:
+              action: call-service
+              service: vacuum.start
+              target:
+                entity_id: vacuum.[[slug]]
+          - type: template
+            icon: mdi:pause
+            content: Pause
+            tap_action:
+              action: call-service
+              service: vacuum.pause
+              target:
+                entity_id: vacuum.[[slug]]
+          - type: template
+            icon: mdi:home-import-outline
+            content: Dock
+            tap_action:
+              action: call-service
+              service: vacuum.return_to_base
+              target:
+                entity_id: vacuum.[[slug]]
+
+      # MAP
+      - type: custom:xiaomi-vacuum-map-card
+        preset_name: Live map
+        map_locked: true
+        entity: vacuum.[[slug]]
+        map_source:
+          camera: '[[map_entity]]'
+          crop:
+            top: '[[crop_top]]'
+            bottom: '[[crop_bottom]]'
+            left: '[[crop_left]]'
+            right: '[[crop_right]]'
+        calibration_source:
+          camera: true
+        debug: false
+
+      # COMMON CLEANING SETTINGS
+      - type: custom:auto-entities
+        show_empty: false
+        card:
+          type: entities
+          title: Cleaning Settings
+          show_header_toggle: false
+        filter:
+          include:
+            - entity_id: select.[[slug]]_cleaning_mode
+            - entity_id: select.[[slug]]_suction_level
+            - entity_id: select.[[slug]]_cleangenius
+            - entity_id: select.[[slug]]_cleangenius_mode
+            - entity_id: select.[[slug]]_washing_mode
+            - entity_id: select.[[slug]]_water_temperature
+            - entity_id: select.[[slug]]_mop_wash_level
+            - entity_id: select.[[slug]]_mopping_type
+            - entity_id: number.[[slug]]_wetness_level
+          exclude:
+            - state: unavailable
+
+      # DOCK / WATER - DISAPPEARS FOR ALFRED EXCEPT HIS WATER BOX ENTITIES
+      - type: custom:auto-entities
+        show_empty: false
+        card:
+          type: entities
+          title: Water & Dock
+          show_header_toggle: false
+        filter:
+          include:
+            - entity_id: sensor.[[slug]]_clean_water_tank_status
+            - entity_id: sensor.[[slug]]_dirty_water_tank_status
+            - entity_id: sensor.[[slug]]_low_water_warning
+            - entity_id: sensor.[[slug]]_self_wash_base_status
+            - entity_id: sensor.[[slug]]_auto_empty_status
+            - entity_id: sensor.[[slug]]_dust_bag_status
+            - entity_id: '[[reservoir_entity]]'
+            - entity_id: '[[water_box_entity]]'
+            - entity_id: '[[water_shortage_entity]]'
+            - entity_id: binary_sensor.[[slug]]_mop_attached
+          exclude:
+            - state: unavailable
+
+      # AVAILABLE DOCK ACTIONS ONLY
+      - type: custom:auto-entities
+        show_empty: false
+        card:
+          type: entities
+          title: Dock Actions
+          show_header_toggle: false
+        filter:
+          include:
+            - entity_id: button.[[slug]]_self_clean
+            - entity_id: button.[[slug]]_start_auto_empty
+            - entity_id: button.[[slug]]_manual_drying
+            - entity_id: button.[[slug]]_start_drying_2
+            - entity_id: button.[[slug]]_base_station_cleaning
+          exclude:
+            - state: unavailable
+
+      # LOWER HIERARCHY
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Maintenance
+            secondary: Consumables & reset counters
+            icon: mdi:wrench-clock
+            icon_color: grey
+            tap_action:
+              action: fire-dom-event
+              browser_mod:
+                service: browser_mod.popup
+                data:
+                  title: '[[name]] Maintenance'
+                  content:
+                    type: custom:decluttering-card
+                    template: vacuum_maintenance_popup
+                    variables:
+                      - name: '[[name]]'
+                      - slug: '[[slug]]'
+                      - sensor_reset_button: '[[sensor_reset_button]]'
+
+          - type: custom:mushroom-template-card
+            primary: Device Settings
+            secondary: Integration & entities
+            icon: mdi:cog
+            icon_color: grey
+            tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/[[device_id]]
+
+
+#########################
+## VACUUM HEALTH POPUP ##
+#########################
+vacuum_health_popup:
+  default:
+    - error_entity: sensor.none
+    - low_water_entity: sensor.none
+    - clean_water_entity: sensor.none
+    - dirty_water_entity: sensor.none
+    - dock_entity: sensor.none
+    - auto_empty_entity: sensor.none
+    - reservoir_entity: sensor.none
+    - water_box_entity: sensor.none
+    - water_shortage_entity: sensor.none
+    - sensor_dirty_entity: sensor.none
+
+  card:
+    type: vertical-stack
+    cards:
+      - type: custom:auto-entities
+        show_empty: false
+        card:
+          type: entities
+          title: Current Status
+          show_header_toggle: false
+        filter:
+          include:
+            - entity_id: sensor.[[slug]]_status
+            - entity_id: sensor.[[slug]]_state
+            - entity_id: sensor.[[slug]]_task_status
+            - entity_id: sensor.[[slug]]_charging_status
+            - entity_id: sensor.[[slug]]_relocation_status
+            - entity_id: '[[error_entity]]'
+            - entity_id: '[[low_water_entity]]'
+            - entity_id: '[[clean_water_entity]]'
+            - entity_id: '[[dirty_water_entity]]'
+            - entity_id: '[[dock_entity]]'
+            - entity_id: '[[auto_empty_entity]]'
+            - entity_id: '[[reservoir_entity]]'
+            - entity_id: '[[water_box_entity]]'
+            - entity_id: '[[water_shortage_entity]]'
+            - entity_id: binary_sensor.[[slug]]_mop_attached
+          exclude:
+            - state: unavailable
+
+      - type: custom:mushroom-template-card
+        entity: vacuum.[[slug]]
+        primary: Raw Vacuum Status
+        secondary: >-
+          State {{ states('vacuum.[[slug]]') }}
+          · Status {{ state_attr('vacuum.[[slug]]', 'status') or '—' }}
+          {{- '\n' -}}
+          Error {{ state_attr('vacuum.[[slug]]', 'error') or '—' }}
+          · Located {{ state_attr('vacuum.[[slug]]', 'located') if state_attr('vacuum.[[slug]]', 'located') is not none else '—' }}
+        icon: mdi:information-outline
+        multiline_secondary: true
+
+      - type: custom:mushroom-template-card
+        primary: Device Settings
+        secondary: Full integration diagnostics
+        icon: mdi:cog
+        icon_color: grey
+        tap_action:
+          action: navigate
+          navigation_path: /config/devices/device/[[device_id]]
+
+
+##############################
+## VACUUM MAINTENANCE POPUP ##
+##############################
+vacuum_maintenance_popup:
+  card:
+    type: vertical-stack
+    cards:
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:decluttering-card
+            template: vacuum_service_item_card
+            variables:
+              - name: Filter
+              - slug: '[[slug]]'
+              - metric: filter
+              - icon: mdi:air-filter
+              - reset_button: button.[[slug]]_reset_filter
+
+          - type: custom:decluttering-card
+            template: vacuum_service_item_card
+            variables:
+              - name: Main Brush
+              - slug: '[[slug]]'
+              - metric: main_brush
+              - icon: mdi:brush
+              - reset_button: button.[[slug]]_reset_main_brush
+
+          - type: custom:decluttering-card
+            template: vacuum_service_item_card
+            variables:
+              - name: Side Brush
+              - slug: '[[slug]]'
+              - metric: side_brush
+              - icon: mdi:pinwheel-outline
+              - reset_button: button.[[slug]]_reset_side_brush
+
+          - type: custom:decluttering-card
+            template: vacuum_service_item_card
+            variables:
+              - name: Sensors
+              - slug: '[[slug]]'
+              - metric: sensor_dirty
+              - icon: mdi:radar
+              - reset_button: '[[sensor_reset_button]]'
+
+      # MODEL-SPECIFIC EXTRA COUNTERS
+      - type: custom:mushroom-template-card
+        entity: vacuum.[[slug]]
+        primary: Additional Maintenance
+        secondary: >-
+          {%- set ns = namespace(items=[]) -%}
+          {%- set mop = state_attr('vacuum.[[slug]]', 'mop_pad_time_left') -%}
+          {%- set detergent = state_attr('vacuum.[[slug]]', 'detergent_time_left') -%}
+          {%- set silver = state_attr('vacuum.[[slug]]', 'silver_ion_time_left') -%}
+          {%- set scale = state_attr('vacuum.[[slug]]', 'scale_inhibitor_time_left') -%}
+          {%- set wheel = state_attr('vacuum.[[slug]]', 'wheel_dirty_time_left') -%}
+
+          {%- if mop is not none %}{% set ns.items = ns.items + ['Mop ' ~ (mop | round(0) | int) ~ ' h'] %}{% endif -%}
+          {%- if detergent is not none %}{% set ns.items = ns.items + ['Detergent ' ~ (detergent | round(0) | int) ~ ' h'] %}{% endif -%}
+          {%- if silver is not none %}{% set ns.items = ns.items + ['Silver ion ' ~ (silver | round(0) | int) ~ ' h'] %}{% endif -%}
+          {%- if scale is not none %}{% set ns.items = ns.items + ['Scale inhibitor ' ~ (scale | round(0) | int) ~ ' d'] %}{% endif -%}
+          {%- if wheel is not none %}{% set ns.items = ns.items + ['Wheels ' ~ (wheel | round(0) | int) ~ ' d'] %}{% endif -%}
+
+          {{ ns.items | join(' · ') if ns.items else 'No additional service counters' }}
+        icon: mdi:wrench-outline
+        icon_color: grey
+        multiline_secondary: true
+
+      # EXTRA RESET BUTTONS ONLY WHEN THE MODEL EXPOSES THEM
+      - type: custom:auto-entities
+        show_empty: false
+        card:
+          type: entities
+          title: Additional Reset Actions
+          show_header_toggle: false
+        filter:
+          include:
+            - entity_id: button.[[slug]]_reset_mop_pad
+            - entity_id: button.[[slug]]_reset_detergent
+            - entity_id: button.[[slug]]_reset_silver_ion
+            - entity_id: button.[[slug]]_reset_scale_inhibitor
+            - entity_id: button.[[slug]]_reset_wheel
+          exclude:
+            - state: unavailable
+
+
+#########################
+## VACUUM HISTORY CARD ##
+#########################
+vacuum_history_card:
+  card:
+    type: custom:mini-graph-card
+    entities:
+      - entity: '[[entity]]'
+        aggregate_func: last
+    name: '[[name]]'
+    icon: mdi:robot-vacuum
+    line_color: "#42A5F5"
+    hours_to_show: 336
+    group_by: date
+    points_per_hour: 1
+    line_width: 8
+    height: 90
+    font_size: 70
+    font_size_header: 13
+    align_state: right
+    lower_bound: 0
+    upper_bound: ~60
+    show:
+      graph: bar
+      icon: true
+      points: false
