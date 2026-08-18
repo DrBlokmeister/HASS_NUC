@@ -2664,3 +2664,120 @@ vacuum_history_card:
       graph: bar
       icon: true
       points: false
+
+#######################
+## ROOM CLIMATE CARD ##
+#######################
+room_climate_card:
+  default:
+    - icon: mdi:thermometer
+    - temp_entity_2: ""
+    - humidity_entity_2: ""
+    - temp_color: "#FF9800"
+    - humidity_color: "#00BCD4"
+    - red_temp: 27
+    - orange_temp: 24
+    - green_temp: 20
+    - blue_temp: 18
+    - temp_min: ~15
+    - temp_max: ~30
+  card:
+    type: custom:mushroom-template-card
+    entity: '[[temp_entity]]'
+    primary: '[[title]]'
+    secondary: >-
+      {%- set te=['[[temp_entity]]','[[temp_entity_2]]']|reject('eq','')|list -%}
+      {%- set he=['[[humidity_entity]]','[[humidity_entity_2]]']|reject('eq','')|list -%}
+      {%- set t=te|map('states')|reject('in',['unknown','unavailable','none','None',''])|map('float')|list -%}
+      {%- set h=he|map('states')|reject('in',['unknown','unavailable','none','None',''])|map('float')|list -%}
+      {%- if t|count %}{{ (t|sum/t|count)|round(1) }} °C{%- else %}Temp unavailable{%- endif %}
+      {%- if h|count %}
+      {{ (h|sum/h|count)|round(0)|int }}% RH{%- endif %}
+    icon: '[[icon]]'
+    icon_color: >-
+      {%- set e=['[[temp_entity]]','[[temp_entity_2]]']|reject('eq','')|list -%}
+      {%- set v=e|map('states')|reject('in',['unknown','unavailable','none','None',''])|map('float')|list -%}
+      {%- if not v|count %}grey
+      {%- else -%}
+        {%- set t=v|sum/v|count -%}
+        {%- if t >= [[red_temp]] %}red
+        {%- elif t >= [[orange_temp]] %}orange
+        {%- elif t >= [[green_temp]] %}green
+        {%- elif t >= [[blue_temp]] %}blue
+        {%- else %}indigo
+        {%- endif -%}
+      {%- endif -%}
+    fill_container: true
+    multiline_secondary: true
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[title]] Climate'
+          content:
+            type: vertical-stack
+            cards:
+              - type: custom:decluttering-card
+                template: last_7_days_apexcharts_card
+                variables:
+                  - title: '[[title]] Temperature · Last 7 Days'
+                  - entity: '[[temp_graph_entity]]'
+                  - color_today: '[[temp_color]]'
+                  - color_1day_ago: '[[temp_color]]'
+                  - color_2days_ago: '[[temp_color]]'
+                  - color_3days_ago: '[[temp_color]]'
+                  - color_4days_ago: '[[temp_color]]'
+                  - color_5days_ago: '[[temp_color]]'
+                  - color_6days_ago: '[[temp_color]]'
+                  - yaxis:
+                      - min: '[[temp_min]]'
+                        max: '[[temp_max]]'
+                        decimals: 1
+                        align_to: 1
+                        apex_config:
+                          forceNiceScale: true
+                  - all_series_config:
+                      stroke_width: 2
+                      float_precision: 1
+                      unit: °C
+                      fill_raw: last
+                      group_by:
+                        func: median
+                        duration: 10min
+                      show:
+                        in_header: false
+                        legend_value: false
+              - type: custom:decluttering-card
+                template: last_7_days_apexcharts_card
+                variables:
+                  - title: '[[title]] Humidity · Last 7 Days'
+                  - entity: '[[humidity_graph_entity]]'
+                  - color_today: '[[humidity_color]]'
+                  - color_1day_ago: '[[humidity_color]]'
+                  - color_2days_ago: '[[humidity_color]]'
+                  - color_3days_ago: '[[humidity_color]]'
+                  - color_4days_ago: '[[humidity_color]]'
+                  - color_5days_ago: '[[humidity_color]]'
+                  - color_6days_ago: '[[humidity_color]]'
+                  - yaxis:
+                      - min: 0
+                        max: 100
+                        decimals: 0
+                        align_to: 10
+                  - all_series_config:
+                      stroke_width: 2
+                      float_precision: 0
+                      unit: "%"
+                      fill_raw: last
+                      group_by:
+                        func: median
+                        duration: 10min
+                      show:
+                        in_header: false
+                        legend_value: false
+    hold_action:
+      action: more-info
+    card_mod:
+      style: |
+        ha-card{min-height:72px;--icon-size:30px}
