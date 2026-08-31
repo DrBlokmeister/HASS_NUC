@@ -8,15 +8,12 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.components.sensor import (SensorDeviceClass,
                                              SensorEntityDescription,
                                              SensorStateClass)
-from homeassistant.const import (CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-                                 CONCENTRATION_MILLIGRAMS_PER_CUBIC_METER,
-                                 CONCENTRATION_PARTS_PER_MILLION, LIGHT_LUX,
-                                 PERCENTAGE,
+from homeassistant.const import (LIGHT_LUX, PERCENTAGE,
                                  SIGNAL_STRENGTH_DECIBELS_MILLIWATT, Platform,
-                                 UnitOfConductivity, UnitOfElectricPotential,
-                                 UnitOfEnergy, UnitOfMass, UnitOfPower,
-                                 UnitOfPressure, UnitOfTemperature,
-                                 UnitOfVolume)
+                                 UnitOfConductivity, UnitOfDensity,
+                                 UnitOfElectricPotential, UnitOfEnergy,
+                                 UnitOfMass, UnitOfPower, UnitOfPressure,
+                                 UnitOfRatio, UnitOfTemperature, UnitOfVolume)
 from homeassistant.helpers.entity import EntityCategory
 
 DOMAIN = "ble_monitor"
@@ -28,9 +25,11 @@ PLATFORMS = [
 
 # Configuration options
 CONF_BT_AUTO_RESTART = "bt_auto_restart"
+CONF_HCI_INACTIVITY_TIMEOUT = "hci_inactivity_timeout"
 CONF_PERIOD = "period"
 CONF_LOG_SPIKES = "log_spikes"
 CONF_USE_MEDIAN = "use_median"
+CONF_MEASUREMENT_UPDATE = "measurement_update"
 CONF_ACTIVE_SCAN = "active_scan"
 CONF_HCI_INTERFACE = "hci_interface"
 CONF_BT_INTERFACE = "bt_interface"
@@ -39,6 +38,7 @@ CONF_REPORT_UNKNOWN = "report_unknown"
 CONF_RESTORE_STATE = "restore_state"
 CONF_DEVICE_ENCRYPTION_KEY = "encryption_key"
 CONF_DEVICE_USE_MEDIAN = "use_median"
+CONF_DEVICE_MEASUREMENT_UPDATE = "measurement_update"
 CONF_DEVICE_REPORT_UNKNOWN = "report_unknown"
 CONF_DEVICE_RESTORE_STATE = "restore_state"
 CONF_DEVICE_RESET_TIMER = "reset_timer"
@@ -56,9 +56,13 @@ SERVICE_PARSE_DATA = "parse_data"
 
 # Default values for configuration options
 DEFAULT_BT_AUTO_RESTART = False
+DEFAULT_HCI_INACTIVITY_TIMEOUT = 60
 DEFAULT_PERIOD = 60
 DEFAULT_LOG_SPIKES = False
 DEFAULT_USE_MEDIAN = False
+DEFAULT_MEASUREMENT_UPDATE = "periodic"
+DEFAULT_DEVICE_MEASUREMENT_UPDATE = "default"
+MEASUREMENT_UPDATE_LIST = ["periodic", "instant"]
 DEFAULT_ACTIVE_SCAN = False
 DEFAULT_BATT_ENTITIES = True
 DEFAULT_REPORT_UNKNOWN = "Off"
@@ -851,7 +855,7 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         name="ble moisture",
         unique_id="m_",
         native_unit_of_measurement=PERCENTAGE,
-        device_class=SensorDeviceClass.HUMIDITY,
+        device_class=SensorDeviceClass.MOISTURE,
         suggested_display_precision=1,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -907,7 +911,7 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         name="ble formaldehyde",
         unique_id="f_",
         icon="mdi:chemical-weapon",
-        native_unit_of_measurement=CONCENTRATION_MILLIGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=UnitOfDensity.MILLIGRAMS_PER_CUBIC_METER,
         device_class=None,
         suggested_display_precision=3,
         state_class=SensorStateClass.MEASUREMENT,
@@ -979,7 +983,7 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         name="CO2",
         unique_id="co2_",
         icon="mdi:molecule-co2",
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO2,
         suggested_display_precision=0,
     ),
@@ -990,7 +994,7 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         name="PM2.5",
         unique_id="pm25_",
         icon="mdi:molecule",
-        native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
         device_class=SensorDeviceClass.PM25,
         suggested_display_precision=0,
     ),
@@ -1001,7 +1005,7 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         name="PM10",
         unique_id="pm10_",
         icon="mdi:molecule",
-        native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
         device_class=SensorDeviceClass.PM10,
         suggested_display_precision=0,
     ),
@@ -1024,7 +1028,7 @@ SENSOR_TYPES: tuple[BLEMonitorSensorEntityDescription, ...] = (
         name="TVOC",
         unique_id="ble_tvoc_",
         icon="mdi:molecule",
-        native_unit_of_measurement=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        native_unit_of_measurement=UnitOfDensity.MICROGRAMS_PER_CUBIC_METER,
         device_class=SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS,
         suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
