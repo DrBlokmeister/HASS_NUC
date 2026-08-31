@@ -82,27 +82,32 @@ class RecycleApp(WasteCollector):
         if not zipcodes:
             _LOGGER.error('No postcode found for RecycleApp')
             return
-        self.postcode_id = zipcodes[0]['id']
-        self._auth_changed = True
-        response = requests.get(
-            "{}streets".format(self.main_url),
-            headers=self.__get_headers(),
-            params={'q': self.street_name, 'zipcodes': self.postcode_id},
-        )
-        if response.status_code != 200:
-            _LOGGER.error('Invalid response from server for street_id')
+
+        for zipcode in zipcodes:
+            zipcode_id = zipcode['id']
+            response = requests.get(
+                "{}streets".format(self.main_url),
+                headers=self.__get_headers(),
+                params={'q': self.street_name, 'zipcodes': zipcode_id},
+            )
+            if response.status_code != 200:
+                _LOGGER.error('Invalid response from server for street_id')
+                continue
+            streets = response.json().get('items', [])
+            if not streets:
+                continue
+
+            self.postcode_id = zipcode_id
+            for item in streets:
+                if item.get('name') == self.street_name or item.get('names', {}).get('nl') == self.street_name:
+                    self.street_id = item['id']
+                    break
+            if not self.street_id:
+                self.street_id = streets[0]['id']
+            self._auth_changed = True
             return
-        streets = response.json().get('items', [])
-        if not streets:
-            _LOGGER.error('No street found for RecycleApp')
-            return
-        for item in streets:
-            if item.get('name') == self.street_name or item.get('names', {}).get('nl') == self.street_name:
-                self.street_id = item['id']
-                break
-        if not self.street_id:
-            self.street_id = streets[0]['id']
-        self._auth_changed = True
+
+        _LOGGER.error('No street found for RecycleApp')
 
     async def __load_auth_data(self):
         """Load persisted RecycleApp auth and location data once."""
