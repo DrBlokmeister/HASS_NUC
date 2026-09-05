@@ -806,6 +806,224 @@ last_7_days_apexcharts_card:
           name_in_header: false
           offset_in_name: false
 
+#################################
+## SHELLY DIAGNOSTICS CARD     ##
+#################################
+shelly_diagnostics_card:
+  card:
+    type: custom:mushroom-template-card
+    entity: '[[ping_availability_entity]]'
+    primary: '[[name]]'
+    secondary: >-
+      {%- set ap = states('[[ap_entity]]') -%}
+      {%- set ping = states('[[ping_entity]]') -%}
+      {%- set ap_name = 'Unknown AP' if ap in ['unknown', 'unavailable', 'none', 'None', ''] else ap -%}
+      {%- set max_len = 14 -%}
+      {%- set ap_name = ap_name if ap_name | length <= max_len else ap_name[:max_len - 1] ~ '…' -%}
+      {%- set ping_value = '—' if ping in ['unknown', 'unavailable', 'none', 'None', ''] else ping | float(0) | round(0) -%}
+      {{ ap_name ~ '\n' ~ ping_value ~ ' ms' }}
+    multiline_secondary: true
+    icon: '[[icon]]'
+    icon_color: >-
+      {%- set ping = states('[[ping_entity]]') | float(9999) -%}
+      {%- if is_state(entity, 'off') -%}
+        red
+      {%- elif is_state(entity, 'on') and ping > 500 -%}
+        red
+      {%- elif is_state(entity, 'on') and ping > 150 -%}
+        amber
+      {%- elif is_state(entity, 'on') -%}
+        green
+      {%- else -%}
+        grey
+      {%- endif -%}
+    fill_container: true
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[name]] diagnostics'
+          content:
+            type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: '[[restart_entity]]'
+                primary: Open ESPHome device
+                secondary: '[[name]]'
+                icon: mdi:chip
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: /config/devices/device/[[esphome_device_id]]
+              - type: grid
+                columns: 2
+                square: false
+                cards:
+                  - type: custom:mushroom-template-card
+                    entity: '[[tracker_entity]]'
+                    primary: Device tracker
+                    secondary: >-
+                      {%- set state = states('[[tracker_entity]]') -%}
+                      {{ 'Unavailable' if state in ['unknown', 'unavailable', 'none', 'None', ''] else state | replace('_', ' ') | title }}
+                    icon: mdi:lan-connect
+                    icon_color: >-
+                      {%- if is_state('[[tracker_entity]]', 'home') -%}
+                        green
+                      {%- elif is_state('[[tracker_entity]]', 'not_home') -%}
+                        amber
+                      {%- else -%}
+                        grey
+                      {%- endif -%}
+                    fill_container: true
+                  - type: custom:mushroom-template-card
+                    entity: '[[ping_availability_entity]]'
+                    primary: Ping availability
+                    secondary: >-
+                      {%- if is_state('[[ping_availability_entity]]', 'on') -%}
+                        Available
+                      {%- elif is_state('[[ping_availability_entity]]', 'off') -%}
+                        Unavailable
+                      {%- else -%}
+                        Unknown
+                      {%- endif -%}
+                    icon: mdi:lan-check
+                    icon_color: >-
+                      {%- if is_state('[[ping_availability_entity]]', 'on') -%}
+                        green
+                      {%- elif is_state('[[ping_availability_entity]]', 'off') -%}
+                        red
+                      {%- else -%}
+                        grey
+                      {%- endif -%}
+                    fill_container: true
+                  - type: custom:mushroom-template-card
+                    entity: '[[ap_entity]]'
+                    primary: Connected AP
+                    secondary: >-
+                      {%- set ap = states('[[ap_entity]]') -%}
+                      {{ 'Unknown' if ap in ['unknown', 'unavailable', 'none', 'None', ''] else ap }}
+                    icon: mdi:access-point-network
+                    icon_color: >-
+                      {%- set ap = states('[[ap_entity]]') -%}
+                      {{ 'grey' if ap in ['unknown', 'unavailable', 'none', 'None', ''] else 'blue' }}
+                    fill_container: true
+                  - type: custom:mushroom-template-card
+                    entity: '[[ping_entity]]'
+                    primary: Connection
+                    secondary: >-
+                      {%- set ping = states('[[ping_entity]]') -%}
+                      {%- set wifi = states('[[wifi_entity]]') -%}
+                      {%- set ping_value = '—' if ping in ['unknown', 'unavailable', 'none', 'None', ''] else ping | float(0) | round(0) -%}
+                      {%- set wifi_value = '—' if wifi in ['unknown', 'unavailable', 'none', 'None', ''] else wifi | float(0) | round(0) -%}
+                      {{ ping_value }} ms · {{ wifi_value }} dBm
+                    icon: mdi:wifi
+                    icon_color: >-
+                      {%- set wifi = states('[[wifi_entity]]') -%}
+                      {%- if wifi in ['unknown', 'unavailable', 'none', 'None', ''] -%}
+                        grey
+                      {%- elif wifi | float <= -75 -%}
+                        red
+                      {%- elif wifi | float <= -67 -%}
+                        amber
+                      {%- else -%}
+                        green
+                      {%- endif -%}
+                    fill_container: true
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    entity: '[[restart_entity]]'
+                    primary: Restart device
+                    secondary: ESPHome
+                    icon: mdi:restart
+                    icon_color: orange
+                    fill_container: true
+                    tap_action:
+                      action: call-service
+                      service: button.press
+                      target:
+                        entity_id: '[[restart_entity]]'
+                      confirmation:
+                        text: 'Restart [[name]]?'
+                  - type: custom:mushroom-template-card
+                    entity: '[[ping_availability_entity]]'
+                    primary: Reload ping
+                    secondary: ICMP integration
+                    icon: mdi:reload
+                    icon_color: blue
+                    fill_container: true
+                    tap_action:
+                      action: call-service
+                      service: homeassistant.reload_config_entry
+                      target:
+                        device_id: '[[ping_device_id]]'
+              - type: history-graph
+                title: Connectivity - past 48 hours
+                hours_to_show: 48
+                entities:
+                  - entity: '[[tracker_entity]]'
+                    name: Device tracker
+                  - entity: '[[ap_entity]]'
+                    name: Connected AP
+                  - entity: '[[ping_availability_entity]]'
+                    name: Ping availability
+              - type: custom:decluttering-card
+                template: last_7_days_apexcharts_card
+                variables:
+                  - entity: '[[ping_entity]]'
+                  - title: '[[name]] ping - past 7 days'
+                  - color_today: "#4682B4"
+                  - unit: ms
+                  - float_precision: 0
+                  - transform: "return Math.round(x);"
+                  - group_by_func: avg
+                  - group_by_duration: 15min
+                  - yaxis:
+                      - min: 0
+                        max: ~150
+                        decimals: 0
+                        align_to: 25
+                        apex_config:
+                          tickAmount: 4
+                          forceNiceScale: true
+              - type: custom:decluttering-card
+                template: last_7_days_apexcharts_card
+                variables:
+                  - entity: '[[wifi_entity]]'
+                  - title: '[[name]] Wi-Fi signal - past 7 days'
+                  - color_today: "#32CD32"
+                  - unit: dBm
+                  - float_precision: 0
+                  - transform: "return Math.round(x);"
+                  - group_by_func: avg
+                  - group_by_duration: 15min
+                  - yaxis:
+                      - min: -100
+                        max: -30
+                        decimals: 0
+                        align_to: 10
+                        apex_config:
+                          tickAmount: 7
+                          forceNiceScale: true
+    hold_action:
+      action: navigate
+      navigation_path: /config/devices/device/[[ping_device_id]]
+    card_mod:
+      style:
+        mushroom-state-info$: |
+          .secondary {
+            height: 2.4em !important;
+            max-height: 2.4em !important;
+            line-height: 1.2 !important;
+            overflow: hidden !important;
+          }
+        .: |
+          ha-card {
+            height: 82px;
+          }
+
 ###############################
 ## DISK HEALTH TEMPLATE CARD ##
 ###############################
