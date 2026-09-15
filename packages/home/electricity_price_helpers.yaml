@@ -1109,27 +1109,49 @@ template:
           {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
           {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
           {% set ns = namespace(night=[]) %}
-          {% for p in valid %}
-            {% set dt_start = as_datetime(p.start) %}
-            {% set dt_end = as_datetime(p.end) %}
-            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-              {% set ns.night = ns.night + [p] %}
-            {% endif %}
-          {% endfor %}
-          {% set best = ns.night | sort(attribute='value') | first %}
-          {{ best.value | float | round(3) }}
+          {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+          {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+          {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+          {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+          {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+          {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+          {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+          {% if keep_slot %}
+            {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+          {% endif %}
+          {% if not keep_slot %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% if night_start <= dt_start < night_end %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+          {{ best.value | float | round(3) if best else none }}
         availability: >-
           {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_hour_avg') or [] %}
           {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
           {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
           {% set ns = namespace(night=[]) %}
-          {% for p in valid %}
-            {% set dt_start = as_datetime(p.start) %}
-            {% set dt_end = as_datetime(p.end) %}
-            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-              {% set ns.night = ns.night + [p] %}
-            {% endif %}
-          {% endfor %}
+          {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+          {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+          {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+          {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+          {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+          {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+          {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+          {% if keep_slot %}
+            {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+          {% endif %}
+          {% if not keep_slot %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% if night_start <= dt_start < night_end %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
           {{ ns.night | count > 0 }}
         attributes:
           start_time: >-
@@ -1137,13 +1159,24 @@ template:
             {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
             {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
             {% set ns = namespace(night=[]) %}
-            {% for p in valid %}
-              {% set dt_start = as_datetime(p.start) %}
-              {% set dt_end = as_datetime(p.end) %}
-              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-                {% set ns.night = ns.night + [p] %}
-              {% endif %}
-            {% endfor %}
+            {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+            {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+            {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+            {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+            {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+            {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+            {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+            {% if keep_slot %}
+              {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+            {% endif %}
+            {% if not keep_slot %}
+              {% for p in valid %}
+                {% set dt_start = as_datetime(p.start) %}
+                {% if night_start <= dt_start < night_end %}
+                  {% set ns.night = ns.night + [p] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
             {{ best.start if best else none }}
           end_time: >-
@@ -1151,13 +1184,24 @@ template:
             {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
             {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
             {% set ns = namespace(night=[]) %}
-            {% for p in valid %}
-              {% set dt_start = as_datetime(p.start) %}
-              {% set dt_end = as_datetime(p.end) %}
-              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-                {% set ns.night = ns.night + [p] %}
-              {% endif %}
-            {% endfor %}
+            {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+            {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+            {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+            {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+            {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+            {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+            {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+            {% if keep_slot %}
+              {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+            {% endif %}
+            {% if not keep_slot %}
+              {% for p in valid %}
+                {% set dt_start = as_datetime(p.start) %}
+                {% if night_start <= dt_start < night_end %}
+                  {% set ns.night = ns.night + [p] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
             {{ best.end if best else none }}
           is_current_night_minimum: >-
@@ -1165,13 +1209,24 @@ template:
             {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_hour_avg') or [] %}
             {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
             {% set ns = namespace(night=[]) %}
-            {% for p in valid %}
-              {% set dt_start = as_datetime(p.start) %}
-              {% set dt_end = as_datetime(p.end) %}
-              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-                {% set ns.night = ns.night + [p] %}
-              {% endif %}
-            {% endfor %}
+            {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+            {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+            {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+            {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+            {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+            {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+            {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+            {% if keep_slot %}
+              {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+            {% endif %}
+            {% if not keep_slot %}
+              {% for p in valid %}
+                {% set dt_start = as_datetime(p.start) %}
+                {% if night_start <= dt_start < night_end %}
+                  {% set ns.night = ns.night + [p] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
             {% if best %}
               {% set best_start = as_datetime(best.start) %}
@@ -1192,27 +1247,49 @@ template:
           {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
           {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
           {% set ns = namespace(night=[]) %}
-          {% for p in valid %}
-            {% set dt_start = as_datetime(p.start) %}
-            {% set dt_end = as_datetime(p.end) %}
-            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-              {% set ns.night = ns.night + [p] %}
-            {% endif %}
-          {% endfor %}
-          {% set best = ns.night | sort(attribute='value') | first %}
-          {{ best.value | float | round(3) }}
+          {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+          {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+          {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+          {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+          {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+          {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+          {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+          {% if keep_slot %}
+            {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+          {% endif %}
+          {% if not keep_slot %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% if night_start <= dt_start < night_end %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
+          {{ best.value | float | round(3) if best else none }}
         availability: >-
           {% set today = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_today_rolling_two_hour_avg') or [] %}
           {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
           {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
           {% set ns = namespace(night=[]) %}
-          {% for p in valid %}
-            {% set dt_start = as_datetime(p.start) %}
-            {% set dt_end = as_datetime(p.end) %}
-            {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-              {% set ns.night = ns.night + [p] %}
-            {% endif %}
-          {% endfor %}
+          {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+          {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+          {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+          {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+          {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+          {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+          {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+          {% if keep_slot %}
+            {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+          {% endif %}
+          {% if not keep_slot %}
+            {% for p in valid %}
+              {% set dt_start = as_datetime(p.start) %}
+              {% if night_start <= dt_start < night_end %}
+                {% set ns.night = ns.night + [p] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
           {{ ns.night | count > 0 }}
         attributes:
           start_time: >-
@@ -1220,13 +1297,24 @@ template:
             {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
             {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
             {% set ns = namespace(night=[]) %}
-            {% for p in valid %}
-              {% set dt_start = as_datetime(p.start) %}
-              {% set dt_end = as_datetime(p.end) %}
-              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-                {% set ns.night = ns.night + [p] %}
-              {% endif %}
-            {% endfor %}
+            {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+            {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+            {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+            {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+            {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+            {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+            {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+            {% if keep_slot %}
+              {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+            {% endif %}
+            {% if not keep_slot %}
+              {% for p in valid %}
+                {% set dt_start = as_datetime(p.start) %}
+                {% if night_start <= dt_start < night_end %}
+                  {% set ns.night = ns.night + [p] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
             {{ best.start if best else none }}
           end_time: >-
@@ -1234,13 +1322,24 @@ template:
             {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
             {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
             {% set ns = namespace(night=[]) %}
-            {% for p in valid %}
-              {% set dt_start = as_datetime(p.start) %}
-              {% set dt_end = as_datetime(p.end) %}
-              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-                {% set ns.night = ns.night + [p] %}
-              {% endif %}
-            {% endfor %}
+            {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+            {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+            {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+            {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+            {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+            {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+            {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+            {% if keep_slot %}
+              {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+            {% endif %}
+            {% if not keep_slot %}
+              {% for p in valid %}
+                {% set dt_start = as_datetime(p.start) %}
+                {% if night_start <= dt_start < night_end %}
+                  {% set ns.night = ns.night + [p] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
             {{ best.end if best else none }}
           is_current_night_minimum: >-
@@ -1248,13 +1347,24 @@ template:
             {% set tom = state_attr('sensor.nordpool_energy_price_rolling_hour_15m', 'raw_tomorrow_rolling_two_hour_avg') or [] %}
             {% set valid = (today + tom) | rejectattr('value', 'eq', 'null') | list %}
             {% set ns = namespace(night=[]) %}
-            {% for p in valid %}
-              {% set dt_start = as_datetime(p.start) %}
-              {% set dt_end = as_datetime(p.end) %}
-              {% if dt_end > now() and (dt_start.hour >= 21 or dt_start.hour < 8) %}
-                {% set ns.night = ns.night + [p] %}
-              {% endif %}
-            {% endfor %}
+            {# Keep the current/upcoming 21:00-08:00 night; exclude the following evening. #}
+            {% set night_start = today_at('21:00') - timedelta(days=1) if now() < today_at('08:00') else today_at('21:00') %}
+            {% set night_end = (night_start + timedelta(days=1)).replace(hour=8) %}
+            {# Freeze the selected slot from 21:00 until 08:00, including after it ends. #}
+            {% set saved_start = as_datetime(this.attributes.get('start_time'), none) if this is defined and this is not none else none %}
+            {% set saved_end = as_datetime(this.attributes.get('end_time'), none) if this is defined and this is not none else none %}
+            {% set keep_slot = now() >= night_start and saved_start is not none and saved_end is not none and night_start <= saved_start < night_end and is_number(this.state) %}
+            {% if keep_slot %}
+              {% set ns.night = [dict(start=this.attributes.get('start_time'), end=this.attributes.get('end_time'), value=this.state | float)] %}
+            {% endif %}
+            {% if not keep_slot %}
+              {% for p in valid %}
+                {% set dt_start = as_datetime(p.start) %}
+                {% if night_start <= dt_start < night_end %}
+                  {% set ns.night = ns.night + [p] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
             {% set best = ns.night | sort(attribute='value') | first if ns.night else none %}
             {% if best %}
               {% set best_start = as_datetime(best.start) %}
