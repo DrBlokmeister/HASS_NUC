@@ -49,6 +49,92 @@ template:
         turn_off:
           delay:
             seconds: 1
+
+  - triggers:
+      - trigger: state
+        entity_id: binary_sensor.metal_detector_1
+    sensor:
+      - name: "Water Slow Flow Streak"
+        unique_id: yaml_template_sensor_water_slow_flow_streak
+        unit_of_measurement: "intervals"
+        icon: mdi:water-alert
+        availability: >-
+          {{
+            trigger.to_state is not none
+            and trigger.to_state.state in ['on', 'off']
+          }}
+        state: >-
+          {% set valid_states = ['on', 'off'] %}
+          {% set from_state =
+              trigger.from_state.state
+              if trigger.from_state is not none
+              else none
+          %}
+          {% set to_state =
+              trigger.to_state.state
+              if trigger.to_state is not none
+              else none
+          %}
+          {% if from_state in valid_states
+                and to_state in valid_states
+                and from_state != to_state %}
+            {% set interval_seconds =
+                (
+                  trigger.to_state.last_changed
+                  - trigger.from_state.last_changed
+                ).total_seconds()
+            %}
+            {% if 150 <= interval_seconds <= 1800 %}
+              {{ (this.state | int(0)) + 1 }}
+            {% else %}
+              0
+            {% endif %}
+          {% elif to_state in valid_states
+                  and from_state not in valid_states %}
+            0
+          {% else %}
+            {{ this.state | int(0) }}
+          {% endif %}
+        attributes:
+          interval_minutes: >-
+            {% set valid_states = ['on', 'off'] %}
+            {% set from_state =
+                trigger.from_state.state
+                if trigger.from_state is not none
+                else none
+            %}
+            {% set to_state =
+                trigger.to_state.state
+                if trigger.to_state is not none
+                else none
+            %}
+            {% if from_state in valid_states
+                  and to_state in valid_states
+                  and from_state != to_state %}
+              {{
+                (
+                  (
+                    trigger.to_state.last_changed
+                    - trigger.from_state.last_changed
+                  ).total_seconds()
+                  / 60
+                ) | round(2)
+              }}
+            {% else %}
+              {{ none }}
+            {% endif %}
+          transition: >-
+            {% if trigger.from_state is not none
+                  and trigger.to_state is not none %}
+              {{ trigger.from_state.state }} -> {{ trigger.to_state.state }}
+            {% else %}
+              unknown
+            {% endif %}
+          total_water: "{{ states('sensor.total_water') }}"
+          current_water_usage: "{{ states('sensor.water_usage') }}"
+          water_usage_10_minute_average: >-
+            {{ states('sensor.water_usage_per_minute_10_minute_average') }}
+
 #################
 #    SENSORS    #
 #################
@@ -638,36 +724,55 @@ automation:
             The water heatup has not been performed since {{ strptime(states('input_datetime.last_heat_up'), '%Y-%m-%d %H:%M:%S').strftime('%A, %B %d, %Y %H:%M:%S') }}. Please check the system.
           notification_id: regular_heatup_overdue
 
-  - alias: "[home|water] Warn High Water Usage"
-    id: yaml_automation_home_water_warn_high_water_usage
+  - alias: "[home|water] Warn when low-flow leak is suspected"
+    id: yaml_automation_home_water_warn_when_low_flow_leak_is_suspected
     description: >
-      Sends a sticky notification when high water usage persists for 60 minutes,
-      repeats the alert every 5 minutes while the condition continues, and updates
-      the notification once usage has stopped for 10 minutes.
+      Detects a possible water leak when four consecutive water-meter
+      transitions are separated by 2.5 to 30 minutes. Sends a sticky
+      notification every 5 minutes while the suspicious low-flow pattern
+      continues. The alert is resolved when normal faster water usage breaks
+      the pattern or no water-meter transition occurs for 35 minutes.
     mode: single
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.water_usage_per_minute_10_minute_average
-        above: 0.1
-        for:
-          minutes: 60
-    condition: []
-    action:
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.water_slow_flow_streak
+        above: 3
+    conditions: []
+    actions:
       - variables:
-          water_alert_tag: water_usage
-          water_alert_group: water_usage_alert
-          alert_started: >-
-            {% set ts = this.attributes.last_triggered %}
-            {{ as_local(ts).strftime('%Y-%m-%d %H:%M:%S') if ts else now().strftime('%Y-%m-%d %H:%M:%S') }}
+          water_alert_tag: water_leak
+          water_alert_group: water_leak_alert
+          alert_started: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
       - repeat:
           sequence:
-            - service: notify.sander_and_tamara_phones
+            - action: notify.sander_and_tamara_phones
               data:
-                title: "Water Usage Alert"
+                title: "Possible Water Leak"
                 message: >-
-                  Warning: High water usage detected since {{ alert_started }}.
-                  Current usage: {{ states('sensor.water_usage') }} L/min.
-                  10-minute average: {{ states('sensor.water_usage_per_minute_10_minute_average') }} L/min.
+                  A repeated low-flow water pattern has been detected since
+                  {{ alert_started }}.
+
+                  Consecutive slow intervals:
+                  {{ states('sensor.water_slow_flow_streak') }}.
+
+                  Latest meter transition interval:
+                  {{ state_attr(
+                    'sensor.water_slow_flow_streak',
+                    'interval_minutes'
+                  ) }} minutes.
+
+                  Current ESPHome water usage:
+                  {{ states('sensor.water_usage') }} L/min.
+
+                  10-minute average:
+                  {{
+                    states(
+                      'sensor.water_usage_per_minute_10_minute_average'
+                    )
+                  }} L/min.
+
+                  Total water meter:
+                  {{ states('sensor.total_water') }} L.
                 data:
                   sticky: "true"
                   clickAction: "/config/devices/device/fae46674914a1758df62ac0e0a23fdbe"
@@ -679,21 +784,48 @@ automation:
             - delay:
                 minutes: 5
           until:
-            - condition: template
-              value_template: >-
-                {{
-                  states('sensor.water_usage') | float(999) < 0.01
-                  and
-                  (as_timestamp(now()) - as_timestamp(states.sensor.water_usage.last_changed, 0)) >= 600
-                }}
+            - condition: or
+              conditions:
+                # Normal/faster water usage occurred, breaking the
+                # consecutive slow-flow pattern.
+                - condition: numeric_state
+                  entity_id: sensor.water_slow_flow_streak
+                  below: 1
+                # No water-meter transition for 35 minutes.
+                - condition: template
+                  value_template: >-
+                    {{
+                      states('binary_sensor.metal_detector_1')
+                        in ['on', 'off']
+                      and
+                      (
+                        now()
+                        - states.binary_sensor.metal_detector_1.last_changed
+                      ).total_seconds() >= 2100
+                    }}
       - variables:
-          alert_stopped: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-      - service: notify.sander_and_tamara_phones
+          alert_resolved: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      - action: notify.sander_and_tamara_phones
         data:
-          title: "Water Usage Alert Resolved"
+          title: "Water Leak Alert Resolved"
           message: >-
-            High water usage was detected since {{ alert_started }}, but it has stopped since {{ alert_stopped }}.
-            Current usage: {{ states('sensor.water_usage') }} L/min and 10-minute average: {{ states('sensor.water_usage_per_minute_10_minute_average') }} L/min.
+            The suspicious low-flow water pattern detected since
+            {{ alert_started }} is no longer present.
+
+            Alert resolved at {{ alert_resolved }}.
+
+            Current ESPHome water usage:
+            {{ states('sensor.water_usage') }} L/min.
+
+            10-minute average:
+            {{
+              states(
+                'sensor.water_usage_per_minute_10_minute_average'
+              )
+            }} L/min.
+
+            Total water meter:
+            {{ states('sensor.total_water') }} L.
           data:
             sticky: "true"
             clickAction: "/config/devices/device/fae46674914a1758df62ac0e0a23fdbe"
