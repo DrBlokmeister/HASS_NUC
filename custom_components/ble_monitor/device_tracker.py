@@ -45,7 +45,7 @@ async def async_setup_entry(hass, config_entry, add_entities):
     _LOGGER.debug("Starting device tracker entry startup")
 
     blemonitor = hass.data[DOMAIN]["blemonitor"]
-    bleupdater = BLEupdaterTracker(blemonitor, add_entities)
+    bleupdater = BLEupdaterTracker(blemonitor, add_entities, config_entry.entry_id)
     hass.loop.create_task(bleupdater.async_run(hass))
     _LOGGER.debug("Device Tracker entry setup finished")
     # Return successful setup
@@ -55,12 +55,13 @@ async def async_setup_entry(hass, config_entry, add_entities):
 class BLEupdaterTracker:
     """BLE monitor entities updater."""
 
-    def __init__(self, blemonitor, add_entities):
+    def __init__(self, blemonitor, add_entities, config_entry_id):
         """Initiate BLE updater."""
         _LOGGER.debug("BLE device tracker updater initialization")
         self.monitor = blemonitor
         self.dataqueue = blemonitor.dataqueue["tracker"].async_q
         self.config = blemonitor.config
+        self.config_entry_id = config_entry_id
         self.period = self.config[CONF_PERIOD]
         self.add_entities = add_entities
         _LOGGER.debug("BLE device tracker updater initialized")
@@ -95,7 +96,9 @@ class BLEupdaterTracker:
                 key = dict_get_or(device)
                 if CONF_DEVICE_TRACK in device and device[CONF_DEVICE_TRACK]:
                     # setup device trackers from device registry
-                    dev = dev_registry.async_get_device({(DOMAIN, key.upper())}, set())
+                    dev = dev_registry.async_get_device_by_identifier(
+                        (DOMAIN, key.upper()), self.config_entry_id
+                    )
                     if dev:
                         key = identifier_clean(key)
                         trackers = await async_add_device_tracker(key)
@@ -195,8 +198,7 @@ class BleScannerEntity(ScannerEntity, RestoreEntity):
                 old_state.attributes["last_seen"]
             )
 
-        restore_attr = RESTORE_ATTRIBUTES
-        restore_attr.append('mac_address' if self.is_beacon else 'uuid')
+        restore_attr = RESTORE_ATTRIBUTES + ['mac_address' if self.is_beacon else 'uuid']
 
         for attr in restore_attr:
             if attr in old_state.attributes:
@@ -344,8 +346,7 @@ class BleScannerEntity(ScannerEntity, RestoreEntity):
                 return
         self._last_seen = now
         self._extra_state_attributes["last_seen"] = self._last_seen
-        restore_attr = RESTORE_ATTRIBUTES
-        restore_attr.append('mac_address' if self.is_beacon else 'uuid')
+        restore_attr = RESTORE_ATTRIBUTES + ['mac_address' if self.is_beacon else 'uuid']
 
         for attr in restore_attr:
             key = CONF_MAC if attr == 'mac_address' else attr
