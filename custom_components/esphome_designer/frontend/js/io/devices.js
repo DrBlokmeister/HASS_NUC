@@ -193,6 +193,83 @@ export const DEVICE_PROFILES = {
       epaper: true
     }
   },
+  seeedstudio_reterminal_sticky: {
+    name: "Seeed Studio reTerminal Sticky",
+    displayType: "grayscale",
+    chip: "esp32-s3",
+    board: "esp32-s3-devkitc-1",
+    displayPlatform: "epaper_spi",
+    displayModel: "seeed-reterminal-sticky",
+    displayId: "my_display",
+    touchscreenId: "device_touchscreen",
+    isPackageBased: true,
+    hardwarePackage: "hardware/seeedstudio-reterminal-sticky.yaml",
+    resolution: { width: 800, height: 480 },
+    shape: "rect",
+    psram_mode: "octal",
+    pins: {
+      display: { cs: "GPIO15", dc: "GPIO16", reset: "GPIO17", busy: "GPIO18" },
+      i2c: { sda: "GPIO1", scl: "GPIO0" },
+      spi: { clk: "GPIO13", mosi: "GPIO14", miso: "GPIO12" },
+      buzzer: "GPIO48",
+      buttons: { left: "GPIO5", right: "GPIO6", home: "GPIO4", refresh: "GPIO4" }
+    },
+    touch: {
+      platform: "gt911",
+      id: "device_touchscreen",
+      i2c_id: "i2c_touch",
+      interrupt_pin: "GPIO21",
+      reset_pin: "GPIO41",
+      transform: { mirror_y: true }
+    },
+    features: {
+      psram: true,
+      buzzer: true,
+      buttons: true,
+      sht4x: true,
+      epaper: true,
+      touch: true
+    }
+  },
+  reterminal_sticky: {
+    name: "Seeedstudio reTerminal Sticky",
+    displayType: "grayscale",
+    chip: "esp32-s3",
+    board: "esp32-s3-devkitc-1",
+    displayPlatform: "epaper_spi",
+    displayModel: "seeed-reterminal-sticky",
+    displayId: "my_display",
+    touchscreenId: "device_touchscreen",
+    isPackageBased: true,
+    isUntestedProfile: true,
+    hardwarePackage: "hardware/seeedstudio-reterminal-sticky.yaml",
+    resolution: { width: 800, height: 480 },
+    shape: "rect",
+    psram_mode: "octal",
+    pins: {
+      display: { cs: "GPIO15", dc: "GPIO16", reset: "GPIO17", busy: "GPIO18" },
+      i2c: { sda: "GPIO1", scl: "GPIO0" },
+      spi: { clk: "GPIO13", mosi: "GPIO14", miso: "GPIO12" },
+      buzzer: "GPIO48",
+      buttons: { left: "GPIO5", right: "GPIO6", home: "GPIO4", refresh: "GPIO4" }
+    },
+    touch: {
+      platform: "gt911",
+      id: "device_touchscreen",
+      i2c_id: "i2c_touch",
+      interrupt_pin: "GPIO21",
+      reset_pin: "GPIO41",
+      transform: { mirror_y: true }
+    },
+    features: {
+      psram: true,
+      buzzer: true,
+      buttons: true,
+      sht4x: true,
+      epaper: true,
+      touch: true
+    }
+  },
   trmnl_diy_esp32s3: {
     name: "Seeed Studio Trmnl DIY Kit (ESP32-S3)",
     displayType: "binary",
@@ -408,6 +485,23 @@ export const DEVICE_PROFILES = {
       transform: { swap_xy: true }
     }
   },
+  waveshare_esp32_s3_touch_round_lcd_1_28: {
+    name: "Waveshare Touch Round LCD 1.28\" 240x240",
+    displayType: "color",
+    chip: "esp32-s3",
+    board: "waveshare_esp32s3_touch_lcd_128",
+    displayPlatform: "ili9xxx",
+    displayModel: "GC9A01A",
+    isPackageBased: true,
+    hardwarePackage: "hardware/waveshare-esp32-s3-touch-round-lcd-1.28.yaml",
+    resolution: { width: 240, height: 240 },
+    shape: "round",
+    features: { psram: true, buzzer: false, buttons: false, lcd: true, lvgl: true, touch: true },
+    touch: {
+      platform: "cst816",
+      id: "my_touchscreen"
+    }
+  },
   guition_esp32_jc4832w535: {
     name: "Guition JC4832W535 v3 3.5\" 480x320",
     displayType: "color",
@@ -515,7 +609,7 @@ export const DEVICE_PROFILES = {
     displayType: "color",
     chip: "esp32-s3",
     board: "esp32-s3-devkitc-1",
-    displayPlatform: "rpi_dpi_rgb",
+    displayPlatform: "mipi_rgb",
     displayModel: "ELECROW-ESP32-7INCH",
     displayId: "my_display",
     touchscreenId: "my_touchscreen",
@@ -594,9 +688,9 @@ export const DEVICE_PROFILES = {
   m5stack_paper: {
     name: "M5Paper (540x960)",
     displayType: "grayscale",
-    displayModel: "M5Paper",
-    displayPlatform: "it8951e",
-    // NOTE: The IT8951E external component (Passific/m5paper_esphome) 
+    displayModel: "m5stack-m5paper",
+    displayPlatform: "it8951",
+    // NOTE: The official IT8951 component (model: m5stack-m5paper)
     // internally uses 960x540 as its panel dimensions, treating the device
     // as landscape-native. We match this here so rotation calculations work correctly.
     resolution: { width: 960, height: 540 },
@@ -614,7 +708,7 @@ export const DEVICE_PROFILES = {
       sht3xd: true
     },
     pins: {
-      display: { cs: "GPIO15", dc: null, reset: "GPIO23", busy: "GPIO27" }, // DC not used for IT8951E
+      display: { cs: "GPIO15", dc: null, reset: "GPIO23", busy: "GPIO27" }, // Predefined in official it8951 model
       i2c: { sda: "GPIO21", scl: "GPIO22" }, // For GT911 and others
       spi: { clk: "GPIO14", mosi: "GPIO12", miso: "GPIO13" }, // M5Paper SPI
       batteryEnable: null,
@@ -645,12 +739,9 @@ export const DEVICE_PROFILES = {
       update_interval: "never", // Interrupt used
       // NOTE: User feedback indicates mirror_y: false and address 0x5D for M5Paper.
       transform: { mirror_x: false, mirror_y: false, swap_xy: true },
-      // Calibration matches the IT8951E component's 960x540 coordinate space
+      // Calibration matches the IT8951 component's 960x540 coordinate space
       calibration: { x_min: 0, x_max: 960, y_min: 0, y_max: 540 }
-    },
-    external_components: [
-      "  - source: github://Passific/m5paper_esphome"
-    ]
+    }
   },
   m5stack_paper_mono: {
     id: "m5stack_paper_mono",
