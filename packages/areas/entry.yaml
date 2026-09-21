@@ -277,50 +277,38 @@ automation:
                 group: "doorbell"
                 notification_icon: "mdi:bell-ring"
           - sequence:
-              - service: camera.snapshot
-                data:
-                  entity_id: camera.g4_doorbell_pro_high_resolution_channel
-                  filename: "/config/www/tmp/doorbell_snapshot.jpg"
-                continue_on_error: true
-              - service: ai_task.generate_data
+              - action: ai_task.generate_data
                 data:
                   entity_id: ai_task.openai_ai_task_fast
                   task_name: "Doorbell Image Analysis"
                   instructions: >-
-                    Someone has just rang my video doorbell and I want to know who is at the
-                    door or what is happening. Very briefly describe what you see in this image
-                    from my doorbell camera. Don't describe stationary objects like bushes or
-                    buildings. Focus on who is standing in front of my door. If it is clear who
-                    this person is (package delivery, charity, etc), mention this. Otherwise
-                    describe the person and make an educated guess. For context, I'm in The Netherlands.
+                    Someone has just rung my video doorbell. Briefly describe who
+                    is at the door or what is happening. Do not describe stationary
+                    background objects such as bushes or buildings. Focus on whoever
+                    is standing in front of the door. If their purpose is clear, such
+                    as a package delivery or charity collection, mention it.
+                    Otherwise, briefly describe the person and make a cautious,
+                    educated guess. For context, this is in the Netherlands.
 
-                    Your message needs to be around 150 characters.
+                    Keep the response to approximately 150 characters.
                   attachments:
-                    media_content_id: "/config/www/tmp/doorbell_snapshot.jpg"
+                    media_content_id: >-
+                      media-source://camera/camera.g4_doorbell_pro_high_resolution_channel
                     media_content_type: image/jpeg
                 response_variable: result
-              # - service: openai_conversation.generate_content
-              #   data:
-              #     config_entry: 01JXMECP3GC7BHJNM2DH3A4KPD
-              #     prompt: >-
-              #       Someone has just rang my video doorbell and I want to know who is at the
-              #       door or what is happening. Very briefly describe what you see in this image
-              #       from my doorbell camera. Don't describe stationary objects like bushes or
-              #       buildings. Focus on who is standing in front of my door. If it is clear who
-              #       this person is (package delivery, charity, etc), mention this. Otherwise
-              #       describe the person and make an educated guess. For context, I'm in The Netherlands.
+                continue_on_error: true
 
-              #       Your message needs to be around 150 characters.
-              #     filenames: "/config/www/tmp/doorbell_snapshot.jpg"
-              #   response_variable: openai_response
-              #   continue_on_error: true
-              - service: notify.sander_and_tamara_phones
+              - action: notify.sander_and_tamara_phones
                 data:
-                  message: "{{ result.data }}"
                   title: "Doorbell Alert"
+                  message: >-
+                    {% if result is defined and result.data is defined %}
+                      {{ result.data }}
+                    {% else %}
+                      Someone is at the door, but image analysis was unavailable.
+                    {% endif %}
                   data:
-                    #image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
-                    image: "/local/tmp/doorbell_snapshot.jpg"
+                    image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
                     clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
                     ttl: 0
                     priority: high

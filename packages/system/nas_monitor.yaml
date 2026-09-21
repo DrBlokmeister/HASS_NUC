@@ -426,122 +426,154 @@ rest:
   - resource: !secret airvpn_API_resource
     headers:
       API-KEY: !secret airvpn_API_key
-    scan_interval: 60  # Set the desired update interval in seconds
+    scan_interval: 60
     sensor:
       - name: "AirVPN exit IP"
         unique_id: "yaml_restful_airvpn_exit_ip_new"
+        availability: >-
+          {% set sessions = value_json.get('sessions', []) if value_json is mapping else [] %}
+          {{
+            sessions is sequence
+            and (sessions | count > 0)
+            and sessions[0] is mapping
+            and sessions[0].get('exit_ip') is not none
+          }}
         value_template: >-
-          {% if value_json is defined and value_json.sessions is defined and value_json.sessions | length > 0 %}
-            {{ value_json.sessions[0].exit_ip }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set sessions = value_json.get('sessions', []) if value_json is mapping else [] %}
+          {{
+            sessions[0].get('exit_ip')
+            if sessions is sequence
+              and (sessions | count > 0)
+              and sessions[0] is mapping
+            else none
+          }}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Username"
         unique_id: "yaml_restful_airvpn_username"
+        availability: >-
+          {% set user = value_json.get('user', {}) if value_json is mapping else {} %}
+          {{ user is mapping and user.get('login') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.user and value_json.user.login is defined %}
-            {{ value_json.user.login }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set user = value_json.get('user', {}) if value_json is mapping else {} %}
+          {{ user.get('login') if user is mapping else none }}
         icon: "mdi:account"
       - name: "AirVPN VPN IP"
         unique_id: "yaml_restful_airvpn_vpn_ip"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('vpn_ip') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.vpn_ip is defined %}
-            {{ value_json.connection.vpn_ip }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection.get('vpn_ip') if connection is mapping else none }}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Exit IP"
         unique_id: "yaml_restful_airvpn_exit_ip"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('exit_ip') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.exit_ip is defined %}
-            {{ value_json.connection.exit_ip }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection.get('exit_ip') if connection is mapping else none }}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Entry IP"
         unique_id: "yaml_restful_airvpn_entry_ip"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('entry_ip') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.entry_ip is defined %}
-            {{ value_json.connection.entry_ip }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection.get('entry_ip') if connection is mapping else none }}
         icon: "mdi:ip-network-outline"
       - name: "AirVPN Server Name"
         unique_id: "yaml_restful_airvpn_server_name"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('server_name') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.server_name is defined %}
-            {{ value_json.connection.server_name }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection.get('server_name') if connection is mapping else none }}
         icon: "mdi:server"
       - name: "AirVPN Server Country"
         unique_id: "yaml_restful_airvpn_server_country"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('server_country') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.server_country is defined %}
-            {{ value_json.connection.server_country }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection.get('server_country') if connection is mapping else none }}
         icon: "mdi:earth"
       - name: "AirVPN Data Uploaded"
         unique_id: "yaml_restful_airvpn_data_uploaded"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('bytes_read') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.bytes_read is defined %}
-            {{ (value_json.connection.bytes_read/(1024*1024*1024))|round(2) }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{
+            (connection.get('bytes_read') | float(0) / 1073741824) | round(2)
+            if connection is mapping and connection.get('bytes_read') is not none
+            else none
+          }}
         device_class: data_size
         unit_of_measurement: GB
         icon: "mdi:upload-network-outline"
       - name: "AirVPN Data Downloaded"
         unique_id: "yaml_restful_airvpn_data_downloaded"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('bytes_write') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.bytes_write is defined %}
-            {{ (value_json.connection.bytes_write/(1024*1024*1024))|round(2) }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{
+            (connection.get('bytes_write') | float(0) / 1073741824) | round(2)
+            if connection is mapping and connection.get('bytes_write') is not none
+            else none
+          }}
         device_class: data_size
         unit_of_measurement: GB
         icon: "mdi:download-network-outline"
       - name: "AirVPN Connected Since"
         unique_id: "yaml_restful_airvpn_connected_since"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('connected_since_unix') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.connected_since_unix is defined %}
-            {{ as_datetime(value_json.connection.connected_since_unix) }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{
+            as_datetime(connection.get('connected_since_unix'))
+            if connection is mapping
+              and connection.get('connected_since_unix') is not none
+            else none
+          }}
         device_class: timestamp
         icon: "mdi:timer-sand"
       - name: "AirVPN Upload Speed"
         unique_id: "yaml_restful_airvpn_upload_speed"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('speed_read') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.speed_read is defined %}
-            {{ (value_json.connection.speed_read/(1024*1024))|round(2) }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{
+            (connection.get('speed_read') | float(0) / 1048576) | round(2)
+            if connection is mapping and connection.get('speed_read') is not none
+            else none
+          }}
         device_class: data_rate
         unit_of_measurement: MB/s
         icon: "mdi:upload-network"
       - name: "AirVPN Download Speed"
         unique_id: "yaml_restful_airvpn_download_speed"
+        availability: >-
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{ connection is mapping and connection.get('speed_write') is not none }}
         value_template: >-
-          {% if value_json is defined and value_json.connection and value_json.connection.speed_write is defined %}
-            {{ (value_json.connection.speed_write/(1024*1024))|round(2) }}
-          {% else %}
-            'unavailable'
-          {% endif %}
+          {% set connection = value_json.get('connection', {}) if value_json is mapping else {} %}
+          {{
+            (connection.get('speed_write') | float(0) / 1048576) | round(2)
+            if connection is mapping and connection.get('speed_write') is not none
+            else none
+          }}
         device_class: data_rate
         unit_of_measurement: MB/s
         icon: "mdi:download-network"
