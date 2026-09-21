@@ -235,18 +235,11 @@ script:
                 value_template: "{{ click_count | int(1) == 1 }}"
             sequence:
               - choose:
-                  # Light was already on: release it from manual control, then turn it off.
+                  # Light was already on: turn it off. Adaptive lighting should reset the light itself behind the scenes.
                   - conditions:
                       - condition: template
                         value_template: "{{ is_state(light_entity, 'on') }}"
                     sequence:
-                      - service: adaptive_lighting.set_manual_control
-                        continue_on_error: true
-                        data:
-                          entity_id: switch.adaptive_lighting_adaptive_lighting
-                          lights:
-                            - "{{ light_entity }}"
-                          manual_control: false
                       - service: light.turn_off
                         data:
                           entity_id: "{{ light_entity }}"
