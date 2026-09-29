@@ -23,19 +23,16 @@
                 | map(attribute='name')
                 | list %}
             {{ offline | join(', ') if offline else 'Online' }}
-  
     #######################################################
     ### Helper
     #######################################################
-  
   input_text:
     unavailable_entities_temp_state:
-  
+      max: 255
   automation:
     #######################################################
     ### Alert about entities becoming unavailable or online
     #######################################################
-  
     - id: Unavailable Entities - Notify
       alias: Unavailable Entities - Notify
       variables:
@@ -47,11 +44,9 @@
         became_unavailable_list: "{{ to_state_list | reject('in', from_state_list) | list }}"
         became_unavailable: "{{ became_unavailable_list | join(', ') }}"
         other_unavailable_entities: "{{ to_state_list | reject('in', became_unavailable_list) | join(', ') }}"
-  
       trigger:
         - platform: state
           entity_id: sensor.unavailable_entities
-  
           #Let other entities change as well so that we don't spam.
           #Has to be a minimum of 1 second, otherwise you won't get ONLINE notifications (because of the way I wrote this).
           for:
@@ -71,12 +66,11 @@
               ✅ Became <b>ONLINE</b>: {{ became_online }}
               ------{%- endif %}
               {% if other_unavailable_entities != '' %}🚨 Still <b>UNAVAILABLE</b>: {{ other_unavailable_entities }}{% else %}✅ Everything else is ONLINE!{%- endif %}
-  
         - service: input_text.set_value
           data:
             entity_id: input_text.unavailable_entities_temp_state
             value: ""
-  
+
     #######################################################
     ### When entities start changing,
     ### store the initial state temporarily so that
