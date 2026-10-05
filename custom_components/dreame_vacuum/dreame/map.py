@@ -2,6 +2,7 @@ from __future__ import annotations
 import io
 import math
 import time
+import threading
 import base64
 import json
 import zlib
@@ -26,11 +27,11 @@ from PIL import (
     PngImagePlugin,
     ImageFilter,
 )
+from functools import cmp_to_key
 from typing import Any
 from time import sleep
 from io import BytesIO
 from typing import Optional, Tuple
-from functools import cmp_to_key
 from threading import Timer
 from .resources import *
 from .protocol import DreameVacuumProtocol
@@ -86,6 +87,7 @@ from .types import (
     CLine,
     Paths,
     Angle,
+    RestartableTimer,
 )
 from .const import (
     MAP_PARAMETER_NAME,
@@ -164,6 +166,8 @@ class DreameMapVacuumMapManager:
         self._disconnected: bool = False
         self._ready: bool = False
         self._connected: bool = True
+        self._aes_iv: str = None
+        self._capability: DreameVacuumDeviceCapability = None
 
         self._init_data()
 
@@ -198,9 +202,7 @@ class DreameMapVacuumMapManager:
         self._map_request_time: int = None
         self._map_request_count: int = 0
         self._new_map_request_time: int = None
-        self._aes_iv: str = None
         self._aes_key: str = None
-        self._capability: DreameVacuumDeviceCapability = None
 
     def _request_map_from_cloud(self) -> bool:
         if self._protocol.cloud.dreame_cloud:
@@ -466,7 +468,6 @@ class DreameMapVacuumMapManager:
     def _update_task(self) -> None:
         if self._update_timer is not None:
             self._update_timer.cancel()
-            self._update_timer = None
 
         start = time.time()
         self.update()
@@ -495,16 +496,14 @@ class DreameMapVacuumMapManager:
             return
 
         frame_id = self._current_frame_id
-        map_data_queue = copy.deepcopy(self._map_data_queue)
-        for k, v in map_data_queue.items():
+        for k in list(self._map_data_queue.keys()):
             if k != self._latest_map_id:
                 del self._map_data_queue[k]
 
         if self._latest_map_id not in self._map_data_queue or not self._map_data_queue[self._latest_map_id]:
             return
 
-        map_data_queue = copy.deepcopy(self._map_data_queue[self._latest_map_id])
-        for k, v in map_data_queue.items():
+        for k in list(self._map_data_queue[self._latest_map_id].keys()):
             if k <= frame_id:
                 del self._map_data_queue[self._latest_map_id][k]
 
@@ -1420,6 +1419,8 @@ class DreameMapVacuumMapManager:
         """Disconnect from map and cancel timers"""
         self._disconnected = True
         self.schedule_update(-1)
+        if self._update_timer is not None:
+            self._update_timer.stop()
         self._update_callback = None
         self._change_callback = None
         self._error_callback = None
@@ -1429,11 +1430,10 @@ class DreameMapVacuumMapManager:
             wait = self._update_interval
         if self._update_timer is not None:
             self._update_timer.cancel()
-            del self._update_timer
-            self._update_timer = None
         if wait >= 0 and not self._disconnected:
-            self._update_timer = Timer(wait, self._update_task)
-            self._update_timer.start()
+            if self._update_timer is None:
+                self._update_timer = RestartableTimer()
+            self._update_timer.start(wait, self._update_task)
 
     def update(self) -> None:
         if self._update_running:
@@ -1950,6 +1950,8 @@ class DreameMapVacuumMapEditor:
         map_data = self._map_data
         if map_data is not None:
             map_data.active_segments = active_segments
+            map_data.active_areas = []
+            map_data.active_cruise_points = None
             map_data.dirty = True
             self._set_updated_frame_id(map_data.frame_id)
             self.refresh_map()
@@ -1957,7 +1959,9 @@ class DreameMapVacuumMapEditor:
     def set_active_points(self, active_points: list[list[int]]) -> None:
         map_data = self._map_data
         if map_data is not None:
+            map_data.active_segments = None
             map_data.active_points = []
+            map_data.active_areas = []
             for point in active_points:
                 map_data.active_points.append(
                     Point(
@@ -2099,6 +2103,7 @@ class DreameMapVacuumMapEditor:
         if (
             not map_data
             or not self._selected_map_id
+            or self._selected_map_id not in self._saved_map_data
             or (map_data.carpets is None and map_data.deleted_carpets is None)
         ):
             return
@@ -2543,7 +2548,12 @@ class DreameMapVacuumMapEditor:
 
     def set_predefined_points(self, predefined_points) -> None:
         map_data = self._map_data
-        if not map_data or not self._selected_map_id or map_data.predefined_points is None:
+        if (
+            not map_data
+            or not self._selected_map_id
+            or self._selected_map_id not in self._saved_map_data
+            or map_data.predefined_points is None
+        ):
             return
 
         map_data.predefined_points = []
@@ -2584,7 +2594,12 @@ class DreameMapVacuumMapEditor:
 
     def set_router_position(self, x, y):
         map_data = self._map_data
-        if not map_data or not self._selected_map_id or map_data.router_position is None:
+        if (
+            not map_data
+            or not self._selected_map_id
+            or self._selected_map_id not in self._saved_map_data
+            or map_data.router_position is None
+        ):
             return
 
         router_position = Point(int(x), int(y))
@@ -2708,7 +2723,7 @@ class DreameMapVacuumMapEditor:
                 (
                     DreameVacuumMapDecoder.decode_saved_map(
                         recovery_map_info.raw_map,
-                        self.map_manager._map_version,
+                        self.map_manager.map_version,
                         self._saved_map_data[recovery_map_info.map_id].rotation,
                         self.map_manager._aes_iv,
                     )
@@ -2742,7 +2757,12 @@ class DreameMapVacuumMapEditor:
 
     def set_cleaning_sequence(self, cleaning_sequence: list[int]) -> list[int] | None:
         map_data = self._map_data
-        if map_data and map_data.segments and not map_data.temporary_map:
+        if (
+            map_data
+            and map_data.segments
+            and not map_data.temporary_map
+            and (map_data.version < 2 or map_data.saved_map_id in self._saved_map_data)
+        ):
             new_cleaning_sequence = []
             if map_data.version > 1:
                 map_data = self._saved_map_data[map_data.saved_map_id]
@@ -2799,7 +2819,16 @@ class DreameMapVacuumMapEditor:
         if order is None or (isinstance(order, str) and not order.isnumeric()):
             order = 0
         map_data = self._map_data
-        if map_data and map_data.segments and segment_id in map_data.segments and not map_data.temporary_map:
+        if (
+            map_data
+            and map_data.segments
+            and segment_id in map_data.segments
+            and not map_data.temporary_map
+            and (map_data.version < 2 or map_data.saved_map_id in self._saved_map_data)
+        ):
+            if map_data.version > 1:
+                map_data = self._saved_map_data[map_data.saved_map_id]
+
             if not order and map_data.version > 1:
                 order = max([v.order for v in map_data.segments.values() if v.order]) + 1
 
@@ -2832,6 +2861,12 @@ class DreameMapVacuumMapEditor:
                     str(k): map_data.segments[k].order
                     for k in sorted(map_data.segments.keys(), key=lambda k: map_data.segments[k].id)
                 }
+
+                self._map_data.cleaning_sequence = map_data.cleaning_sequence.copy()
+                for k, v in map_data.segments.items():
+                    if k in self._map_data.segments:
+                        self._map_data.segments[k].order = v.order
+                self.refresh_map(self._map_data.saved_map_id)
 
             if (
                 self._saved_map_data
@@ -3792,6 +3827,7 @@ class DreameMapVacuumMapEditor:
             and map_data.segments
             and segment_id in map_data.segments
             and self._selected_map_id
+            and self._selected_map_id in self._saved_map_data
             and not map_data.temporary_map
         ):
             segment_type = int(segment_type)
@@ -3930,24 +3966,6 @@ class DreameVacuumMapDecoder:
     @staticmethod
     def _read_int_16_le(data: bytes, offset: int = 0) -> int:
         return int.from_bytes(data[offset : offset + 2], byteorder="little", signed=True)
-
-    @staticmethod
-    def _compare_segment_neighbors(r1: Segment, r2: Segment) -> bool:
-        alen = 0
-        blen = 0
-        if r1[1]:
-            alen = len(r1[1])
-        if r2[1]:
-            blen = len(r2[1])
-
-        if alen == blen:
-            return r1[0] - r2[0]
-
-        return blen - alen
-
-    @staticmethod
-    def _compare_colors(c1: list[int], c2: list[int]) -> bool:
-        return c1[1] - c2[1] if c1[1] != c2[1] else c1[0] - c2[0]
 
     @staticmethod
     def _get_pixel_type(map_data: MapData, pixel) -> tuple[MapPixelType, bool]:
@@ -4344,10 +4362,18 @@ class DreameVacuumMapDecoder:
                     and not map_data.clean_log
                 )
 
-                if (data_json.get("nc") and data_json["nc"]) or map_data.charger_position.a == 32767:
+                if (
+                    (data_json.get("nc") and data_json["nc"])
+                    or map_data.charger_position.a == 32767
+                    or (map_data.charger_position.x == 32767 and map_data.charger_position.y == 32767)
+                ):
                     map_data.charger_position = None
 
-                if (data_json.get("nr") and data_json["nr"]) or map_data.robot_position.a == 32767:
+                if (
+                    (data_json.get("nr") and data_json["nr"])
+                    or map_data.robot_position.a == 32767
+                    or (map_data.robot_position.x == 32767 and map_data.robot_position.y == 32767)
+                ):
                     map_data.robot_position = None
 
                 if not map_data.saved_map and not map_data.recovery_map:
@@ -4608,7 +4634,7 @@ class DreameVacuumMapDecoder:
                                     is_unmmaped
                                     and not map_data.wifi_map
                                     and map_data.saved_map_status != 2
-                                    and not (not map_data.saved_map and map_data.version == 3)
+                                    # and not (not map_data.saved_map and not map_data.history_map and map_data.version == 3)
                                 ):
                                     continue
 
@@ -5737,6 +5763,8 @@ class DreameVacuumMapDecoder:
 
             if map_data.low_lying_areas is not None:
                 if map_data.version == 3:
+                    if current_map_data.low_lying_areas is None:
+                        current_map_data.low_lying_areas = []
                     for area in map_data.low_lying_areas:
                         index = next(
                             (i for i, item in enumerate(current_map_data.low_lying_areas) if area.id == item.id),
@@ -5802,6 +5830,12 @@ class DreameVacuumMapDecoder:
                 left_offset = int((new_dimensions.left - left) / grid_size)
                 top_offset = int((new_dimensions.top - top) / grid_size)
 
+                # Track carpet pixel changes with a set, list lookups are O(n) for every changed pixel
+                carpet_set = (
+                    set(current_map_data.carpet_pixels) if current_map_data.carpet_pixels is not None else None
+                )
+                added_carpet_pixels = []
+
                 new_segments = []
                 # Copy new image to buffer at calculated offset
                 for y in range(new_dimensions.height):
@@ -5825,15 +5859,21 @@ class DreameVacuumMapDecoder:
                                 DreameVacuumMapDecoder._get_pixel_type(current_map_data, int(new_value))
                             )
 
-                            if carpet and current_map_data.carpet_pixels is None:
-                                current_map_data.carpet_pixels = []
+                            if carpet and carpet_set is None:
+                                carpet_set = set()
 
-                            if current_map_data.carpet_pixels is not None:
+                            if carpet_set is not None:
                                 coord = (left_offset + x, top_offset + y)
-                                if not carpet and coord in current_map_data.carpet_pixels:
-                                    current_map_data.carpet_pixels.remove(coord)
-                                elif carpet and coord not in current_map_data.carpet_pixels:
-                                    current_map_data.carpet_pixels.append(coord)
+                                if not carpet and coord in carpet_set:
+                                    carpet_set.discard(coord)
+                                elif carpet and coord not in carpet_set:
+                                    carpet_set.add(coord)
+                                    added_carpet_pixels.append(coord)
+
+                if carpet_set is not None:
+                    current_map_data.carpet_pixels = [
+                        coord for coord in (current_map_data.carpet_pixels or []) if coord in carpet_set
+                    ] + added_carpet_pixels
 
                 # Update size and buffer
                 current_map_data.data = bytes(data)
@@ -5842,6 +5882,9 @@ class DreameVacuumMapDecoder:
 
                 current_map_data.combined_dimensions = None
                 current_map_data.combined_pixel_type = None
+
+                if current_map_data.segments is None:
+                    current_map_data.segments = {}
 
                 # Get new segment coords
                 segments = DreameVacuumMapDecoder.get_segments(current_map_data)
@@ -6150,7 +6193,7 @@ class DreameVacuumMapDecoder:
                                     break
 
                             if startI != -1 and endI != -1:
-                                x = (endI - startI) + startI
+                                x = int((endI - startI) / 2) + startI
                     else:
                         center_x = DreameVacuumMapDecoder._get_segment_center(map_data, segment.id, y, False)
                         if center_x is not None:
@@ -6214,7 +6257,7 @@ class DreameVacuumMapDecoder:
         if map_data.segments and obstacles:
             for k, obstacle in obstacles.items():
                 if obstacle.type == ObstacleType.BLOCKED_ROOM:
-                    if obstacle.segment_id in map_data.segments.items():
+                    if obstacle.segment_id in map_data.segments:
                         segment = map_data.segments[obstacle.segment_id]
                         obstacles[k].x = segment.x
                         obstacles[k].y = segment.y
@@ -6223,7 +6266,7 @@ class DreameVacuumMapDecoder:
                 else:
                     segment = DreameVacuumMapDecoder._find_px_type(obstacle.x, obstacle.y, map_data, 200)
 
-                    if segment not in map_data.segments.items():
+                    if segment not in map_data.segments:
                         for v in map_data.segments.values():
                             if not v.unmapped and v.check_point(
                                 obstacle.x,
@@ -6523,10 +6566,10 @@ class DreameVacuumMapDecoder:
             max_area_item = max(segment_info, key=lambda s: s[2])
             sorted_segments = [max_area_item] + sorted(
                 [s for s in segment_info if s[0] != max_area_item[0]],
-                key=cmp_to_key(DreameVacuumMapDecoder._compare_segment_neighbors),
+                key=lambda s: (-len(s[1]) if s[1] else 0, s[0]),
             )
         else:
-            sorted_segments = sorted(segment_info, key=cmp_to_key(DreameVacuumMapDecoder._compare_segment_neighbors))
+            sorted_segments = sorted(segment_info, key=lambda s: (-len(s[1]) if s[1] else 0, s[0]))
 
         for segment in sorted_segments:
             used_ids = []
@@ -6544,7 +6587,7 @@ class DreameVacuumMapDecoder:
 
             area_color_num = sorted(
                 area_color_num.values(),
-                key=cmp_to_key(DreameVacuumMapDecoder._compare_colors),
+                key=lambda x: (x[1], x[0]),
             )
 
             for area_color in area_color_num:
@@ -6607,7 +6650,7 @@ class DreameVacuumMapDecoder:
 
                     floor_material[segment_id] = material
                 else:
-                    if capability.floor_direction_cleaning and material == 1:
+                    if capability is not None and capability.floor_direction_cleaning and material == 1:
                         if material_direction is None:
                             material_direction = 0
                             segment.floor_material_direction = 0
@@ -6631,7 +6674,16 @@ class DreameVacuumMapDecoder:
                             else (
                                 2
                                 if material_direction == 90
-                                or (material_direction != 0 and (segment.x1 - segment.x0) <= (segment.y1 - segment.y0))
+                                or (
+                                    material_direction != 0
+                                    and (
+                                        segment.x0 is not None
+                                        and segment.x1 is not None
+                                        and segment.y0 is not None
+                                        and segment.y1 is not None
+                                    )
+                                    and (segment.x1 - segment.x0) <= (segment.y1 - segment.y0)
+                                )
                                 else 1
                             )
                         )
@@ -6694,84 +6746,8 @@ class DreameVacuumMapDecoder:
             if capability.segment_visibility and map_data.hidden_segments is None:
                 map_data.hidden_segments = []
 
-                if not map_data.history_map and capability.cruising and map_data.predefined_points is None:
-                    map_data.predefined_points = []
-
-            if (
-                map_data.history_map
-                and map_data.segments
-                and not map_data.zone_cleaning
-                and (
-                    map_data.task_cruise_points
-                    or (
-                        map_data.cleanup_method is not None
-                        and (
-                            map_data.cleanup_method == CleanupMethod.CLEANGENIUS
-                            and not capability.cleangenius_mode
-                            and map_data.version < 2
-                        )
-                    )
-                )
-            ):
-                map_data.sequence = False
-
-            if map_data.history_map:
-                if not capability.cruising:
-                    if map_data.active_areas and len(map_data.active_areas) == 1:
-                        area = map_data.active_areas[0]
-                        size = map_data.dimensions.grid_size * 2
-                        if area.check_size(size):
-                            x = area.x0 + map_data.dimensions.grid_size
-                            y = area.y0 + map_data.dimensions.grid_size
-                            map_data.task_cruise_points = {
-                                1: Coordinate(
-                                    x,
-                                    y,
-                                    False,
-                                    0,
-                                )
-                            }
-
-                            if map_data.completed == False:
-                                if map_data.robot_position:
-                                    map_data.completed = bool(
-                                        map_data.robot_position.x >= x - size
-                                        and map_data.robot_position.x <= x + size
-                                        and map_data.robot_position.y >= y - size
-                                        and map_data.robot_position.y <= y + size
-                                    )
-                                else:
-                                    map_data.completed = True
-
-                            map_data.active_areas = None
-
-                if map_data.active_areas or map_data.active_points:
-                    map_data.zone_cleaning = True
-
-                if (
-                    map_data.customized_cleaning != 1
-                    or map_data.cleanup_method is None
-                    or map_data.cleanup_method != CleanupMethod.CUSTOMIZED_CLEANING
-                ):
-                    map_data.cleanset = None
-
-                if map_data.task_cruise_points:
-                    map_data.active_cruise_points = map_data.task_cruise_points.copy()
-                    map_data.task_cruise_points = True
-                    map_data.active_areas = None
-                    map_data.path = None
-                    map_data.no_mopping_areas = None
-                    map_data.cleanset = None
-                    if map_data.furnitures is not None:
-                        map_data.furnitures = {}
-
-                if map_data.segments and not map_data.zone_cleaning:
-                    for segment in map_data.segments.values():
-                        segment.calculate_coords(map_data.dimensions)
-
-                    if capability.cleaning_route:
-                        for k, v in map_data.segments.items():
-                            map_data.segments[k].custom_mopping_route = None
+            if capability.cruising and map_data.predefined_points is None:
+                map_data.predefined_points = []
 
 
 class DreameVacuumMapDataJsonRenderer:
@@ -6790,19 +6766,6 @@ class DreameVacuumMapDataJsonRenderer:
 
         self._default_map_data: str = base64.b64decode(DEFAULT_MAP_DATA)
         self._default_map_image = Image.open(BytesIO(base64.b64decode(DEFAULT_MAP_DATA_IMAGE))).convert("RGBA")
-
-    @staticmethod
-    def _coordinate_tuple_sort(a: list[int], b: list[int]) -> bool:
-        xA = a[0]
-        yA = a[1]
-        xB = b[0]
-        yB = b[1]
-
-        if yB > yA:
-            return -1
-        if xB > xA:
-            return 1
-        return 0
 
     @staticmethod
     def _convert_coordinates(x: int, y: int) -> int:
@@ -7137,7 +7100,7 @@ class DreameVacuumMapDataJsonRenderer:
                             val
                             for sublist in sorted(
                                 floor_pixels,
-                                key=cmp_to_key(DreameVacuumMapDataJsonRenderer._coordinate_tuple_sort),
+                                key=lambda c: (c[1], c[0]),
                             )
                             for val in sublist
                         ],
@@ -7152,7 +7115,7 @@ class DreameVacuumMapDataJsonRenderer:
                             val
                             for sublist in sorted(
                                 wall_pixels,
-                                key=cmp_to_key(DreameVacuumMapDataJsonRenderer._coordinate_tuple_sort),
+                                key=lambda c: (c[1], c[0]),
                             )
                             for val in sublist
                         ],
@@ -7173,7 +7136,7 @@ class DreameVacuumMapDataJsonRenderer:
                                 val
                                 for sublist in sorted(
                                     v,
-                                    key=cmp_to_key(DreameVacuumMapDataJsonRenderer._coordinate_tuple_sort),
+                                    key=lambda c: (c[1], c[0]),
                                 )
                                 for val in sublist
                             ],
@@ -7345,9 +7308,11 @@ class DreameVacuumMapRenderer:
         low_resolution: bool = False,
         square: bool = False,
         cache: bool = True,
+        segment_names: dict[int, str] = None,
     ) -> None:
         self.color_scheme: MapRendererColorScheme = MAP_COLOR_SCHEME_LIST.get(color_scheme, MapRendererColorScheme())
         self.icon_set: int = icon_set
+        self._segment_names: dict[int, str] = segment_names
         self.config: MapRendererConfig = MapRendererConfig()
         if hidden_map_objects is not None:
             for attr in self.config.__dict__.keys():
@@ -7421,6 +7386,7 @@ class DreameVacuumMapRenderer:
         self._wifi_icon = None
         self._font_file = None
         self._light_font_file = None
+        self._font_cache = {}
         self._default_map_image = None
         self._obstacle_bottom_left_icon = None
         self._obstacle_top_left_icon = None
@@ -7489,6 +7455,17 @@ class DreameVacuumMapRenderer:
                 for icon in MAP_ICON_CUSTOM_MOPPING_ROUTE_DREAME
             ]
 
+    def _get_font(self, light: bool, size: int) -> ImageFont.FreeTypeFont:
+        # Parsing the font file is expensive, reuse loaded fonts for the same size
+        key = (light, size)
+        font = self._font_cache.get(key)
+        if font is None:
+            if len(self._font_cache) >= 32:
+                self._font_cache.clear()
+            font = ImageFont.truetype(BytesIO(self._light_font_file if light else self._font_file), size)
+            self._font_cache[key] = font
+        return font
+
     @staticmethod
     def _to_buffer(image) -> bytes:
         if image:
@@ -7529,7 +7506,7 @@ class DreameVacuumMapRenderer:
                     min_y = min(min(y_coords), min_y)
                     max_y = max(max(y_coords), max_y)
 
-            return [min_x, min_y, max_x, min_y]
+            return [min_x, min_y, max_x, max_y]
 
     @staticmethod
     def _calculate_padding(
@@ -7877,8 +7854,9 @@ class DreameVacuumMapRenderer:
         y = y1 - y0
         count = size - 1 if size else math.floor(math.sqrt(x * x + y * y) / spacing)
         points = []
-        for i in range(count + 1):
-            points.append((x0 + x * (i / count), y0 + y * (i / count)))
+        if count > 0:
+            for i in range(count + 1):
+                points.append((x0 + x * (i / count), y0 + y * (i / count)))
         return points
 
     @staticmethod
@@ -9452,10 +9430,10 @@ class DreameVacuumMapRenderer:
                 if self._light_font_file is None:
                     self._light_font_file = zlib.decompress(base64.b64decode(MAP_FONT_LIGHT), zlib.MAX_WBITS | 32)
 
-                text_font = ImageFont.truetype(BytesIO(self._light_font_file), text_size)
+                text_font = self._get_font(True, text_size)
                 if map_data.history_map:
-                    value_font = ImageFont.truetype(BytesIO(self._light_font_file), int(text_size * 1.8))
-                    name_font = ImageFont.truetype(BytesIO(self._light_font_file), int(text_size * 0.8))
+                    value_font = self._get_font(True, int(text_size * 1.8))
+                    name_font = self._get_font(True, int(text_size * 0.8))
                 left, top, width, height = text_draw.textbbox((0, 0), header_text, font=text_font)
                 max_width = image_width * 0.9
                 if width > max_width:
@@ -11249,10 +11227,21 @@ class DreameVacuumMapRenderer:
 
             icon = self._segment_icons.get(segment.type) if self.config.icon else None
             if segment.type == 0 or self.config.name or icon is None:
+                segment_name = segment.name
+                if self._segment_names:
+                    if segment.custom_name:
+                        segment_name = segment.custom_name
+                    elif segment.type != 0 and segment.type in self._segment_names:
+                        segment_name = self._segment_names[segment.type]
+                        if segment.index > 0:
+                            segment_name = f"{segment_name} {segment.index + 1}"
+                    else:
+                        segment_name = self._segment_names[0].replace("%index%", str(segment.id))
+
                 text = (
-                    segment.name
+                    segment_name
                     if (self._robot_type != RobotType.VSLAM or icon is not None)
-                    or (segment.custom_name is not None and segment.type == 0)
+                    or segment.custom_name is not None
                     or self.icon_set == 2
                     else segment.letter
                 )
@@ -11268,13 +11257,13 @@ class DreameVacuumMapRenderer:
                 self._font_file = zlib.decompress(base64.b64decode(MAP_FONT), zlib.MAX_WBITS | 32)
 
             if render_font and self._font_file:
-                text_font = ImageFont.truetype(
-                    BytesIO(self._font_file),
+                text_font = self._get_font(
+                    False,
                     int((size * 1.9)) if segment.index or icon is None else int((size * 1.7)),
                 )
 
             if active and cleaning_sequence[segment.id] and self.config.order and sequence:
-                order_font = ImageFont.truetype(BytesIO(self._font_file), int((size * 2.1)))
+                order_font = self._get_font(False, int((size * 2.1)))
 
             p = Point(segment.x, segment.y).to_img(dimensions)
             x = p.x
@@ -11385,7 +11374,7 @@ class DreameVacuumMapRenderer:
                             and active
                             and not blocked
                             and segment.color_index is not None
-                            and segment.color_index in self.color_scheme.segment
+                            and 0 <= segment.color_index < len(self.color_scheme.segment)
                         ):
                             draw.rounded_rectangle(
                                 [
@@ -11418,7 +11407,9 @@ class DreameVacuumMapRenderer:
                         if self.icon_set == 1:
                             icon_size *= 1.3
                     elif (
-                        active and segment.color_index is not None and segment.color_index in self.color_scheme.segment
+                        active
+                        and segment.color_index is not None
+                        and 0 <= segment.color_index < len(self.color_scheme.segment)
                     ):  # and not self.config.name_background
                         draw.ellipse(
                             [x0 * scale, y0 * scale, x1 * scale, y1 * scale],
@@ -11463,7 +11454,7 @@ class DreameVacuumMapRenderer:
 
             if (
                 segment.color_index is not None
-                and segment.color_index in self.color_scheme.segment
+                and 0 <= segment.color_index < len(self.color_scheme.segment)
                 and (order_font or custom)
             ):
                 offset = size * 2.7
@@ -11974,7 +11965,7 @@ class DreameVacuumMapRenderer:
             if self._font_file is None:
                 self._font_file = zlib.decompress(base64.b64decode(MAP_FONT), zlib.MAX_WBITS | 32)
 
-            font = ImageFont.truetype(BytesIO(self._font_file), int((bg_size * 1.5 * scale)))
+            font = self._get_font(False, int((bg_size * 1.5 * scale)))
 
             text = str(index)
             left, top, tw, th = text_box_draw.textbbox((0, 0), text, font)
@@ -12503,6 +12494,7 @@ class DreameVacuumMapRenderer:
 class DreameVacuumMapOptimizer:
     def __init__(self) -> None:
         self._js_optimizer = None
+        self._lock = threading.Lock()
 
     def _clean_wall(self, data, width, height):
         for j in range(1, height - 1):
@@ -12886,11 +12878,7 @@ class DreameVacuumMapOptimizer:
         if arr1[0] >= arr2[1] or arr2[0] >= arr1[1]:
             return None
 
-        def sort_data(a, b):
-            return a - b
-
-        tmp = arr1 + arr2
-        tmp.sort(key=cmp_to_key(sort_data))
+        tmp = sorted(arr1 + arr2)
         return [tmp[1], tmp[2]]
 
     def _find_original_points(self, original_data, data, width, xs, ys) -> float:
@@ -13835,6 +13823,11 @@ class DreameVacuumMapOptimizer:
             map_data.optimized_dimensions = MapImageDimensions(top, left, height, width, map_data.dimensions.grid_size)
 
     def optimize(self, map_data, saved_map_data=None, js_optimizer=True):
+        # Called from the map manager and Home Assistant executor threads, the JS optimizer is not thread safe
+        with self._lock:
+            return self._optimize(map_data, saved_map_data, js_optimizer)
+
+    def _optimize(self, map_data, saved_map_data=None, js_optimizer=True):
         if map_data.need_optimization:
             if map_data.saved_map:
                 map_data.need_optimization = False
