@@ -262,61 +262,59 @@ automation:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int(0) > 5) }}"
     action:
-      - parallel:
-          - service: notify.sander_and_tamara_phones
-            data:
-              message: "Someone's at the door!"
-              title: "Doorbell Alert"
-              data:
-                image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
-                clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
-                ttl: 0
-                priority: high
-                sticky: "true"
-                tag: doorbell
-                group: "doorbell"
-                notification_icon: "mdi:bell-ring"
-          - sequence:
-              - action: ai_task.generate_data
-                data:
-                  entity_id: ai_task.openai_ai_task_fast
-                  task_name: "Doorbell Image Analysis"
-                  instructions: >-
-                    Someone has just rung my video doorbell. Briefly describe who
-                    is at the door or what is happening. Do not describe stationary
-                    background objects such as bushes or buildings. Focus on whoever
-                    is standing in front of the door. If their purpose is clear, such
-                    as a package delivery or charity collection, mention it.
-                    Otherwise, briefly describe the person and make a cautious,
-                    educated guess. For context, this is in the Netherlands.
-
-                    Keep the response to approximately 150 characters.
-                  attachments:
-                    media_content_id: >-
-                      media-source://camera/camera.g4_doorbell_pro_high_resolution_channel
-                    media_content_type: image/jpeg
-                response_variable: result
-                continue_on_error: true
-
-              - action: notify.sander_and_tamara_phones
-                data:
-                  title: "Doorbell Alert"
-                  message: >-
-                    {% if result is defined and result.data is defined %}
-                      {{ result.data }}
-                    {% else %}
-                      Someone is at the door, but image analysis was unavailable.
-                    {% endif %}
-                  data:
-                    image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
-                    clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
-                    ttl: 0
-                    priority: high
-                    sticky: "true"
-                    tag: doorbell
-                    group: "doorbell"
-                    notification_icon: "mdi:bell-ring"
-                continue_on_error: true
+      - action: notify.sander_and_tamara_phones
+        data:
+          message: "Someone's at the door!"
+          title: "Doorbell Alert"
+          data:
+            image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
+            clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
+            ttl: 0
+            priority: high
+            sticky: "true"
+            tag: doorbell
+            group: "doorbell"
+            notification_icon: "mdi:bell-ring"
+      - action: ai_task.generate_data
+        data:
+          entity_id: ai_task.openai_ai_task_fast
+          task_name: "Doorbell Image Analysis"
+          instructions: >-
+            Someone has just rung my video doorbell. Briefly describe who
+            is at the door or what is happening. Do not describe stationary
+            background objects such as bushes or buildings. Focus on whoever
+            is standing in front of the door. If their purpose is clear, such
+            as a package delivery or charity collection, mention it.
+            Otherwise, briefly describe the person and make a cautious,
+            educated guess. For context, this is in the Netherlands.
+            Keep the response to approximately 150 characters.
+          attachments:
+            media_content_id: >-
+              media-source://camera/camera.g4_doorbell_pro_high_resolution_channel
+            media_content_type: image/jpeg
+        response_variable: result
+        continue_on_error: true
+      - variables:
+          doorbell_message: >-
+            {% if result is defined and result.data is defined and result.data | trim %}
+              {{ result.data }}
+            {% else %}
+              Someone is at the door, but image analysis was unavailable.
+            {% endif %}
+      - action: notify.sander_and_tamara_phones
+        data:
+          title: "Doorbell Alert"
+          message: "{{ doorbell_message }}"
+          data:
+            image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
+            clickAction: "/config/devices/device/13e442ce7763c5159d9ee1b7f31c9760"
+            ttl: 0
+            priority: high
+            sticky: "true"
+            tag: doorbell
+            group: "doorbell"
+            notification_icon: "mdi:bell-ring"
+        continue_on_error: true
       - choose:
           - conditions:
               - condition: state
@@ -350,7 +348,7 @@ automation:
                     - service: notify.sander_and_tamara_phones
                       continue_on_error: true
                       data:
-                        message: "{{ openai_response.text }}"
+                        message: "{{ doorbell_message }}"
                         title: "Doorbell Reminder"
                         data:
                           image: "/api/camera_proxy/camera.g4_doorbell_pro_high_resolution_channel"
