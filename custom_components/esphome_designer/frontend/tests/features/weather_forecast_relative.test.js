@@ -118,4 +118,46 @@ describe('weather_forecast widget relative hourly mode', () => {
         expect(allYaml).toContain('auto t = id(ha_time).now();');
         expect(allYaml).toContain('sprintf(buf, \\"%02d:00\\", (t.hour + 1) % 24)');
     });
+
+    it('should generate 12h hour labels for direct and LVGL exports (Issue #521)', () => {
+        const directLines = [];
+        plugin.export({
+            id: 'testWeather12h',
+            type: 'weather_forecast',
+            props: {
+                forecast_mode: 'hourly',
+                hourly_mode: 'relative',
+                relative_count: 2,
+                clock_mode: '12h'
+            }
+        }, {
+            lines: directLines,
+            addFont: () => { },
+            addDitherMask: () => { },
+            sanitize: (s) => s,
+            getCondProps: () => ({}),
+            getConditionCheck: () => 'true',
+            isEpaper: false,
+            ...mockContext,
+            ...mockHelpers.common
+        });
+
+        const directOut = directLines.join('\n');
+        expect(directOut).toContain('snprintf(buf, sizeof(buf), "%d%s", h12, h24 < 12 ? "AM" : "PM");');
+
+        const lvglContainer = runLVGL({
+            id: 'testWeather12hLvgl',
+            type: 'weather_forecast',
+            props: {
+                forecast_mode: 'hourly',
+                hourly_mode: 'fixed',
+                hourly_slots: '06,18',
+                clock_mode: '12h'
+            }
+        });
+        const lvglYaml = JSON.stringify(lvglContainer);
+        expect(lvglYaml).toContain('6AM');
+        expect(lvglYaml).toContain('6PM');
+        expect(lvglYaml).not.toContain('06:00');
+    });
 });

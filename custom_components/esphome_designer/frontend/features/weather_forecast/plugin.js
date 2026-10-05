@@ -13,6 +13,7 @@ defaults: {
         hourly_mode: "fixed",
         relative_count: 5,
         hourly_slots: "06,09,12,15,18,21",
+        clock_mode: "24h",
         days: 5,
         layout: "horizontal",
         icon_size: 32,

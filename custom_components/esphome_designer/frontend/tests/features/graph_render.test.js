@@ -296,4 +296,79 @@ describe('graph render', () => {
         expect(mockFetchEntityHistory).toHaveBeenCalledTimes(1);
         expect(second.querySelector('polyline')).not.toBeNull();
     });
+
+    it('positions timestamped v2 pairs at true times with gaps instead of stretching (Issue #517)', () => {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const day = 86400;
+        mockGetEntityAttributes.mockReturnValue({
+            history: JSON.stringify([
+                [nowSec - 3 * day, '10'],
+                [nowSec - 3 * day + 3600, '20'],
+                [nowSec - 3 * day + 7200, null],
+                [nowSec - 3600, '30']
+            ])
+        });
+
+        const el = document.createElement('div');
+        render(el, {
+            id: 'graph_v2',
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 100,
+            entity_id: 'sensor.power',
+            props: {
+                use_ha_history: true,
+                history_attribute: 'history',
+                duration: '4d',
+                auto_scale: false,
+                min_value: '0',
+                max_value: '100'
+            }
+        }, {
+            getColorStyle: (value) => value || '#000000'
+        });
+
+        const polylines = el.querySelectorAll('polyline');
+        // Two valid runs (day-old pair, recent point) separated by the null gap.
+        expect(polylines).toHaveLength(2);
+        const first = polylines[0].getAttribute('points').split(' ').map((pair) => pair.split(',').map(Number));
+        // First run sits around x=50 (one day into a four-day window), not stretched.
+        expect(first[0][0]).toBeGreaterThan(40);
+        expect(first[0][0]).toBeLessThan(60);
+        const second = polylines[1].getAttribute('points').split(' ').map((pair) => pair.split(',').map(Number));
+        expect(second[0][0]).toBeGreaterThan(190);
+    });
+
+    it('keeps spreading legacy flat values across the window like the firmware', () => {
+        mockGetEntityAttributes.mockReturnValue({
+            history: JSON.stringify([10, 20, 30])
+        });
+
+        const el = document.createElement('div');
+        render(el, {
+            id: 'graph_legacy',
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 100,
+            entity_id: 'sensor.power',
+            props: {
+                use_ha_history: true,
+                history_attribute: 'history',
+                duration: '4d',
+                auto_scale: false,
+                min_value: '0',
+                max_value: '100'
+            }
+        }, {
+            getColorStyle: (value) => value || '#000000'
+        });
+
+        const polylines = el.querySelectorAll('polyline');
+        expect(polylines).toHaveLength(1);
+        const pts = polylines[0].getAttribute('points').split(' ').map((pair) => pair.split(',').map(Number));
+        expect(pts[0][0]).toBe(0);
+        expect(pts.at(-1)[0]).toBe(200);
+    });
 });

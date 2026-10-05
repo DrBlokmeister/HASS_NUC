@@ -1,4 +1,4 @@
-import { getDayLabelSet } from './day_labels.js';
+import { formatHourLabel, getDayLabelSet, isTwelveHourClock } from './day_labels.js';
 import { clampFontWeight } from '../../js/core/font_weights.js';
 import { UNKNOWN_WEATHER_ICON } from '../weather_icon/shared.js';
 
@@ -18,6 +18,7 @@ export const exportDoc = (w, context) => {
     const layout = p.layout || "horizontal";
     const mode = p.forecast_mode || "daily";
     const hourlyMode = p.hourly_mode === "relative" ? "relative" : "fixed";
+    const use12h = isTwelveHourClock(p.clock_mode);
     const relativeCount = parseInt(p.relative_count || 5, 10);
     const startOffset = parseInt(p.start_offset || 0, 10);
     const hourlySlots = (p.hourly_slots || "06,09,12,15,18,21")
@@ -63,10 +64,17 @@ export const exportDoc = (w, context) => {
         if (hourlyMode === "relative") {
             lines.push(`            auto t = id(ha_time).now();`);
             lines.push(`            if (!t.is_valid()) return "---";`);
-            lines.push(`            char buf[8]; sprintf(buf, "%02d:00", (t.hour + offset + 1) % 24);`);
-            lines.push(`            return std::string(buf);`);
+            if (use12h) {
+                lines.push(`            int h24 = (t.hour + offset + 1) % 24;`);
+                lines.push(`            int h12 = h24 % 12; if (h12 == 0) h12 = 12;`);
+                lines.push(`            char buf[8]; snprintf(buf, sizeof(buf), "%d%s", h12, h24 < 12 ? "AM" : "PM");`);
+                lines.push(`            return std::string(buf);`);
+            } else {
+                lines.push(`            char buf[8]; sprintf(buf, "%02d:00", (t.hour + offset + 1) % 24);`);
+                lines.push(`            return std::string(buf);`);
+            }
         } else {
-            lines.push(`            const char* slots[] = {${actualSlots.map((/** @type {string} */ s) => `"${s}:00"`).join(', ')}};`);
+            lines.push(`            const char* slots[] = {${actualSlots.map((/** @type {string} */ s) => `"${formatHourLabel(s, p.clock_mode)}"`).join(', ')}};`);
             lines.push(`            if (offset >= 0 && offset < ${actualSlots.length}) return std::string(slots[offset]);`);
             lines.push(`            return "---";`);
         }
@@ -92,7 +100,19 @@ export const exportDoc = (w, context) => {
     if (bgColorProp && bgColorProp !== "transparent") {
         const bgColorConst = getColorConst(bgColorProp);
         if (radius > 0) {
-            lines.push(`          it.filled_rounded_rectangle(${w.x}, ${w.y}, ${w.width}, ${w.height}, ${radius}, ${bgColorConst});`);
+            lines.push("          auto draw_filled_rrect = [&](int x, int y, int w, int h, int r, auto c) {");
+            lines.push("            if (r <= 0) { it.filled_rectangle(x, y, w, h, c); return; }");
+            lines.push("            if (r * 2 > w) r = w / 2;");
+            lines.push("            if (r * 2 > h) r = h / 2;");
+            lines.push("            it.filled_rectangle(x + r, y, w - 2 * r, h, c);");
+            lines.push("            it.filled_rectangle(x, y + r, r, h - 2 * r, c);");
+            lines.push("            it.filled_rectangle(x + w - r, y + r, r, h - 2 * r, c);");
+            lines.push("            it.filled_circle(x + r, y + r, r, c);");
+            lines.push("            it.filled_circle(x + w - r - 1, y + r, r, c);");
+            lines.push("            it.filled_circle(x + r, y + h - r - 1, r, c);");
+            lines.push("            it.filled_circle(x + w - r - 1, y + h - r - 1, r, c);");
+            lines.push("          };");
+            lines.push(`          draw_filled_rrect(${w.x}, ${w.y}, ${w.width}, ${w.height}, ${radius}, ${bgColorConst});`);
         } else {
             lines.push(`          it.filled_rectangle(${w.x}, ${w.y}, ${w.width}, ${w.height}, ${bgColorConst});`);
         }

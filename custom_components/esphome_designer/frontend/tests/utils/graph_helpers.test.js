@@ -72,6 +72,22 @@ describe('graph_helpers', () => {
         expect(points.at(-1).x).toBeLessThanOrEqual(200);
     });
 
+    it('does not extend stale timestamped runs to Now when disabled (Issue #517)', () => {
+        const now = Date.now();
+        vi.spyOn(Date, 'now').mockReturnValue(now);
+        const oldData = [
+            { last_changed: new Date(now - 3 * 86400_000).toISOString(), state: '10' },
+            { last_changed: new Date(now - 3 * 86400_000 + 3600_000).toISOString(), state: '20' }
+        ];
+
+        const extended = generateHistoricalDataPoints(200, 100, 0, 100, oldData, '4d');
+        expect(extended.at(-1).x).toBe(200);
+
+        const fixed = generateHistoricalDataPoints(200, 100, 0, 100, oldData, '4d', { extendToNow: false });
+        expect(fixed).toHaveLength(2);
+        expect(fixed.at(-1).x).toBeLessThan(100);
+    });
+
     it('falls back to mock points for empty/invalid history', () => {
         const empty = generateHistoricalDataPoints(100, 50, 0, 10, [], '1h');
         const invalid = generateHistoricalDataPoints(100, 50, 0, 10, [{ state: 'nan' }], '1h');

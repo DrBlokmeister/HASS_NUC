@@ -20,6 +20,7 @@ describe('yaml_generator_scripts', () => {
 
         expect(lines).toContain('id: change_page_to');
         expect(lines).toContain('Page change ignored (debounce)');
+        expect(lines).not.toContain('id(my_display)->update();');
         expect(lines).not.toContain('id(my_display).update();');
         expect(lines).toContain('lvgl.page.show: page_0');
         expect(lines).toContain('lvgl.page.show: page_1');
@@ -62,6 +63,7 @@ describe('yaml_generator_scripts', () => {
         expect(lines).toContain('until: "06:00:00"');
         expect(lines).toContain('std::string version_str = __DATE__ " " __TIME__;');
         expect(lines).toContain('id(firmware_fingerprint) != current_hash');
+        expect(lines).toContain('ESP_LOGW("firmware", "New firmware detected! Hash: %u", (unsigned int) current_hash);');
         expect(lines).not.toContain('Stay-awake active, deep sleep cycle aborted.');
         expect((lines.match(/New firmware - staying awake 90s to prevent rollback/g) || []).length).toBe(1);
         expect((lines.match(/delay: 5s/g) || []).length).toBe(1);
@@ -176,4 +178,85 @@ describe('yaml_generator_scripts', () => {
         expect(lines).not.toContain('id: change_page_to');
         expect(lines).not.toContain('id(last_page_switch_time)');
     });
+
+    it('generates direct mode page switching with display->update() pointer call', () => {
+        const lines = generateScriptSection({
+            refreshInterval: 60,
+            renderingMode: 'direct'
+        }, [
+            { refresh_s: '60' },
+            { refresh_s: '60' }
+        ], {
+            features: { epaper: true }
+        }).join('\n');
+
+        expect(lines).toContain('id: change_page_to');
+        expect(lines).toContain('id(epaper_display)->update();');
+    });
+
+    it('omits lvgl.page.show in Direct mode even when the profile supports LVGL (Issue #519)', () => {
+        const lines = generateScriptSection({
+            refreshInterval: 60,
+            renderingMode: 'direct'
+        }, [
+            { refresh_s: '60' },
+            { refresh_s: '60' }
+        ], {
+            features: { lcd: true, lvgl: true }
+        }).join('\n');
+
+        expect(lines).toContain('id: change_page_to');
+        expect(lines).not.toContain('lvgl.page.show');
+        expect(lines).toContain('id(my_display)->update();');
+    });
+
+    it('keeps LVGL page switching when the mode is unset but the profile supports LVGL', () => {
+        const lines = generateScriptSection({
+            refreshInterval: 60
+        }, [
+            { refresh_s: '60' },
+            { refresh_s: '60' }
+        ], {
+            features: { lcd: true, lvgl: true }
+        }).join('\n');
+
+        expect(lines).toContain('lvgl.page.show: page_0');
+        expect(lines).toContain('lvgl.page.show: page_1');
+        expect(lines).not.toContain('id(my_display)->update();');
+    });
+
+    it('forces LVGL page switching when lvgl_ widgets are present despite Direct mode', () => {
+        const lines = generateScriptSection({
+            refreshInterval: 60,
+            renderingMode: 'direct'
+        }, [
+            { widgets: [{ type: 'text', hidden: false }] },
+            { widgets: [{ type: 'lvgl_label', hidden: false }] }
+        ], {
+            features: { lcd: true }
+        }).join('\n');
+
+        expect(lines).toContain('lvgl.page.show: page_1');
+        expect(lines).not.toContain('id(my_display)->update();');
+    });
+
+    it('enables battery rail and triggers battery sensor updates in manage_run_and_sleep', () => {
+        const lines = generateScriptSection({
+            deepSleepEnabled: true,
+            refreshInterval: 600
+        }, [
+            { refresh_s: '600' }
+        ], {
+            pins: {
+                batteryEnable: 'GPIO6',
+                batteryAdc: 'GPIO1'
+            },
+            features: { epaper: true }
+        }).join('\n');
+
+        expect(lines).toContain('output.turn_on: bsp_battery_enable');
+        expect(lines).toContain('component.update: battery_voltage');
+        expect(lines).toContain('component.update: battery_level');
+    });
 });
+

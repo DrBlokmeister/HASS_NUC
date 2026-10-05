@@ -140,6 +140,48 @@ describe('weather_forecast render and properties', () => {
         expect(el.textContent).not.toContain('/');
     });
 
+    it('renders fixed hourly forecasts with 12h labels when clock_mode is 12h (Issue #521)', () => {
+        const el = document.createElement('div');
+        render(el, {
+            width: 180,
+            height: 80,
+            entity_id: 'weather.home',
+            props: {
+                forecast_mode: 'hourly',
+                hourly_mode: 'fixed',
+                hourly_slots: '06,15',
+                clock_mode: '12h',
+                temp_unit: 'C',
+                precision: 1
+            }
+        }, {
+            getColorStyle: (value) => value || '#000000'
+        });
+
+        expect(el.textContent).toContain('6AM');
+        expect(el.textContent).toContain('3PM');
+        expect(el.textContent).not.toContain('06:00');
+        expect(el.textContent).not.toContain('15:00');
+    });
+
+    it('offers a Clock Mode control for hourly forecasts in the properties panel (Issue #521)', async () => {
+        const panel = createPanel();
+        const widget = {
+            id: 'weather_12h',
+            entity_id: 'weather.home',
+            props: {
+                forecast_mode: 'hourly',
+                hourly_mode: 'fixed',
+                hourly_slots: '06,09'
+            }
+        };
+
+        renderProperties(panel, widget);
+
+        expect(panel.labels).toContain('Clock Mode');
+        expect(panel.labels).toContain('Hourly Mode');
+    });
+
     it('renders relative-mode property controls and copies the generated HA YAML', async () => {
         const panel = createPanel();
         const widget = {

@@ -24,7 +24,28 @@ export function generateScriptSection(payload, pages, profile) {
     const isLcd = !!(profile.features && (profile.features.lcd || profile.features.oled));
     const isEpaper = !!(profile.features && (profile.features.epaper || profile.features.epd));
     const isOled = !!(profile.features && profile.features.oled);
-    const isLvgl = payload.renderingMode === 'lvgl' || !!(profile.features && (profile.features.lvgl || profile.features.lv_display));
+    // Mirror detectRenderingMode() in esphome_adapter_profile.js: an explicit
+    // rendering mode always wins over hardware profile features, so Direct
+    // Lambda mode never emits lvgl.page.show actions (Issue #519). Visible
+    // lvgl_ widgets still force LVGL mode as a safety net.
+    const explicitMode = String(payload.renderingMode || '').trim().toLowerCase();
+    let isLvgl = !!(profile.features && (profile.features.lvgl || profile.features.lv_display));
+    if (explicitMode === 'direct') {
+        isLvgl = false;
+    } else if (explicitMode === 'lvgl') {
+        isLvgl = true;
+    }
+    if (!isLvgl && Array.isArray(pages)) {
+        for (const page of pages) {
+            for (const widget of ((page && page.widgets) || []).filter((candidate) => !candidate?.hidden)) {
+                if (String(widget.type || '').startsWith('lvgl_')) {
+                    isLvgl = true;
+                    break;
+                }
+            }
+            if (isLvgl) break;
+        }
+    }
     const debounceMs = getPageSwitchDebounceMs(profile);
     const backlightPin = profile.backlight?.pin || profile.pins?.backlight || null;
     const lcdStrategy = payload.lcdEcoStrategy || 'backlight_off';
@@ -128,7 +149,7 @@ export function generateScriptSection(payload, pages, profile) {
         lines.push(`          // (adjusted for ${isLcd ? 'LCD' : 'e-paper'} display update time)`);
         lines.push("          uint32_t now = millis();");
         lines.push(`          if (now - id(last_page_switch_time) < ${debounceMs}) {`);
-        lines.push(`            ESP_LOGD("display", "Page change ignored (debounce), last switch was %d ms ago", now - id(last_page_switch_time));`);
+        lines.push(`            ESP_LOGD("display", "Page change ignored (debounce), last switch was %u ms ago", (unsigned int) (now - id(last_page_switch_time)));`);
         lines.push("            return;");
         lines.push("          }");
         lines.push("");
@@ -136,7 +157,7 @@ export function generateScriptSection(payload, pages, profile) {
         lines.push("            // Set debounce time BEFORE display update (update takes ~1.6s)");
             lines.push("            id(last_page_switch_time) = now;");
             lines.push("            id(display_page) = target;");
-            if (!isLvgl) lines.push(`            id(${displayId}).update();`);
+            if (!isLvgl) lines.push(`            id(${displayId})->update();`);
             lines.push(`            ESP_LOGI("display", "Switched to page %d", target);`);
         if (isBacklightStrategy) {
             lines.push(`            // LCD Strategy: Wake up backlight on interaction/page change`);
@@ -181,6 +202,9 @@ export function generateScriptSection(payload, pages, profile) {
     lines.push("");
     lines.push("  - id: manage_run_and_sleep", "    mode: restart", "    then:");
 
+    if (profile.pins?.batteryEnable) {
+        lines.push(`      - ${profile.batteryEnableAlwaysOn ? "switch.turn_on" : "output.turn_on"}: bsp_battery_enable`);
+    }
     if (profile.m5paper?.main_power_pin || profile.pins?.main_power_pin) lines.push("      - output.turn_on: main_power");
     if (profile.m5paper?.battery_power_pin || profile.pins?.battery_power_pin) lines.push("      - output.turn_on: battery_power");
 
@@ -192,7 +216,7 @@ export function generateScriptSection(payload, pages, profile) {
         lines.push("            current_hash = ((current_hash << 5) + current_hash) + c;");
         lines.push("          }");
         lines.push("          if (id(firmware_fingerprint) != current_hash) {");
-        lines.push('            ESP_LOGW("firmware", "New firmware detected! Hash: %u", current_hash);');
+        lines.push('            ESP_LOGW("firmware", "New firmware detected! Hash: %u", (unsigned int) current_hash);');
         lines.push("            id(is_new_flash) = true;");
         lines.push("            id(firmware_fingerprint) = current_hash;");
         lines.push("          } else {");
@@ -218,6 +242,11 @@ export function generateScriptSection(payload, pages, profile) {
     lines.push('            - logger.log: "Waiting 5s for initial sensor updates..."');
     lines.push("            - delay: 5s");
     lines.push(`            - lambda: 'id(initial_sensor_sync_pending) = false;'`);
+
+    if (profile.pins?.batteryAdc) {
+        lines.push("      - component.update: battery_voltage");
+        lines.push("      - component.update: battery_level");
+    }
 
     if (autoCycleEnabled) {
         lines.push("      - if:");

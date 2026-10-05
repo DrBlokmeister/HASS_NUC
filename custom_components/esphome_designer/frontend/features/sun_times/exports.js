@@ -96,6 +96,8 @@ function buildRowMetrics(widget, props) {
     const padding = parseInt(props.padding || 6, 10);
     const rowHeight = Math.max(iconSize, fontSize);
     const contentHeight = rows.length * rowHeight + Math.max(0, rows.length - 1) * rowGap;
+    // Keep the row block inside the padding (also locked in by
+    // astronomy_widgets.test.js for protocol rows, Issue #516).
     const top = Math.round(widget.y + Math.max(padding, (widget.height - contentHeight) / 2));
     const left = widget.x + padding;
     return { rows, iconSize, fontSize, iconGap, rowGap, rowHeight, top, left, padding };
@@ -122,19 +124,23 @@ function buildProtocolRows(widget, props, useFillColor = false, darkMode = false
         const source = resolveSunEntitySource(props, key);
         const y = Math.round(top + index * (Math.max(iconSize, fontSize) + rowGap));
         const middleY = Math.round(y + Math.max(iconSize, fontSize) / 2);
+        // Keep the smaller element vertically centered within the row
+        // (mirrors the preview's align-items:center, Issue #516).
+        const iconY = Math.round(y + Math.max(0, Math.round((fontSize - iconSize) / 2)));
+        const textY = Math.round(y + Math.max(0, Math.round((iconSize - fontSize) / 2)));
         const timeValue = buildTemplateValue(source, placeholder);
         const iconBase = {
             type: 'icon',
             value: row.iconName,
             x: Math.round(left),
-            y,
+            y: iconY,
             size: iconSize
         };
         const textBase = {
             type: 'text',
             value: timeValue,
             x: Math.round(left + iconSize + iconGap),
-            y: Math.round(y + Math.max(0, Math.round((iconSize - fontSize) / 2))),
+            y: textY,
             size: fontSize,
             align: 'left'
         };
@@ -195,6 +201,11 @@ export function exportDirect(widget, context) {
             ? makeSafeSunSensorId(buildSourceToken(source.entityId, source.attribute, source.mqttTopic))
             : '';
         const rowY = Math.round(top + index * (rowHeight + rowGap));
+        // Center the smaller element within the row like the preview's
+        // align-items:center does (Issue #516). Previously only the text was
+        // offset when the icon was taller; the icon stayed top-anchored when
+        // the font was taller.
+        const iconY = rowY + Math.max(0, Math.round((fontSize - iconSize) / 2));
         const textY = rowY + Math.max(0, Math.round((iconSize - fontSize) / 2));
 
         lines.push('        {');
@@ -205,7 +216,7 @@ export function exportDirect(widget, context) {
             buildSunTimeConversionLines('            ').forEach((line) => lines.push(line));
             lines.push('          }');
         }
-        lines.push(`          it.printf(${left}, ${rowY}, id(${iconFont}), ${color}, TextAlign::TOP_LEFT, "%s", "\\U000${row.iconCode}");`);
+        lines.push(`          it.printf(${left}, ${iconY}, id(${iconFont}), ${color}, TextAlign::TOP_LEFT, "%s", "\\U000${row.iconCode}");`);
         lines.push(`          it.printf(${left + iconSize + iconGap}, ${textY}, id(${textFont}), ${color}, TextAlign::TOP_LEFT, "%s", display_value.c_str());`);
         lines.push('        }');
     });
@@ -229,6 +240,7 @@ export function exportLVGL(widget, { common, convertColor, getLVGLFont }) {
             ? makeSafeSunSensorId(buildSourceToken(source.entityId, source.attribute, source.mqttTopic))
             : '';
         const rowY = Math.round(top - widget.y + index * (rowHeight + rowGap));
+        const iconY = rowY + Math.max(0, Math.round((fontSize - iconSize) / 2));
         const textY = rowY + Math.max(0, Math.round((iconSize - fontSize) / 2));
         const iconLabelId = `${safeWidgetId}_${key}_icon`;
         const textLabelId = `${safeWidgetId}_${key}_text`;
@@ -237,7 +249,7 @@ export function exportLVGL(widget, { common, convertColor, getLVGLFont }) {
             label: {
                 id: iconLabelId,
                 x: Math.round(left - widget.x),
-                y: rowY,
+                y: iconY,
                 width: iconSize + 4,
                 height: iconSize + 2,
                 text: `"\\U000${row.iconCode}"`,

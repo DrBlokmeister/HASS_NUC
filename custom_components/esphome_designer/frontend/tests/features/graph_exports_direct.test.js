@@ -86,6 +86,37 @@ describe('graph exports_direct', () => {
         expect(output).toContain('const char* fmt = g_range >= 10 ? "%.0f" : "%.1f";');
     });
 
+    it('plots HA-history points at true time positions instead of stretching (Issue #517)', () => {
+        const context = createContext();
+
+        exportDoc({
+            id: 'graph-ts',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 40,
+            entity_id: 'sensor.energy',
+            props: {
+                use_ha_history: true,
+                auto_scale: true,
+                duration: '4d',
+                color: 'red'
+            }
+        }, context);
+
+        const output = context.lines.join('\n');
+        expect(output).toContain('const float g_win = 345600;');
+        expect(output).toContain('float t1 = id(hist_graph_ts_ts)[i] - g_shift;');
+        expect(output).toContain('float t2 = id(hist_graph_ts_ts)[i+1] - g_shift;');
+        expect(output).toContain('int x1 = 0 + (int)(t1 / g_win * 100);');
+        expect(output).toContain('int x2 = 0 + (int)(t2 / g_win * 100);');
+        expect(output).toContain('id(ha_time).now().is_valid()');
+        expect(output).toContain('it.filled_circle(xsolo, ysolo, 2, Color(red));');
+        // Legacy index-stretching must be gone (no division by hist_count).
+        expect(output).not.toContain('(i * 100) / (hist_count - 1)');
+        expect(output).not.toContain('if (hist_count < 2) hist_count = 2;');
+    });
+
     it('emits a clear placeholder when the graph has no entity source', () => {
         const context = createContext();
 

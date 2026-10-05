@@ -280,6 +280,8 @@ describe('graph exports_hooks', () => {
         expect(joined).toContain('type: float[12]');
         expect(joined).toContain('id: hist_graph_1');
         expect(joined).toContain('type: float[24]');
+        expect(joined).toContain('id: hist_graph_1_ts');
+        expect(joined).toContain('id: hist_graph_1_fetch');
         expect(joined).toContain('id: hist_graph_1_min');
         expect(joined).toContain('id: hist_graph_1_max');
     });
@@ -334,10 +336,17 @@ describe('graph exports_hooks', () => {
             'history'
         );
         expect(joined).toContain('std::vector<float> values;');
+        expect(joined).toContain('std::vector<float> rels;');
+        expect(joined).toContain('input.find("[[")');
         expect(joined).toContain('id(hist_graph_1_count) = idx;');
+        expect(joined).toContain('id(hist_graph_1_fetch)');
         expect(joined).toContain('Simple moving average smoothing');
         expect(joined).toContain('bounds_line();');
-        expect(joined).toContain('id(samples_1)[i] = id(hist_graph_1)[start + i];');
+        expect(joined).toContain('int hcount = id(hist_graph_1_count);');
+        expect(joined).toContain('if (hcount <= 0) return;');
+        expect(joined).toContain('if (!isnan(lv)');
+        expect(joined).toContain('id(samples_1)[j++] = lv;');
+        expect(joined).toContain('id(count_1) = j;');
         expect(joined).toContain('lvgl.line.update:');
     });
 
@@ -368,6 +377,40 @@ describe('graph exports_hooks', () => {
         expect(joined).toContain('id(hist_graph_2_min) = min_v;');
         expect(joined).toContain('id(hist_graph_2_max) = max_v;');
         expect(joined).not.toContain('lvgl.line.update:');
+    });
+
+    it('parses timestamped v2 pairs with gap-safe NaN handling (Issue #517)', () => {
+        const lines = [];
+
+        onExportTextSensors({
+            lines,
+            isLvgl: false,
+            widgets: [
+                {
+                    id: 'graph-3',
+                    type: 'graph',
+                    entity_id: 'sensor.temperature',
+                    props: {
+                        use_ha_history: true,
+                        history_points: 4,
+                        duration: '4d',
+                        auto_scale: true
+                    }
+                }
+            ]
+        });
+
+        const joined = lines.join('\n');
+        expect(joined).toContain('const long g_win = 345600;');
+        expect(joined).toContain('bool time_ok = id(ha_time).now().is_valid();');
+        expect(joined).toContain('float val = NAN;');
+        expect(joined).toContain('id(hist_graph_3_ts)[idx] = rels[k];');
+        expect(joined).toContain('bool have_valid = false;');
+        expect(joined).toContain('if (!isnan(val)) {');
+        expect(joined).toContain('if (have_valid) {');
+        expect(joined).toContain('id(hist_graph_3_fetch) = time_ok ? (float) fetch_now : 0;');
+        // Legacy payloads keep the previous even-spread rendering.
+        expect(joined).toContain('Legacy payload without timestamps');
     });
 
     it('queues pending LVGL numeric sensor triggers for direct graph entities', () => {

@@ -127,10 +127,14 @@ export const renderProperties = (panel, widget) => {
             panel.addHint("Shows forecasts for the next N hours from the current time.");
         } else {
             panel.addLabeledInput("Hourly Slots (comma-sep)", "text", props.hourly_slots || "06,09,12,15,18,21", setTextProp("hourly_slots"));
-            panel.addHint("Hours to show, e.g. 06,09,12,15,18,21. Uses 24h format.");
+            panel.addHint("Hours to show, e.g. 06,09,12,15,18,21. Labels follow the Clock Mode setting.");
             panel.addLabeledInput("Start Offset", "number", props.start_offset || 0, setIntProp("start_offset"));
             panel.addHint("Skip the first N slots (e.g. 1 to skip 06:00).");
         }
+        panel.addSelect("Clock Mode", props.clock_mode || "24h", [
+            { value: "24h", label: "24 Hour" },
+            { value: "12h", label: "12 Hour (AM/PM)" }
+        ], setTextProp("clock_mode"));
     } else {
         panel.addNumberWithSlider("Forecast Days", props.days || 5, 1, 14, setIntProp("days"));
         panel.addLabeledInput("Start Offset", "number", props.start_offset || 0, setIntProp("start_offset"));

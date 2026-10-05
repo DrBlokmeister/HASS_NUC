@@ -1,5 +1,5 @@
 import { AppState } from '@core/state';
-import { getDayLabelSet } from './day_labels.js';
+import { formatHourLabel, getDayLabelSet } from './day_labels.js';
 import {
     getWeatherIconMeta,
     toWeatherMdiCharacter
@@ -140,9 +140,9 @@ export const render = (el, widget, { getColorStyle }) => {
             if (hourlyMode === "relative") {
                 const now = new Date();
                 const targetHour = (now.getHours() + i + 1) % 24;
-                dayLabel.textContent = `${targetHour.toString().padStart(2, '0')}:00`;
+                dayLabel.textContent = formatHourLabel(targetHour, props.clock_mode);
             } else {
-                dayLabel.textContent = `${actualSlots[i]}:00`;
+                dayLabel.textContent = formatHourLabel(parseInt(actualSlots[i], 10), props.clock_mode);
             }
         } else {
             const dayIdx = i + startOffset;

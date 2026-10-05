@@ -256,9 +256,11 @@ export function generateMockData(width, height, _min, _max) {
  * @param {number} max
  * @param {any[]} historyData
  * @param {string|number} durationStr
+ * @param {{ extendToNow?: boolean }} [options]
  * @returns {{x: number, y: number}[]}
  */
-export function generateHistoricalDataPoints(width, height, min, max, historyData, durationStr) {
+export function generateHistoricalDataPoints(width, height, min, max, historyData, durationStr, options = {}) {
+    const { extendToNow = true } = options || {};
     if (!historyData || historyData.length === 0) return generateMockData(width, height, min, max);
 
     /** @type {{x: number, y: number}[]} */
@@ -316,8 +318,10 @@ export function generateHistoricalDataPoints(width, height, min, max, historyDat
         }
     });
 
-    // If we have very few points, it might look empty, maybe add a point at "Now"
-    if (points.length > 0 && points[points.length - 1].x < width - 1) {
+    // If we have very few points, it might look empty, maybe add a point at "Now".
+    // Timestamped history runs keep their true position and must NOT be
+    // extended (Issue #517); only live data extends to the right edge.
+    if (extendToNow && points.length > 0 && points[points.length - 1].x < width - 1) {
         points.push({ x: width, y: points[points.length - 1].y });
     }
 

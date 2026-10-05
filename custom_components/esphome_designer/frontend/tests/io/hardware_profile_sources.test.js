@@ -12,6 +12,15 @@ import m5stackTab5Yaml from '../../hardware/m5stack-tab5.yaml?raw';
 import sunton2432s028Yaml from '../../hardware/sunton-esp32-2432s028.yaml?raw';
 import sunton2432s028RYaml from '../../hardware/sunton-esp32-2432s028R.yaml?raw';
 import waveshareRound128Yaml from '../../hardware/waveshare-esp32-s3-touch-round-lcd-1.28.yaml?raw';
+import elecrow7inchYaml from '../../hardware/elecrow-esp32-7inch.yaml?raw';
+import guitionJc8048w550Yaml from '../../hardware/guition-esp32-jc8048w550.yaml?raw';
+import sunton4827s032RYaml from '../../hardware/sunton-esp32-4827s032R.yaml?raw';
+import sunton8048s050Yaml from '../../hardware/sunton-esp32-8048s050.yaml?raw';
+import sunton8048s070Yaml from '../../hardware/sunton-esp32-8048s070.yaml?raw';
+import waveshare43Yaml from '../../hardware/waveshare-esp32-s3-touch-lcd-4.3.yaml?raw';
+import lilygoTdisplayS3Yaml from '../../hardware/lilygo-tdisplays3.yaml?raw';
+import waveshare7Yaml from '../../hardware/waveshare-esp32-s3-touch-lcd-7.yaml?raw';
+import sensecapIndicatorYaml from '../../hardware/seeedstudio-sensecap-indicator.yaml?raw';
 
 describe('hardware_profile_sources', () => {
     it('parses the ViewDisplay round TFT knob recipe metadata and features', () => {
@@ -341,7 +350,8 @@ touchscreen:
         expect(exportContext.lines).toContain('  touchscreen_id: my_touchscreen');
     });
 
-    it('parses the Waveshare Touch Round LCD 1.28 bundled recipe', () => {
+        it('parses the Waveshare Touch Round LCD 1.28 bundled recipe', () => {
+
         expect(waveshareRound128Yaml).toContain('model: GC9A01A');
         expect(waveshareRound128Yaml).toContain('platform: ili9xxx');
         expect(waveshareRound128Yaml).toContain('platform: cst816');
@@ -364,5 +374,102 @@ touchscreen:
             interrupt_pin: '$tpintpin',
             reset_pin: '$tprstpin'
         });
+    });
+
+    it('declares the RPI model with verified timings on the Elecrow 7 inch recipe (Issue #520)', () => {
+        expect(elecrow7inchYaml).toContain('platform: mipi_rgb');
+        expect(elecrow7inchYaml).toContain('model: RPI');
+        expect(elecrow7inchYaml).toContain('invert_colors: true');
+        expect(elecrow7inchYaml).toContain('pclk_frequency: 15MHz');
+
+        const profile = parseHardwareRecipeClientSide(elecrow7inchYaml, 'elecrow-esp32-7inch.yaml');
+
+        expect(profile.displayPlatform).toBe('mipi_rgb');
+        expect(profile.displayModel).toBe('RPI');
+    });
+
+    it('declares a model on every bundled mipi_rgb display block (Issue #520)', () => {
+        const recipes = {
+            'elecrow-esp32-7inch.yaml': elecrow7inchYaml,
+            'guition-esp32-jc8048w550.yaml': guitionJc8048w550Yaml,
+            'sunton-esp32-4827s032R.yaml': sunton4827s032RYaml,
+            'sunton-esp32-8048s050.yaml': sunton8048s050Yaml,
+            'sunton-esp32-8048s070.yaml': sunton8048s070Yaml,
+            'waveshare-esp32-s3-touch-lcd-4.3.yaml': waveshare43Yaml,
+            'waveshare-esp32-s3-touch-lcd-7.yaml': waveshare7Yaml,
+            'seeedstudio-sensecap-indicator.yaml': sensecapIndicatorYaml
+        };
+
+        for (const [filename, yaml] of Object.entries(recipes)) {
+            expect(yaml).toContain('platform: mipi_rgb');
+            const block = yaml.slice(yaml.indexOf('platform: mipi_rgb'));
+            const entry = block.slice(0, block.indexOf('# __LAMBDA_PLACEHOLDER__') === -1
+                ? 2500
+                : block.indexOf('# __LAMBDA_PLACEHOLDER__'));
+            expect(`${filename} must declare model: for mipi_rgb; got: ${entry.slice(0, 120)}`).toContain('model:');
+        }
+
+        expect(waveshare43Yaml).toContain('model: ESP32-S3-TOUCH-LCD-4.3');
+        expect(waveshare7Yaml).toContain('model: ESP32-S3-TOUCH-LCD-7-800X480');
+        expect(sensecapIndicatorYaml).toContain('model: SEEED-INDICATOR-D1');
+    });
+
+    it('drives the LilyGo T-Display S3 via mipi_spi without the removed ili9xxx i80 bus (Issue #535)', () => {
+        expect(lilygoTdisplayS3Yaml).toContain('platform: mipi_spi');
+        expect(lilygoTdisplayS3Yaml).toContain('model: t-display-s3');
+        expect(lilygoTdisplayS3Yaml).toContain('type: octal');
+        expect(lilygoTdisplayS3Yaml).not.toContain('bus_type:');
+        expect(lilygoTdisplayS3Yaml).not.toMatch(/^\s*i80:\s*$/m);
+        expect(lilygoTdisplayS3Yaml).toContain('rotation: 270');
+        expect(lilygoTdisplayS3Yaml).toContain('# __LAMBDA_PLACEHOLDER__');
+    });
+
+    it('powers the M5Stack Tab5 MIPI DSI PHY via esp_ldo (Issue #535)', () => {
+        expect(m5stackTab5Yaml).toContain('esp_ldo:');
+        expect(m5stackTab5Yaml).toContain('channel: 3');
+        expect(m5stackTab5Yaml).toContain('voltage: 2.5V');
+        expect(m5stackTab5Yaml).toContain('model: M5STACK-TAB5-V2');
+    });
+
+    it('keeps on_release at touchscreen entry level in every hardware recipe (Issue #539)', async () => {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        const { fileURLToPath } = await import('node:url');
+        const hardwareDir = path.join(
+            path.dirname(fileURLToPath(import.meta.url)),
+            '../../hardware'
+        );
+        const entryKeys = [
+            'platform', 'id', 'display', 'i2c_id', 'spi_id', 'address',
+            'update_interval', 'interrupt_pin', 'reset_pin', 'cs_pin',
+            'transform', 'calibration', 'model', 'on_release', 'on_touch',
+            'setup_priority'
+        ];
+        const files = fs.readdirSync(hardwareDir).filter((file) => file.endsWith('.yaml'));
+        expect(files.length).toBeGreaterThan(0);
+
+        for (const file of files) {
+            const lines = fs.readFileSync(path.join(hardwareDir, file), 'utf8').split('\n');
+            const start = lines.findIndex((line) => line.trim() === 'touchscreen:');
+            if (start === -1) continue;
+            let end = lines.length;
+            for (let i = start + 1; i < lines.length; i++) {
+                if (/^\S/.test(lines[i]) && lines[i].trim() !== '' && !lines[i].startsWith('#')) {
+                    end = i;
+                    break;
+                }
+            }
+            const section = lines.slice(start, end);
+            section.forEach((line, index) => {
+                const match = line.match(/^(\s*)on_release:\s*$/);
+                if (!match) return;
+                const keyPattern = new RegExp(`^ {${match[1].length}}(${entryKeys.join('|')}):`);
+                const hasSibling = section.some((other, otherIndex) => otherIndex !== index && keyPattern.test(other));
+                expect(
+                    hasSibling,
+                    `${file}:${start + index + 1} nests on_release under transform`
+                ).toBe(true);
+            });
+        }
     });
 });

@@ -43,7 +43,32 @@ describe('hardware_generators_display', () => {
         expect(lines).toContain('      x_max: 480');
     });
 
+    it('keeps on_release at entry level with an all-false transform object (Issue #539)', () => {
+        const lines = generateTouchscreenSection({
+            touch: {
+                platform: 'gt911',
+                i2c_id: 'bus_a',
+                transform: {
+                    swap_xy: false,
+                    mirror_x: false,
+                    mirror_y: false
+                }
+            }
+        }, 'my_display', 0, { lcdEcoStrategy: 'dim_after_timeout' }, true);
+
+        const releaseIndex = lines.indexOf('    on_release:');
+        expect(releaseIndex).toBeGreaterThan(-1);
+        // No dangling empty transform block, no false-valued children.
+        expect(lines).not.toContain('    transform:');
+        expect(lines).not.toContain('      swap_xy: false');
+        // Children use exactly one deeper level (issue reported two).
+        expect(lines[releaseIndex + 1]).toBe('      - if:');
+        expect(lines[releaseIndex + 2]).toBe('          condition: lvgl.is_paused');
+        expect(lines).toContain('            - light.turn_on: display_backlight');
+    });
+
     it('falls back to polling for GT911 on classic ESP32 input-only interrupt pins', () => {
+
         const lines = generateTouchscreenSection({
             chip: 'esp32',
             touch: {

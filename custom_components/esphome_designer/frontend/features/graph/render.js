@@ -59,59 +59,103 @@ export const render = (el, widget, { getColorStyle }) => {
 
     /** @type {Array<{ state: string | number, last_changed: number }> | null} */
     let historyData = null;
+    /** @type {Array<Array<{ state: string | number, last_changed: number }>> | null} */
+    let historyRuns = null;
+    // Collects raw entries as { state, tsMs } where tsMs is null when the
+    // payload carries no timestamp (legacy flat values).
+    const collectEntries = (rawData) => {
+        /** @type {Array<{ state: any, tsMs: number | null }>} */
+        const entries = [];
+        const pushValue = (state, tsMs) => {
+            entries.push({ state, tsMs });
+        };
+        const pushPair = (item) => {
+            if (!Array.isArray(item) || item.length < 2) return false;
+            const ts = Number(item[0]);
+            const raw = item[1];
+            const value = raw === null || raw === undefined || raw === '' ? NaN : parseFloat(raw);
+            pushValue(value, Number.isFinite(ts) ? ts * 1000 : null);
+            return true;
+        };
+        if (Array.isArray(rawData)) {
+            rawData.forEach((/** @type {any} */ item) => {
+                if (pushPair(item)) return;
+                if (typeof item === 'number') pushValue(item, null);
+                else if (typeof item === 'string') {
+                    const parsed = parseFloat(item);
+                    if (!isNaN(parsed)) pushValue(parsed, null);
+                } else if (typeof item === 'object' && item !== null && item.value !== undefined) {
+                    const parsed = parseFloat(item.value);
+                    if (!isNaN(parsed)) pushValue(parsed, null);
+                }
+            });
+        } else if (typeof rawData === 'string') {
+            try {
+                const parsed = JSON.parse(rawData);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach((/** @type {any} */ item) => {
+                        if (pushPair(item)) return;
+                        if (typeof item === 'number') pushValue(item, null);
+                        else if (item?.value !== undefined) pushValue(parseFloat(item.value), null);
+                    });
+                }
+            } catch {
+                if (rawData.includes('value:') || rawData.includes('value :')) {
+                    const regex = /value\s*:\s*([\d.-]+)/g;
+                    /** @type {RegExpExecArray | null} */
+                    let match;
+                    while ((match = regex.exec(rawData)) !== null) {
+                        pushValue(parseFloat(match[1]), null);
+                    }
+                } else {
+                    const cleaned = rawData.replace(/[[\]"']/g, '');
+                    cleaned.split(',').forEach((/** @type {string} */ segment) => {
+                        const parsed = parseFloat(segment.trim());
+                        if (!isNaN(parsed)) pushValue(parsed, null);
+                    });
+                }
+            }
+        }
+        return entries;
+    };
     if (entityId) {
         if (props.use_ha_history) {
             const attrs = getEntityAttributes(entityId);
             const attrName = props.history_attribute || 'history';
             if (attrs && attrs[attrName]) {
-                const rawData = attrs[attrName];
-                const values = [];
-                if (Array.isArray(rawData)) {
-                    rawData.forEach((/** @type {any} */ item) => {
-                        if (typeof item === 'number') values.push(item);
-                        else if (typeof item === 'string') {
-                            const parsed = parseFloat(item);
-                            if (!isNaN(parsed)) values.push(parsed);
-                        } else if (typeof item === 'object' && item !== null && item.value !== undefined) {
-                            const parsed = parseFloat(item.value);
-                            if (!isNaN(parsed)) values.push(parsed);
-                        }
-                    });
-                } else if (typeof rawData === 'string') {
-                    try {
-                        const parsed = JSON.parse(rawData);
-                        if (Array.isArray(parsed)) {
-                            parsed.forEach((/** @type {any} */ item) => {
-                                if (typeof item === 'number') values.push(item);
-                                else if (item?.value !== undefined) values.push(parseFloat(item.value));
-                            });
-                        }
-                    } catch {
-                        if (rawData.includes('value:') || rawData.includes('value :')) {
-                            const regex = /value\s*:\s*([\d.-]+)/g;
-                            /** @type {RegExpExecArray | null} */
-                            let match;
-                            while ((match = regex.exec(rawData)) !== null) {
-                                values.push(parseFloat(match[1]));
+                const entries = collectEntries(attrs[attrName]);
+                if (entries.length > 0) {
+                    if (entries.some((entry) => entry.tsMs !== null)) {
+                        // Timestamped v2 payload: keep true positions and split
+                        // NaN gaps into separate runs like HA does (Issue #517).
+                        historyData = entries
+                            .filter((entry) => entry.tsMs !== null)
+                            .map((entry) => ({ state: entry.state, last_changed: entry.tsMs }));
+                        historyRuns = [];
+                        let run = [];
+                        historyData.forEach((entry) => {
+                            if (isNaN(parseFloat(String(entry.state)))) {
+                                if (run.length > 0) {
+                                    historyRuns.push(run);
+                                    run = [];
+                                }
+                            } else {
+                                run.push(entry);
                             }
-                        } else {
-                            const cleaned = rawData.replace(/[[\]"']/g, '');
-                            cleaned.split(',').forEach((/** @type {string} */ segment) => {
-                                const parsed = parseFloat(segment.trim());
-                                if (!isNaN(parsed)) values.push(parsed);
-                            });
-                        }
+                        });
+                        if (run.length > 0) historyRuns.push(run);
+                    } else {
+                        // Legacy payload without timestamps: spread evenly, exactly
+                        // like the firmware renders legacy data.
+                        const durationMs = parseDuration(props.duration || '1h') * 1000;
+                        const now = Date.now();
+                        const values = entries.map((entry) => entry.state);
+                        const step = durationMs / Math.max(values.length - 1, 1);
+                        historyData = values.map((value, index) => ({
+                            state: value,
+                            last_changed: now - durationMs + (index * step)
+                        }));
                     }
-                }
-
-                if (values.length > 0) {
-                    const durationMs = parseDuration(props.duration || '1h') * 1000;
-                    const now = Date.now();
-                    const step = durationMs / Math.max(values.length - 1, 1);
-                    historyData = values.map((value, index) => ({
-                        state: value,
-                        last_changed: now - durationMs + (index * step)
-                    }));
                 }
             }
         } else {
@@ -166,30 +210,37 @@ export const render = (el, widget, { getColorStyle }) => {
         );
     }
 
-    const points = generateHistoricalDataPoints(
-        widget.width,
-        widget.height,
-        effectiveMin,
-        effectiveMax,
-        historyData || [],
-        props.duration
-    );
+    const runs = historyRuns || [historyData || []];
+    runs.forEach((run) => {
+        const points = generateHistoricalDataPoints(
+            widget.width,
+            widget.height,
+            effectiveMin,
+            effectiveMax,
+            run,
+            props.duration,
+            // HA-history runs keep true positions: never extend stale data to
+            // "Now" (Issue #517). Live data keeps the previous behavior.
+            { extendToNow: !props.use_ha_history }
+        );
+        if (points.length === 0) return;
 
-    const polyline = document.createElementNS(svgNS, "polyline");
-    polyline.setAttribute("points", points.map((point) => `${point.x},${point.y}`).join(" "));
-    polyline.setAttribute("fill", "none");
-    polyline.setAttribute("stroke", colorStyle);
-    polyline.setAttribute("stroke-width", String(parseInt(props.line_thickness || 3, 10)));
-    polyline.setAttribute("stroke-linejoin", "round");
+        const polyline = document.createElementNS(svgNS, "polyline");
+        polyline.setAttribute("points", points.map((point) => `${point.x},${point.y}`).join(" "));
+        polyline.setAttribute("fill", "none");
+        polyline.setAttribute("stroke", colorStyle);
+        polyline.setAttribute("stroke-width", String(parseInt(props.line_thickness || 3, 10)));
+        polyline.setAttribute("stroke-linejoin", "round");
 
-    const lineType = props.line_type || "SOLID";
-    if (lineType === "DASHED") {
-        polyline.setAttribute("stroke-dasharray", "5,5");
-    } else if (lineType === "DOTTED") {
-        polyline.setAttribute("stroke-dasharray", "2,2");
-    }
+        const lineType = props.line_type || "SOLID";
+        if (lineType === "DASHED") {
+            polyline.setAttribute("stroke-dasharray", "5,5");
+        } else if (lineType === "DOTTED") {
+            polyline.setAttribute("stroke-dasharray", "2,2");
+        }
 
-    svg.appendChild(polyline);
+        svg.appendChild(polyline);
+    });
     el.appendChild(svg);
 
     const ownerDocument = el.ownerDocument || document;

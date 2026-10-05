@@ -107,3 +107,24 @@ export const DAY_LANGUAGE_OPTIONS = Object.freeze([
     { value: "pt", label: DAY_LABEL_SETS.pt.label },
     { value: AUTO_DAY_LANGUAGE, label: "Auto (Browser)" }
 ]);
+
+/**
+ * @param {string | undefined | null} clockMode
+ * @returns {boolean}
+ */
+export const isTwelveHourClock = (clockMode) => String(clockMode || "").trim().toLowerCase() === "12h";
+
+/**
+ * Formats an hour-of-day slot label for the hourly forecast (Issue #521).
+ * 24h mode keeps the zero-padded "HH:00" style, 12h mode uses compact "hAM/PM".
+ * @param {string | number | undefined | null} hour
+ * @param {string | undefined | null} clockMode
+ * @returns {string}
+ */
+export const formatHourLabel = (hour, clockMode) => {
+    const parsed = parseInt(String(hour ?? ''), 10);
+    const h = Number.isFinite(parsed) ? ((parsed % 24) + 24) % 24 : 0;
+    if (!isTwelveHourClock(clockMode)) return `${String(h).padStart(2, "0")}:00`;
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}${h < 12 ? "AM" : "PM"}`;
+};

@@ -1,4 +1,4 @@
-import { getDayLabelSet } from './day_labels.js';
+import { formatHourLabel, getDayLabelSet, isTwelveHourClock } from './day_labels.js';
 import { clampFontWeight } from '../../js/core/font_weights.js';
 import {
     UNKNOWN_WEATHER_ICON,
@@ -46,12 +46,14 @@ export const exportLVGL = (w, { common, convertColor, getLVGLFont }) => {
 
         if (mode === "hourly") {
             if (hourlyMode === "relative") {
-                dayNameLambda = `!lambda |-\n                      auto t = id(ha_time).now();\n                      if (!t.is_valid()) return std::string("---");\n                      static char buf[8];\n                      sprintf(buf, "%02d:00", (t.hour + ${i + 1}) % 24);\n                      return std::string(buf);\n                    `;
+                dayNameLambda = isTwelveHourClock(p.clock_mode)
+                    ? `!lambda |-\n                      auto t = id(ha_time).now();\n                      if (!t.is_valid()) return std::string("---");\n                      int h24 = (t.hour + ${i + 1}) % 24;\n                      int h12 = h24 % 12; if (h12 == 0) h12 = 12;\n                      static char buf[8];\n                      snprintf(buf, sizeof(buf), "%d%s", h12, h24 < 12 ? "AM" : "PM");\n                      return std::string(buf);\n                    `
+                    : `!lambda |-\n                      auto t = id(ha_time).now();\n                      if (!t.is_valid()) return std::string("---");\n                      static char buf[8];\n                      sprintf(buf, "%02d:00", (t.hour + ${i + 1}) % 24);\n                      return std::string(buf);\n                    `;
                 condId = `weather_cond_hplus${i + 1}`;
                 highId = `weather_high_hplus${i + 1}`;
                 lowId = `weather_low_hplus${i + 1}`;
             } else {
-                dayNameLambda = `!lambda "return \\"${actualSlots[i]}:00\\";"`;
+                dayNameLambda = `!lambda "return \\"${formatHourLabel(actualSlots[i], p.clock_mode)}\\";"`;
                 condId = `weather_cond_h${actualSlots[i]}00`;
                 highId = `weather_high_h${actualSlots[i]}00`;
                 lowId = `weather_low_h${actualSlots[i]}00`;

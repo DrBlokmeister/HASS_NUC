@@ -191,6 +191,10 @@ export function generateCustomHardwareYaml(config) {
 
     if (driver === "mipi_rgb" || driver === "rpi_dpi_rgb" || driver === "st7701s") {
         lines.push("    # TODO: Add panel-specific de_pin, hsync_pin, vsync_pin, pclk_pin, timings, and data_pins.");
+        if (driver === "mipi_rgb" && !config.displayModel) {
+            lines.push("    # NOTE: 'model' is required for mipi_rgb (Issue #520). Use 'model: RPI' for RGB");
+            lines.push("    # panels without SPI init (or your panel's board model if it needs an init sequence).");
+        }
     }
 
     // Rotation Logic

@@ -243,6 +243,25 @@ describe('hardware_generator', () => {
         expect(yaml).toContain('platform: gt911');
     });
 
+    it('notes the required model for mipi_rgb custom hardware without a display model (Issue #520)', () => {
+        const yaml = generateCustomHardwareYaml({
+            name: 'RGB Panel No Model',
+            chip: 'esp32-s3',
+            tech: 'lcd',
+            resWidth: 800,
+            resHeight: 480,
+            shape: 'rect',
+            psram: true,
+            displayDriver: 'mipi_rgb',
+            touchTech: 'none',
+            pins: {}
+        });
+
+        expect(yaml).toContain('platform: mipi_rgb');
+        expect(yaml).toContain("'model' is required for mipi_rgb");
+        expect(yaml).toContain('model: RPI');
+    });
+
     it('handles parallel RGB platform rpi_dpi_rgb without generating SPI blocks', () => {
         const yaml = generateCustomHardwareYaml({
             name: 'Parallel RGB Panel',

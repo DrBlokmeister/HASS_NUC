@@ -253,9 +253,9 @@ text_sensor:
                       JsonArray days;
     
                       if (root.is<JsonObject>() && root["days"].is<JsonArray>()) {
-                          days = root["days"];
+                          days = root["days"].as<JsonArray>();
                       } else if (root.is<JsonArray>()) {
-                          days = root;
+                          days = root.as<JsonArray>();
                       } else {
                           ESP_LOGW("calendar", "Invalid JSON structure: neither object with 'days' nor array");
                           return;
@@ -280,7 +280,7 @@ text_sensor:
                       // Safety: Ensure we have enough space for at least one event
                       if (y_cursor >= max_y) { ESP_LOGW("calendar", "Widget too small for events"); return; }
     
-                      it.filled_rectangle(${x} + 20, y_cursor - 5, ${w} - 40, 2, color_content);
+                      ${props.show_grid !== false ? `it.filled_rectangle(${x} + 20, y_cursor - 5, ${w} - 40, 2, color_content);` : ''}
     
                       for (JsonVariant dayEntry : days) {
                           if (y_cursor > max_y) break;
@@ -315,14 +315,18 @@ text_sensor:
                               y_cursor += 25;
                           };
     
-                          if (dayEntry["all_day"].is<JsonArray>()) {
-                              for (JsonVariant event : dayEntry["all_day"].as<JsonArray>()) {
+                          JsonVariant all_day_var = dayEntry["all_day"];
+                          if (all_day_var.is<JsonArray>()) {
+                              JsonArray all_day_arr = all_day_var.as<JsonArray>();
+                              for (JsonVariant event : all_day_arr) {
                                   draw_row(event, true);
                                   if (y_cursor > max_y) break;
                               }
                           }
-                          if (dayEntry["other"].is<JsonArray>()) {
-                              for (JsonVariant event : dayEntry["other"].as<JsonArray>()) {
+                          JsonVariant other_var = dayEntry["other"];
+                          if (other_var.is<JsonArray>()) {
+                              JsonArray other_arr = other_var.as<JsonArray>();
+                              for (JsonVariant event : other_arr) {
                                   draw_row(event, false);
                                   if (y_cursor > max_y) break;
                               }

@@ -72,18 +72,24 @@ export function generateTouchscreenSection(profile, displayId = "my_display", _d
     addPin("cs_pin", t.cs_pin);
 
     const tx = t.transform || {};
-    const hasTransform = t.transform || t.mirror_x || t.mirror_y || t.swap_xy;
-    if (hasTransform) {
-        lines.push("    transform:");
+    // Collect transform children first so an all-false transform object does
+    // not leave behind a dangling empty `transform:` key (Issue #539).
+    /** @type {string[]} */
+    const transformLines = [];
+    if (t.transform || t.mirror_x || t.mirror_y || t.swap_xy) {
         if (t.transform) {
-            if (t.transform.swap_xy) lines.push("      swap_xy: true");
-            if (t.transform.mirror_x) lines.push("      mirror_x: true");
-            if (t.transform.mirror_y) lines.push("      mirror_y: true");
+            if (t.transform.swap_xy) transformLines.push("      swap_xy: true");
+            if (t.transform.mirror_x) transformLines.push("      mirror_x: true");
+            if (t.transform.mirror_y) transformLines.push("      mirror_y: true");
         } else {
-            if (t.mirror_x || tx.mirror_x) lines.push("      mirror_x: true");
-            if (t.mirror_y || tx.mirror_y) lines.push("      mirror_y: true");
-            if (t.swap_xy || tx.swap_xy) lines.push("      swap_xy: true");
+            if (t.mirror_x || tx.mirror_x) transformLines.push("      mirror_x: true");
+            if (t.mirror_y || tx.mirror_y) transformLines.push("      mirror_y: true");
+            if (t.swap_xy || tx.swap_xy) transformLines.push("      swap_xy: true");
         }
+    }
+    if (transformLines.length > 0) {
+        lines.push("    transform:");
+        lines.push(...transformLines);
     }
 
     if (isLvgl && layout.lcdEcoStrategy === "dim_after_timeout") {

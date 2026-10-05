@@ -50,7 +50,8 @@ describe('weather feature exports', () => {
         });
 
         const output = lines.join('\n');
-        expect(output).toContain('it.filled_rounded_rectangle(0, 0, 210, 70, 8, Color(white));');
+        expect(output).not.toContain('filled_rounded_rectangle');
+        expect(output).toContain('draw_filled_rrect(0, 0, 210, 70, 8, Color(white));');
         expect(output).toContain('auto draw_rrect_border = [&](int x, int y, int w, int h, int r, int t, auto c) {');
         expect(output).toContain('draw_rrect_border(0, 0, 210, 70, 8, 1, Color(black));');
         expect(output).toContain('auto get_day_name = [](int offset) -> std::string {');
@@ -220,5 +221,67 @@ describe('weather feature exports', () => {
 
         expect(tracked).toContainEqual(['Roboto', 300, 12]);
         expect(tracked).toContainEqual(['Roboto', 900, 14]);
+    });
+
+    it('exports direct hourly forecasts with 12h slot labels when clock_mode is 12h (Issue #521)', () => {
+        const lines = [];
+
+        exportWeatherDoc({
+            id: 'weather_hourly_12h',
+            x: 5,
+            y: 6,
+            width: 120,
+            height: 100,
+            props: {
+                forecast_mode: 'hourly',
+                hourly_mode: 'fixed',
+                hourly_slots: '06,09,12,15,18,21',
+                clock_mode: '12h',
+                show_high_low: false
+            }
+        }, {
+            lines,
+            addFont: vi.fn(() => 'weather_font'),
+            getColorConst: (value) => `Color(${value})`,
+            addDitherMask: vi.fn(),
+            getConditionCheck: () => '',
+            isEpaper: false
+        });
+
+        const output = lines.join('\n');
+        expect(output).toContain('const char* slots[] = {"6AM", "9AM", "12PM", "3PM", "6PM", "9PM"};');
+        // Sensor IDs stay on the 24h scheme so existing setups keep working.
+        expect(output).toContain('weather_cond_h0600');
+        expect(output).toContain('weather_cond_h1500');
+    });
+
+    it('exports direct relative hourly labels in 12h format when clock_mode is 12h (Issue #521)', () => {
+        const lines = [];
+
+        exportWeatherDoc({
+            id: 'weather_rel_12h',
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 100,
+            props: {
+                forecast_mode: 'hourly',
+                hourly_mode: 'relative',
+                relative_count: 3,
+                clock_mode: '12h'
+            }
+        }, {
+            lines,
+            addFont: vi.fn(() => 'weather_font'),
+            getColorConst: (value) => `Color(${value})`,
+            addDitherMask: vi.fn(),
+            getConditionCheck: () => '',
+            isEpaper: false
+        });
+
+        const output = lines.join('\n');
+        expect(output).toContain('int h24 = (t.hour + offset + 1) % 24;');
+        expect(output).toContain('snprintf(buf, sizeof(buf), "%d%s", h12, h24 < 12 ? "AM" : "PM");');
+        expect(output).not.toContain('%02d:00');
     });
 });

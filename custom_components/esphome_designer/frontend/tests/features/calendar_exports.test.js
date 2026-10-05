@@ -244,4 +244,109 @@ describe('calendar exports', () => {
         expect(output).toContain('dayEntry["day_name"]');
         expect(output).toContain('it.printf(x + 10, eventY, id(font_ref), Color(theme_auto), TextAlign::TOP_LEFT, "%s", day_name);');
     });
+
+    it('omits separator line and offsets eventY directly below header when show_grid is false', () => {
+        const lines = [];
+
+        exportDirect({
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 200,
+            entity_id: 'sensor.family_calendar',
+            props: {
+                show_header: true,
+                show_grid: false,
+                show_events: true
+            }
+        }, {
+            lines,
+            addFont: vi.fn(() => 'font_ref'),
+            getColorConst: (value) => `Color(${value})`,
+            addDitherMask: vi.fn(),
+            getCondProps: () => ({}),
+            getConditionCheck: () => '',
+            isEpaper: false
+        });
+
+        const output = lines.join('\n');
+        // Header divider line is present
+        expect(output).toContain('it.line(x, y + headH, x + w, y + headH, Color(theme_auto));');
+        // eventY starts directly under header
+        expect(output).toContain('int eventY = y + headH + 8;');
+        // Separator line between grid and events must NOT be present
+        expect(output).not.toContain('eventY - 5');
+    });
+
+    it('uses distinct fonts for event day prefix and event summary/time', () => {
+        const lines = [];
+        const addFontMock = vi.fn((family, weight, size) => `font_${weight}_${size}`);
+
+        exportDirect({
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 200,
+            entity_id: 'sensor.family_calendar',
+            props: {
+                show_header: false,
+                show_grid: false,
+                show_events: true,
+                font_weight_event_day: 700,
+                font_weight_events: 400,
+                font_size_event: 18,
+                event_day_format: 'weekday'
+            }
+        }, {
+            lines,
+            addFont: addFontMock,
+            getColorConst: (value) => `Color(${value})`,
+            addDitherMask: vi.fn(),
+            getCondProps: () => ({}),
+            getConditionCheck: () => '',
+            isEpaper: false
+        });
+
+        const output = lines.join('\n');
+        // Day prefix uses 700 weight font
+        expect(output).toContain('it.printf(x + 10, eventY, id(font_700_18), Color(theme_auto), TextAlign::TOP_LEFT, "%s", day_name);');
+        // Summary uses 400 weight font
+        expect(output).toContain('it.printf(x + 50, eventY, id(font_400_18), Color(theme_auto), TextAlign::TOP_LEFT,');
+    });
+
+    it('iterates calendar event arrays via named JsonArray variables (Issue #515)', () => {
+        const lines = [];
+
+        exportDirect({
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 200,
+            entity_id: 'sensor.family_calendar',
+            props: {
+                show_header: false,
+                show_grid: false,
+                show_events: true
+            }
+        }, {
+            lines,
+            addFont: vi.fn(() => 'font_ref'),
+            getColorConst: (value) => `Color(${value})`,
+            addDitherMask: vi.fn(),
+            getCondProps: () => ({}),
+            getConditionCheck: () => '',
+            isEpaper: false
+        });
+
+        const output = lines.join('\n');
+        // Must not range-for over a temporary as<JsonArray>() result (fails on ArduinoJson 7.4.x / ESPHome 2026)
+        expect(output).not.toContain('for (JsonVariant event : dayEntry["all_day"].as<JsonArray>())');
+        expect(output).not.toContain('for (JsonVariant event : dayEntry["other"].as<JsonArray>())');
+        expect(output).toContain('JsonVariant all_day_var = dayEntry["all_day"];');
+        expect(output).toContain('JsonArray all_day_arr = all_day_var.as<JsonArray>();');
+        expect(output).toContain('for (JsonVariant event : all_day_arr)');
+        expect(output).toContain('JsonVariant other_var = dayEntry["other"];');
+        expect(output).toContain('JsonArray other_arr = other_var.as<JsonArray>();');
+        expect(output).toContain('for (JsonVariant event : other_arr)');
+    });
 });

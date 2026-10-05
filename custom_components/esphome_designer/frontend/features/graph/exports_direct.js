@@ -23,6 +23,7 @@ export const exportDoc = (w, context) => {
     const entityId = (w.entity_id || "").trim();
     const title = sanitize(w.title || "");
     const duration = p.duration || "1h";
+    const windowSec = Math.max(60, Math.round(parseDuration(duration)));
     const borderEnabled = p.border !== false;
     const backgroundProp = p.bg_color || p.background_color || "transparent";
     const bgColor = backgroundProp !== "transparent" ? getColorConst(backgroundProp) : null;
@@ -66,7 +67,10 @@ export const exportDoc = (w, context) => {
             const histId = `hist_${w.id}`.replace(/-/g, "_");
             const useAutoScale = p.auto_scale !== false;
 
-            lines.push(`        // Draw historical graph from global array ${histId}`);
+            lines.push(`        // Draw historical graph from global arrays ${histId} / ${histId}_ts`);
+            lines.push('        // (_ts holds seconds since window start at fetch time). Each point');
+            lines.push('        // sits at its true time position, so sparse data is NOT stretched');
+            lines.push('        // across the window and gaps stay empty like in HA (Issue #517).');
             lines.push('        {');
             if (useAutoScale) {
                 lines.push(`          float g_min = id(${histId}_min);`);
@@ -82,20 +86,43 @@ export const exportDoc = (w, context) => {
                 lines.push('          float g_range = g_max - g_min;');
             }
             lines.push('          if (g_range == 0) g_range = 1.0;');
+            lines.push(`          const float g_win = ${windowSec};`);
             lines.push(`          int hist_count = id(${histId}_count);`);
-            lines.push('          if (hist_count < 2) hist_count = 2;');
-            lines.push('          for (int i = 0; i < hist_count - 1; i++) {');
+            lines.push('          float g_shift = 0;');
+            lines.push('          if (id(ha_time).now().is_valid()) {');
+            lines.push(`            g_shift = (float)((long) id(ha_time).now().timestamp - (long) id(${histId}_fetch));`);
+            lines.push('            if (g_shift < 0) g_shift = 0;');
+            lines.push('          }');
+            lines.push('          for (int i = 0; i + 1 < hist_count; i++) {');
             lines.push(`            float val1 = id(${histId})[i];`);
             lines.push(`            float val2 = id(${histId})[i+1];`);
             lines.push('            if (isnan(val1) || isnan(val2)) continue;');
-            lines.push(`            int x1 = ${w.x} + (i * ${w.width}) / (hist_count - 1);`);
-            lines.push(`            int x2 = ${w.x} + ((i + 1) * ${w.width}) / (hist_count - 1);`);
+            lines.push(`            float t1 = id(${histId}_ts)[i] - g_shift;`);
+            lines.push(`            float t2 = id(${histId}_ts)[i+1] - g_shift;`);
+            lines.push('            if ((t1 < 0 && t2 < 0) || (t1 > g_win && t2 > g_win)) continue;');
+            lines.push('            if (t1 < 0) t1 = 0;');
+            lines.push('            if (t2 < 0) t2 = 0;');
+            lines.push('            if (t1 > g_win) t1 = g_win;');
+            lines.push('            if (t2 > g_win) t2 = g_win;');
+            lines.push(`            int x1 = ${w.x} + (int)(t1 / g_win * ${w.width});`);
+            lines.push(`            int x2 = ${w.x} + (int)(t2 / g_win * ${w.width});`);
             lines.push(`            int y1 = ${w.y} + ${w.height} - (int)((val1 - g_min) / g_range * ${w.height});`);
             lines.push(`            int y2 = ${w.y} + ${w.height} - (int)((val2 - g_min) / g_range * ${w.height});`);
             lines.push(`            it.line(x1, y1, x2, y2, ${color});`);
             if (lineThickness > 1) {
                 lines.push(`            it.line(x1, y1+1, x2, y2+1, ${color});`);
             }
+            lines.push('          }');
+            lines.push('          if (hist_count == 1) {');
+            lines.push(`            float vsolo = id(${histId})[0];`);
+            lines.push('            if (!isnan(vsolo)) {');
+            lines.push(`              float tsolo = id(${histId}_ts)[0] - g_shift;`);
+            lines.push('              if (tsolo < 0) tsolo = 0;');
+            lines.push('              if (tsolo > g_win) tsolo = g_win;');
+            lines.push(`              int xsolo = ${w.x} + (int)(tsolo / g_win * ${w.width});`);
+            lines.push(`              int ysolo = ${w.y} + ${w.height} - (int)((vsolo - g_min) / g_range * ${w.height});`);
+            lines.push(`              it.filled_circle(xsolo, ysolo, 2, ${color});`);
+            lines.push('            }');
             lines.push('          }');
             lines.push("");
             lines.push('          // Y-axis labels (Dynamic)');

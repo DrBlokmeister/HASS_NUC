@@ -196,4 +196,25 @@ describe('energy_widget exports', () => {
         expect(addFont).toHaveBeenCalledWith('Montserrat', 700, 14);
         expect(addFont).toHaveBeenCalledWith('Montserrat', 700, 16);
     });
+
+    it('exports draw_filled_rrect when border_radius and background_color are set', () => {
+        const context = createDocContext();
+
+        exportDoc({
+            id: 'energy_rounded',
+            x: 5,
+            y: 6,
+            width: 220,
+            height: 140,
+            props: {
+                background_color: 'black',
+                border_radius: 8
+            }
+        }, context);
+
+        const output = context.lines.join('\n');
+        expect(output).not.toContain('filled_rounded_rectangle');
+        expect(output).toContain('draw_filled_rrect(5, 6, 220, 140, 8, Color(black));');
+        expect(output).toContain('auto draw_filled_rrect = [&](int x, int y, int w, int h, int r, auto c)');
+    });
 });

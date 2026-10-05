@@ -136,4 +136,23 @@ describe('calendar yaml export', () => {
         expect(result.lambda).toContain('dayEntry["day_name"]');
         expect(result.lambda).toContain('it.printf(0 + 20, y_cursor, id(font_event_day), color_content, TextAlign::TOP_LEFT, "%s", day_name);');
     });
+
+    it('iterates snippet event arrays via named JsonArray variables (Issue #515)', () => {
+        const result = generateSnippet({
+            id: 'calendar_json_fix',
+            x: 0,
+            y: 0,
+            w: 320,
+            h: 240,
+            properties: {
+                show_events: true
+            }
+        });
+
+        expect(result.lambda).not.toContain('for (JsonVariant event : dayEntry["all_day"].as<JsonArray>())');
+        expect(result.lambda).not.toContain('for (JsonVariant event : dayEntry["other"].as<JsonArray>())');
+        expect(result.lambda).toContain('JsonVariant other_var = dayEntry["other"];');
+        expect(result.lambda).toContain('JsonArray other_arr = other_var.as<JsonArray>();');
+        expect(result.lambda).toContain('for (JsonVariant event : other_arr)');
+    });
 });

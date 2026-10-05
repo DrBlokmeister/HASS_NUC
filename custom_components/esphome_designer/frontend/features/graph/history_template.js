@@ -13,7 +13,28 @@ const sanitizeToken = (value) => value
  * @param {string} entityId
  * @returns {string}
  */
-const getEntityToken = (entityId) => sanitizeToken(entityId || 'sensor.history_source');
+const getEntityToken = (entityId) => {
+    const raw = (entityId || 'sensor.history_source')
+        .toLowerCase()
+        .replace(/^(sensor\.)?graph_history_/, '');
+    return sanitizeToken(raw);
+};
+
+/**
+ * Resolves the underlying source entity even if the widget was already pointed to the helper sensor.
+ * @param {string} entityId
+ * @returns {string}
+ */
+export function resolveGraphHistorySourceEntity(entityId) {
+    const trimmed = (entityId || 'sensor.history_source').trim() || 'sensor.history_source';
+    if (/^sensor\.graph_history_sensor_/.test(trimmed)) {
+        return trimmed.replace(/^sensor\.graph_history_sensor_/, 'sensor.');
+    }
+    if (/^sensor\.graph_history_/.test(trimmed)) {
+        return trimmed.replace(/^sensor\.graph_history_/, 'sensor.');
+    }
+    return trimmed;
+}
 
 /**
  * @param {{ entity_id?: string, props?: Record<string, any> }} widget
@@ -48,7 +69,7 @@ export function buildGraphHistoryTemplateFilename(widget) {
  */
 export function buildGraphHistoryTemplateYaml(widget) {
     const props = widget.props || {};
-    const sourceEntity = (widget.entity_id || 'sensor.history_source').trim() || 'sensor.history_source';
+    const sourceEntity = resolveGraphHistorySourceEntity(widget.entity_id || 'sensor.history_source');
     const helperEntityId = buildGraphHistoryTemplateEntityId(widget);
     const helperObjectId = helperEntityId.replace(/^sensor\./, '');
     const helperName = helperObjectId.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
@@ -62,10 +83,28 @@ export function buildGraphHistoryTemplateYaml(widget) {
 
     return [
         '# Home Assistant helper package for ESPHome Designer graph history mode',
-        '# 1. Save this as a package or merge it into configuration.yaml.',
-        '# 2. Make sure the SQL integration is available in Home Assistant.',
+        '# ----------------------------------------------------------------------------------',
+        '# SETUP INSTRUCTIONS:',
+        '# 1. Make sure the SQL integration is available in Home Assistant:',
+        '#    - If already enabled, you can skip this step.',
+        '#    - If not enabled yet, go to Settings > Devices & Services > Add Integration > SQL.',
+        '#    - IMPORTANT: Home Assistant requires creating a sensor when adding SQL via UI.',
+        '#      Enter any dummy query (e.g. Name: "SQL Helper", Query: "SELECT 1 AS ping;", Column: "ping").',
+        '#      Do NOT paste the query below into the HA SQL sensor UI modal,',
+        '#      because the HA UI sensor only supports a single scalar value, whereas this package',
+        '#      uses the "sql.query" action to fetch multiple history points into an attribute.',
+        '# 2. Place this YAML file into your Home Assistant packages directory',
+        '#    (e.g. config/packages/graph_history.yaml) or merge it into configuration.yaml.',
         `# 3. Point the graph widget to ${helperEntityId}.`,
+        '#    (Replace the raw source sensor with this helper sensor so ESPHome reads the history attribute).',
         `# 4. Keep "HA Attribute" set to "${attrName}".`,
+        '# 5. IMPORTANT: After updating ESPHome Designer, re-copy this file so the',
+        '#    timestamped v2 format below stays in sync with the generated firmware.',
+        '# ----------------------------------------------------------------------------------',
+        '# Format v2: [[unix_timestamp, value], ...] ordered oldest -> newest.',
+        '# Unknown/unavailable gaps are emitted as null values so the device can',
+        '# leave HA-like gaps instead of stretching data across the window.',
+        '# ----------------------------------------------------------------------------------',
         '',
         'template:',
         '  - trigger:',
@@ -83,7 +122,6 @@ export function buildGraphHistoryTemplateYaml(widget) {
         '            FROM states',
         '            INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id',
         `            WHERE states_meta.entity_id = '${sqlEntityId}'`,
-        "              AND states.state NOT IN ('unknown', 'unavailable', 'none')",
         `              AND states.last_updated_ts >= {{ (now().timestamp() - ${durationSeconds}) | round(0, 'floor') }}`,
         '            ORDER BY states.last_updated_ts ASC',
         `            LIMIT ${points};`,
@@ -94,7 +132,13 @@ export function buildGraphHistoryTemplateYaml(widget) {
         `        state: "{{ states(\\"${stateEntityId}\\") }}"`,
         '        attributes:',
         `          ${attrName}: >`,
-        `            {{ ${responseVar}.result | default([]) | map(attribute='value') | list | tojson }}`,
+        '            {% set ns = namespace(items=[]) %}',
+        `            {% for row in ${responseVar}.result | default([]) %}`,
+        '              {% set v = row.value %}',
+        `              {% if v in ['unknown', 'unavailable', 'none', ''] %}{% set v = none %}{% endif %}`,
+        '              {% set ns.items = ns.items + [[row.ts, v]] %}',
+        '            {% endfor %}',
+        '            {{ ns.items | tojson }}',
         '          samples: >',
         `            {{ ${responseVar}.result | default([]) | count }}`,
         `          source_entity: "${sourceEntity}"`,
