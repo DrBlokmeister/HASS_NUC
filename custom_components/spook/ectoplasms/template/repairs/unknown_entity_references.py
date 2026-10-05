@@ -14,6 +14,7 @@ from ....entity_filtering import (
     async_filter_known_entity_ids,
     async_get_all_entity_ids,
     async_get_all_services,
+    async_name_helper_in_the_registry,
 )
 from ....entity_suggestions import async_describe_unknown_entities
 from ....repairs import AbstractSpookRepair
@@ -120,14 +121,31 @@ class SpookRepair(AbstractSpookRepair):
                 )
                 self.async_create_issue(
                     issue_id=entry.entry_id,
+                    # Carrying which of them nothing running references any
+                    # more, because the report says so and that changes when
+                    # a step is enabled. Left out, a dismissal made while a
+                    # reference was harmless would outlive it becoming a live
+                    # problem, which is the thing an ID of its own prevents.
+                    references=[
+                        *unknown_active,
+                        *(
+                            f"{entity_id} (disabled)"
+                            for entity_id in unknown_entities - unknown_active
+                        ),
+                    ],
                     translation_placeholders={
-                        "entities": self._describe(unknown_entities, unknown_active),
+                        "entities": await self._async_describe(
+                            unknown_entities, unknown_active
+                        ),
                         "helper": entry.title,
+                        "entity_id": async_name_helper_in_the_registry(
+                            self.hass, entry.entry_id
+                        ),
                         "edit": "/config/helpers",
                     },
                 )
 
-    def _describe(self, unknown: set[str], unknown_active: set[str]) -> str:
+    async def _async_describe(self, unknown: set[str], unknown_active: set[str]) -> str:
         """Describe the unknown entities, qualifying the disabled-only ones.
 
         An entity is only qualified when nothing that runs references it. A
@@ -135,13 +153,15 @@ class SpookRepair(AbstractSpookRepair):
         extraction, so such a reference stays unqualified -- the report errs
         towards saying too much rather than calling a live problem harmless.
         """
-        described = async_describe_unknown_entities(self.hass, sorted(unknown_active))
+        described = await async_describe_unknown_entities(
+            self.hass, sorted(unknown_active)
+        )
         if disabled_only := unknown - unknown_active:
             described = "\n".join(
                 part
                 for part in (
                     described,
-                    async_describe_unknown_entities(
+                    await async_describe_unknown_entities(
                         self.hass,
                         sorted(disabled_only),
                         note="only referenced from disabled steps",

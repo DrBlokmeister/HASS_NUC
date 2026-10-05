@@ -107,8 +107,9 @@ class SpookRepair(AbstractSpookRepair):
         if unknown:
             self.async_create_issue(
                 issue_id=self.repair,
+                references=unknown,
                 translation_placeholders={
-                    "entities": async_describe_unknown_entities(
+                    "entities": await async_describe_unknown_entities(
                         self.hass, sorted(unknown)
                     ),
                 },

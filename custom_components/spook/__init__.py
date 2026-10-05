@@ -18,6 +18,7 @@ from homeassistant.helpers import issue_registry as ir
 
 from .automation_runs import async_setup_automation_runs
 from .const import DOMAIN, LOGGER, PLATFORMS
+from .dismissals import async_setup_dismissals
 from .entity_filtering import async_setup_all_entity_ids_cache_invalidation
 from .integration_linking import link_sub_integrations, unlink_sub_integrations
 from .listeners import async_listen_once_tracked
@@ -25,6 +26,7 @@ from .repairs import SpookRepairManager
 from .run_history import async_setup_run_history
 from .services import SpookServiceManager
 from .setup_helpers import async_forward_setup_entry
+from .statistics_sources import async_setup_abandoned_statistics_watching
 from .timed_states import async_setup_timed_states
 
 if TYPE_CHECKING:
@@ -94,12 +96,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await services.async_setup()
     entry.async_on_unload(services.async_on_unload)
 
+    # Watching before anything can start a wait it has to observe. A repair
+    # can put a statistic on the clock the first time it looks, and on the
+    # reload path that happens below rather than at some later event, so a
+    # watcher registered afterwards would already have missed the beginning
+    # of what it is meant to be watching.
+    entry.async_on_unload(async_setup_abandoned_statistics_watching(hass))
+
+    # Loaded before any repair looks, because the first thing a repair does
+    # with what it finds is check whether somebody already said to leave it.
+    entry.async_on_unload(await async_setup_dismissals(hass))
+
     # Who you gonna call? SpookRepairManager!
     repairs = SpookRepairManager(hass)
+
+    # Starting the repairs takes a moment, and on a normal start that moment
+    # comes after this setup is long done. Spook can be disabled or reloaded
+    # in it, and the unload that runs then has not been told about repairs
+    # that are not there yet. They finished starting afterwards with nothing
+    # left to stop them.
+    unloaded = False
+
+    @callback
+    def _note_the_unload() -> None:
+        """Remember Spook went, for repairs that were still on their way."""
+        nonlocal unloaded
+        unloaded = True
+
+    entry.async_on_unload(_note_the_unload)
 
     async def _ghost_busters(_: Event | None = None) -> None:
         """Send them in, time for some ghost chasing."""
         await repairs.async_setup()
+
+        if unloaded:
+            await repairs.async_on_unload()
+            return
+
         entry.async_on_unload(repairs.async_on_unload)
 
     if hass.state == CoreState.running:

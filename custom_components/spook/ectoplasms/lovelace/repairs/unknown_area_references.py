@@ -36,7 +36,7 @@ class SpookRepair(AbstractSpookRepair):
     inspect_on_reload = True
     automatically_clean_up_issues = True
 
-    _dashboards: dict[str, LovelaceStorage | LovelaceYAML]
+    _dashboards: dict[str | None, LovelaceStorage | LovelaceYAML]
 
     async def async_activate(self) -> None:
         """Handle the activating a repair."""
@@ -72,6 +72,7 @@ class SpookRepair(AbstractSpookRepair):
                     title = dashboard.config.get("title", url_path)
                 self.async_create_issue(
                     issue_id=url_path,
+                    references=unknown_areas,
                     translation_placeholders={
                         "areas": "\n".join(
                             f"- `{area_id}`" for area_id in sorted(unknown_areas)

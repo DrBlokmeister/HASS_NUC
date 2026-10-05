@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 import asyncio
 from contextlib import suppress
 from dataclasses import dataclass, field
+import hashlib
 import importlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, final
@@ -20,7 +21,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigEntryChange,
 )
-from homeassistant.const import CONF_ENTITIES
+from homeassistant.const import CONF_ENTITIES, EVENT_STATE_CHANGED
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import (
@@ -36,15 +37,33 @@ from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_component import DATA_INSTANCES
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.recorder import get_instance
 from homeassistant.util.async_ import create_eager_task
 
 from .const import DOMAIN, LOGGER
-from .dashboard_resources import redundant_item_ids
-from .entity_filtering import async_filter_known_entity_ids, async_get_all_entity_ids
-from .entity_suggestions import async_describe_unknown_entities
+from .dashboard_resources import is_yaml_managed, redundant_item_ids
+from .dismissals import async_get_dismissals
+from .entity_filtering import (
+    async_filter_known_entity_ids,
+    async_get_all_entity_ids,
+    async_name_helper_in_the_registry,
+)
+from .entity_suggestions import (
+    async_describe_warmed_unknown_entities,
+    async_warm_rename_suggestions,
+)
+from .helper_sources import (
+    MIN_MAX_ENTITY_IDS,
+    async_helper_sources,
+    async_unknown_helper_sources,
+    async_unknown_min_max_members,
+)
+from .reference_extraction import async_collect_mentioned_strings
+from .registry_usage import async_area_in_use, async_floor_in_use, async_label_in_use
+from .statistics_sources import async_settled_orphaned_statistic_ids
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Mapping, Sized
+    from collections.abc import Callable, Coroutine, Iterable, Mapping, Sized
     from datetime import datetime, timedelta
     from types import ModuleType
 
@@ -57,6 +76,18 @@ if TYPE_CHECKING:
 # large installations.
 INSPECTION_YIELD_INTERVAL = 50
 
+# How long to give the recorder to say it has cleared what it was asked to.
+# The same as Home Assistant allows its own Statistics page, which asks the
+# recorder the same question the same way.
+_CLEARING_TAKES_AT_MOST = 10
+
+# Enough of a digest to tell two sets of findings apart. A collision would
+# mean one dismissal covering a different finding in the same place, which is
+# the thing this exists to prevent, and eight hex characters make that four
+# billion to one.
+_FINGERPRINT_LENGTH = 8
+
+
 # A min/max helper needs at least this many members to function; Spook must
 # not prune it below this.
 _MIN_MAX_MINIMUM_MEMBERS = 2
@@ -65,6 +96,34 @@ _MIN_MAX_MINIMUM_MEMBERS = 2
 def _plural(items: Sized) -> str:
     """Return the plural suffix for a sized collection."""
     return "" if len(items) == 1 else "s"
+
+
+def _bulleted(items: Iterable[str]) -> str:
+    """Return the markdown list a repair puts its findings in."""
+    return "\n".join(f"- `{item}`" for item in items)
+
+
+def _fingerprint(references: Iterable[str]) -> str:
+    r"""Return a short digest of what a finding is about.
+
+    Sorted first, because the same findings in a different order are the same
+    findings, and an ID that moved would resurface an issue somebody had
+    already dealt with.
+
+    Each one is written down with its length in front of it, so that the
+    digest reads two different sets two different ways. Joining them with a
+    separator does not: a reference holding that separator borrows the one
+    next to it, and `{"a\nb", "c"}` and `{"a", "b\nc"}` come out identical.
+    Entity IDs cannot do that, but resource URLs, notifier names and
+    customize keys are whatever somebody typed.
+    """
+    digest = hashlib.sha256()
+    for reference in sorted(references):
+        encoded = reference.encode()
+        digest.update(f"{len(encoded)}:".encode())
+        digest.update(encoded)
+
+    return digest.hexdigest()[:_FINGERPRINT_LENGTH]
 
 
 class AbstractSpookRepairBase(ABC):
@@ -89,6 +148,7 @@ class AbstractSpookRepairBase(ABC):
         self.device_registry = dr.async_get(hass)
         self.entity_registry = er.async_get(hass)
         self.issue_ids = set()
+        self._deactivated = False
 
     @final
     @callback
@@ -103,10 +163,35 @@ class AbstractSpookRepairBase(ABC):
         issue_domain: str | None = None,
         issue_id: str,
         learn_more_url: str | None = None,
+        references: Iterable[str] | None = None,
         severity: ir.IssueSeverity = ir.IssueSeverity.WARNING,
+        translation_key: str | None = None,
         translation_placeholders: dict[str, str] | None = None,
     ) -> None:
-        """Create an issue."""
+        """Create an issue.
+
+        `translation_key` defaults to the repair's own name, which is what
+        nearly every repair wants. Pass one when the same finding needs to be
+        worded differently depending on what the house looks like, so that the
+        alternative is a translated string of its own rather than a sentence
+        smuggled in through a placeholder.
+
+        `references` is what the issue is reporting, when that is a list of
+        things rather than the one place they were found in. Pass it and the
+        ID follows the findings, so that pressing "ignore" means "not these"
+        rather than "nothing here, ever". Without it an issue keyed to a
+        script keeps its dismissal while its text is quietly rewritten
+        underneath, and the next genuinely broken thing in that script is
+        hidden by a decision somebody made about something else. #1395.
+        """
+        if self._deactivated:
+            return
+
+        owner = issue_id
+        findings = None if references is None else list(references)
+        if findings is not None:
+            issue_id = f"{issue_id}_{_fingerprint(findings)}"
+
         self.issue_ids.add(issue_id)
         ir.async_create_issue(
             self.hass,
@@ -119,9 +204,45 @@ class AbstractSpookRepairBase(ABC):
             issue_id=f"{self.repair}_{issue_id}",
             learn_more_url=learn_more_url,
             severity=severity,
-            translation_key=self.repair,
+            translation_key=translation_key or self.repair,
             translation_placeholders=translation_placeholders,
         )
+
+        if findings is not None:
+            self._async_carry_over_dismissal(
+                f"{self.repair}_{issue_id}", owner, findings
+            )
+
+    @final
+    @callback
+    def _async_carry_over_dismissal(
+        self,
+        issue_id: str,
+        owner: str,
+        findings: list[str],
+    ) -> None:
+        """Keep an issue ignored when what it reports was ignored already.
+
+        An issue filed under its findings is a new issue whenever they change,
+        and Home Assistant only remembers an ignore on the issue it was
+        pressed on. So a list that got shorter, or one that came back after
+        an automation reloaded, arrived as something nobody had ever seen.
+        Spook writes the decision down itself, and anything it reports that
+        was all ignored before is ignored again from the start. Anything new
+        on the list makes it news, and it comes up as usual.
+        """
+        dismissals = async_get_dismissals(self.hass)
+        dismissals.async_offer(issue_id, self.repair, owner, findings)
+
+        issue = self.issue_registry.async_get_issue(DOMAIN, issue_id)
+        if issue is not None and issue.dismissed_version is not None:
+            # Ignored, but perhaps from before Spook wrote these down, or by a
+            # route it did not see. Either way it is a decision to keep.
+            dismissals.async_dismiss_offered(issue_id)
+            return
+
+        if set(findings) <= dismissals.async_dismissed(self.repair, owner):
+            ir.async_ignore_issue(self.hass, DOMAIN, issue_id, ignore=True)
 
     @final
     @callback
@@ -130,6 +251,9 @@ class AbstractSpookRepairBase(ABC):
         issue_id: str,
     ) -> None:
         """Remove an issue."""
+        if self._deactivated:
+            return
+
         self.issue_ids.discard(issue_id)
         ir.async_delete_issue(
             self.hass,
@@ -147,10 +271,10 @@ class AbstractSpookRepairBase(ABC):
         """Trigger a repair check."""
         raise NotImplementedError
 
-    async def async_deactivate(self) -> None:  # noqa: B027
+    async def async_deactivate(self) -> None:
         """Unregister the repair, and leave what it reported where it is.
 
-        Deliberately does nothing, and that is the point of it. Somebody
+        Deliberately takes nothing down, and that is the point of it. Somebody
         pressing "ignore" has that written on the issue itself, so deleting
         the issue takes the mark with it and the next inspection puts the same
         thing back as something nobody has ever seen. Home Assistant keeps an
@@ -163,7 +287,14 @@ class AbstractSpookRepairBase(ABC):
         when it next looks, and deletes what is no longer there, so the tidying
         this used to do happens anyway and happens later, when there is
         something to compare against. #1572.
+
+        What it does stop is a look already under way. Shutting the debouncer
+        down cancels the next one, not one waiting halfway through, and that
+        one carried on afterwards: filing what it found for a Spook that was
+        disabled, or after a reload clearing the fresh issues of the repair
+        that replaced it. From here on it changes nothing.
         """
+        self._deactivated = True
 
 
 class AbstractSpookRepair(AbstractSpookRepairBase):
@@ -178,6 +309,12 @@ class AbstractSpookRepair(AbstractSpookRepairBase):
     #: triggers. Needed by repairs whose findings change with the passage of
     #: time alone (e.g. something going stale), not in response to an event.
     inspect_interval: timedelta | None = None
+
+    #: Re-run the inspection when an entity appears or goes. Needed by repairs
+    #: about entity references, as plenty of entities never touch the entity
+    #: registry: one set by a script or a template without a unique ID arrives
+    #: as a state and nothing else, often well after Home Assistant started.
+    inspect_on_entity_added_or_removed: bool = False
 
     automatically_clean_up_issues: bool = False
     possible_issue_ids: set[str]
@@ -278,6 +415,28 @@ class AbstractSpookRepair(AbstractSpookRepairBase):
                 ),
             )
 
+        if self.inspect_on_entity_added_or_removed:
+
+            @callback
+            def _entity_added_or_removed(event_data: Mapping[str, Any]) -> bool:
+                """Return whether an entity appeared or went, not just changed."""
+                return (
+                    event_data.get("old_state") is None
+                    or event_data.get("new_state") is None
+                )
+
+            @callback
+            def _async_entity_added_or_removed(_: Event) -> None:
+                self.inspect_debouncer.async_schedule_call()
+
+            self._event_subs.add(
+                self.hass.bus.async_listen(
+                    EVENT_STATE_CHANGED,
+                    _async_entity_added_or_removed,
+                    event_filter=_entity_added_or_removed,
+                ),
+            )
+
         if self.inspect_on_reload:
 
             @callback
@@ -348,10 +507,9 @@ class AbstractSpookEntityComponentUnknownReferencesRepair(AbstractSpookRepair, A
     automatically_clean_up_issues = True
 
     #: Entity class representing an unavailable/broken instance. Entities of
-    #: this type are still tracked in ``possible_issue_ids`` but skipped during
-    #: issue creation. ``None`` inspects every entity, including unavailable
-    #: ones; repairs that diagnose *why* an entity is broken need exactly
-    #: those.
+    #: this type are skipped during issue creation. ``None`` inspects every
+    #: entity, including unavailable ones; repairs that diagnose *why* an
+    #: entity is broken need exactly those.
     unavailable_entity_class: type | None = None
 
     #: Translation placeholder key holding the entity's display name (e.g.
@@ -373,7 +531,8 @@ class AbstractSpookEntityComponentUnknownReferencesRepair(AbstractSpookRepair, A
     def _format_references(self, references: list[str]) -> str:
         """Return the bulleted reference list for the issue message."""
         if self.references_are_entities:
-            return async_describe_unknown_entities(self.hass, references)
+            # Warmed for the whole round in `async_inspect` already.
+            return async_describe_warmed_unknown_entities(self.hass, references)
         return "\n".join(f"- `{reference}`" for reference in references)
 
     async def _async_setup_inspection(self) -> None:
@@ -407,9 +566,14 @@ class AbstractSpookEntityComponentUnknownReferencesRepair(AbstractSpookRepair, A
         return self.edit_url_pattern.format(unique_id=entity.unique_id)
 
     async def async_inspect(self) -> None:
-        """Trigger an inspection."""
-        self.possible_issue_ids.clear()
+        """Trigger an inspection.
 
+        Nothing goes into ``possible_issue_ids`` here. An issue raised by this
+        repair is keyed to its findings rather than to the entity they were
+        found in, so a list of inspected entities no longer names anything
+        that could be in the registry. What this repair left behind is read
+        back out of the registry instead, which finds all of it.
+        """
         if self.domain not in (instances := self.hass.data.get(DATA_INSTANCES, {})):
             return
 
@@ -431,13 +595,18 @@ class AbstractSpookEntityComponentUnknownReferencesRepair(AbstractSpookRepair, A
         # after the round finished.
         entities = list(entity_component.entities)
 
+        # Collected first and reported afterwards, rather than an issue raised
+        # the moment one is found. Describing a broken entity reference means
+        # working out what it was probably meant to say, which is the most
+        # expensive thing in the whole inspection, and gathering the round's
+        # findings first lets all of that happen in one go. #1667.
+        findings: list[tuple[Any, list[str]]] = []
+
         for index, entity in enumerate(entities):
             if index and index % INSPECTION_YIELD_INTERVAL == 0:
                 # Inspections are CPU-bound; periodically yield to the event
                 # loop so large installations do not stall it.
                 await asyncio.sleep(0)
-
-            self.possible_issue_ids.add(entity.entity_id)
 
             unavailable_class = self.unavailable_entity_class
             # pylint: disable-next=isinstance-second-argument-not-valid-type
@@ -451,10 +620,18 @@ class AbstractSpookEntityComponentUnknownReferencesRepair(AbstractSpookRepair, A
             if not unknown:
                 continue
 
-            sorted_unknown = sorted(unknown)
+            findings.append((entity, sorted(unknown)))
 
+        if self.references_are_entities and findings:
+            await async_warm_rename_suggestions(
+                self.hass,
+                {reference for _, references in findings for reference in references},
+            )
+
+        for entity, sorted_unknown in findings:
             self.async_create_issue(
                 issue_id=entity.entity_id,
+                references=sorted_unknown,
                 translation_placeholders={
                     self.reference_label: self._format_references(sorted_unknown),
                     self.entity_label: entity.name,
@@ -609,6 +786,15 @@ class RestartRequiredFixFlow(RepairsFlow):
         return self.async_show_form(step_id="confirm_restart")
 
 
+def _offered(data: Mapping[str, Any] | None, key: str) -> set[str]:
+    """Return what an issue put in front of somebody, from its data.
+
+    A fix acts on that and nothing else. What is broken right now can be more,
+    and acting on that would change something nobody was shown.
+    """
+    return {item for item in str((data or {}).get(key, "")).split(",") if item}
+
+
 class _RemoveOrIgnoreFixFlow(RepairsFlow):
     """Base for a leftover registry thing: remove it, or keep and stop nagging.
 
@@ -655,8 +841,16 @@ class _RemoveOrIgnoreFixFlow(RepairsFlow):
         self,
         _: dict[str, str] | None = None,
     ) -> FlowResult:
-        """Remove the thing, if it still exists."""
-        self._remove(str((self.data or {}).get(self._id_key, "")))
+        """Remove the thing, if it is still what the issue said it was.
+
+        An issue can sit there for days before somebody presses the button,
+        and something may have moved in since. Removing it anyway would take
+        that with it, so a thing that changed is left alone and the issue
+        says so. Spook looks again on its own and updates the issue.
+        """
+        if not self._remove(str((self.data or {}).get(self._id_key, ""))):
+            return self.async_abort(reason="changed")
+
         return self.async_create_entry(data={})
 
     async def async_step_ignore(
@@ -668,13 +862,27 @@ class _RemoveOrIgnoreFixFlow(RepairsFlow):
         Aborting (rather than creating an entry) keeps the issue so the
         ignore sticks; a completed fix flow would delete it and it would
         just come back on the next inspection.
+
+        The issue can be gone by the time somebody chooses: its findings
+        changed while the menu was open, or it was cleared for a moment while
+        something reloaded. Home Assistant raises on ignoring an issue that is
+        not there, so the decision is written down directly instead, and it
+        still holds when the issue comes back.
         """
-        ir.async_ignore_issue(self.hass, DOMAIN, self.issue_id, ignore=True)
+        if ir.async_get(self.hass).async_get_issue(DOMAIN, self.issue_id) is None:
+            async_get_dismissals(self.hass).async_dismiss_offered(self.issue_id)
+        else:
+            ir.async_ignore_issue(self.hass, DOMAIN, self.issue_id, ignore=True)
+
         return self.async_abort(reason="issue_ignored")
 
     @callback
-    def _remove(self, thing_id: str) -> None:
-        """Remove the thing by id. Implemented by subclasses."""
+    def _remove(self, thing_id: str) -> bool:
+        """Remove the thing by id. Implemented by subclasses.
+
+        Returns `False` when it changed since the issue was raised and was
+        left alone. Already gone counts as done.
+        """
         raise NotImplementedError
 
 
@@ -685,12 +893,76 @@ class EmptyAreaFixFlow(_RemoveOrIgnoreFixFlow):
     _id_key = "empty_area_id"
 
     @callback
-    def _remove(self, thing_id: str) -> None:
-        """Remove the area, if it still exists."""
+    def _remove(self, thing_id: str) -> bool:
+        """Remove the area, if it is still empty."""
         registry = ar.async_get(self.hass)
         # The area may already be gone if removed elsewhere meanwhile.
-        if registry.async_get_area(thing_id):
-            registry.async_delete(thing_id)
+        if not registry.async_get_area(thing_id):
+            return True
+
+        # Deleting an area unassigns everything in it, so something assigned
+        # since the issue was raised would quietly lose its area.
+        if async_area_in_use(
+            self.hass, thing_id, async_collect_mentioned_strings(self.hass)
+        ):
+            return False
+
+        registry.async_delete(thing_id)
+        return True
+
+
+class AreaUnknownSensorsFixFlow(_RemoveOrIgnoreFixFlow):
+    """Handler for an area whose temperature or humidity sensor is gone.
+
+    Clears the settings that point at nothing, so the area can be given a
+    new sensor. Only the settings the issue showed, and of those only the ones
+    still pointing at nothing: a sensor that came back since is kept, and a
+    setting that broke after the issue was raised is not the one somebody
+    agreed to clear.
+    """
+
+    _key = "area"
+    _id_key = "area_sensors_area_id"
+
+    def _menu_placeholders(self) -> dict[str, str]:
+        """Name the area and its missing sensors in the menu step."""
+        data = self.data or {}
+        return {key: str(data.get(key, "")) for key in ("area", "sensors", "entities")}
+
+    @callback
+    def _remove(self, thing_id: str) -> bool:
+        """Clear the area's sensor settings that still point at what was shown.
+
+        A setting is cleared only while it holds the very entity the issue
+        named and that entity is still unknown. One changed to another sensor
+        since, which then went missing too, is not the setting somebody saw.
+        """
+        area_registry = ar.async_get(self.hass)
+        if (area := area_registry.async_get_area(thing_id)) is None:
+            return True
+
+        offered = dict(
+            reference.split(":", 1)
+            for reference in str(
+                (self.data or {}).get("area_sensors_references", "")
+            ).split(",")
+            if ":" in reference
+        )
+        known_entity_ids = async_get_all_entity_ids(self.hass)
+        cleared = {
+            field: None
+            for field, entity_id in offered.items()
+            if field in ("temperature_entity_id", "humidity_entity_id")
+            and getattr(area, field) == entity_id
+            and async_filter_known_entity_ids(
+                self.hass, [entity_id], known_entity_ids=known_entity_ids
+            )
+        }
+        if not cleared:
+            return False
+
+        area_registry.async_update(thing_id, **cleared)
+        return True
 
 
 class EmptyFloorFixFlow(_RemoveOrIgnoreFixFlow):
@@ -700,12 +972,21 @@ class EmptyFloorFixFlow(_RemoveOrIgnoreFixFlow):
     _id_key = "empty_floor_id"
 
     @callback
-    def _remove(self, thing_id: str) -> None:
-        """Remove the floor, if it still exists."""
+    def _remove(self, thing_id: str) -> bool:
+        """Remove the floor, if it is still empty."""
         registry = fr.async_get(self.hass)
         # The floor may already be gone if removed elsewhere meanwhile.
-        if registry.async_get_floor(thing_id):
-            registry.async_delete(thing_id)
+        if not registry.async_get_floor(thing_id):
+            return True
+
+        # Deleting a floor takes it off every area on it.
+        if async_floor_in_use(
+            self.hass, thing_id, async_collect_mentioned_strings(self.hass)
+        ):
+            return False
+
+        registry.async_delete(thing_id)
+        return True
 
 
 class UnusedLabelFixFlow(_RemoveOrIgnoreFixFlow):
@@ -715,12 +996,21 @@ class UnusedLabelFixFlow(_RemoveOrIgnoreFixFlow):
     _id_key = "unused_label_id"
 
     @callback
-    def _remove(self, thing_id: str) -> None:
-        """Remove the label, if it still exists."""
+    def _remove(self, thing_id: str) -> bool:
+        """Remove the label, if it is still unused."""
         registry = lr.async_get(self.hass)
         # The label may already be gone if removed elsewhere meanwhile.
-        if registry.async_get_label(thing_id):
-            registry.async_delete(thing_id)
+        if not registry.async_get_label(thing_id):
+            return True
+
+        # Deleting a label strips it from everything carrying it.
+        if async_label_in_use(
+            self.hass, thing_id, async_collect_mentioned_strings(self.hass)
+        ):
+            return False
+
+        registry.async_delete(thing_id)
+        return True
 
 
 class UnusedBlueprintFixFlow(_RemoveOrIgnoreFixFlow):
@@ -797,7 +1087,7 @@ class DuplicateResourceFixFlow(_RemoveOrIgnoreFixFlow):
         lovelace = self.hass.data.get(lovelace_const.DOMAIN)
         resources = lovelace.resources if lovelace is not None else None
 
-        if resources is not None and not hasattr(resources, "async_delete_item"):
+        if resources is not None and is_yaml_managed(resources):
             return self.async_abort(
                 reason="yaml",
                 description_placeholders=self._menu_placeholders(),
@@ -938,16 +1228,34 @@ class GroupUnknownMembersFixFlow(_RemoveOrIgnoreFixFlow):
         entry = self.hass.config_entries.async_get_entry(entry_entity.config_entry_id)
         if entry is not None:
             members = list(entry.options.get(CONF_ENTITIES) or [])
-            remaining = [
-                member
-                for member in members
-                if entity_registry.async_get(member) is not None
-                or self.hass.states.get(member) is not None
-            ]
+            # Only the members the issue named, and of those only the ones
+            # still gone. Another member missing for a moment right now, an
+            # integration reloading say, is not one somebody agreed to drop.
+            # Asked the way the repair asked it: Home Assistant knows more
+            # entities than the registry and the state machine hold between
+            # them, like the time and date sensors and scenes made on the fly.
+            offered = _offered(self.data, "group_unknown_entity_ids")
+            dropping = set(
+                async_filter_known_entity_ids(
+                    self.hass, [member for member in members if member in offered]
+                )
+            )
+            if not dropping:
+                return self.async_abort(reason="changed")
+
+            remaining = [member for member in members if member not in dropping]
             if remaining != members:
                 self.hass.config_entries.async_update_entry(
                     entry, options={**entry.options, CONF_ENTITIES: remaining}
                 )
+                # Writing the options is not the end of it. Nothing in the
+                # group integration listens for its own entry changing, so
+                # the group that is running carries on with the list it was
+                # built from until something reloads it. Leave that out and
+                # the button reports success, the member is still in the
+                # group, and the repair goes on reporting it because it reads
+                # the group rather than the stored options.
+                await self.hass.config_entries.async_reload(entry.entry_id)
         return self.async_create_entry(data={})
 
 
@@ -966,6 +1274,9 @@ class MinMaxUnknownSourcesFixFlow(_RemoveOrIgnoreFixFlow):
         data = self.data or {}
         return {
             "helper": str(data.get("helper", "")),
+            "entity_id": async_name_helper_in_the_registry(
+                self.hass, str(data.get(self._id_key, ""))
+            ),
             "sources": str(data.get("sources", "")),
         }
 
@@ -977,26 +1288,29 @@ class MinMaxUnknownSourcesFixFlow(_RemoveOrIgnoreFixFlow):
         entry_id = str((self.data or {}).get("min_max_config_entry_id", ""))
         entry = self.hass.config_entries.async_get_entry(entry_id)
         if entry is not None:
-            entity_registry = er.async_get(self.hass)
-            known_entity_ids = async_get_all_entity_ids(self.hass)
-            members = list(entry.options.get("entity_ids") or [])
-            remaining = [
-                value
-                for value in members
-                if (resolved := er.async_resolve_entity_id(entity_registry, value))
-                is not None
-                and not async_filter_known_entity_ids(
-                    self.hass, [resolved], known_entity_ids=known_entity_ids
-                )
-            ]
+            members = list(entry.options.get(MIN_MAX_ENTITY_IDS) or [])
+            # Only the members the issue named, and of those only the ones
+            # still gone, asked the way the repair asked it.
+            dropping = _offered(
+                self.data, "min_max_unknown_sources"
+            ) & async_unknown_min_max_members(self.hass, entry)
+            if not dropping:
+                return self.async_abort(reason="changed")
+
+            remaining = [value for value in members if value not in dropping]
             if remaining != members:
                 if len(remaining) < _MIN_MAX_MINIMUM_MEMBERS:
                     # A min/max helper needs at least two members; pruning
                     # would leave too few and break it. Let the user decide.
                     return self.async_abort(reason="too_few_members")
                 self.hass.config_entries.async_update_entry(
-                    entry, options={**entry.options, "entity_ids": remaining}
+                    entry, options={**entry.options, MIN_MAX_ENTITY_IDS: remaining}
                 )
+                # Same as above, and here it is worse than a stale reference:
+                # the helper keeps listening to the source somebody just took
+                # out, so if that source comes back it drives the value again
+                # while the configuration says it is gone.
+                await self.hass.config_entries.async_reload(entry.entry_id)
         return self.async_create_entry(data={})
 
 
@@ -1019,6 +1333,9 @@ class HelperUnknownSourcesFixFlow(_RemoveOrIgnoreFixFlow):
         return {
             "helper": str(data.get("helper", "")),
             "domain": str(data.get("domain", "")),
+            "entity_id": async_name_helper_in_the_registry(
+                self.hass, str(data.get(self._id_key, ""))
+            ),
             "sources": str(data.get("sources", "")),
             "usage": self._usage_text(str(data.get("helper_config_entry_id", ""))),
         }
@@ -1050,10 +1367,111 @@ class HelperUnknownSourcesFixFlow(_RemoveOrIgnoreFixFlow):
         self,
         _: dict[str, str] | None = None,
     ) -> FlowResult:
-        """Remove the whole helper, if it still exists."""
+        """Remove the whole helper, if it is still as broken as it was shown.
+
+        This deletes the helper outright, so it looks again first, the way
+        the repair looked. A source that came back, or a helper pointed at
+        something that works since, leaves the helper where it is.
+        """
         entry_id = str((self.data or {}).get("helper_config_entry_id", ""))
-        if self.hass.config_entries.async_get_entry(entry_id) is not None:
-            await self.hass.config_entries.async_remove(entry_id)
+        if (entry := self.hass.config_entries.async_get_entry(entry_id)) is None:
+            return self.async_create_entry(data={})
+
+        # The helper as it was shown, sources and all. One given another
+        # source since, even a working one, is not the helper somebody saw.
+        offered = _offered(self.data, "helper_unknown_sources")
+        configured = _offered(self.data, "helper_configured_sources")
+        if (
+            not offered
+            or configured != async_helper_sources(entry)
+            or not offered <= async_unknown_helper_sources(self.hass, entry)
+        ):
+            return self.async_abort(reason="changed")
+
+        await self.hass.config_entries.async_remove(entry_id)
+        return self.async_create_entry(data={})
+
+
+class OrphanedStatisticsFixFlow(_RemoveOrIgnoreFixFlow):
+    """Handler for long-term statistics with no entity left behind them.
+
+    Clearing them is a websocket command the Statistics page calls and no
+    action anybody can reach, so without this the only way to act on the
+    report is to open that page and work through it by hand, which on a list
+    of a couple of hundred is not really an offer at all. #1613.
+    """
+
+    _key = "statistics"
+    _id_key = "orphaned_statistic_ids"
+
+    def _menu_placeholders(self) -> dict[str, str]:
+        """List what the report named, the way the report listed it."""
+        return {"statistics": _bulleted(self._offered())}
+
+    def _offered(self) -> list[str]:
+        """Return the statistic IDs the report put in front of somebody."""
+        written = str((self.data or {}).get(self._id_key, ""))
+        return [statistic_id for statistic_id in written.split(",") if statistic_id]
+
+    async def async_step_remove(
+        self,
+        _: dict[str, str] | None = None,
+    ) -> FlowResult:
+        """Clear the statistics, after looking again to see if they still go.
+
+        Looked up again rather than taken from the issue, and then kept in
+        common with it. An issue sits there until somebody opens it, which
+        may be days, and this deletes history: nothing goes that was not on
+        the list they read, and nothing goes that has come back since.
+
+        Asked the same way the report asked it, settling time and all. A
+        glance would say yes to a sensor that came back long ago and happens
+        to be between two brief windows right now, which is the case the
+        wait exists for.
+        """
+        offered = set(self._offered())
+        if not offered:
+            return self.async_abort(reason="nothing_to_clear")
+
+        still_gone = await async_settled_orphaned_statistic_ids(self.hass)
+        clearing = sorted(offered & still_gone)
+        if not clearing:
+            # Nothing on the list still needs clearing. They may have an
+            # entity behind them again, or somebody may have cleared them by
+            # hand while the issue sat there. Either way there is nothing to
+            # do, and which of the two it was is not worth guessing at.
+            return self.async_abort(reason="nothing_to_clear")
+
+        # Queued rather than done: the recorder takes the work on its own
+        # thread and says when it has landed. Answering before that would
+        # close the issue on the strength of having asked, and a recorder
+        # that is wedged would look like a job well done. Home Assistant's
+        # own Statistics page waits on exactly this, for exactly this long.
+        cleared = asyncio.Event()
+
+        def _done() -> None:
+            """Say so from the recorder's thread."""
+            self.hass.loop.call_soon_threadsafe(cleared.set)
+
+        get_instance(self.hass).async_clear_statistics(clearing, on_done=_done)
+
+        try:
+            async with asyncio.timeout(_CLEARING_TAKES_AT_MOST):
+                await cleared.wait()
+        except TimeoutError:
+            # The work is still queued and will most likely land. Saying it
+            # is done would be a guess, and leaving the issue up costs
+            # nothing: the next round clears it if the statistics went, and
+            # reports them again if they did not.
+            LOGGER.debug(
+                "Spook asked for %s to be cleared and the recorder has not "
+                "said it is done",
+                ", ".join(clearing),
+            )
+            return self.async_abort(reason="clearing_took_too_long")
+
+        LOGGER.debug("Spook cleared orphaned statistics: %s", ", ".join(clearing))
+
         return self.async_create_entry(data={})
 
 
@@ -1061,6 +1479,7 @@ class HelperUnknownSourcesFixFlow(_RemoveOrIgnoreFixFlow):
 # leftover registry thing.
 _REMOVE_OR_IGNORE_FLOWS: dict[str, type[_RemoveOrIgnoreFixFlow]] = {
     "empty_area_id": EmptyAreaFixFlow,
+    "area_sensors_area_id": AreaUnknownSensorsFixFlow,
     "empty_floor_id": EmptyFloorFixFlow,
     "unused_label_id": UnusedLabelFixFlow,
     "unused_blueprint_path": UnusedBlueprintFixFlow,
@@ -1069,6 +1488,7 @@ _REMOVE_OR_IGNORE_FLOWS: dict[str, type[_RemoveOrIgnoreFixFlow]] = {
     "group_entity_id": GroupUnknownMembersFixFlow,
     "min_max_config_entry_id": MinMaxUnknownSourcesFixFlow,
     "helper_config_entry_id": HelperUnknownSourcesFixFlow,
+    "orphaned_statistic_ids": OrphanedStatisticsFixFlow,
 }
 
 
