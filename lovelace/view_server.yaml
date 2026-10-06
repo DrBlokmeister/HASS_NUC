@@ -2,7 +2,7 @@
 # Reworked for stronger failure visibility, cleaner grouping, and better accessibility.
 # Notes:
 # - This keeps the existing remote backup / AirVPN / PiKVM / firewall / desk powerstrip sections.
-# - The monitor_docker CPU/memory ApexCharts are intentionally kept on their existing sensor IDs.
+# - Container resource cards use current Unraid per-container sensors; history charts auto-discover matching entities.
 # - The old Unraid switch entities are replaced by the newer tower_* entities from the current Unraid integration.
 # - Parity ETA uses graceful fallback text because no clear ETA entity is currently exposed.
 
@@ -2514,324 +2514,979 @@ cards:
   - type: vertical-stack
     cards:
       - type: custom:collapsable-cards
-        title: Containers overview
+        title: Containers
+        defaultOpen: desktop-only
         cards:
+          - type: markdown
+            content: |
+              CPU and RAM are live per-container values. Tap a card for details and container controls.
           - type: grid
             square: false
-            columns: 2
+            columns: 3
             cards:
-              - type: custom:mushroom-template-card
-                entity: sensor.monitor_docker_unraid_cpu_percentage
-                primary: Docker CPU
-                secondary: >-
-                  {{ states('sensor.monitor_docker_unraid_cpu_percentage') | float(0) | round(1) }}%
-                icon: mdi:docker
-                icon_color: >-
-                  {% set u = states('sensor.monitor_docker_unraid_cpu_percentage') | float(0) %}
-                  {% if u >= 90 %}
-                    red
-                  {% elif u >= 60 %}
-                    amber
-                  {% else %}
-                    blue
-                  {% endif %}
-                fill_container: true
-              - type: custom:mushroom-template-card
-                entity: sensor.monitor_docker_unraid_1_memory_usage
-                primary: Docker memory
-                secondary: >-
-                  {{ states('sensor.monitor_docker_unraid_1_memory_usage') | float(0) | round(1) }} MiB
-                icon: mdi:memory
-                icon_color: purple
-                fill_container: true
-              - type: custom:mushroom-template-card
-                entity: sensor.monitor_docker_unraid_network_speed_up
-                primary: Network up
-                secondary: >-
-                  {{ states('sensor.monitor_docker_unraid_network_speed_up') | float(0) | round(1) }} MiB/s
-                icon: mdi:upload-network
-                icon_color: teal
-                fill_container: true
-              - type: custom:mushroom-template-card
-                entity: sensor.monitor_docker_unraid_network_speed_down
-                primary: Network down
-                secondary: >-
-                  {{ states('sensor.monitor_docker_unraid_network_speed_down') | float(0) | round(1) }} MiB/s
-                icon: mdi:download-network
-                icon_color: cyan
-                fill_container: true
-
-          - type: custom:apexcharts-card
-            header:
-              title: Container CPU
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 5min
-            graph_span: 24h
-            apex_config:
-              chart:
-                height: 250px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-            yaxis:
-              - min: 0
-                max: auto
-                decimals: 0
-                align_to: 10
-                apex_config:
-                  forceNiceScale: true
-                  labels:
-                    formatter: |
-                      EVAL:function(value) {
-                        return `${value} %`;
-                      }
-            series:
-              - entity: sensor.docker_tower_1cpu #used to be sensor.monitor_docker_unraid_cpu_percentage. I don't know if docker_tower_1cpu is the correct entity. TODO: find out if this is correct entity.
-                name: Total Docker CPU
-                color: '#36A2EB'
-
-          - type: custom:apexcharts-card
-            header:
-              title: Container memory
-              show: true
-              show_states: true
-              colorize_states: true
-            update_interval: 5min
-            graph_span: 24h
-            apex_config:
-              chart:
-                height: 250px
-              legend:
-                show: false
-            all_series_config:
-              group_by:
-                func: median
-                duration: 10min
-              stroke_width: 3
-            yaxis:
-              - min: 0
-                max: auto
-                decimals: 0
-                align_to: 250
-                apex_config:
-                  forceNiceScale: true
-                  labels:
-                    formatter: |
-                      EVAL:function(value) {
-                        return `${value} MiB`;
-                      }
-            series:
-              - entity: sensor.monitor_docker_unraid_1_memory_usage #TODO: This entity does not exist. Likely I need to refer to another entity to get the docker memory usage from Unraid. Similar to CPU usage above.
-                name: Total Docker memory
-                color: '#9C27B0'
-
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_apacheguacamole
+                  - cpu_entity: sensor.tower_container_apacheguacamole_cpu
+                  - memory_entity: sensor.tower_container_apacheguacamole_memory_used
+                  - memory_percentage_entity: sensor.tower_container_apacheguacamole_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_apacheguacamole_memory_limit
+                  - name: Apache Guacamole
+                  - fallback_icon: mdi:remote-desktop
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_audiobookshelf
+                  - cpu_entity: sensor.tower_container_audiobookshelf_cpu
+                  - memory_entity: sensor.tower_container_audiobookshelf_memory_used
+                  - memory_percentage_entity: sensor.tower_container_audiobookshelf_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_audiobookshelf_memory_limit
+                  - name: Audiobookshelf
+                  - fallback_icon: mdi:bookshelf
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_authelia
+                  - cpu_entity: sensor.tower_container_authelia_cpu
+                  - memory_entity: sensor.tower_container_authelia_memory_used
+                  - memory_percentage_entity: sensor.tower_container_authelia_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_authelia_memory_limit
+                  - name: Authelia
+                  - fallback_icon: mdi:shield-lock
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_binhex_krusader
+                  - cpu_entity: sensor.tower_container_binhex_krusader_cpu
+                  - memory_entity: sensor.tower_container_binhex_krusader_memory_used
+                  - memory_percentage_entity: sensor.tower_container_binhex_krusader_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_binhex_krusader_memory_limit
+                  - name: Krusader
+                  - fallback_icon: mdi:folder-multiple
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_code_server
+                  - cpu_entity: sensor.tower_container_code_server_cpu
+                  - memory_entity: sensor.tower_container_code_server_memory_used
+                  - memory_percentage_entity: sensor.tower_container_code_server_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_code_server_memory_limit
+                  - name: code-server
+                  - fallback_icon: mdi:microsoft-visual-studio-code
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_diskspeed
+                  - cpu_entity: sensor.tower_container_diskspeed_cpu
+                  - memory_entity: sensor.tower_container_diskspeed_memory_used
+                  - memory_percentage_entity: sensor.tower_container_diskspeed_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_diskspeed_memory_limit
+                  - name: DiskSpeed
+                  - fallback_icon: mdi:speedometer
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_dupeguru
+                  - cpu_entity: sensor.tower_container_dupeguru_cpu
+                  - memory_entity: sensor.tower_container_dupeguru_memory_used
+                  - memory_percentage_entity: sensor.tower_container_dupeguru_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_dupeguru_memory_limit
+                  - name: dupeGuru
+                  - fallback_icon: mdi:content-duplicate
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_duplicati
+                  - cpu_entity: sensor.tower_container_duplicati_cpu
+                  - memory_entity: sensor.tower_container_duplicati_memory_used
+                  - memory_percentage_entity: sensor.tower_container_duplicati_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_duplicati_memory_limit
+                  - name: Duplicati
+                  - fallback_icon: mdi:backup-restore
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_firefox
+                  - cpu_entity: sensor.tower_container_firefox_cpu
+                  - memory_entity: sensor.tower_container_firefox_memory_used
+                  - memory_percentage_entity: sensor.tower_container_firefox_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_firefox_memory_limit
+                  - name: Firefox
+                  - fallback_icon: mdi:firefox
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_grafana
+                  - cpu_entity: sensor.tower_container_grafana_cpu
+                  - memory_entity: sensor.tower_container_grafana_memory_used
+                  - memory_percentage_entity: sensor.tower_container_grafana_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_grafana_memory_limit
+                  - name: Grafana
+                  - fallback_icon: mdi:chart-areaspline
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_hddtemp
+                  - cpu_entity: sensor.tower_container_hddtemp_cpu
+                  - memory_entity: sensor.tower_container_hddtemp_memory_used
+                  - memory_percentage_entity: sensor.tower_container_hddtemp_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_hddtemp_memory_limit
+                  - name: HDDTemp
+                  - fallback_icon: mdi:thermometer
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_homepage
+                  - cpu_entity: sensor.tower_container_homepage_cpu
+                  - memory_entity: sensor.tower_container_homepage_memory_used
+                  - memory_percentage_entity: sensor.tower_container_homepage_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_homepage_memory_limit
+                  - name: Homepage
+                  - fallback_icon: mdi:view-dashboard
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_immich
+                  - cpu_entity: sensor.tower_container_immich_cpu
+                  - memory_entity: sensor.tower_container_immich_memory_used
+                  - memory_percentage_entity: sensor.tower_container_immich_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_immich_memory_limit
+                  - name: Immich
+                  - fallback_icon: mdi:image-multiple
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_immich_power_tools
+                  - cpu_entity: sensor.tower_container_immich_power_tools_cpu
+                  - memory_entity: sensor.tower_container_immich_power_tools_memory_used
+                  - memory_percentage_entity: sensor.tower_container_immich_power_tools_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_immich_power_tools_memory_limit
+                  - name: Immich Power Tools
+                  - fallback_icon: mdi:tools
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_influxdb_1_8
+                  - cpu_entity: sensor.tower_container_influxdb_1_8_cpu
+                  - memory_entity: sensor.tower_container_influxdb_1_8_memory_used
+                  - memory_percentage_entity: sensor.tower_container_influxdb_1_8_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_influxdb_1_8_memory_limit
+                  - name: InfluxDB 1.8
+                  - fallback_icon: mdi:database
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_influxdb_explorer
+                  - cpu_entity: sensor.study_tower_container_influxdb_explorer_cpu
+                  - memory_entity: sensor.tower_container_influxdb_explorer_memory_used
+                  - memory_percentage_entity: sensor.tower_container_influxdb_explorer_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_influxdb_explorer_memory_limit
+                  - name: InfluxDB Explorer
+                  - fallback_icon: mdi:database-search
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_iperf3
+                  - cpu_entity: sensor.tower_container_iperf3_cpu
+                  - memory_entity: sensor.tower_container_iperf3_memory_used
+                  - memory_percentage_entity: sensor.tower_container_iperf3_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_iperf3_memory_limit
+                  - name: iperf3
+                  - fallback_icon: mdi:speedometer-medium
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_musicbrainz_picard
+                  - cpu_entity: sensor.tower_container_musicbrainz_picard_cpu
+                  - memory_entity: sensor.tower_container_musicbrainz_picard_memory_used
+                  - memory_percentage_entity: sensor.tower_container_musicbrainz_picard_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_musicbrainz_picard_memory_limit
+                  - name: MusicBrainz Picard
+                  - fallback_icon: mdi:music-note
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_navidrome
+                  - cpu_entity: sensor.tower_container_navidrome_cpu
+                  - memory_entity: sensor.tower_container_navidrome_memory_used
+                  - memory_percentage_entity: sensor.tower_container_navidrome_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_navidrome_memory_limit
+                  - name: Navidrome
+                  - fallback_icon: mdi:music-box-multiple
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_nginx_proxy_manager_official
+                  - cpu_entity: sensor.tower_container_nginx_proxy_manager_official_cpu
+                  - memory_entity: sensor.tower_container_nginx_proxy_manager_official_memory_used
+                  - memory_percentage_entity: sensor.tower_container_nginx_proxy_manager_official_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_nginx_proxy_manager_official_memory_limit
+                  - name: Nginx Proxy Manager
+                  - fallback_icon: mdi:server-security
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_ntp
+                  - cpu_entity: sensor.tower_container_ntp_cpu
+                  - memory_entity: sensor.tower_container_ntp_memory_used
+                  - memory_percentage_entity: sensor.tower_container_ntp_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_ntp_memory_limit
+                  - name: NTP
+                  - fallback_icon: mdi:clock-check
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_oepl_monitor
+                  - cpu_entity: sensor.tower_container_oepl_monitor_cpu
+                  - memory_entity: sensor.tower_container_oepl_monitor_memory_used
+                  - memory_percentage_entity: sensor.tower_container_oepl_monitor_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_oepl_monitor_memory_limit
+                  - name: OEPL Monitor
+                  - fallback_icon: mdi:monitor-dashboard
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_onedrive
+                  - cpu_entity: sensor.tower_container_onedrive_cpu
+                  - memory_entity: sensor.tower_container_onedrive_memory_used
+                  - memory_percentage_entity: sensor.tower_container_onedrive_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_onedrive_memory_limit
+                  - name: OneDrive
+                  - fallback_icon: mdi:microsoft-onedrive
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_personal_observatory_v2
+                  - cpu_entity: sensor.tower_container_personal_observatory_v2_cpu
+                  - memory_entity: sensor.tower_container_personal_observatory_v2_memory_used
+                  - memory_percentage_entity: sensor.tower_container_personal_observatory_v2_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_personal_observatory_v2_memory_limit
+                  - name: Personal Observatory
+                  - fallback_icon: mdi:telescope
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_plex
+                  - cpu_entity: sensor.tower_container_plex_cpu
+                  - memory_entity: sensor.tower_container_plex_memory_used
+                  - memory_percentage_entity: sensor.tower_container_plex_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_plex_memory_limit
+                  - name: Plex
+                  - fallback_icon: mdi:plex
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_plex_tools
+                  - cpu_entity: sensor.tower_container_plex_tools_cpu
+                  - memory_entity: sensor.tower_container_plex_tools_memory_used
+                  - memory_percentage_entity: sensor.tower_container_plex_tools_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_plex_tools_memory_limit
+                  - name: Plex Tools
+                  - fallback_icon: mdi:tools
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_postgresql_immich
+                  - cpu_entity: sensor.tower_container_postgresql_immich_cpu
+                  - memory_entity: sensor.tower_container_postgresql_immich_memory_used
+                  - memory_percentage_entity: sensor.tower_container_postgresql_immich_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_postgresql_immich_memory_limit
+                  - name: PostgreSQL (Immich)
+                  - fallback_icon: mdi:database
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_qdirstat
+                  - cpu_entity: sensor.tower_container_qdirstat_cpu
+                  - memory_entity: sensor.tower_container_qdirstat_memory_used
+                  - memory_percentage_entity: sensor.tower_container_qdirstat_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_qdirstat_memory_limit
+                  - name: QDirStat
+                  - fallback_icon: mdi:chart-treemap
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_schatkamer_downloader
+                  - cpu_entity: sensor.tower_container_schatkamer_downloader_cpu
+                  - memory_entity: sensor.tower_container_schatkamer_downloader_memory_used
+                  - memory_percentage_entity: sensor.tower_container_schatkamer_downloader_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_schatkamer_downloader_memory_limit
+                  - name: Schatkamer Downloader
+                  - fallback_icon: mdi:download
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_stash
+                  - cpu_entity: sensor.tower_container_stash_cpu
+                  - memory_entity: sensor.tower_container_stash_memory_used
+                  - memory_percentage_entity: sensor.tower_container_stash_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_stash_memory_limit
+                  - name: Stash
+                  - fallback_icon: mdi:archive
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_stash_vr
+                  - cpu_entity: sensor.tower_container_stash_vr_cpu
+                  - memory_entity: sensor.tower_container_stash_vr_memory_used
+                  - memory_percentage_entity: sensor.tower_container_stash_vr_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_stash_vr_memory_limit
+                  - name: Stash VR
+                  - fallback_icon: mdi:virtual-reality
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_tautulli
+                  - cpu_entity: sensor.tower_container_tautulli_cpu
+                  - memory_entity: sensor.tower_container_tautulli_memory_used
+                  - memory_percentage_entity: sensor.tower_container_tautulli_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_tautulli_memory_limit
+                  - name: Tautulli
+                  - fallback_icon: mdi:chart-line
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_thelounge
+                  - cpu_entity: sensor.tower_container_thelounge_cpu
+                  - memory_entity: sensor.tower_container_thelounge_memory_used
+                  - memory_percentage_entity: sensor.tower_container_thelounge_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_thelounge_memory_limit
+                  - name: The Lounge
+                  - fallback_icon: mdi:chat-processing
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_transmission
+                  - cpu_entity: sensor.tower_container_transmission_cpu
+                  - memory_entity: sensor.tower_container_transmission_memory_used
+                  - memory_percentage_entity: sensor.tower_container_transmission_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_transmission_memory_limit
+                  - name: Transmission
+                  - fallback_icon: mdi:download-network
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_transmission_1
+                  - cpu_entity: sensor.tower_container_transmission_1_cpu
+                  - memory_entity: sensor.tower_container_transmission_1_memory_used
+                  - memory_percentage_entity: sensor.tower_container_transmission_1_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_transmission_1_memory_limit
+                  - name: Transmission 1
+                  - fallback_icon: mdi:download-network
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_uptimekuma
+                  - cpu_entity: sensor.tower_container_uptimekuma_cpu
+                  - memory_entity: sensor.tower_container_uptimekuma_memory_used
+                  - memory_percentage_entity: sensor.tower_container_uptimekuma_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_uptimekuma_memory_limit
+                  - name: Uptime Kuma
+                  - fallback_icon: mdi:monitor-dashboard
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_watchtower
+                  - cpu_entity: sensor.tower_container_watchtower_cpu
+                  - memory_entity: sensor.tower_container_watchtower_memory_used
+                  - memory_percentage_entity: sensor.tower_container_watchtower_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_watchtower_memory_limit
+                  - name: Watchtower
+                  - fallback_icon: mdi:watchtower
+              - type: custom:decluttering-card
+                template: container_resource_button
+                variables:
+                  - status_entity: switch.tower_container_ws_logger
+                  - cpu_entity: sensor.tower_container_ws_logger_cpu
+                  - memory_entity: sensor.tower_container_ws_logger_memory_used
+                  - memory_percentage_entity: sensor.tower_container_ws_logger_memory_percentage
+                  - memory_limit_entity: sensor.tower_container_ws_logger_memory_limit
+                  - name: ws-logger
+                  - fallback_icon: mdi:docker
       - type: custom:collapsable-cards
-        title: Container controls
+        title: Container resource history
         cards:
-          - type: vertical-stack
-            cards:
-              - type: markdown
-                content: |
-                  Hold a container button for details. Tap to toggle.
-              - type: grid
-                square: false
-                columns: 4
-                cards:
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_apacheguacamole
-                      - name: ApacheGuacamole
-                      - fallback_icon: mdi:remote-desktop
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_audiobookshelf
-                      - name: audiobookshelf
-                      - fallback_icon: mdi:bookshelf
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_authelia
-                      - name: Authelia
-                      - fallback_icon: mdi:shield-lock
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_bambuddy
-                      - name: Bambuddy
-                      - fallback_icon: mdi:printer-3d
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_binhex_krusader
-                      - name: binhex-krusader
-                      - fallback_icon: mdi:folder-multiple
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_code_server
-                      - name: code-server
-                      - fallback_icon: mdi:microsoft-visual-studio-code
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_diskspeed
-                      - name: DiskSpeed
-                      - fallback_icon: mdi:speedometer
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_dupeguru
-                      - name: dupeGuru
-                      - fallback_icon: mdi:content-duplicate
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_duplicati
-                      - name: duplicati
-                      - fallback_icon: mdi:backup-restore
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_firefox
-                      - name: Firefox
-                      - fallback_icon: mdi:firefox
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_frigate
-                      - name: frigate
-                      - fallback_icon: mdi:cctv
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_hddtemp
-                      - name: HDDTemp
-                      - fallback_icon: mdi:thermometer
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_immich
-                      - name: immich
-                      - fallback_icon: mdi:image-multiple
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_postgresql_immich
-                      - name: PostgreSQL_Immich
-                      - fallback_icon: mdi:database
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_immich_power_tools
-                      - name: Immich-Power-Tools
-                      - fallback_icon: mdi:tools
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_iperf3
-                      - name: iperf3
-                      - fallback_icon: mdi:speedometer-medium
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_musicbrainz_picard
-                      - name: MusicBrainz-Picard
-                      - fallback_icon: mdi:music-note
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_navidrome
-                      - name: navidrome
-                      - fallback_icon: mdi:music-box-multiple
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_nginx_proxy_manager_official
-                      - name: NPM Official
-                      - fallback_icon: mdi:server-security
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_ntp
-                      - name: ntp
-                      - fallback_icon: mdi:clock-check
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_onedrive
-                      - name: Onedrive
-                      - fallback_icon: mdi:microsoft-onedrive
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_photoprism
-                      - name: PhotoPrism
-                      - fallback_icon: mdi:image-album
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_plex
-                      - name: plex
-                      - fallback_icon: mdi:plex
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_qdirstat
-                      - name: QDirStat
-                      - fallback_icon: mdi:chart-treemap
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_stash
-                      - name: stash
-                      - fallback_icon: mdi:archive
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_tautulli
-                      - name: tautulli
-                      - fallback_icon: mdi:chart-line
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_thelounge
-                      - name: thelounge
-                      - fallback_icon: mdi:chat-processing
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_transmission
-                      - name: transmission
-                      - fallback_icon: mdi:download-network
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_transmission_1
-                      - name: transmission-1
-                      - fallback_icon: mdi:download-network
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_uptimekuma
-                      - name: UptimeKuma
-                      - fallback_icon: mdi:monitor-dashboard
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_watchtower
-                      - name: watchtower
-                      - fallback_icon: mdi:watchtower
-                  - type: custom:decluttering-card
-                    template: container_status_button
-                    variables:
-                      - entity: switch.tower_container_ws_logger
-                      - name: ws-logger
-                      - fallback_icon: mdi:docker
+          - type: custom:auto-entities
+            filter:
+              include:
+                - entity_id: sensor.tower_container_apacheguacamole_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Apache Guacamole
+                - entity_id: sensor.tower_container_audiobookshelf_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Audiobookshelf
+                - entity_id: sensor.tower_container_authelia_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Authelia
+                - entity_id: sensor.tower_container_binhex_krusader_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Krusader
+                - entity_id: sensor.tower_container_code_server_cpu
+                  options:
+                    entity: this.entity_id
+                    name: code-server
+                - entity_id: sensor.tower_container_diskspeed_cpu
+                  options:
+                    entity: this.entity_id
+                    name: DiskSpeed
+                - entity_id: sensor.tower_container_dupeguru_cpu
+                  options:
+                    entity: this.entity_id
+                    name: dupeGuru
+                - entity_id: sensor.tower_container_duplicati_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Duplicati
+                - entity_id: sensor.tower_container_firefox_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Firefox
+                - entity_id: sensor.tower_container_grafana_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Grafana
+                - entity_id: sensor.tower_container_hddtemp_cpu
+                  options:
+                    entity: this.entity_id
+                    name: HDDTemp
+                - entity_id: sensor.tower_container_homepage_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Homepage
+                - entity_id: sensor.tower_container_immich_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Immich
+                - entity_id: sensor.tower_container_immich_power_tools_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Immich Power Tools
+                - entity_id: sensor.tower_container_influxdb_1_8_cpu
+                  options:
+                    entity: this.entity_id
+                    name: InfluxDB 1.8
+                - entity_id: sensor.study_tower_container_influxdb_explorer_cpu
+                  options:
+                    entity: this.entity_id
+                    name: InfluxDB Explorer
+                - entity_id: sensor.tower_container_iperf3_cpu
+                  options:
+                    entity: this.entity_id
+                    name: iperf3
+                - entity_id: sensor.tower_container_musicbrainz_picard_cpu
+                  options:
+                    entity: this.entity_id
+                    name: MusicBrainz Picard
+                - entity_id: sensor.tower_container_navidrome_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Navidrome
+                - entity_id: sensor.tower_container_nginx_proxy_manager_official_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Nginx Proxy Manager
+                - entity_id: sensor.tower_container_ntp_cpu
+                  options:
+                    entity: this.entity_id
+                    name: NTP
+                - entity_id: sensor.tower_container_oepl_monitor_cpu
+                  options:
+                    entity: this.entity_id
+                    name: OEPL Monitor
+                - entity_id: sensor.tower_container_onedrive_cpu
+                  options:
+                    entity: this.entity_id
+                    name: OneDrive
+                - entity_id: sensor.tower_container_personal_observatory_v2_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Personal Observatory
+                - entity_id: sensor.tower_container_plex_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Plex
+                - entity_id: sensor.tower_container_plex_tools_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Plex Tools
+                - entity_id: sensor.tower_container_postgresql_immich_cpu
+                  options:
+                    entity: this.entity_id
+                    name: PostgreSQL (Immich)
+                - entity_id: sensor.tower_container_qdirstat_cpu
+                  options:
+                    entity: this.entity_id
+                    name: QDirStat
+                - entity_id: sensor.tower_container_schatkamer_downloader_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Schatkamer Downloader
+                - entity_id: sensor.tower_container_stash_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Stash
+                - entity_id: sensor.tower_container_stash_vr_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Stash VR
+                - entity_id: sensor.tower_container_tautulli_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Tautulli
+                - entity_id: sensor.tower_container_thelounge_cpu
+                  options:
+                    entity: this.entity_id
+                    name: The Lounge
+                - entity_id: sensor.tower_container_transmission_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Transmission
+                - entity_id: sensor.tower_container_transmission_1_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Transmission 1
+                - entity_id: sensor.tower_container_uptimekuma_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Uptime Kuma
+                - entity_id: sensor.tower_container_watchtower_cpu
+                  options:
+                    entity: this.entity_id
+                    name: Watchtower
+                - entity_id: sensor.tower_container_ws_logger_cpu
+                  options:
+                    entity: this.entity_id
+                    name: ws-logger
+            sort:
+              method: friendly_name
+            card:
+              type: custom:apexcharts-card
+              header:
+                show: true
+                title: CPU usage - Last 24h
+                show_states: true
+                colorize_states: true
+              graph_span: 24h
+              update_interval: 1m
+              apex_config:
+                chart:
+                  height: 300px
+                  animations:
+                    enabled: false
+                legend:
+                  show: false
+                grid:
+                  borderColor: rgba(127,127,127,0.15)
+                tooltip:
+                  shared: false
+                  intersect: false
+                stroke:
+                  curve: smooth
+              yaxis:
+                - min: 0
+                  max: ~50
+                  decimals: 0
+                  align_to: 25
+                  apex_config:
+                    forceNiceScale: true
+                    tickAmount: 5
+                    labels:
+                      formatter: |
+                        EVAL:function(value) {
+                          return `${value.toFixed(0)}%`;
+                        }
+              all_series_config:
+                stroke_width: 2
+                float_precision: 1
+                fill_raw: last
+                group_by:
+                  func: avg
+                  duration: 5min
+                  fill: last
+                show:
+                  in_header: raw
+                  name_in_header: true
+                  legend_value: false
+          - type: custom:auto-entities
+            filter:
+              include:
+                - entity_id: sensor.tower_container_apacheguacamole_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Apache Guacamole
+                - entity_id: sensor.tower_container_audiobookshelf_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Audiobookshelf
+                - entity_id: sensor.tower_container_authelia_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Authelia
+                - entity_id: sensor.tower_container_binhex_krusader_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Krusader
+                - entity_id: sensor.tower_container_code_server_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: code-server
+                - entity_id: sensor.tower_container_diskspeed_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: DiskSpeed
+                - entity_id: sensor.tower_container_dupeguru_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: dupeGuru
+                - entity_id: sensor.tower_container_duplicati_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Duplicati
+                - entity_id: sensor.tower_container_firefox_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Firefox
+                - entity_id: sensor.tower_container_grafana_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Grafana
+                - entity_id: sensor.tower_container_hddtemp_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: HDDTemp
+                - entity_id: sensor.tower_container_homepage_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Homepage
+                - entity_id: sensor.tower_container_immich_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Immich
+                - entity_id: sensor.tower_container_immich_power_tools_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Immich Power Tools
+                - entity_id: sensor.tower_container_influxdb_1_8_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: InfluxDB 1.8
+                - entity_id: sensor.tower_container_influxdb_explorer_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: InfluxDB Explorer
+                - entity_id: sensor.tower_container_iperf3_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: iperf3
+                - entity_id: sensor.tower_container_musicbrainz_picard_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: MusicBrainz Picard
+                - entity_id: sensor.tower_container_navidrome_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Navidrome
+                - entity_id: sensor.tower_container_nginx_proxy_manager_official_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Nginx Proxy Manager
+                - entity_id: sensor.tower_container_ntp_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: NTP
+                - entity_id: sensor.tower_container_oepl_monitor_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: OEPL Monitor
+                - entity_id: sensor.tower_container_onedrive_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: OneDrive
+                - entity_id: sensor.tower_container_personal_observatory_v2_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Personal Observatory
+                - entity_id: sensor.tower_container_plex_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Plex
+                - entity_id: sensor.tower_container_plex_tools_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Plex Tools
+                - entity_id: sensor.tower_container_postgresql_immich_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: PostgreSQL (Immich)
+                - entity_id: sensor.tower_container_qdirstat_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: QDirStat
+                - entity_id: sensor.tower_container_schatkamer_downloader_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Schatkamer Downloader
+                - entity_id: sensor.tower_container_stash_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Stash
+                - entity_id: sensor.tower_container_stash_vr_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Stash VR
+                - entity_id: sensor.tower_container_tautulli_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Tautulli
+                - entity_id: sensor.tower_container_thelounge_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: The Lounge
+                - entity_id: sensor.tower_container_transmission_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Transmission
+                - entity_id: sensor.tower_container_transmission_1_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Transmission 1
+                - entity_id: sensor.tower_container_uptimekuma_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Uptime Kuma
+                - entity_id: sensor.tower_container_watchtower_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: Watchtower
+                - entity_id: sensor.tower_container_ws_logger_memory_used
+                  options:
+                    entity: this.entity_id
+                    name: ws-logger
+            sort:
+              method: friendly_name
+            card:
+              type: custom:apexcharts-card
+              header:
+                show: true
+                title: Memory used - Last 24h
+                show_states: true
+                colorize_states: true
+              graph_span: 24h
+              update_interval: 1m
+              apex_config:
+                chart:
+                  height: 300px
+                  animations:
+                    enabled: false
+                legend:
+                  show: false
+                grid:
+                  borderColor: rgba(127,127,127,0.15)
+                tooltip:
+                  shared: false
+                  intersect: false
+                stroke:
+                  curve: smooth
+              yaxis:
+                - min: 0
+                  max: ~16384
+                  decimals: 0
+                  align_to: 4096
+                  apex_config:
+                    forceNiceScale: true
+                    tickAmount: 4
+                    labels:
+                      formatter: |
+                        EVAL:function(value) {
+                          return `${(value / 1024).toFixed(0)} GiB`;
+                        }
+              all_series_config:
+                stroke_width: 2
+                float_precision: 0
+                fill_raw: last
+                group_by:
+                  func: avg
+                  duration: 5min
+                  fill: last
+                show:
+                  in_header: raw
+                  name_in_header: true
+                  legend_value: false
+          - type: custom:auto-entities
+            filter:
+              include:
+                - entity_id: switch.tower_container_apacheguacamole
+                  options:
+                    entity: this.entity_id
+                    name: Apache Guacamole
+                - entity_id: switch.tower_container_audiobookshelf
+                  options:
+                    entity: this.entity_id
+                    name: Audiobookshelf
+                - entity_id: switch.tower_container_authelia
+                  options:
+                    entity: this.entity_id
+                    name: Authelia
+                - entity_id: switch.tower_container_binhex_krusader
+                  options:
+                    entity: this.entity_id
+                    name: Krusader
+                - entity_id: switch.tower_container_code_server
+                  options:
+                    entity: this.entity_id
+                    name: code-server
+                - entity_id: switch.tower_container_diskspeed
+                  options:
+                    entity: this.entity_id
+                    name: DiskSpeed
+                - entity_id: switch.tower_container_dupeguru
+                  options:
+                    entity: this.entity_id
+                    name: dupeGuru
+                - entity_id: switch.tower_container_duplicati
+                  options:
+                    entity: this.entity_id
+                    name: Duplicati
+                - entity_id: switch.tower_container_firefox
+                  options:
+                    entity: this.entity_id
+                    name: Firefox
+                - entity_id: switch.tower_container_grafana
+                  options:
+                    entity: this.entity_id
+                    name: Grafana
+                - entity_id: switch.tower_container_hddtemp
+                  options:
+                    entity: this.entity_id
+                    name: HDDTemp
+                - entity_id: switch.tower_container_homepage
+                  options:
+                    entity: this.entity_id
+                    name: Homepage
+                - entity_id: switch.tower_container_immich
+                  options:
+                    entity: this.entity_id
+                    name: Immich
+                - entity_id: switch.tower_container_immich_power_tools
+                  options:
+                    entity: this.entity_id
+                    name: Immich Power Tools
+                - entity_id: switch.tower_container_influxdb_1_8
+                  options:
+                    entity: this.entity_id
+                    name: InfluxDB 1.8
+                - entity_id: switch.tower_container_influxdb_explorer
+                  options:
+                    entity: this.entity_id
+                    name: InfluxDB Explorer
+                - entity_id: switch.tower_container_iperf3
+                  options:
+                    entity: this.entity_id
+                    name: iperf3
+                - entity_id: switch.tower_container_musicbrainz_picard
+                  options:
+                    entity: this.entity_id
+                    name: MusicBrainz Picard
+                - entity_id: switch.tower_container_navidrome
+                  options:
+                    entity: this.entity_id
+                    name: Navidrome
+                - entity_id: switch.tower_container_nginx_proxy_manager_official
+                  options:
+                    entity: this.entity_id
+                    name: Nginx Proxy Manager
+                - entity_id: switch.tower_container_ntp
+                  options:
+                    entity: this.entity_id
+                    name: NTP
+                - entity_id: switch.tower_container_oepl_monitor
+                  options:
+                    entity: this.entity_id
+                    name: OEPL Monitor
+                - entity_id: switch.tower_container_onedrive
+                  options:
+                    entity: this.entity_id
+                    name: OneDrive
+                - entity_id: switch.tower_container_personal_observatory_v2
+                  options:
+                    entity: this.entity_id
+                    name: Personal Observatory
+                - entity_id: switch.tower_container_plex
+                  options:
+                    entity: this.entity_id
+                    name: Plex
+                - entity_id: switch.tower_container_plex_tools
+                  options:
+                    entity: this.entity_id
+                    name: Plex Tools
+                - entity_id: switch.tower_container_postgresql_immich
+                  options:
+                    entity: this.entity_id
+                    name: PostgreSQL (Immich)
+                - entity_id: switch.tower_container_qdirstat
+                  options:
+                    entity: this.entity_id
+                    name: QDirStat
+                - entity_id: switch.tower_container_schatkamer_downloader
+                  options:
+                    entity: this.entity_id
+                    name: Schatkamer Downloader
+                - entity_id: switch.tower_container_stash
+                  options:
+                    entity: this.entity_id
+                    name: Stash
+                - entity_id: switch.tower_container_stash_vr
+                  options:
+                    entity: this.entity_id
+                    name: Stash VR
+                - entity_id: switch.tower_container_tautulli
+                  options:
+                    entity: this.entity_id
+                    name: Tautulli
+                - entity_id: switch.tower_container_thelounge
+                  options:
+                    entity: this.entity_id
+                    name: The Lounge
+                - entity_id: switch.tower_container_transmission
+                  options:
+                    entity: this.entity_id
+                    name: Transmission
+                - entity_id: switch.tower_container_transmission_1
+                  options:
+                    entity: this.entity_id
+                    name: Transmission 1
+                - entity_id: switch.tower_container_uptimekuma
+                  options:
+                    entity: this.entity_id
+                    name: Uptime Kuma
+                - entity_id: switch.tower_container_watchtower
+                  options:
+                    entity: this.entity_id
+                    name: Watchtower
+                - entity_id: switch.tower_container_ws_logger
+                  options:
+                    entity: this.entity_id
+                    name: ws-logger
+                - entity_id: switch.tower_container_bambuddy
+                  options:
+                    entity: this.entity_id
+                    name: Bambuddy
+                - entity_id: switch.tower_container_frigate
+                  options:
+                    entity: this.entity_id
+                    name: Frigate
+                - entity_id: switch.tower_container_photoprism
+                  options:
+                    entity: this.entity_id
+                    name: PhotoPrism
+            sort:
+              method: friendly_name
+            card:
+              type: history-graph
+              title: Container states - Last 24h
+              hours_to_show: 24

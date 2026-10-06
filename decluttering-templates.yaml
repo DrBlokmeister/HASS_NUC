@@ -839,7 +839,10 @@ shelly_diagnostics_card:
       {%- endif -%}
     fill_container: true
     tap_action:
-      action: fire-dom-event
+      action: >
+        [[[
+          return hass.states['[[status_entity]]'] ? 'fire-dom-event' : 'none';
+        ]]]
       browser_mod:
         service: browser_mod.popup
         data:
@@ -1171,6 +1174,219 @@ container_status_button:
       action: toggle
     hold_action:
       action: more-info
+
+####################################
+## CONTAINER RESOURCE BUTTON CARD ##
+####################################
+container_resource_button:
+  card:
+    type: custom:button-card
+    name: '[[name]]'
+    show_icon: false
+    show_state: false
+    triggers_update:
+      - '[[status_entity]]'
+      - '[[cpu_entity]]'
+      - '[[memory_entity]]'
+      - '[[memory_percentage_entity]]'
+      - '[[memory_limit_entity]]'
+    custom_fields:
+      logo: >
+        [[[
+          const e = hass.states['[[status_entity]]'];
+          const url = e?.attributes?.icon_url;
+          return url
+            ? `<img src="${url}" style="width:30px;height:30px;object-fit:contain;border-radius:6px;">`
+            : `<ha-icon icon="[[fallback_icon]]" style="width:30px;height:30px;"></ha-icon>`;
+        ]]]
+      status: >
+        [[[
+          const e = hass.states['[[status_entity]]'];
+          if (!e) return 'MISSING';
+          const attr = String(e.attributes?.status || '').toUpperCase();
+          if (attr === 'PAUSED') return 'PAUSED';
+          if (['ERROR','FAILED','DEAD'].includes(attr)) return attr;
+          if (e.state === 'on') return 'ON';
+          if (e.state === 'off') return 'OFF';
+          return String(e.state || 'UNKNOWN').toUpperCase();
+        ]]]
+      cpu: >
+        [[[
+          const value = Number(hass.states['[[cpu_entity]]']?.state);
+          return `CPU ${Number.isFinite(value) ? `${value.toFixed(1)}%` : '—'}`;
+        ]]]
+      memory: >
+        [[[
+          const mem = Number(hass.states['[[memory_entity]]']?.state);
+          const pctSensor = Number(hass.states['[[memory_percentage_entity]]']?.state);
+          const limit = Number(hass.states['[[memory_limit_entity]]']?.state);
+          const memText = Number.isFinite(mem)
+            ? (mem >= 1024 ? `${(mem / 1024).toFixed(2)} GiB` : `${mem.toFixed(0)} MB`)
+            : '—';
+          let pct = pctSensor;
+          if (!Number.isFinite(pct) && Number.isFinite(mem) && mem >= 0) {
+            const denominator = Number.isFinite(limit) && limit > 0 ? limit : 32768;
+            pct = mem / denominator * 100;
+          }
+          return `RAM ${memText} · ${Number.isFinite(pct) ? `${pct.toFixed(1)}%` : '—'}`;
+        ]]]
+    styles:
+      grid:
+        - grid-template-areas: '"logo n status" "logo cpu cpu" "logo memory memory"'
+        - grid-template-columns: 34px minmax(0,1fr) auto
+        - grid-template-rows: min-content min-content min-content
+        - column-gap: 8px
+        - row-gap: 2px
+      card:
+        - min-height: 84px
+        - padding: 9px 10px
+        - background-color: >
+            [[[
+              const e = hass.states['[[status_entity]]'];
+              if (!e) return 'rgba(120,120,120,0.10)';
+              const status = String(e.attributes?.status || '').toUpperCase();
+              if (status === 'PAUSED') return 'rgba(251,192,45,0.22)';
+              if (['ERROR','FAILED','DEAD'].includes(status)) return 'rgba(211,47,47,0.22)';
+              if (e.state === 'on') return 'rgba(46,125,50,0.20)';
+              return 'rgba(120,120,120,0.14)';
+            ]]]
+        - border: >
+            [[[
+              const e = hass.states['[[status_entity]]'];
+              if (!e) return '1px dashed rgba(158,158,158,0.35)';
+              const status = String(e.attributes?.status || '').toUpperCase();
+              if (status === 'PAUSED') return '1px solid rgba(251,192,45,0.45)';
+              if (['ERROR','FAILED','DEAD'].includes(status)) return '1px solid rgba(211,47,47,0.45)';
+              if (e.state === 'on') return '1px solid rgba(46,125,50,0.42)';
+              return '1px solid rgba(158,158,158,0.28)';
+            ]]]
+      name:
+        - justify-self: start
+        - align-self: end
+        - font-size: 0.82em
+        - font-weight: 600
+        - white-space: nowrap
+        - overflow: hidden
+        - text-overflow: ellipsis
+        - max-width: 100%
+      custom_fields:
+        logo:
+          - justify-self: center
+          - align-self: center
+          - grid-row: 1 / 4
+        status:
+          - justify-self: end
+          - align-self: end
+          - font-size: 0.63em
+          - font-weight: 700
+          - letter-spacing: 0.04em
+          - color: >
+              [[[
+                const e = hass.states['[[status_entity]]'];
+                if (!e) return 'var(--disabled-text-color)';
+                const status = String(e.attributes?.status || '').toUpperCase();
+                if (status === 'PAUSED') return 'var(--warning-color, #ffc107)';
+                if (['ERROR','FAILED','DEAD'].includes(status)) return 'var(--error-color, #f44336)';
+                if (e.state === 'on') return 'var(--success-color, #4caf50)';
+                return 'var(--secondary-text-color)';
+              ]]]
+        cpu:
+          - justify-self: start
+          - align-self: center
+          - font-size: 0.70em
+          - color: var(--secondary-text-color)
+          - white-space: nowrap
+        memory:
+          - justify-self: start
+          - align-self: start
+          - font-size: 0.70em
+          - color: var(--secondary-text-color)
+          - white-space: nowrap
+          - overflow: hidden
+          - text-overflow: ellipsis
+          - max-width: 100%
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[name]]'
+          content:
+            type: vertical-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: '[[status_entity]]'
+                primary: >-
+                  {%- if is_state('[[status_entity]]', 'on') -%}
+                    Stop [[name]]
+                  {%- elif is_state('[[status_entity]]', 'off') -%}
+                    Start [[name]]
+                  {%- else -%}
+                    Toggle [[name]]
+                  {%- endif -%}
+                secondary: >-
+                  {%- set s = states('[[status_entity]]') -%}
+                  {{ 'Container unavailable' if s in ['unknown','unavailable','none','None',''] else 'Currently ' ~ s | upper }}
+                icon: >-
+                  {%- if is_state('[[status_entity]]', 'on') -%}
+                    mdi:stop-circle-outline
+                  {%- else -%}
+                    mdi:play-circle-outline
+                  {%- endif -%}
+                icon_color: >-
+                  {%- if is_state('[[status_entity]]', 'on') -%}
+                    red
+                  {%- elif is_state('[[status_entity]]', 'off') -%}
+                    green
+                  {%- else -%}
+                    disabled
+                  {%- endif -%}
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: '[[status_entity]]'
+                  confirmation:
+                    text: Toggle the [[name]] container?
+              - type: entities
+                show_header_toggle: false
+                entities:
+                  - entity: '[[cpu_entity]]'
+                    name: CPU usage
+                  - entity: '[[memory_entity]]'
+                    name: Memory used
+                  - entity: '[[memory_percentage_entity]]'
+                    name: Memory usage
+                  - entity: '[[memory_limit_entity]]'
+                    name: Memory limit
+              - type: custom:mushroom-template-card
+                entity: '[[status_entity]]'
+                primary: Last state change
+                secondary: >-
+                  {%- set e = expand('[[status_entity]]') | first | default(none) -%}
+                  {%- if e is none -%}
+                    Unavailable
+                  {%- elif e.state == 'off' -%}
+                    Switched off {{ relative_time(e.last_changed) }} ago
+                  {%- elif e.state == 'on' -%}
+                    Switched on {{ relative_time(e.last_changed) }} ago
+                  {%- else -%}
+                    {{ e.state | replace('_',' ') | title }} · {{ relative_time(e.last_changed) }} ago
+                  {%- endif -%}
+                icon: mdi:clock-outline
+                icon_color: >-
+                  {%- if is_state('[[status_entity]]', 'on') -%}green
+                  {%- elif is_state('[[status_entity]]', 'off') -%}grey
+                  {%- else -%}disabled
+                  {%- endif -%}
+                fill_container: true
+    hold_action:
+      action: >
+        [[[
+          return hass.states['[[status_entity]]'] ? 'more-info' : 'none';
+        ]]]
+      entity: '[[status_entity]]'
 
 ###############################
 ## ESPHOME UPDATE GROUP CARD ##
