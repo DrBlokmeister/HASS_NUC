@@ -848,3 +848,175 @@ cards:
         name: Weather forecast
       - entity: automation.home_electricityprice_message_forecast_electricity_prices_for_tomorrow
         name: Electricity Price
+
+  - type: vertical-stack
+    cards:
+      # Header
+      - type: custom:mushroom-title-card
+        title: Work Laptop
+      # Current connection state
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: device_tracker.worklaptop
+            primary: Laptop
+            secondary: >-
+              {%- set ip = state_attr('device_tracker.worklaptop', 'ip') -%}
+              {%- set mac = state_attr('device_tracker.worklaptop', 'mac') -%}
+              {%- set state = states('device_tracker.worklaptop') | replace('_', ' ') | title -%}
+              {{ state }}{% if ip %} · {{ ip }}{% endif %}
+              {%- if mac %}
+              {{ mac }}
+              {%- endif %}
+            icon: mdi:laptop
+            icon_color: >-
+              {% if is_state('device_tracker.worklaptop', 'home') %}
+                green
+              {% elif is_state('device_tracker.worklaptop', 'not_home') %}
+                grey
+              {% elif is_state('device_tracker.worklaptop', 'unavailable') %}
+                red
+              {% else %}
+                blue
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+            tap_action:
+              action: more-info
+            hold_action:
+              action: navigate
+              navigation_path: /config/devices/device/57f89ab35f9a44f0aa2debe8ea9ab50f
+          - type: custom:mushroom-template-card
+            entity: device_tracker.worklaptop_dock
+            primary: Dock
+            secondary: >-
+              {%- set ip = state_attr('device_tracker.worklaptop_dock', 'ip') -%}
+              {%- set mac = state_attr('device_tracker.worklaptop_dock', 'mac') -%}
+              {%- set state = states('device_tracker.worklaptop_dock') | replace('_', ' ') | title -%}
+              {{ state }}{% if ip %} · {{ ip }}{% endif %}
+              {%- if mac %}
+              {{ mac }}
+              {%- endif %}
+            icon: mdi:dock-window
+            icon_color: >-
+              {% if is_state('device_tracker.worklaptop_dock', 'home') %}
+                green
+              {% elif is_state('device_tracker.worklaptop_dock', 'not_home') %}
+                grey
+              {% elif is_state('device_tracker.worklaptop_dock', 'unavailable') %}
+                red
+              {% else %}
+                blue
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+            tap_action:
+              action: more-info
+            hold_action:
+              action: navigate
+              navigation_path: /config/devices/device/2ded8dd114f78329811e3974f7c9ddd9
+          - type: custom:mushroom-template-card
+            entity: device_tracker.worklaptop_wifi_hp
+            primary: Wi-Fi
+            secondary: >-
+              {%- set ip = state_attr('device_tracker.worklaptop_wifi_hp', 'ip') -%}
+              {%- set mac = state_attr('device_tracker.worklaptop_wifi_hp', 'mac') -%}
+              {%- set state = states('device_tracker.worklaptop_wifi_hp') | replace('_', ' ') | title -%}
+              {{ state }}{% if ip %} · {{ ip }}{% endif %}
+              {%- if mac %}
+              {{ mac }}
+              {%- endif %}
+            icon: mdi:wifi
+            icon_color: >-
+              {% if is_state('device_tracker.worklaptop_wifi_hp', 'home') %}
+                green
+              {% elif is_state('device_tracker.worklaptop_wifi_hp', 'not_home') %}
+                grey
+              {% elif is_state('device_tracker.worklaptop_wifi_hp', 'unavailable') %}
+                red
+              {% else %}
+                blue
+              {% endif %}
+            multiline_secondary: true
+            fill_container: true
+            tap_action:
+              action: more-info
+            hold_action:
+              action: navigate
+              navigation_path: /config/devices/device/6afa0c77f59f24695bba0d07fdae1742
+      # Presence history
+      - type: history-graph
+        title: Connection History - Last 24h
+        hours_to_show: 24
+        entities:
+          - entity: device_tracker.worklaptop
+            name: Laptop
+          - entity: device_tracker.worklaptop_dock
+            name: Dock
+          - entity: device_tracker.worklaptop_wifi_hp
+            name: Wi-Fi
+      # Detailed diagnostics
+      - type: custom:collapsable-cards
+        title: Network Details
+        defaultOpen: false
+        cards:
+          # RX/TX traffic
+          - type: custom:apexcharts-card
+            graph_span: 24h
+            update_interval: 1m
+            header:
+              show: true
+              title: Network Traffic - Last 24h
+              show_states: true
+              colorize_states: true
+            apex_config:
+              chart:
+                height: 240px
+              legend:
+                show: false
+            yaxis:
+              - min: 0
+                decimals: 2
+                apex_config:
+                  forceNiceScale: true
+            all_series_config:
+              type: line
+              stroke_width: 2
+              float_precision: 2
+              fill_raw: "null"
+              group_by:
+                func: avg
+                duration: 5min
+                fill: "null"
+              show:
+                in_header: true
+                legend_value: false
+            series:
+              - entity: sensor.worklaptop_rx
+                name: Laptop RX
+                color: "#42A5F5"
+              - entity: sensor.worklaptop_tx
+                name: Laptop TX
+                color: "#90CAF9"
+              - entity: sensor.worklaptop_dock_rx
+                name: Dock RX
+                color: "#66BB6A"
+              - entity: sensor.worklaptop_dock_tx
+                name: Dock TX
+                color: "#A5D6A7"
+              - entity: sensor.worklaptop_wifi_hp_rx
+                name: Wi-Fi RX
+                color: "#FFA726"
+              - entity: sensor.worklaptop_wifi_hp_tx
+                name: Wi-Fi TX
+                color: "#FFCC80"
+          # Tracker state changes
+          - type: logbook
+            name: Connection Changes - Last 14 Days
+            hours_to_show: 336
+            entities:
+              - device_tracker.worklaptop
+              - device_tracker.worklaptop_dock
+              - device_tracker.worklaptop_wifi_hp
