@@ -780,19 +780,19 @@ class DreameVacuumDreameHomeCloudProtocol:
 
     def _base_headers(self, content_type) -> Dict[str, str]:
         s = self._strings
-        kr = self._country == "kr" and self._account_type == "dreame"
-        headers = {s[42].lower(): self._ua}
-        if not kr:
-            meta = f"{s[59]}{self._vid}"
-            if self._mt:
-                meta += (
-                    f"{s[71]}{self._s(self._username, 'c')[:8]}"
-                    f"{s[72]}{self._s(self._username, 'w')[:8]}"
-                    f"{s[73]}{self._vs}"
-                )
-            headers[s[58]] = meta
-        headers[s[88]] = "gzip"
-        if self._region and self._lang and self._ccode and not kr:
+        meta = f"{s[59]}{self._vid}"
+        if self._mt:
+            meta += (
+                f"{s[71]}{self._s(self._username, 'c')[:8]}"
+                f"{s[72]}{self._s(self._username, 'w')[:8]}"
+                f"{s[73]}{self._vs}"
+            )
+        headers = {
+            s[42].lower(): self._ua,
+            s[58]: meta,
+            s[88]: "gzip",
+        }
+        if self._region and self._lang and self._ccode:
             data = pad(f"{self._region}|{self._lang}|{self._ccode}".encode("utf-8"), 16)
             headers[s[60]] = base64.b64encode(AES.new(self._cid, AES.MODE_ECB).encrypt(data)).decode()
         headers[s[44]] = self._ti if self._ti else s[5]
@@ -902,12 +902,12 @@ class DreameVacuumDreameHomeCloudProtocol:
                 self._client_thread = None
                 return
             try:
-                if item[1] != None:
+                if item[1] is not None:
                     item[0](item[1])
                 else:
                     item[0]()
-            except:
-                pass
+            except Exception:
+                _LOGGER.warning("Device client callback failed", exc_info=True)
             self._client_queue.task_done()
 
     @staticmethod
@@ -1438,25 +1438,40 @@ class DreameVacuumDreameHomeCloudProtocol:
             retry_count = 0
         result = None
         while retries < retry_count + 1:
+            if retries:
+                sleep(min(0.5 * 2 ** (retries - 1), 2))
+            result = None
             try:
                 headers = self._auth_headers(self._strings[46])
                 result = self._http("POST", url, headers, data, timeout)
-                break
             except TimeoutError:
                 retries = retries + 1
                 if self._connected:
                     _LOGGER.warning(f"Error while executing request: Read timed out. (timeout={timeout})")
+                continue
             except Exception as ex:
                 retries = retries + 1
                 if self._connected:
                     _LOGGER.warning("Error while executing request: %s", str(ex))
+                continue
+
+            if result[0] in (429, 502, 503, 504) and retries < retry_count:
+                retries = retries + 1
+                _LOGGER.debug("Execute api call failed with status %s, retrying", result[0])
+                continue
+            break
 
         if result is not None:
             status, content = result
             if status == 200:
-                self._fail_count = 0
-                self._connected = True
-                return json.loads(content)
+                try:
+                    response = json.loads(content)
+                except ValueError:
+                    _LOGGER.warning("Execute api call failed with invalid response: %s", content[:200])
+                else:
+                    self._fail_count = 0
+                    self._connected = True
+                    return response
             elif status == 401:
                 if self._auth_failure(content.decode("utf-8", "replace")) == 2:
                     self._logged_in = False
@@ -1550,6 +1565,18 @@ class DreameVacuumMiHomeCloudProtocol:
         if self._session_obj is None:
             self._session_obj = requests.session()
         return self._session_obj
+
+    @staticmethod
+    def _cookie_value(jar, name: str, domain: str = None) -> str | None:
+        value = None
+        for cookie in jar:
+            if cookie.name != name:
+                continue
+            if domain and cookie.domain and cookie.domain.endswith(domain):
+                return cookie.value
+            if value is None:
+                value = cookie.value
+        return value
 
     def _api_task(self):
         while True:
@@ -1706,13 +1733,13 @@ class DreameVacuumMiHomeCloudProtocol:
                         self._userId = data.get("userId", self._userId)
                         self._ssecurity = data.get("ssecurity", self._ssecurity)
                         self._location = data.get("location")
-                        pass_token = data.get("passToken") or response.cookies.get("passToken")
+                        pass_token = data.get("passToken") or self._cookie_value(response.cookies, "passToken")
                         if pass_token:
                             self._pass_token = pass_token
                     return True
                 self._auth_failed = True
-        except:
-            pass
+        except Exception as ex:
+            _LOGGER.debug("Login step 1 failed: %s", ex)
         return False
 
     def login_step_2(self) -> bool:
@@ -1758,7 +1785,7 @@ class DreameVacuumMiHomeCloudProtocol:
                         self._userId = data.get("userId", self._userId)
                         self._ssecurity = data.get("ssecurity", self._ssecurity)
                         self._location = location
-                        pass_token = data.get("passToken") or response.cookies.get("passToken")
+                        pass_token = data.get("passToken") or self._cookie_value(response.cookies, "passToken")
                         if pass_token:
                             self._pass_token = pass_token
                         return True
@@ -1776,12 +1803,12 @@ class DreameVacuumMiHomeCloudProtocol:
                                 url = f"https://account.xiaomi.com{url}"
 
                             response = session.get(url)
-                            if ick := response.cookies.get("ick"):
+                            if ick := self._cookie_value(response.cookies, "ick"):
                                 self._captcha_ick = ick
                                 self.captcha_img = base64.b64encode(response.content).decode()
                 self._auth_failed = True
-        except:
-            pass
+        except Exception as ex:
+            _LOGGER.debug("Login step 2 failed: %s", ex)
         return False
 
     def login_step_3(self) -> bool:
@@ -1795,9 +1822,12 @@ class DreameVacuumMiHomeCloudProtocol:
                 timeout=10,
             )
             if response is not None:
-                if response.status_code == 200 and "serviceToken" in response.cookies:
-                    self._service_token = response.cookies.get("serviceToken")
-                    pass_token = self._get_session().cookies.get("passToken") or response.cookies.get("passToken")
+                service_token = self._cookie_value(response.cookies, "serviceToken")
+                if response.status_code == 200 and service_token:
+                    self._service_token = service_token
+                    pass_token = self._cookie_value(response.cookies, "passToken") or self._cookie_value(
+                        self._get_session().cookies, "passToken", "account.xiaomi.com"
+                    )
                     if pass_token:
                         self._pass_token = pass_token
                     self._auth_key = f"{self._service_token} {self._ssecurity} {self._userId} {self._client_id}"
@@ -1806,8 +1836,8 @@ class DreameVacuumMiHomeCloudProtocol:
                     return True
                 else:
                     self._auth_failed = True
-        except:
-            pass
+        except Exception as ex:
+            _LOGGER.debug("Login step 3 failed: %s", ex)
         return False
 
     def login(self) -> bool:
@@ -1856,7 +1886,7 @@ class DreameVacuumMiHomeCloudProtocol:
                         timeout=10,
                     )
                     if response and response.status_code == 200:
-                        identity_session = response.cookies.get("identity_session")
+                        identity_session = self._cookie_value(response.cookies, "identity_session")
                         if identity_session:
                             data = self.to_json(response.text)
                             options = data.get("options", [])
@@ -1916,7 +1946,7 @@ class DreameVacuumMiHomeCloudProtocol:
                                     "retry": 0,
                                     "icode": "",
                                     "_json": "true",
-                                    "ick": session.cookies.get("ick", ""),
+                                    "ick": self._cookie_value(session.cookies, "ick") or "",
                                 },
                                 timeout=10,
                             )
@@ -1991,7 +2021,7 @@ class DreameVacuumMiHomeCloudProtocol:
                 _LOGGER.error(f"2FA failed: Could not parse identity/list JSON. Error: {e}")
                 return False
 
-            if not session.cookies.get("identity_session"):
+            if not self._cookie_value(session.cookies, "identity_session"):
                 _LOGGER.error("2FA failed: Missing 'identity_session' cookie.")
                 return False
 
@@ -2011,7 +2041,7 @@ class DreameVacuumMiHomeCloudProtocol:
                     "ticket": code,
                     "trust": "false",
                     "_json": "true",
-                    "ick": session.cookies.get("ick", ""),
+                    "ick": self._cookie_value(session.cookies, "ick") or "",
                 },
                 timeout=15,
             )
@@ -2103,9 +2133,7 @@ class DreameVacuumMiHomeCloudProtocol:
                 _LOGGER.error(f"2FA failed: Final STS connection returned HTTP {response.status_code}!")
                 return False
 
-            self._service_token = session.cookies.get(
-                "serviceToken", domain=".sts.api.io.mi.com"
-            ) or session.cookies.get("serviceToken")
+            self._service_token = self._cookie_value(session.cookies, "serviceToken", ".sts.api.io.mi.com")
 
             for c in session.cookies:
                 if c.name in ("userId", "cUserId") and c.value:
@@ -2585,14 +2613,14 @@ class DreameVacuumProtocol:
                         self.device_cloud.get_info(self._mac)
 
             if not self.device_cloud.logged_in:
-                raise DeviceException("Unable to login to device over cloud") from None
+                raise DeviceException(key="cloud_login_failed") from None
 
             def cloud_callback(response):
                 if response is None:
                     if method == "get_properties" or method == "set_properties":
                         self._connected = False
-                    raise DeviceException("Unable to discover the device over cloud") from None
-                self._connected = True
+                else:
+                    self._connected = True
                 if callback:
                     callback(response)
 
@@ -2614,13 +2642,13 @@ class DreameVacuumProtocol:
                         self.device_cloud.get_info(self._mac)
 
             if not self.device_cloud.logged_in:
-                raise DeviceException("Unable to login to device over cloud") from None
+                raise DeviceException(key="cloud_login_failed") from None
 
             response = self.device_cloud.send(method, parameters=parameters, retry_count=retry_count, timeout=timeout)
             if response is None:
                 if method == "get_properties" or method == "set_properties":
                     self._connected = False
-                raise DeviceException("Unable to discover the device over cloud") from None
+                raise DeviceException(key="cloud_unreachable") from None
             self._connected = True
             return response
 
