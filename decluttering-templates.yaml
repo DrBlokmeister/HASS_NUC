@@ -1704,6 +1704,90 @@ co2_pop_up_grid_card:
           --icon-size: 28px;
         }
 
+################################
+## VACUUM NETWORK STATUS GRID ##
+################################
+vacuum_network_grid:
+  card:
+    type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:mushroom-template-card
+        entity: device_tracker.[[slug]]
+        primary: '[[name]] · Wi-Fi'
+        secondary: >-
+          {{ 'Connected' if is_state('device_tracker.[[slug]]', 'home') else 'Not connected' if is_state('device_tracker.[[slug]]', 'not_home') else 'Unknown' }}
+        icon: mdi:wifi
+        icon_color: >-
+          {{ 'green' if is_state('device_tracker.[[slug]]', 'home') else 'red' if is_state('device_tracker.[[slug]]', 'not_home') else 'grey' }}
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: device_tracker.[[slug]]
+        primary: Access point
+        secondary: >-
+          {%- set tracker = 'device_tracker.[[slug]]' -%}
+          {%- set aps = {
+            'd0:21:f9:b7:9c:88': 'AP-Lite 1st Floor',
+            'd0:21:f9:b7:ea:68': 'AP-Lite Outside',
+            'd0:21:f9:64:06:39': 'U6-LR',
+            'ac:8b:a9:15:ef:09': 'U6-Pro 2nd Floor'
+          } -%}
+          {%- set mac = state_attr(tracker, 'ap_mac') | default('', true) | lower -%}
+          {{ aps.get(mac, mac or 'Unknown') if is_state(tracker, 'home') else 'Not connected' if is_state(tracker, 'not_home') else 'Unknown' }}
+        icon: mdi:access-point-network
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: device_tracker.[[slug]]
+        primary: IP address
+        secondary: >-
+          {{ (state_attr('device_tracker.[[slug]]', 'ip') or 'Unknown') if is_state('device_tracker.[[slug]]', 'home') else '—' }}
+        icon: mdi:ip-network
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: device_tracker.[[slug]]
+        primary: Wi-Fi network
+        secondary: >-
+          {{ (state_attr('device_tracker.[[slug]]', 'essid') or 'Unknown') if is_state('device_tracker.[[slug]]', 'home') else '—' }}
+        icon: mdi:router-wireless
+        multiline_secondary: true
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: vacuum.[[slug]]
+        primary: Signal strength
+        secondary: >-
+          {%- set tracker = 'device_tracker.[[slug]]' -%}
+          {%- set signal = state_attr(tracker, 'signal') -%}
+          {%- if signal is none and states('vacuum.[[slug]]') not in ['unknown', 'unavailable'] -%}
+            {%- set ap = state_attr('vacuum.[[slug]]', 'ap') or {} -%}
+            {%- set signal = ap.get('rssi') -%}
+          {%- endif -%}
+          {{ (signal | string ~ ' dBm') if is_state(tracker, 'home') and is_number(signal) else 'Unavailable' }}
+        icon: mdi:wifi-strength-2
+        tap_action:
+          action: more-info
+
+      - type: custom:mushroom-template-card
+        entity: vacuum.[[slug]]
+        primary: Vacuum integration
+        secondary: >-
+          {{ 'Unavailable' if states('vacuum.[[slug]]') in ['unknown', 'unavailable'] else 'Available' }}
+        icon: mdi:robot-vacuum
+        icon_color: >-
+          {{ 'red' if states('vacuum.[[slug]]') in ['unknown', 'unavailable'] else 'green' }}
+        tap_action:
+          action: more-info
+
+
 ##########################
 ## VACUUM OVERVIEW CARD ##
 ##########################
@@ -1743,6 +1827,7 @@ vacuum_overview_card:
       - '[[last_time_entity]]'
       - '[[last_duration_entity]]'
       - '[[last_area_entity]]'
+      - device_tracker.[[slug]]
 
     icon: mdi:robot-vacuum
 
@@ -1770,6 +1855,27 @@ vacuum_overview_card:
       detail: >-
         [[[
           const vacuum = states['vacuum.[[slug]]'];
+
+          if (!vacuum || ['unknown', 'unavailable'].includes(vacuum.state)) {
+            const tracker = states['device_tracker.[[slug]]'];
+            const connected = tracker?.state === 'home';
+            const attrs = tracker?.attributes || {};
+            const aps = {
+              'd0:21:f9:b7:9c:88': 'AP-Lite 1st Floor',
+              'd0:21:f9:b7:ea:68': 'AP-Lite Outside',
+              'd0:21:f9:64:06:39': 'U6-LR',
+              'ac:8b:a9:15:ef:09': 'U6-Pro 2nd Floor'
+            };
+            const escape = value => String(value).replace(/[&<>"']/g, c =>
+              ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+            const lines = [`Wi-Fi: ${connected ? 'Connected' : tracker?.state === 'not_home' ? 'Not connected' : 'Unknown'}`];
+            if (connected) {
+              const mac = (attrs.ap_mac || '').toLowerCase();
+              lines.push(`AP: ${aps[mac] || mac || 'Unknown'}`);
+              lines.push(`IP: ${attrs.ip || 'Unknown'}`);
+            }
+            return lines.map(line => `<div>${escape(line)}</div>`).join('');
+          }
 
           const valid = value =>
             value !== undefined &&
@@ -2344,6 +2450,12 @@ vacuum_overview_card:
           - color: var(--primary-text-color)
 
         detail:
+          - grid-column: >-
+              [[[
+                const vacuum = states['vacuum.[[slug]]'];
+                return !vacuum || ['unknown', 'unavailable'].includes(vacuum.state)
+                  ? '2 / 4' : '2 / 3';
+              ]]]
           - justify-self: start
           - align-self: start
           - font-size: 15px
@@ -2353,6 +2465,12 @@ vacuum_overview_card:
           - text-align: left
 
         metric:
+          - display: >-
+              [[[
+                const vacuum = states['vacuum.[[slug]]'];
+                return !vacuum || ['unknown', 'unavailable'].includes(vacuum.state)
+                  ? 'none' : 'block';
+              ]]]
           - justify-self: end
           - align-self: center
           - text-align: center
@@ -2916,6 +3034,12 @@ vacuum_robot_popup:
               action: navigate
               navigation_path: /config/devices/device/[[device_id]]
 
+      - type: custom:decluttering-card
+        template: vacuum_network_grid
+        variables:
+          - name: '[[name]]'
+          - slug: '[[slug]]'
+
 
 #########################
 ## VACUUM HEALTH POPUP ##
@@ -2982,6 +3106,12 @@ vacuum_health_popup:
         tap_action:
           action: navigate
           navigation_path: /config/devices/device/[[device_id]]
+
+      - type: custom:decluttering-card
+        template: vacuum_network_grid
+        variables:
+          - name: '[[name]]'
+          - slug: '[[slug]]'
 
 
 ##############################
