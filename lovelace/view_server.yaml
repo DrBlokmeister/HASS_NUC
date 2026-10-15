@@ -21,6 +21,118 @@ cards:
       ## Critical status
       [Unraid Device Page](/config/devices/device/db9950b8bef71e0918844cce1953eeb5)
 
+  # NAS fans 1-3 are connected; unused outputs 4-6 are excluded from the average.
+  - type: custom:mushroom-template-card
+    entity: fan.fan_controller_nas_fan_1
+    primary: NAS cooling fans
+    secondary: >-
+      {% set fans = expand('fan.fan_controller_nas_fan_1', 'fan.fan_controller_nas_fan_2', 'fan.fan_controller_nas_fan_3') | list %}
+      {% set on = fans | selectattr('state', 'eq', 'on') | list | count %}
+      {% set known = fans | selectattr('state', 'in', ['on', 'off']) | list | count %}
+      {% set rpm = [states('sensor.fan_controller_nas_fan_1_speed'), states('sensor.fan_controller_nas_fan_2_speed'), states('sensor.fan_controller_nas_fan_3_speed')] %}
+      {% set valid = rpm | select('is_number') | list %}
+      {% if known != 3 %}
+        {{ on }}/3 fans on · Status incomplete
+      {% elif on == 0 %}
+        All fans off
+      {% else %}
+        {{ on }}/3 fans on
+      {% endif %}
+      · {% if valid | count == 3 %}{{ valid | map('float') | average | round(0) | int }} RPM average{% else %}Average RPM unavailable{% endif %}
+    icon: mdi:fan
+    icon_color: >-
+      {% set faults = expand('binary_sensor.fan_controller_nas_nas_fan_1_fault', 'binary_sensor.fan_controller_nas_nas_fan_2_fault', 'binary_sensor.fan_controller_nas_nas_fan_3_fault') | list %}
+      {% set fans = expand('fan.fan_controller_nas_fan_1', 'fan.fan_controller_nas_fan_2', 'fan.fan_controller_nas_fan_3') | list %}
+      {% if faults | selectattr('state', 'eq', 'on') | list | count > 0 %}
+        red
+      {% elif fans | selectattr('state', 'in', ['on', 'off']) | list | count != 3 %}
+        disabled
+      {% elif [states('sensor.fan_controller_nas_fan_1_speed'), states('sensor.fan_controller_nas_fan_2_speed'), states('sensor.fan_controller_nas_fan_3_speed')] | select('is_number') | list | count != 3 %}
+        amber
+      {% elif fans | selectattr('state', 'eq', 'on') | list | count > 0 %}
+        green
+      {% else %}
+        disabled
+      {% endif %}
+    multiline_secondary: true
+    fill_container: true
+    hold_action:
+      action: navigate
+      navigation_path: /config/devices/device/a12711ab8cab8c27749cfeaae20e0177
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: NAS fan controller
+          content:
+            type: vertical-stack
+            cards:
+              - type: markdown
+                content: |
+                  [Open NAS fan controller device page](/config/devices/device/a12711ab8cab8c27749cfeaae20e0177)
+
+                  Average RPM covers connected fans 1–3, including stopped fans. Unused outputs 4–6 are excluded.
+              - type: entities
+                show_header_toggle: false
+                entities:
+                  - type: section
+                    label: Connected fans
+                  - entity: fan.fan_controller_nas_fan_1
+                    name: Fan 1
+                  - entity: sensor.fan_controller_nas_fan_1_speed
+                    name: Fan 1 measured speed
+                  - entity: binary_sensor.fan_controller_nas_nas_fan_1_fault
+                    name: Fan 1 fault
+                  - entity: fan.fan_controller_nas_fan_2
+                    name: Fan 2
+                  - entity: sensor.fan_controller_nas_fan_2_speed
+                    name: Fan 2 measured speed
+                  - entity: binary_sensor.fan_controller_nas_nas_fan_2_fault
+                    name: Fan 2 fault
+                  - entity: fan.fan_controller_nas_fan_3
+                    name: Fan 3
+                  - entity: sensor.fan_controller_nas_fan_3_speed
+                    name: Fan 3 measured speed
+                  - entity: binary_sensor.fan_controller_nas_nas_fan_3_fault
+                    name: Fan 3 fault
+                  - type: section
+                    label: Automatic cooling
+                  - entity: select.fan_controller_nas_fan_control_mode
+                    name: Control mode
+                  - entity: sensor.fan_controller_nas_automatic_fan_speed
+                    name: Automatic target speed
+                  - entity: sensor.fan_controller_nas_fan_control_temperature
+                    name: Control temperature
+                  - entity: sensor.fan_controller_nas_mean_disk_temperature
+                    name: Mean disk temperature
+                  - entity: sensor.fan_controller_nas_median_disk_temperature
+                    name: Median disk temperature
+                  - entity: sensor.fan_controller_nas_maximum_disk_temperature
+                    name: Hottest disk
+                  - entity: sensor.fan_controller_nas_available_disk_temperature_count
+                    name: Available disk temperatures
+                  - type: section
+                    label: Controller diagnostics
+                  - entity: sensor.fan_controller_nas_12v_rail
+                    name: 12V supply
+                  - entity: sensor.fan_controller_nas_wifi_signal
+                    name: Wi-Fi signal
+                  - entity: sensor.fan_controller_nas_ip
+                    name: IP address
+                  - entity: sensor.fan_controller_nas_esphome_version
+                    name: ESPHome version
+              - type: history-graph
+                title: Fan speeds · last 6 hours
+                hours_to_show: 6
+                entities:
+                  - entity: sensor.fan_controller_nas_fan_1_speed
+                    name: Fan 1
+                  - entity: sensor.fan_controller_nas_fan_2_speed
+                    name: Fan 2
+                  - entity: sensor.fan_controller_nas_fan_3_speed
+                    name: Fan 3
+
   - type: conditional
     conditions:
       - condition: or
