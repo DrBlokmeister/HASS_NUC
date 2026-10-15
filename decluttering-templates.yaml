@@ -1785,6 +1785,13 @@ vacuum_network_grid:
         icon_color: >-
           {{ 'red' if states('vacuum.[[slug]]') in ['unknown', 'unavailable'] else 'green' }}
         tap_action:
+          action: call-service
+          service: homeassistant.reload_config_entry
+          target:
+            entity_id: vacuum.[[slug]]
+          confirmation:
+            text: 'Are you sure you want to reload the integration for vacuum [[name]]?'
+        hold_action:
           action: more-info
 
 
