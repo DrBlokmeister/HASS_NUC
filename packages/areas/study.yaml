@@ -589,21 +589,31 @@ automation:
     action:
       - if:
           - condition: template
-            value_template: "{{ trigger.event.data.event in [1002, 2002] }}"
-          - condition: state
-            entity_id: switch.plug_study_desk_switch
-            state: 'off'
+            value_template: "{{ trigger.event.data.event in [1002, 2002, 3002, 4002] }}"
         then:
-          - action: switch.turn_on
-            target:
-              entity_id: switch.plug_study_desk_switch
+          - if:
+              - condition: state
+                entity_id: switch.plug_study_desk_switch
+                state: 'off'
+            then:
+              - action: switch.turn_on
+                target:
+                  entity_id: switch.plug_study_desk_switch
           - wait_template: >
-              {{ states('switch.powerstrip_study_desk_socket_1') in ['on', 'off']
+              {{ is_state('switch.plug_study_desk_switch', 'on')
+                  and states('switch.powerstrip_study_desk_socket_1') in ['on', 'off']
                   and states('switch.powerstrip_study_desk_socket_2') in ['on', 'off']
                   and states('switch.powerstrip_study_desk_socket_3') in ['on', 'off']
-                  and states('switch.powerstrip_study_desk_socket_4') in ['on', 'off'] }}
-            timeout: '00:00:15'
-            continue_on_timeout: false
+                  and states('switch.powerstrip_study_desk_socket_4') in ['on', 'off']
+                  and states('switch.powerstrip_study_desk_socket_usb') in ['on', 'off'] }}
+            timeout: '00:00:30'
+            continue_on_timeout: true
+          - if:
+              - condition: template
+                value_template: "{{ not wait.completed }}"
+            then:
+              - stop: 'Study desk powerstrip did not come online within 30 seconds; socket action cancelled.'
+                error: true
       - choose:
           - conditions: # Short press: H2O2
               - condition: template
