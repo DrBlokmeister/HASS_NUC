@@ -3246,10 +3246,7 @@ room_climate_card:
     - humidity_entity_2: ""
     - temp_color: "#FF9800"
     - humidity_color: "#00BCD4"
-    - red_temp: 27
-    - orange_temp: 24
-    - green_temp: 20
-    - blue_temp: 18
+    - temperature_scale: indoor
     - temp_min: ~18
     - temp_max: ~24
   card:
@@ -3271,11 +3268,27 @@ room_climate_card:
       {%- if not v|count %}grey
       {%- else -%}
         {%- set t=v|sum/v|count -%}
-        {%- if t >= [[red_temp]] %}red
-        {%- elif t >= [[orange_temp]] %}orange
-        {%- elif t >= [[green_temp]] %}green
-        {%- elif t >= [[blue_temp]] %}blue
-        {%- else %}indigo
+        {%- if '[[temperature_scale]]' == 'outdoor' -%}
+          {%- if t > 30 -%} red
+          {%- elif t >= 25 -%} orange
+          {%- elif t >= 20 -%} yellow
+          {%- elif t >= 15 -%} green
+          {%- elif t >= 10 -%} teal
+          {%- elif t >= 5 -%} cyan
+          {%- elif t >= 0 -%} blue
+          {%- else -%} purple
+          {%- endif -%}
+        {%- else -%}
+          {%- if t >= 28 -%} red
+          {%- elif t >= 26 -%} deep-orange
+          {%- elif t >= 24 -%} orange
+          {%- elif t >= 22 -%} yellow
+          {%- elif t >= 20 -%} green
+          {%- elif t >= 18 -%} teal
+          {%- elif t >= 16 -%} blue
+          {%- elif t >= 14 -%} indigo
+          {%- else -%} purple
+          {%- endif -%}
         {%- endif -%}
       {%- endif -%}
     fill_container: true
