@@ -261,6 +261,8 @@ automation:
     condition:
       - condition: template
         value_template: "{{ (as_timestamp(now()) - as_timestamp(state_attr('automation.entry_doorbell_smart_doorbell_notification', 'last_triggered'), default=0) | int(0) > 5) }}"
+    variables:
+      doorbell_started: "{{ as_timestamp(trigger.to_state.last_changed) if trigger is defined and trigger.to_state is defined else as_timestamp(now()) }}"
     action:
       - action: notify.sander_and_tamara_phones
         data:
@@ -329,14 +331,14 @@ automation:
               - service: light.turn_on
                 entity_id: light.shelly_porch
               - repeat:
-                  until:
-                    - condition: or
-                      conditions:
-                        - condition: state
-                          entity_id: binary_sensor.front_door_sensor
-                          state: 'on'
-                        - condition: template
-                          value_template: "{{ repeat.index > 3 }}"
+                  while:
+                    - condition: state
+                      entity_id: binary_sensor.front_door_sensor
+                      state: 'off'
+                    - condition: template
+                      value_template: "{{ as_timestamp(states.binary_sensor.front_door_sensor.last_changed) <= doorbell_started | float }}"
+                    - condition: template
+                      value_template: "{{ repeat.index <= 4 }}"
                   sequence:
                     - service: tts.cloud_say
                       continue_on_error: true
@@ -359,14 +361,14 @@ automation:
                           tag: doorbell
                           group: "doorbell"
                           notification_icon: "mdi:bell-ring"
-                    - delay:
+                    - wait_template: >-
+                        {{ not is_state('binary_sensor.front_door_sensor', 'off') or
+                           as_timestamp(states.binary_sensor.front_door_sensor.last_changed) > doorbell_started | float }}
+                      timeout:
                         seconds: 10
-              - wait_for_trigger:
-                  - platform: state
-                    entity_id: binary_sensor.front_door_sensor
-                    to: 'off'
-                    for:
-                      minutes: 2
+              - wait_template: >-
+                  {{ is_state('binary_sensor.front_door_sensor', 'off') and
+                     as_timestamp(now()) - as_timestamp(states.binary_sensor.front_door_sensor.last_changed) >= 120 }}
                 timeout:
                   minutes: 10
               - choose:
