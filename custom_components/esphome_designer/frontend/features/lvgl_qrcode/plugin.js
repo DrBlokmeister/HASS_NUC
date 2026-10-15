@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL QR Code Plugin
  */
@@ -49,7 +51,7 @@ const exportLVGL = (w, { common, convertColor }) => {
     const size = p.size || Math.min(common.width, common.height);
 
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         qrText = `!lambda "return id(${safeId}).state.c_str();"`;
     }
 

@@ -25,6 +25,10 @@ export function renderSunTimesProperties(panel, widget) {
     panel.createSection('Typography', false);
     panel.addLabeledInput('Icon Size (px)', 'number', props.icon_size || 18, (value) => updateProp('icon_size', parseInt(value, 10) || 18));
     panel.addLabeledInput('Time Size (px)', 'number', props.font_size || 16, (value) => updateProp('font_size', parseInt(value, 10) || 16));
+    panel.addSelect('Clock Mode', props.clock_mode || '24h', [
+        { value: '24h', label: '24 Hour' },
+        { value: '12h', label: '12 Hour (AM/PM)' }
+    ], (value) => updateProp('clock_mode', value));
     panel.addSelect('Font Family', props.font_family || 'Roboto', ['Roboto', 'Inter', 'Open Sans', 'Monospace'], (value) => updateProp('font_family', value));
     panel.addSelect('Font Weight', props.font_weight || 400, [100, 200, 300, 400, 500, 600, 700].map((value) => String(value)), (value) => updateProp('font_weight', parseInt(value, 10) || 400));
     panel.endSection();

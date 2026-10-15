@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL LED Plugin
  */
@@ -46,7 +48,7 @@ const exportLVGL = (w, { common, convertColor, formatOpacity }) => {
     let brightnessValue = (p.brightness !== undefined ? p.brightness : 255) / 255.0;
 
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         brightnessValue = `!lambda "return id(${safeId}).state / 255.0;"`;
     }
 

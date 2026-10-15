@@ -1,4 +1,5 @@
 import { AppState } from '../../js/core/state';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 /**
  * LVGL Arc Plugin
  */
@@ -142,7 +143,7 @@ const exportLVGL = (w, { common, convertColor }) => {
     const p = w.props || {};
     let arcValue = p.value || 0;
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         arcValue = `!lambda "return id(${safeId}).state;"`;
     }
     return {

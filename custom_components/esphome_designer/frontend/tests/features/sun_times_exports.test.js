@@ -6,6 +6,7 @@ import {
     exportOEPL,
     exportOpenDisplay
 } from '../../features/sun_times/exports.js';
+import { formatSunTimeValue } from '../../features/sun_times/shared.js';
 
 const directCtx = () => ({
     lines: [],
@@ -172,5 +173,85 @@ describe('sun_times exports (Issue #516)', () => {
         expect(rows[0].y).toBe(27);
         expect(rows[0].anchor).toBe('lm');
         expect(rows[1].y).toBe(27);
+    });
+});
+
+describe('sun_times 12h clock mode (Issue #540)', () => {
+    it('emits 12h conversion code in direct export when clock_mode is 12h', () => {
+        const ctx = directCtx();
+        exportDirect({
+            x: 0,
+            y: 0,
+            width: 140,
+            height: 54,
+            props: { clock_mode: '12h' }
+        }, ctx);
+
+        const output = ctx.lines.join('\n');
+        expect(output).toContain('int display_hour = hour_value % 12;');
+        expect(output).toContain('snprintf(buf, sizeof(buf), "%d:%02d %s", display_hour, minute_value, ampm);');
+        expect(output).not.toContain('snprintf(buf, sizeof(buf), "%02d:%02d"');
+    });
+
+    it('keeps 24h conversion code by default', () => {
+        const ctx = directCtx();
+        exportDirect({ x: 0, y: 0, width: 140, height: 54, props: {} }, ctx);
+
+        const output = ctx.lines.join('\n');
+        expect(output).toContain('snprintf(buf, sizeof(buf), "%02d:%02d", hour_value, minute_value);');
+        expect(output).not.toContain('display_hour');
+    });
+
+    it('uses 12h strftime in protocol templates when clock_mode is 12h', () => {
+        const rows = exportOEPL(
+            {
+                x: 0,
+                y: 0,
+                width: 140,
+                height: 54,
+                props: {
+                    sunrise_entity: 'sensor.sun_next_rising',
+                    sunset_entity: 'sensor.sun_next_setting',
+                    clock_mode: '12h'
+                }
+            },
+            { _layout: {}, _page: {} }
+        );
+
+        const texts = rows.map((row) => row.value).join('\n');
+        expect(texts).toContain("%-I:%M %p");
+        expect(texts).not.toContain("%H:%M");
+    });
+
+    it('emits 12h conversion code in LVGL display lambdas when clock_mode is 12h', () => {
+        const output = exportLVGL(
+            {
+                id: 'sun_12h',
+                x: 0,
+                y: 0,
+                width: 140,
+                height: 54,
+                props: {
+                    sunrise_entity: 'sensor.sun_next_rising',
+                    clock_mode: '12h'
+                }
+            },
+            lvglCtx
+        );
+
+        const texts = output.obj.widgets
+            .map((entry) => entry.label)
+            .filter((label) => label.id.endsWith('_text'))
+            .map((label) => label.text)
+            .join('\n');
+        expect(texts).toContain('%d:%02d %s');
+        expect(texts).not.toContain('%02d:%02d');
+    });
+
+    it('formats preview values in 12h mode when requested', () => {
+        expect(formatSunTimeValue('2026-10-03T15:05:00', 'n.d.', '12h')).toBe('3:05 PM');
+        expect(formatSunTimeValue('2026-10-03T00:05:00', 'n.d.', '12h')).toBe('12:05 AM');
+        expect(formatSunTimeValue('2026-10-03T06:05:00', 'n.d.', '24h')).toBe('06:05');
+        expect(formatSunTimeValue('unknown', 'n.d.', '12h')).toBe('n.d.');
     });
 });

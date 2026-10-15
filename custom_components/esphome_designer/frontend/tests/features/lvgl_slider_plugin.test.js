@@ -69,7 +69,8 @@ describe('lvgl slider plugin', () => {
             'fan.ceiling': 'fan.set_percentage',
             'cover.shade': 'cover.set_cover_position',
             'climate.room': 'climate.set_temperature',
-            'number.manual': 'number.set_value'
+            'number.manual': 'number.set_value',
+            'input_number.big_bangs_to_watch': 'input_number.set_value'
         };
 
         for (const [entityId, service] of Object.entries(domains)) {

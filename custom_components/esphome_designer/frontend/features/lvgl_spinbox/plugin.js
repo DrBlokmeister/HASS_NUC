@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL Spinbox Plugin
  */
@@ -40,7 +42,7 @@ const exportLVGL = (w, { common }) => {
     let spinValue = p.value || 0;
 
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         spinValue = `!lambda "return (int)id(${safeId}).state;"`;
     }
 

@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL Meter Plugin
  */
@@ -105,7 +107,7 @@ const exportLVGL = (w, { common, convertColor, formatOpacity }) => {
     const p = w.props || {};
     let meterValue = p.value || 0;
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         meterValue = `!lambda "return id(${safeId}).state;"`;
     }
 

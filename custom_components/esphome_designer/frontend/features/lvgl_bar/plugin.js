@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL Bar Plugin
  */
@@ -77,7 +79,7 @@ const exportLVGL = (w, { common, convertColor, getLVGLFont }) => {
     const p = w.props || {};
     let barValue = p.value || 0;
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         barValue = `!lambda "return id(${safeId}).state;"`;
     }
     const bar = {

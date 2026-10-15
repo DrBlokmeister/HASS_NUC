@@ -149,4 +149,53 @@ describe('Wifi Signal Plugin', () => {
         expect(addFont).toHaveBeenCalledWith('Roboto', 400, 13);
         expect(trackIcon).toHaveBeenCalledTimes(5);
     });
+
+    it('prefixes bare entity ids like the numeric sensor registry (Issue #543)', () => {
+        const directLines = [];
+        WifiSignalPlugin.export({
+            id: 'wifi_bare',
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 36,
+            entity_id: 'office_wifi',
+            props: { is_local_sensor: false }
+        }, {
+            lines: directLines,
+            addFont: vi.fn(() => 'font_mdi'),
+            getColorConst: vi.fn(() => 'Color::BLACK'),
+            addDitherMask: vi.fn(),
+            getCondProps: vi.fn(() => ''),
+            getConditionCheck: vi.fn(() => null),
+            isEpaper: false
+        });
+
+        expect(directLines.join('\n')).toContain('id(sensor_office_wifi).has_state()');
+
+        const lvgl = WifiSignalPlugin.exportLVGL({
+            id: 'wifi_bare_lvgl',
+            entity_id: 'office_wifi',
+            props: { is_local_sensor: false }
+        }, {
+            common: { id: 'wifi_bare_lvgl' },
+            convertColor: (value) => `Color(${value})`,
+            getLVGLFont: (family, size, weight) => `${family}_${size}_${weight}`
+        });
+
+        expect(JSON.stringify(lvgl)).toContain('id(sensor_office_wifi).state');
+    });
+
+    it('leaves mqtt entity ids unprefixed when building sensor ids (Issue #543)', () => {
+        const lvgl = WifiSignalPlugin.exportLVGL({
+            id: 'wifi_mqtt',
+            entity_id: 'mqtt:home/wifi',
+            props: { is_local_sensor: false }
+        }, {
+            common: { id: 'wifi_mqtt' },
+            convertColor: (value) => `Color(${value})`,
+            getLVGLFont: (family, size, weight) => `${family}_${size}_${weight}`
+        });
+
+        expect(JSON.stringify(lvgl)).toContain('id(mqtt_home_wifi).state');
+    });
 });

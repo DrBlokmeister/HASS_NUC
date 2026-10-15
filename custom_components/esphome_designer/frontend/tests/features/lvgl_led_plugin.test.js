@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import plugin from '../../features/lvgl_led/plugin.js';
+import { collectBinarySensors } from '../../js/io/adapters/entity_dedup.js';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 
 describe('lvgl_led plugin', () => {
     beforeEach(() => {
@@ -67,5 +69,30 @@ describe('lvgl_led plugin', () => {
         });
 
         expect([...pendingTriggers.get('sensor.brightness')]).toEqual(['- lvgl.widget.refresh: led_entity']);
+    });
+
+    it('references the deduped sensor id for overlong entity ids (Issue #543)', () => {
+        const entityId = 'binary_sensor.varnsdorf_30_5_2026_modifikace_mujcore_snapshot_controller_1_last_1';
+        const expectedId = makeSafeId(entityId);
+        expect(expectedId.length).toBeLessThanOrEqual(63);
+
+        const entityExport = plugin.exportLVGL({
+            id: 'led_long',
+            entity_id: entityId,
+            props: {}
+        }, {
+            common: { id: 'base' },
+            convertColor: (value) => value,
+            formatOpacity: (value) => value
+        });
+
+        expect(entityExport.led.brightness).toContain(`id(${expectedId}).state / 255.0`);
+
+        const lines = collectBinarySensors(
+            [{ widgets: [{ id: 'led_long', type: 'lvgl_led', entity_id: entityId, props: {} }] }],
+            { seenEntityIds: new Set(), seenSensorIds: new Set() }
+        );
+
+        expect(lines.join('\n')).toContain(`id: ${expectedId}`);
     });
 });

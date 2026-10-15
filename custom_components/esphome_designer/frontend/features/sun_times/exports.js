@@ -11,7 +11,7 @@ function buildSourceToken(entityId, attribute, mqttTopic) {
     return [entityId || mqttTopic, attribute].filter(Boolean).join('_');
 }
 
-function buildTemplateValue(source, placeholder) {
+function buildTemplateValue(source, placeholder, clockMode = '24h') {
     if (!source.entityId || source.mqttTopic) {
         return placeholder;
     }
@@ -19,11 +19,12 @@ function buildTemplateValue(source, placeholder) {
     const valueExpr = source.attribute
         ? `state_attr('${source.entityId}', '${source.attribute}')`
         : `states('${source.entityId}')`;
+    const timeFormat = String(clockMode || '').trim().toLowerCase() === '12h' ? '%-I:%M %p' : '%H:%M';
 
-    return `{% set raw = ${valueExpr} %}{% set parsed = as_datetime(raw, none) %}{{ (parsed | as_local).strftime('%H:%M') if raw not in [none, '', 'unknown', 'unavailable', 'none'] and parsed is not none else '${placeholder}' }}`;
+    return `{% set raw = ${valueExpr} %}{% set parsed = as_datetime(raw, none) %}{{ (parsed | as_local).strftime('${timeFormat}') if raw not in [none, '', 'unknown', 'unavailable', 'none'] and parsed is not none else '${placeholder}' }}`;
 }
 
-function buildSunTimeConversionLines(baseIndent, includeReturn = false) {
+function buildSunTimeConversionLines(baseIndent, includeReturn = false, clockMode = '24h') {
     const lines = [
         `${baseIndent}if (!raw.empty() && raw != "unknown" && raw != "unavailable" && raw != "none") {`,
         `${baseIndent}  int year = 0;`,
@@ -36,9 +37,20 @@ function buildSunTimeConversionLines(baseIndent, includeReturn = false) {
         `${baseIndent}  int offset_minute = 0;`,
         `${baseIndent}  char tz_sign = '+';`,
         `${baseIndent}  auto format_hhmm = [](int hour_value, int minute_value) -> std::string {`,
-        `${baseIndent}    char buf[6];`,
-        `${baseIndent}    snprintf(buf, sizeof(buf), "%02d:%02d", hour_value, minute_value);`,
-        `${baseIndent}    return std::string(buf);`,
+        ...(String(clockMode || '').trim().toLowerCase() === '12h'
+            ? [
+                `${baseIndent}    int display_hour = hour_value % 12;`,
+                `${baseIndent}    if (display_hour == 0) display_hour = 12;`,
+                `${baseIndent}    const char* ampm = (hour_value < 12) ? "AM" : "PM";`,
+                `${baseIndent}    char buf[12];`,
+                `${baseIndent}    snprintf(buf, sizeof(buf), "%d:%02d %s", display_hour, minute_value, ampm);`,
+                `${baseIndent}    return std::string(buf);`
+            ]
+            : [
+                `${baseIndent}    char buf[6];`,
+                `${baseIndent}    snprintf(buf, sizeof(buf), "%02d:%02d", hour_value, minute_value);`,
+                `${baseIndent}    return std::string(buf);`
+            ]),
         `${baseIndent}  };`,
         `${baseIndent}  auto days_from_civil = [](int y, unsigned m, unsigned d) -> int {`,
         `${baseIndent}    y -= m <= 2;`,
@@ -103,13 +115,13 @@ function buildRowMetrics(widget, props) {
     return { rows, iconSize, fontSize, iconGap, rowGap, rowHeight, top, left, padding };
 }
 
-function buildDisplayValueExpression(sensorId, placeholder) {
+function buildDisplayValueExpression(sensorId, placeholder, clockMode = '24h') {
     const safePlaceholder = JSON.stringify(placeholder || 'n.d.');
     return `!lambda |-\n` +
         `          static std::string display_value;\n` +
         `          display_value = ${safePlaceholder};\n` +
         `          std::string raw = id(${sensorId}).state;\n` +
-        buildSunTimeConversionLines('          ', true).join('\n');
+        buildSunTimeConversionLines('          ', true, clockMode).join('\n');
 }
 
 function buildProtocolRows(widget, props, useFillColor = false, darkMode = false) {
@@ -118,6 +130,7 @@ function buildProtocolRows(widget, props, useFillColor = false, darkMode = false
         ? (darkMode ? 'white' : 'black')
         : (props.color || 'black');
     const placeholder = props.placeholder || 'n.d.';
+    const clockMode = props.clock_mode || '24h';
 
     return rows.flatMap((key, index) => {
         const row = getSunEventRow(key);
@@ -128,7 +141,7 @@ function buildProtocolRows(widget, props, useFillColor = false, darkMode = false
         // (mirrors the preview's align-items:center, Issue #516).
         const iconY = Math.round(y + Math.max(0, Math.round((fontSize - iconSize) / 2)));
         const textY = Math.round(y + Math.max(0, Math.round((iconSize - fontSize) / 2)));
-        const timeValue = buildTemplateValue(source, placeholder);
+        const timeValue = buildTemplateValue(source, placeholder, clockMode);
         const iconBase = {
             type: 'icon',
             value: row.iconName,
@@ -174,6 +187,7 @@ export function exportDirect(widget, context) {
     const props = widget.props || {};
     const { rows, iconSize, fontSize, iconGap, rowGap, rowHeight, top, left } = buildRowMetrics(widget, props);
     const placeholder = props.placeholder || 'n.d.';
+    const clockMode = props.clock_mode || '24h';
     const iconFont = addFont('Material Design Icons', 400, iconSize);
     const textFont = addFont(props.font_family || 'Roboto', props.font_weight || 400, fontSize);
     const color = resolveForegroundColor(props.color || 'theme_auto', getColorConst);
@@ -213,7 +227,7 @@ export function exportDirect(widget, context) {
         if (sensorId) {
             lines.push(`          if (id(${sensorId}).has_state()) {`);
             lines.push('            std::string raw = id(' + sensorId + ').state;');
-            buildSunTimeConversionLines('            ').forEach((line) => lines.push(line));
+            buildSunTimeConversionLines('            ', false, clockMode).forEach((line) => lines.push(line));
             lines.push('          }');
         }
         lines.push(`          it.printf(${left}, ${iconY}, id(${iconFont}), ${color}, TextAlign::TOP_LEFT, "%s", "\\U000${row.iconCode}");`);
@@ -230,6 +244,7 @@ export function exportLVGL(widget, { common, convertColor, getLVGLFont }) {
     const color = convertColor(props.color || 'theme_auto');
     const fontWeight = props.font_weight || 400;
     const placeholder = props.placeholder || 'n.d.';
+    const clockMode = props.clock_mode || '24h';
     const safeWidgetId = widget.id.replace(/-/g, '_');
 
     const widgets = [];
@@ -266,7 +281,7 @@ export function exportLVGL(widget, { common, convertColor, getLVGLFont }) {
                 y: textY,
                 width: Math.max(20, widget.width - (padding * 2) - iconSize - iconGap),
                 height: fontSize + 4,
-                text: sensorId ? buildDisplayValueExpression(sensorId, placeholder) : JSON.stringify(placeholder),
+                text: sensorId ? buildDisplayValueExpression(sensorId, placeholder, clockMode) : JSON.stringify(placeholder),
                 text_font: getLVGLFont(props.font_family || 'Roboto', fontSize, fontWeight),
                 text_color: color,
                 text_align: 'left'

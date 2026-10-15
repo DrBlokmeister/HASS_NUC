@@ -1,4 +1,5 @@
 import { clampFontWeight } from '../../js/core/font_weights.js';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 
 const ensureHex = (color) => (color === "gray" || color === "grey" ? "#808080" : color);
 
@@ -6,7 +7,7 @@ const normalizeEntityId = (entity, isLocal = false) => {
     if (!entity || typeof entity !== 'string') return "";
     let next = entity;
     if (!isLocal && !next.includes(".")) next = `sensor.${next}`;
-    return next.replace(/[^a-zA-Z0-9_]/g, "_");
+    return makeSafeId(next);
 };
 
 const normalizeExternalEntityId = (entity) => {
@@ -125,7 +126,7 @@ export function exportDoc(w, context) {
     const borderColor = getDynamicColor(getColorConst, ensureHex(p.border_color || "white"));
 
     const wifiEntity = (p.wifi_is_local ? "wifi_signal_dbm" : p.wifi_entity) || "wifi_signal_dbm";
-    const wifiId = wifiEntity.replace(/[^a-zA-Z0-9_]/g, "_");
+    const wifiId = (p.wifi_is_local || !p.wifi_entity) ? wifiEntity : normalizeEntityId(wifiEntity);
 
     const batterySource = resolveBatterySource(p, profile);
     const humiditySource = resolveHumiditySource(p, profile);
@@ -408,7 +409,7 @@ export function onExportNumericSensors(context) {
 
     const registerHaSensor = (seenSensorIds, entityId) => {
         if (!entityId || !entityId.includes(".") || entityId.startsWith("text_sensor.") || entityId.startsWith("binary_sensor.")) return;
-        const safeId = entityId.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(entityId);
         if (seenSensorIds && !seenSensorIds.has(safeId)) {
             seenSensorIds.add(safeId);
             lines.push("- platform: homeassistant", `  id: ${safeId}`, `  entity_id: ${entityId}`, "  internal: true");

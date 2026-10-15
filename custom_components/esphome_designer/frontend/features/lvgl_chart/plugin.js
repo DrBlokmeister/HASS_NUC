@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL Chart Plugin
  */
@@ -92,7 +94,7 @@ const exportLVGL = (w, { common, convertColor, formatOpacity }) => {
 
     const entityId = (w.entity_id || p.entity_id || '').trim();
     if (entityId) {
-        chart.series[0].sensor = entityId.replace(/[^a-zA-Z0-9_]/g, '_');
+        chart.series[0].sensor = makeSafeId(entityId);
         chart.y_min = p.min ?? 0;
         chart.y_max = p.max ?? 100;
     }

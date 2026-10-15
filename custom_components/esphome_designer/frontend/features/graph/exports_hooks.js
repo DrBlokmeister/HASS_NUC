@@ -1,4 +1,5 @@
 import { getSensorPlatformLines } from '../../js/io/adapters/mqtt_helpers.js';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 import { buildLvglBoundsLines, buildLvglLineUpdateAction, buildLvglLiveUpdateAction, getLvglGraphIds, getLvglGraphPointCount } from './exports_lvgl.js';
 import { inferGraphTimeGrid, parseDuration, resolveGraphValueGrid, toEsphomeTimePeriod } from '../../js/utils/graph_helpers.js';
 
@@ -107,7 +108,7 @@ export const onExportComponents = (context) => {
             if (entityId && !entityId.includes(".") && !p.is_local_sensor && !entityId.toLowerCase().startsWith("mqtt:")) {
                 entityId = `sensor.${entityId}`;
             }
-            const localSensorId = entityId.replace(/[^a-zA-Z0-9_]/g, "_") || "none";
+            const localSensorId = makeSafeId(entityId) || "none";
             const lineType = (p.line_type || "SOLID").toUpperCase();
             const lineThickness = parseInt(p.line_thickness || 3, 10);
             const border = p.border !== false;

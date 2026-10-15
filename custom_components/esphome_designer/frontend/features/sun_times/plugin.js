@@ -26,6 +26,7 @@ export default {
         font_size: 16,
         font_family: 'Roboto',
         font_weight: 400,
+        clock_mode: '24h',
         color: 'theme_auto',
         background_color: 'transparent',
         bg_color: 'transparent',

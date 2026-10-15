@@ -65,8 +65,8 @@ export function renderSunTimes(el, widget, { getColorStyle }) {
     el.style.boxSizing = 'border-box';
 
     const values = {
-        sunrise: formatSunTimeValue(getSunSourceValue(AppState?.entityStates, props, 'sunrise'), placeholder),
-        sunset: formatSunTimeValue(getSunSourceValue(AppState?.entityStates, props, 'sunset'), placeholder)
+        sunrise: formatSunTimeValue(getSunSourceValue(AppState?.entityStates, props, 'sunrise'), placeholder, props.clock_mode),
+        sunset: formatSunTimeValue(getSunSourceValue(AppState?.entityStates, props, 'sunset'), placeholder, props.clock_mode)
     };
 
     visibleRows.forEach((key) => {

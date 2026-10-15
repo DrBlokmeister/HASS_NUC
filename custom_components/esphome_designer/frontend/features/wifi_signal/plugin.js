@@ -1,3 +1,4 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 import { renderWifiSignal } from './render.js';
 import { renderWifiSignalProperties } from './properties.js';
 /**
@@ -12,7 +13,11 @@ const exportDoc = (w, context) => {
     } = context;
 
     const p = w.props || {};
-    const entityId = (w.entity_id || "").trim();
+    let entityId = (w.entity_id || "").trim();
+    // Ensure sensor. prefix if missing (matching onExportNumericSensors logic)
+    if (entityId && !entityId.includes(".") && !entityId.toLowerCase().startsWith("mqtt:")) {
+        entityId = `sensor.${entityId}`;
+    }
     const size = parseInt(p.size || 24, 10);
     const fontSize = parseInt(p.font_size || 12, 10);
     const colorProp = p.color || "theme_auto";
@@ -29,7 +34,7 @@ const exportDoc = (w, context) => {
     if (isLocal) {
         sensorId = "wifi_signal_dbm";
     } else {
-        sensorId = entityId ? entityId.replace(/[^a-zA-Z0-9_]/g, "_") : "wifi_signal_dbm";
+        sensorId = entityId ? makeSafeId(entityId) : "wifi_signal_dbm";
     }
 
 
@@ -204,9 +209,13 @@ export default {
     },
     exportLVGL: (w, { common, convertColor, getLVGLFont, _formatOpacity }) => {
         const p = w.props || {};
-        const entityId = (w.entity_id || "").trim();
+        let entityId = (w.entity_id || "").trim();
+        // Ensure sensor. prefix if missing (matching onExportNumericSensors logic)
+        if (entityId && !entityId.includes(".") && !entityId.toLowerCase().startsWith("mqtt:")) {
+            entityId = `sensor.${entityId}`;
+        }
         const isLocal = p.is_local_sensor !== false;
-        const sensorId = isLocal ? "wifi_signal_dbm" : (entityId ? entityId.replace(/[^a-zA-Z0-9_]/g, "_") : "wifi_signal_dbm");
+        const sensorId = isLocal ? "wifi_signal_dbm" : (entityId ? makeSafeId(entityId) : "wifi_signal_dbm");
         const color = convertColor(p.color || "black");
         const iconSize = parseInt(p.size || 24, 10);
         const fontSize = parseInt(p.font_size || 12, 10);
@@ -322,7 +331,7 @@ export default {
 
             // Explicitly export the Home Assistant sensor block if it's not a local sensor
             if (!isLocal && eid.startsWith("sensor.")) {
-                const safeId = eid.replace(/[^a-zA-Z0-9_]/g, "_");
+                const safeId = makeSafeId(eid);
                 if (context.seenSensorIds && !context.seenSensorIds.has(safeId)) {
                     if (context.seenSensorIds.size === 0) {
                         lines.push("");

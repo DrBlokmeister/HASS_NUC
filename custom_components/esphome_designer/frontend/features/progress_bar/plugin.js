@@ -1,3 +1,4 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 import { TemplateConverter } from '../../js/utils/template_converter.js';
 import { renderProgressBar } from './render.js';
 import { renderProgressBarProperties } from './properties.js';
@@ -8,7 +9,7 @@ const exportLVGL = (w, { common, convertColor }) => {
     const p = w.props || {};
     let barValue = p.value || 0;
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         barValue = `!lambda "return id(${safeId}).state;"`;
     }
     return {
@@ -69,7 +70,7 @@ const exportDoc = (w, context) => {
     const cond = getConditionCheck(w);
     if (cond) lines.push(`        ${cond}`);
 
-    const sensorId = p.is_local_sensor ? (entityId || "battery_level") : (entityId ? entityId.replace(/[^a-zA-Z0-9_]/g, "_") : "");
+    const sensorId = p.is_local_sensor ? (entityId || "battery_level") : (entityId ? makeSafeId(entityId) : "");
 
     if (sensorId) {
         const idSuffix = w.id.replace(/-/g, '_');

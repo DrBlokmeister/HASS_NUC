@@ -1,4 +1,5 @@
 import { clampFontWeight } from '@core/font_weights.js';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 import { getCalendarEventSummaryCharLimit } from './layout.js';
 
 const CALENDAR_LOCALES = {
@@ -62,7 +63,7 @@ export const onExportTextSensors = (context) => {
             const entityId = (w.entity_id || p.entity_id || "sensor.esp_calendar_data").trim();
             const isSensor = entityId.startsWith("sensor.");
             // Use entity-based ID so all widgets sharing the same entity share one sensor
-            const safeId = `calendar_data_${entityId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+            const safeId = makeSafeId(`calendar_data_${entityId}`);
 
             const alreadyDefined = (context.seenEntityIds && context.seenEntityIds.has(entityId)) ||
                 (context.seenSensorIds && context.seenSensorIds.has(safeId));
@@ -420,7 +421,7 @@ export const exportDirect = (w, context) => {
             lines.push(`          int last_drawn_day = -1;`);
             lines.push(``);
             // Use entity-based sensor ID to match onExportTextSensors
-            const sensorSafeId = `calendar_data_${entityId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+            const sensorSafeId = makeSafeId(`calendar_data_${entityId}`);
             lines.push(`          if (id(${sensorSafeId}).state.length() > 5 && id(${sensorSafeId}).state != "unknown") {`);
             lines.push(`             JsonDocument doc;`);
             lines.push(`             DeserializationError error = deserializeJson(doc, id(${sensorSafeId}).state);`);

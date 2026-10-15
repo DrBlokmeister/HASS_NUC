@@ -96,7 +96,7 @@ export function resolveForegroundColor(colorProp, getColorConst) {
     return getColorConst(colorProp || 'black');
 }
 
-export function formatSunTimeValue(value, placeholder = 'n.d.') {
+export function formatSunTimeValue(value, placeholder = 'n.d.', clockMode = '24h') {
     const raw = String(value ?? '').trim();
     if (!raw || raw === 'unknown' || raw === 'unavailable' || raw === 'none') {
         return placeholder;
@@ -104,6 +104,13 @@ export function formatSunTimeValue(value, placeholder = 'n.d.') {
 
     const parsed = new Date(raw);
     if (!Number.isNaN(parsed.getTime())) {
+        if (String(clockMode || '').trim().toLowerCase() === '12h') {
+            return parsed.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
         return parsed.toLocaleTimeString('en-GB', {
             hour: '2-digit',
             minute: '2-digit',

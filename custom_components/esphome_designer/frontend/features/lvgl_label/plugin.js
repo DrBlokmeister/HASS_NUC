@@ -2,6 +2,7 @@
  * LVGL Label Plugin
  */
 import { AppState } from '@core/state';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 
 import { getWeightsForFont, clampFontWeight } from '../../js/core/font_weights.js';
 
@@ -60,9 +61,9 @@ const exportLVGL = (w, { common, convertColor, _convertAlign, getLVGLFont, forma
     const eid = (w.entity_id || p.entity_id || "").trim();
     if (eid) {
         if (eid.startsWith("text_sensor.") || eid.startsWith("weather.")) {
-            labelText = `!lambda "return id(${eid.replace(/[^a-zA-Z0-9_]/g, "_")}).state.c_str();"`;
+            labelText = `!lambda "return id(${makeSafeId(eid)}).state.c_str();"`;
         } else {
-            labelText = `!lambda "return str_sprintf(\\"%.1f\\", id(${eid.replace(/[^a-zA-Z0-9_]/g, "_")}).state).c_str();"`;
+            labelText = `!lambda "return str_sprintf(\\"%.1f\\", id(${makeSafeId(eid)}).state).c_str();"`;
         }
     }
 

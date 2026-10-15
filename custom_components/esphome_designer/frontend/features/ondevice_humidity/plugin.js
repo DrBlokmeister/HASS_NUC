@@ -1,3 +1,4 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 import { renderOnDeviceHumidity } from './render.js';
 /**
  * On-Device Humidity Plugin
@@ -138,7 +139,12 @@ export default {
     exportLVGL: (w, { common, convertColor, getLVGLFont, profile }) => {
         const p = w.props || {};
         const isLocal = p.is_local_sensor === true || (p.is_local_sensor !== false && !w.entity_id);
-        let sensorId = (w.entity_id || "").replace(/[^a-zA-Z0-9_]/g, "_");
+        // Ensure sensor. prefix if missing (matching onExportNumericSensors logic)
+        let rawEntityId = (w.entity_id || "").trim();
+        if (rawEntityId && !rawEntityId.includes(".") && !rawEntityId.toLowerCase().startsWith("mqtt:")) {
+            rawEntityId = `sensor.${rawEntityId}`;
+        }
+        let sensorId = rawEntityId ? makeSafeId(rawEntityId) : "";
         if (isLocal && profile.features) {
             sensorId = profile.features.sht4x ? "sht4x_humidity" : (profile.features.sht3x ? "sht3x_humidity" : (profile.features.shtc3 ? "shtc3_humidity" : "onboard_humidity"));
         }
@@ -300,7 +306,12 @@ export default {
         const valueFontId = addFont(p.font_family || "Roboto", 400, fontSize);
 
         const isLocal = p.is_local_sensor === true || (p.is_local_sensor !== false && !w.entity_id);
-        let sensorId = (w.entity_id || "").replace(/[^a-zA-Z0-9_]/g, "_");
+        // Ensure sensor. prefix if missing (matching onExportNumericSensors logic)
+        let rawEntityId = (w.entity_id || "").trim();
+        if (rawEntityId && !rawEntityId.includes(".") && !rawEntityId.toLowerCase().startsWith("mqtt:")) {
+            rawEntityId = `sensor.${rawEntityId}`;
+        }
+        let sensorId = rawEntityId ? makeSafeId(rawEntityId) : "";
 
         if (isLocal) {
             if (profile.features) {
@@ -404,7 +415,7 @@ export default {
 
             // Explicitly export the Home Assistant sensor block if it's not a local sensor
             if (!isLocal && eid.startsWith("sensor.")) {
-                const safeId = eid.replace(/[^a-zA-Z0-9_]/g, "_");
+                const safeId = makeSafeId(eid);
                 if (context.seenSensorIds && !context.seenSensorIds.has(safeId)) {
                     if (context.seenSensorIds.size === 0) {
                         lines.push("");

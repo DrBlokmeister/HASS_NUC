@@ -2,13 +2,15 @@
  * LVGL Slider Plugin
  */
 
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 const isLightEntity = (entityId) => String(entityId || "").trim().toLowerCase().startsWith("light.");
 const isMediaPlayerEntity = (entityId) => String(entityId || "").trim().toLowerCase().startsWith("media_player.");
 
-const getSliderSensorId = (entityId) => String(entityId || "").trim().replace(/[^a-zA-Z0-9_]/g, "_");
+const getSliderSensorId = (entityId) => makeSafeId(String(entityId || "").trim());
 
-const getBrightnessSensorId = (entityId) => `${getSliderSensorId(entityId)}_brightness`;
-const getMediaVolumeSensorId = (entityId) => `${getSliderSensorId(entityId)}_volume_level`;
+const getBrightnessSensorId = (entityId) => makeSafeId(String(entityId || "").trim(), "", "_brightness");
+const getMediaVolumeSensorId = (entityId) => makeSafeId(String(entityId || "").trim(), "", "_volume_level");
 
 const parseSliderBound = (value, fallback) => {
     const parsed = Number(value);
@@ -223,7 +225,12 @@ const exportLVGL = (w, { common, convertColor, profile }) => {
         } else if (normalizedEntityId.startsWith("climate.")) {
             serviceCall = { "homeassistant.action": { action: "climate.set_temperature", data: { entity_id: entityId, temperature: "!lambda 'return x;'" } } };
         } else {
-            serviceCall = { "homeassistant.action": { action: "number.set_value", data: { entity_id: entityId, value: "!lambda 'return x;'" } } };
+            // HA exposes set_value per domain: input_number entities need
+            // input_number.set_value while number entities use number.set_value
+            // (Issue #541). Anything else keeps the previous default.
+            const domain = normalizedEntityId.includes('.') ? normalizedEntityId.split('.')[0] : 'number';
+            const setValueAction = domain === 'input_number' ? 'input_number.set_value' : 'number.set_value';
+            serviceCall = { "homeassistant.action": { action: setValueAction, data: { entity_id: entityId, value: "!lambda 'return x;'" } } };
         }
         if (isLightEntity(entityId)) {
             sliderObj.slider.on_release = [serviceCall];

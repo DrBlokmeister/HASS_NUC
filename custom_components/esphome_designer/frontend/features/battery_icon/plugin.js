@@ -2,6 +2,7 @@
  * Battery Icon Plugin
  */
 import { AppState } from '@core/state';
+import { makeSafeId } from '../../js/utils/export_helpers.js';
 import { WidgetFactory } from '@core/widget_factory';
 
 const render = (el, widget, { getColorStyle }) => {
@@ -103,7 +104,7 @@ const exportDoc = (w, context) => {
         } else if (!normalizedEntityId.includes(".")) {
             normalizedEntityId = `sensor.${normalizedEntityId}`;
         }
-        sensorId = normalizedEntityId.replace(/[^a-zA-Z0-9_]/g, "_");
+        sensorId = makeSafeId(normalizedEntityId);
     }
 
 
@@ -320,7 +321,7 @@ export default {
             entityId = `sensor.${entityId}`;
         }
 
-        const sensorId = p.is_local_sensor ? "battery_level" : (entityId ? entityId.replace(/[^a-zA-Z0-9_]/g, "_") : "battery_level");
+        const sensorId = p.is_local_sensor ? "battery_level" : (entityId ? makeSafeId(entityId) : "battery_level");
         const color = convertColor(p.color || "black");
         const iconSize = parseInt(p.size || 24, 10);
         const fontSize = parseInt(p.font_size || 12, 10);
@@ -436,7 +437,7 @@ export default {
 
             // Explicitly export the Home Assistant sensor block if it's not a local sensor
             if (!p.is_local_sensor && eid.startsWith("sensor.")) {
-                const safeId = eid.replace(/[^a-zA-Z0-9_]/g, "_");
+                const safeId = makeSafeId(eid);
                 if (context.seenSensorIds && !context.seenSensorIds.has(safeId)) {
                     if (context.seenSensorIds.size === 0) {
                         lines.push("");

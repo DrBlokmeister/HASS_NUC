@@ -1,3 +1,5 @@
+import { makeSafeId } from '../../js/utils/export_helpers.js';
+
 /**
  * LVGL Roller Plugin
  */
@@ -60,7 +62,7 @@ const exportLVGL = (w, { common, convertColor, formatOpacity }) => {
 
     let selectedIdx = p.selected_index;
     if (w.entity_id) {
-        const safeId = w.entity_id.replace(/[^a-zA-Z0-9_]/g, "_");
+        const safeId = makeSafeId(w.entity_id);
         selectedIdx = `!lambda "return (int)id(${safeId}).state;"`;
     }
 
