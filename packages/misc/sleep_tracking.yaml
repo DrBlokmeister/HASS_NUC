@@ -252,9 +252,10 @@ automation:
   - alias: "[misc|sleeptracking] Sleep mode: toggle lights & motion automations"
     id: yaml_automation_misc_sleeptracking_sleep_mode_toggle_lights_motion_automations
     description: >
-      When Sander is home alone and goes to sleep, turn off lights (placeholder)
-      and disable motion-based lighting automations. When he wakes up, re-enable
-      the motion-based lighting automations.
+      When Sander is home alone and starts sleep tracking, turn off lights
+      and disable motion-based lighting automations. Only tracking and sleep-phase
+      states can enter sleep mode; alarm events cannot. When tracking stops or
+      the alarm is dismissed or rescheduled, re-enable motion-based lighting.
     mode: single
     trigger:
       # --- Falling asleep triggers ---
@@ -269,12 +270,17 @@ automation:
           - alarm_rescheduled
           - sleep_tracking_stopped
           - alarm_alert_dismiss
-        not_to:
-          - alarm_rescheduled
-          - sleep_tracking_stopped
-          - alarm_alert_dismiss
-          - unavailable
-          - unknown
+        # Explicit allowlist: an alarm firing after tracking stops is not sleep.
+        # 'awake' is a phase within a tracking session, not tracking stopped.
+        to:
+          - sleep_tracking_started
+          - sleep_tracking_paused
+          - sleep_tracking_resumed
+          - awake
+          - deep_sleep
+          - light_sleep
+          - not_awake
+          - rem
       # --- Waking up triggers ---
       - id: wakeup
         platform: state
@@ -284,7 +290,6 @@ automation:
         platform: state
         entity_id: sensor.sleep_as_android_state
         not_from:
-          - awake
           - alarm_rescheduled
           - sleep_tracking_stopped
           - alarm_alert_dismiss
