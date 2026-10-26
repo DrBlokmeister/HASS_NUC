@@ -481,6 +481,82 @@ template:
             {{ states('sensor.pv_power') }}
           {% endif %}
         availability: "{{ true }}"
+
+  - trigger:
+      - platform: time_pattern
+        minutes: /5
+    sensor:
+      - name: "Solar Max Theoretical Power"
+        unique_id: yaml_template_sensor_solar_max_theoretical_power
+        device_class: power
+        state_class: measurement
+        unit_of_measurement: "W"
+        icon: mdi:solar-power
+        availability: >
+          {{ state_attr('sun.sun', 'elevation') is number
+              and state_attr('sun.sun', 'azimuth') is number }}
+        state: >
+          {# --- Fitted panel geometry --- #}
+          {% set panel_azimuth = 106 %}
+          {% set panel_tilt = 20 %}
+
+          {# --- Electrical model --- #}
+          {# Provisional AC scale at 1000 W/m² POA irradiance.
+              NOT the installed DC nameplate capacity. #}
+          {% set effective_ac_scale = 3139 %}
+
+          {# Observed maximum output (W) --- #}
+          {% set inverter_power_limit = 3139 %}
+
+          {# --- Solar position (degrees) --- #}
+          {% set elevation = state_attr('sun.sun', 'elevation') | float %}
+          {% set azimuth = state_attr('sun.sun', 'azimuth') | float %}
+
+          {% if elevation <= 0 %}
+            0
+          {% else %}
+            {# Convert angles to radians #}
+            {% set rad = pi / 180 %}
+            {% set e = elevation * rad %}
+            {% set a = (azimuth - panel_azimuth) * rad %}
+            {% set t = panel_tilt * rad %}
+
+            {# Angle of incidence on the panels #}
+            {% set cos_aoi = (
+                sin(e) * cos(t)
+                + cos(e) * sin(t) * cos(a)
+              ) %}
+            {% set incidence = [0, cos_aoi] | max %}
+
+            {# Relative optical air mass (Kasten-Young) #}
+            {% set am = 1 / (
+                sin(e)
+                + 0.50572 * (elevation + 6.07995) ** -1.6364
+              ) %}
+
+            {# Extraterrestrial irradiance (W/m²) #}
+            {% set doy = now().timetuple().tm_yday %}
+            {% set dni_extra = 1361 * (
+                1 + 0.033 * cos(2 * pi * doy / 365)
+              ) %}
+
+            {# Simplified clear-sky irradiance #}
+            {% set dni = dni_extra * 0.7 ** (am ** 0.678) %}
+            {% set dhi = 0.12 * dni_extra * sin(e) %}
+            {% set ghi = dni * sin(e) + dhi %}
+
+            {# Plane-of-array irradiance (W/m²) #}
+            {% set direct = dni * incidence %}
+            {% set diffuse = dhi * (1 + cos(t)) / 2 %}
+            {% set reflected = 0.2 * ghi * (1 - cos(t)) / 2 %}
+            {% set poa = direct + diffuse + reflected %}
+
+            {# Expected AC power, capped at observed maximum #}
+            {% set power = effective_ac_scale * poa / 1000 %}
+            {{ ([0, power, inverter_power_limit] | sort)[1] | round(0) }}
+          {% endif %}
+
+
 #######################
 #    INPUT NUMBERS    #
 #######################

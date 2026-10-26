@@ -29,6 +29,78 @@ cards:
             in_header: false
             legend_value: false
 
+  - type: custom:apexcharts-card
+    header:
+      title: Solar Power Production
+      show: true
+      show_states: true
+      colorize_states: true
+    apex_config:
+      legend:
+        show: false
+    graph_span: 24h
+    span:
+      start: day
+    now:
+      show: true
+      label: Now
+      color: '#FF9800'
+    update_interval: 1m
+    yaxis:
+      - min: 0
+        max: ~1000
+        decimals: 0
+        align_to: 500
+        apex_config:
+          forceNiceScale: true
+    all_series_config:
+      stroke_width: 2
+      float_precision: 0
+      unit: W
+      curve: smooth
+      group_by:
+        func: avg
+        duration: 5min
+    series:
+      # Yesterday
+      - entity: sensor.solar_max_theoretical_power
+        name: Theoretical Yesterday
+        offset: -1d
+        color: '#9E9E9E'
+        opacity: 0.35
+        stroke_dash: 5
+        show:
+          in_header: false
+          legend_value: false
+      - entity: sensor.solar_panel_power_production_available
+        name: Actual Yesterday
+        offset: -1d
+        color: '#BDBDBD'
+        opacity: 0.5
+        show:
+          in_header: false
+          legend_value: false
+      # Today
+      - entity: sensor.solar_max_theoretical_power
+        name: Theoretical Today
+        color: '#FFC107'
+        opacity: 1
+        stroke_width: 3
+        extend_to: now
+        show:
+          in_header: true
+          legend_value: false
+      - entity: sensor.solar_panel_power_production_available
+        name: Actual Today
+        color: '#4CAF50'
+        opacity: 1
+        stroke_width: 3
+        extend_to: now
+        show:
+          in_header: true
+          legend_value: false
+
+
   - type: grid
     square: false
     columns: 2
