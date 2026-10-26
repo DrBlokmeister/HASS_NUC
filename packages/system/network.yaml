@@ -41,72 +41,6 @@
 
 # {%- endfor %}
 
-homeassistant:
-  customize: {}
-    # sensor.speedtest_download:
-    #   templates:
-    #     icon: >
-    #       if (state > 800) return 'mdi:speedometer';
-    #       if (state > 500) return 'mdi:speedometer-medium';
-    #       return 'mdi:speedometer-slow'
-    #     icon_color: >
-    #       var maxval = 1000;
-    #       var minval = 400;
-    #       var maxhue = 120;
-    #       var minhue = 0;
-    #       if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
-    #       if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
-    #       var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
-    #       return 'hsl(' + hue.toString() + ',80%,50%)';
-    # sensor.speedtest_upload:
-    #   icon: mdi:speedometer
-    #   templates:
-    #     icon: >
-    #       if (state > 800) return 'mdi:speedometer';
-    #       if (state > 500) return 'mdi:speedometer-medium';
-    #       return 'mdi:speedometer-slow'
-    #     icon_color: >
-    #       var maxval = 1000;
-    #       var minval = 400;
-    #       var maxhue = 120;
-    #       var minhue = 0;
-    #       if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
-    #       if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
-    #       var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
-    #       return 'hsl(' + hue.toString() + ',80%,50%)';
-    # sensor.speedtest_ping:
-    #   icon: mdi:speedometer
-    #   templates:
-    #     icon_color: >
-    #       var maxval = 30;
-    #       var minval = 1;
-    #       var maxhue = 0;
-    #       var minhue = 120;
-    #       if (state > maxval) return 'hsl(' + maxhue.toString() + ',80%,50%)';
-    #       if (state < minval) return 'hsl(' + minhue.toString() + ',80%,50%)';
-    #       var hue = Math.round((Number(state) - minval) / (maxval - minval) * (maxhue - minhue) + minhue );
-
-command_line:
-  # - sensor:
-  #     name: "UDM Speedtest Raw" #Doesn't work yet. No ssh key support for UDM pro.
-  #     command: >-
-  #       ssh -i /config/.ssh/NUC_id_rsa -o StrictHostKeyChecking=no -q
-  #       root@10.0.0.1
-  #       '/mnt/data/speedtest --accept-license --accept-gdpr -f json'
-  #     unit_of_measurement: "ms"
-  #     scan_interval: 3600
-  #     command_timeout: 120
-  #     icon: mdi:speedometer
-  #     value_template: "{{ value_json.ping.latency  | float(0) | round(2) }}"
-  #     json_attributes:
-  #       - ping
-  #       - download.bandwidth
-  #       - upload.bandwidth
-  #       - packetLoss
-  #       - isp
-  #       - interface
-  #       - server
-
 template:
   - sensor:
       # - name: "Router Download Speed"
@@ -271,20 +205,20 @@ automation:
   - alias: '[network|notify]Alert phone when network speed is too low'
     trigger:
       - platform: numeric_state
-        entity_id: sensor.speedtest_download
+        entity_id: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl
         below: 100
         for:
           minutes: 70
     action:
       service: notify.mobile_app_blokmeisterp9pro
       data:
-        title: "Network speed 100mbit!"
-        message: "Current network speed {{ states('sensor.speedtest_download') }} Mbit/s."
+        title: "Network speed below 100 Mbit/s"
+        message: "Latest UniFi download speed {{ states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl') }} Mbit/s."
         data:
           ttl: 0
           priority: high
           sticky: "true"
-          clickAction: "/config/devices/device/5339147a29211a8fe30012ef2f3b9fe1"
+          clickAction: "/config/devices/device/dbfff101225e3e7ce5f52b634a3d412e"
           group: reminder
           tag: networkspeed
           timeout: 1800

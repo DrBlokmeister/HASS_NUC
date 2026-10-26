@@ -8,20 +8,24 @@ cards:
     square: false
     cards:
       - type: custom:mushroom-template-card
-        entity: sensor.speedtest_ping
-        primary: Internet
+        entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping
+        primary: Internet speedtest
         secondary: >-
-          {%- set down = states('sensor.speedtest_download') -%}
-          {%- set up = states('sensor.speedtest_upload') -%}
-          {%- set ping = states('sensor.speedtest_ping') -%}
-          Down {{ down | float(0) | round(0) }} · Up {{ up | float(0) | round(0) }} Mbit/s
-          Ping {{ ping | float(0) | round(1) }} ms
+          {%- set down = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl') -%}
+          {%- set up = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ul') -%}
+          {%- set ping = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping') -%}
+          Down {{ down | float | round(0) if is_number(down) else '—' }} · Up {{ up | float | round(0) if is_number(up) else '—' }} Mbit/s
+          Ping {{ ping | float | round(1) if is_number(ping) else '—' }} ms
         icon: mdi:web
         icon_color: >-
-          {%- set ping = states('sensor.speedtest_ping') | float(999) -%}
-          {%- if ping < 10 -%}
+          {%- set down = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl') -%}
+          {%- set up = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ul') -%}
+          {%- set ping = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping') -%}
+          {%- if not (is_number(down) and is_number(up) and is_number(ping)) -%}
+            grey
+          {%- elif ping | float < 10 -%}
             green
-          {%- elif ping < 25 -%}
+          {%- elif ping | float < 25 -%}
             amber
           {%- else -%}
             red
@@ -33,15 +37,20 @@ cards:
         entity: sensor.udmpro_cpu_utilization
         primary: UDM Pro
         secondary: >-
-          CPU {{ states('sensor.udmpro_cpu_utilization') | float(0) | round(0) }}%
-          · {{ states('sensor.udmpro_cpu_temperature') | float(0) | round(0) }} °C
-          SFP+ {{ states('sensor.udmpro_phy_temperature') | float(0) | round(0) }} °C
+          {%- set cpu = states('sensor.udmpro_cpu_utilization') -%}
+          {%- set temp = states('sensor.udmpro_cpu_temperature') -%}
+          {%- set other = states('sensor.udmpro_phy_temperature') -%}
+          CPU {{ cpu | float | round(0) if is_number(cpu) else '—' }}%
+          · {{ temp | float | round(0) if is_number(temp) else '—' }} °C
+          SFP+ {{ other | float | round(0) if is_number(other) else '—' }} °C
         icon: mdi:router-network
         icon_color: >-
-          {%- set temp = states('sensor.udmpro_cpu_temperature') | float(0) -%}
-          {%- if temp >= 70 -%}
+          {%- set temp = states('sensor.udmpro_cpu_temperature') -%}
+          {%- if not is_number(temp) -%}
+            grey
+          {%- elif temp | float >= 70 -%}
             red
-          {%- elif temp >= 60 -%}
+          {%- elif temp | float >= 60 -%}
             amber
           {%- else -%}
             green
@@ -51,15 +60,20 @@ cards:
         entity: sensor.usw_pro_max_16_poe_temperature
         primary: PoE switch
         secondary: >-
-          CPU {{ states('sensor.usw_pro_max_16_poe_cpu_utilization') | float(0) | round(0) }}%
-          · {{ states('sensor.usw_pro_max_16_poe_temperature') | float(0) | round(0) }} °C
-          Cabinet {{ states('sensor.temperature_utility_cabinet') | float(0) | round(0) }} °C
+          {%- set cpu = states('sensor.usw_pro_max_16_poe_cpu_utilization') -%}
+          {%- set temp = states('sensor.usw_pro_max_16_poe_temperature') -%}
+          {%- set other = states('sensor.temperature_utility_cabinet') -%}
+          CPU {{ cpu | float | round(0) if is_number(cpu) else '—' }}%
+          · {{ temp | float | round(0) if is_number(temp) else '—' }} °C
+          Cabinet {{ other | float | round(0) if is_number(other) else '—' }} °C
         icon: mdi:switch
         icon_color: >-
-          {%- set temp = states('sensor.usw_pro_max_16_poe_temperature') | float(0) -%}
-          {%- if temp >= 60 -%}
+          {%- set temp = states('sensor.usw_pro_max_16_poe_temperature') -%}
+          {%- if not is_number(temp) -%}
+            grey
+          {%- elif temp | float >= 60 -%}
             red
-          {%- elif temp >= 50 -%}
+          {%- elif temp | float >= 50 -%}
             amber
           {%- else -%}
             green
@@ -69,17 +83,19 @@ cards:
         entity: sensor.u6_lr_clients
         primary: Wi-Fi clients
         secondary: >-
-          {%- set total =
-            states('sensor.u6_lr_clients') | int(0)
-            + states('sensor.ap_lite_1st_floor_clients') | int(0)
-            + states('sensor.u6_pro_2nd_floor_clients') | int(0)
-            + states('sensor.ap_lite_outside_clients') | int(0)
-          -%}
-          {{ total }} total
-          LR {{ states('sensor.u6_lr_clients') | int(0) }}
-          · 1F {{ states('sensor.ap_lite_1st_floor_clients') | int(0) }}
-          · 2F {{ states('sensor.u6_pro_2nd_floor_clients') | int(0) }}
-          · Out {{ states('sensor.ap_lite_outside_clients') | int(0) }}
+          {%- set lr = states('sensor.u6_lr_clients') -%}
+          {%- set first = states('sensor.ap_lite_1st_floor_clients') -%}
+          {%- set second = states('sensor.u6_pro_2nd_floor_clients') -%}
+          {%- set outside = states('sensor.ap_lite_outside_clients') -%}
+          {%- if is_number(lr) and is_number(first) and is_number(second) and is_number(outside) -%}
+            {{ lr | int + first | int + second | int + outside | int }} total
+          {% else -%}
+            Total unknown
+          {% endif -%}
+          LR {{ lr | int if is_number(lr) else '—' }}
+          · 1F {{ first | int if is_number(first) else '—' }}
+          · 2F {{ second | int if is_number(second) else '—' }}
+          · Out {{ outside | int if is_number(outside) else '—' }}
         icon: mdi:wifi
         icon_color: blue
         multiline_secondary: true
@@ -101,12 +117,12 @@ cards:
             'update.ap_lite_outside'
           ] -%}
           {%- set pending = updates | select('is_state', 'on') | list | count -%}
-          {%- set unavailable = updates | select('is_state', 'unavailable') | list | count -%}
+          {%- set unavailable = updates | reject('is_state', 'on') | reject('is_state', 'off') | list | count -%}
           {%- if pending > 0 -%}
             {{ pending }} update{{ 's' if pending != 1 else '' }} pending
-            {%- if unavailable > 0 %} · {{ unavailable }} unavailable{%- endif -%}
+            {%- if unavailable > 0 %} · {{ unavailable }} status unknown{%- endif -%}
           {%- elif unavailable > 0 -%}
-            Up-to-date · {{ unavailable }} unavailable
+            {{ unavailable }} status unknown
           {%- else -%}
             All devices up-to-date
           {%- endif -%}
@@ -124,13 +140,17 @@ cards:
             'update.ap_lite_outside'
           ] -%}
           {%- set pending = updates | select('is_state', 'on') | list | count -%}
+          {%- set unavailable = updates | reject('is_state', 'on') | reject('is_state', 'off') | list | count -%}
           {%- if pending > 0 -%}
             amber
+          {%- elif unavailable > 0 -%}
+            grey
           {%- else -%}
             green
           {%- endif -%}
         tap_action:
-          action: more-info
+          action: navigate
+          navigation_path: /config/updates
         multiline_secondary: true
       - type: grid
         columns: 3
@@ -1094,12 +1114,16 @@ cards:
             icon: mdi:progress-upload
 
           - type: custom:mushroom-template-card
-            entity: sensor.speedtest_download
-            primary: Speedtest
+            entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl
+            primary: Last speedtest
             secondary: >-
-              {{ states('sensor.speedtest_download') | float(0) | round(0) }} down
-              · {{ states('sensor.speedtest_upload') | float(0) | round(0) }} up
-              · {{ states('sensor.speedtest_ping') | float(0) | round(1) }} ms
+              {%- set down = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl') -%}
+              {%- set up = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ul') -%}
+              {%- set ping = states('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping') -%}
+              {{ down | float | round(0) if is_number(down) else '—' }} down
+              · {{ up | float | round(0) if is_number(up) else '—' }} up Mbit/s
+              · {{ ping | float | round(1) if is_number(ping) else '—' }} ms
+              · {{ state_attr('sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl', 'timestamp') | default('—', true) | replace('T', ' ') }}
             icon: mdi:speedometer
             icon_color: blue
             multiline_secondary: true
@@ -1107,22 +1131,25 @@ cards:
               action: more-info
 
           - type: custom:mushroom-template-card
-            primary: Reload speedtest
-            secondary: Run integration reload
-            icon: mdi:reload
+            entity: button.ha_unifi_speedtest_run_speedtest_wan_ppp0
+            primary: Run speedtest
+            secondary: Primary WAN · ppp0
+            icon: mdi:speedometer
             icon_color: amber
             tap_action:
               action: call-service
-              service: homeassistant.reload_config_entry
+              service: button.press
               target:
-                device_id: 5339147a29211a8fe30012ef2f3b9fe1
+                entity_id: button.ha_unifi_speedtest_run_speedtest_wan_ppp0
+              confirmation:
+                text: Run a speedtest on primary WAN (ppp0)?
       - type: custom:mini-graph-card
         entities:
-          - entity: sensor.speedtest_download
+          - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl
             name: Down
-          - entity: sensor.speedtest_upload
+          - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ul
             name: Up
-          - entity: sensor.speedtest_ping
+          - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping
             name: Ping
             y_axis: 'secondary'
         icon: mdi:swap-vertical-bold
@@ -1133,10 +1160,8 @@ cards:
         font_size: 70
         height: 250
         line_width: 2.5
-        lower_bound: 300
-        upper_bound: 1000
+        lower_bound: 0
         lower_bound_secondary: 0
-        upper_bound_secondary: 20
         show:
           labels: true
           average: true
