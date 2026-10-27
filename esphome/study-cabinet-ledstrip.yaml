@@ -4,14 +4,20 @@ substitutions:
 esphome:
   name: "study-cabinet-ledstrip"
   on_boot:
-    priority: -100  # Ensures this runs after most other things have initialized
+    priority: -100
     then:
       - light.turn_on:
           id: ledstrip
+          brightness: 100%
           effect: "Rainbow Swirl"
-      - delay: 5s  # Let the rainbow show run for 2 seconds
-      - light.turn_off:
-          id: ledstrip
+      - delay: 5s
+      # Do not switch off a mode selected while the startup animation ran.
+      - if:
+          condition:
+            lambda: 'return id(ledstrip).get_effect_name() == "Rainbow Swirl";'
+          then:
+            - light.turn_off:
+                id: ledstrip
 
 esp32:
   board: nodemcu-32s
@@ -20,6 +26,7 @@ packages:
   wifi: !include /config/esphome/common/wifi.yaml
   network_diagnostics: !include /config/esphome/common/network_diagnostics.yaml
   base_config: !include /config/esphome/common/base_config.yaml
+  study_modes: !include /config/esphome/templates/study_ledstrip_modes.yaml
 
 e131:
   method: unicast

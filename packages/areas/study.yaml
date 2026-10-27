@@ -46,10 +46,10 @@ input_select:
   study_lighting_mode:
     name: Study Lighting Mode
     options:
-      - Adaptive
+      - Ambient
       - Work
       - Play
-    initial: Adaptive
+      - 'Off'
     icon: mdi:lightbulb-group
 
   study_rotary_selection:
@@ -75,6 +75,29 @@ template:
             states('sensor.plug_study_workbench_power')|is_number and
             states('sensor.alfred_power_estimate')|is_number
           }}
+      - name: Study LEDstrips Work Active
+        unique_id: study_ledstrips_work_active
+        state: &study_work_present >-
+          {{ is_state('device_tracker.worklaptop', 'home')
+             or is_state('device_tracker.worklaptop_dock', 'home')
+             or (is_state('device_tracker.worklaptop_wifi_hp', 'home')
+                 and (state_attr('device_tracker.worklaptop_wifi_hp', 'ap_mac')
+                      | default('', true) | lower) == 'ac:8b:a9:15:ef:09') }}
+        availability: >-
+          {{ is_state('device_tracker.worklaptop', 'home')
+             or is_state('device_tracker.worklaptop_dock', 'home')
+             or (states('device_tracker.worklaptop') in ['home', 'not_home']
+                 and states('device_tracker.worklaptop_dock') in ['home', 'not_home']
+                 and states('device_tracker.worklaptop_wifi_hp') in ['home', 'not_home']
+                 and (is_state('device_tracker.worklaptop_wifi_hp', 'not_home')
+                      or state_attr('device_tracker.worklaptop_wifi_hp', 'ap_mac')
+                         not in [none, '', 'unknown', 'unavailable'])) }}
+        delay_off: '00:02:00' # Allow docking handovers and brief disconnects.
+      - name: Study LEDstrips Play Active
+        unique_id: study_ledstrips_play_active
+        state: "{{ is_state('device_tracker.blokmeister_h2o2_proart', 'home') }}"
+        availability: "{{ states('device_tracker.blokmeister_h2o2_proart') in ['home', 'not_home'] }}"
+        delay_off: '00:02:00'
 #################
 #    SENSORS    #
 #################
@@ -95,6 +118,9 @@ binary_sensor:
 #    INPUT BOOLEANS    #
 ########################
 input_boolean:
+  study_ledstrips_automatic:
+    name: Study LEDstrips Automatic Switching
+    icon: mdi:autorenew
   soldering_mode:
     name: Soldering Mode
     initial: off
@@ -113,6 +139,115 @@ switch:
 #    AUTOMATIONS    #
 #####################
 automation:
+  - alias: '[study|ledstrips] Select mode from computer activity'
+    id: study_ledstrips_select_automatic_mode
+    mode: restart
+    # Native qualification waits are cancelled by HA restarts/reloads.
+    trigger:
+      - platform: state
+        entity_id: &study_computers
+          - binary_sensor.study_ledstrips_work_active
+          - binary_sensor.study_ledstrips_play_active
+        to: 'on'
+        for: '00:01:00'
+        id: arrival
+      - platform: state
+        entity_id: *study_computers
+        from: 'off'
+        to: 'on'
+        for: '00:10:00'
+        id: takeover
+      - platform: state
+        entity_id: *study_computers
+        to: 'off'
+        id: departure
+      - platform: template
+        value_template: >-
+          {{ is_state('binary_sensor.study_ledstrips_work_active', 'off')
+             and is_state('binary_sensor.study_ledstrips_play_active', 'off') }}
+        for: '00:03:00' # Plus two-minute disconnect grace = five minutes.
+        id: idle
+      - platform: state
+        entity_id: input_boolean.study_ledstrips_automatic
+        to: 'on'
+        id: enable
+    condition:
+      - condition: state
+        entity_id: input_boolean.study_ledstrips_automatic
+        state: 'on'
+      - condition: template
+        value_template: >-
+          {{ states('binary_sensor.study_ledstrips_work_active') in ['on', 'off']
+             and states('binary_sensor.study_ledstrips_play_active') in ['on', 'off'] }}
+    action:
+      - variables:
+          current: "{{ states('input_select.study_lighting_mode') }}"
+          work: "{{ is_state('binary_sensor.study_ledstrips_work_active', 'on') }}"
+          play: "{{ is_state('binary_sensor.study_ledstrips_play_active', 'on') }}"
+          work_present: *study_work_present
+          play_present: "{{ is_state('device_tracker.blokmeister_h2o2_proart', 'home') }}"
+          desired: >-
+            {% if work and play %}
+              {% set latest = 'Work' if states.binary_sensor.study_ledstrips_work_active.last_changed
+                   > states.binary_sensor.study_ledstrips_play_active.last_changed else 'Play' %}
+              {% set source = 'binary_sensor.study_ledstrips_' ~ (latest | lower) ~ '_active' %}
+              {% if trigger.id in ['takeover', 'enable']
+                   and (trigger.id == 'enable' or trigger.entity_id == source)
+                   and (now() - states[source].last_changed).total_seconds() >= 600
+                   and (work_present if latest == 'Work' else play_present) %}
+                {{ latest }}
+              {% else %}
+                {{ current if current in ['Work', 'Play'] else ('Play' if latest == 'Work' else 'Work') }}
+              {% endif %}
+            {% elif work %} Work
+            {% elif play %} Play
+            {% elif trigger.id in ['idle', 'enable'] %} Off
+            {% else %} {{ current }}
+            {% endif %}
+      - condition: template
+        value_template: '{{ desired != current }}'
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.study_lighting_mode
+        data:
+          option: '{{ desired }}'
+
+  - alias: '[study|ledstrips] Apply selected mode'
+    id: study_ledstrips_apply_selected_mode
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_select.study_lighting_mode
+        to: [Work, Play, Ambient, 'Off']
+        id: selection
+      - platform: homeassistant
+        event: start
+        id: startup
+      - platform: state
+        entity_id:
+          - light.study_desk_a_rgb_ledstrip
+          - light.study_cabinet_a_rgb_ledstrip
+        from: ['unavailable', 'unknown']
+        to: ['on', 'off']
+        id: reconnect
+    action:
+      # A direct UI/API choice pauses automatic switching. Our automation's
+      # service calls have no user_id, so its selections keep automatic enabled.
+      - if:
+          - "{{ trigger.id == 'selection' and trigger.to_state.context.user_id is not none }}"
+        then:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.study_ledstrips_automatic
+      - condition: template
+        value_template: "{{ trigger.id != 'reconnect' or not is_state('input_select.study_lighting_mode', 'Ambient') }}"
+      # Let the firmware's five-second startup rainbow finish on reconnect.
+      - if:
+          - "{{ trigger.id == 'reconnect' }}"
+        then:
+          - delay: '00:00:06'
+      - service: script.study_ledstrips_apply_mode
+
   - alias: '[study|lights] Turn on lights when motion is detected'
     id: 'study_lights_turn_on_lights_when_motion_is_detected'
     mode: restart
@@ -129,7 +264,7 @@ automation:
       - condition: template
         #value_template: "{{ states('sensor.average_illumination_study_2')|int < states('input_number.study_illumination_limit_lightoff')|int }}"
         value_template: >-
-          {% if is_state('light.study_lights', 'on') %}
+          {% if is_state('light.study', 'on') %}
             {{ states('sensor.study_light_1') | int(0) < states('input_number.study_illumination_limit_lighton') | int(1) }}
           {% else %}
             {{ states('sensor.study_light_1') | int(0) < states('input_number.study_illumination_limit_lightoff') | int(1) }}
@@ -138,7 +273,7 @@ automation:
       - service: light.turn_on
         data:
           entity_id:
-            - light.study_lights
+            - light.study
           brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
           color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
       - wait_for_trigger:
@@ -167,14 +302,14 @@ automation:
       - service: light.turn_on
         data:
           entity_id:
-            - light.study_lights
+            - light.study
           brightness_step: -110
           transition: 0.5
       - delay:
           seconds: 15
       - service: light.turn_off
         entity_id:
-          - light.study_lights
+          - light.study
 
   # - alias: 'Message when computer is still on when not home'
   #   trigger:
@@ -220,7 +355,7 @@ automation:
             sequence:
               - service: script.toggle_lights_with_adaptive_brightness
                 data:
-                  light_entity: light.study_lights
+                  light_entity: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition_time: 0.5
                   click_count: "{{ click_count }}"
           - conditions:
@@ -234,7 +369,7 @@ automation:
             sequence:
               - service: script.toggle_lights_with_adaptive_brightness
                 data:
-                  light_entity: light.study_lights
+                  light_entity: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition_time: 0.5
                   click_count: 1
           - conditions:
@@ -243,7 +378,7 @@ automation:
             sequence:
               - service: script.toggle_lights_with_adaptive_brightness
                 data:
-                  light_entity: light.study_lights
+                  light_entity: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition_time: 0.5
                   click_count: 2
 
@@ -263,7 +398,7 @@ automation:
             sequence:
               - service: light.toggle
                 data:
-                  entity_id: light.study_lights
+                  entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   brightness: 255
                   color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
           - conditions:
@@ -272,7 +407,7 @@ automation:
             sequence:
               - service: light.turn_on
                 data:
-                  entity_id: light.study_lights
+                  entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition: 0.5
                   brightness_step_pct: 10
           - conditions:
@@ -281,7 +416,7 @@ automation:
             sequence:
               - service: light.turn_on
                 data:
-                  entity_id: light.study_lights
+                  entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition: 0.5
                   brightness_step_pct: -10
           - conditions:
@@ -290,7 +425,7 @@ automation:
             sequence:
               - service: light.turn_on
                 data:
-                  entity_id: light.study_lights
+                  entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition: 0.5
                   color_temp_color_temp_kelvin: "{{ [state_attr('light.study', 'color_temp_kelvin') + 500 , 6500] | min }}"
           - conditions:
@@ -299,7 +434,7 @@ automation:
             sequence:
               - service: light.turn_on
                 data:
-                  entity_id: light.study_lights
+                  entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   transition: 0.5
                   color_temp_color_temp_kelvin: "{{ [state_attr('light.study', 'color_temp_kelvin') - 500 , 2000] | max }}"
 
@@ -327,7 +462,7 @@ automation:
             sequence:
               - service: light.toggle
                 data:
-                  entity_id: light.study_lights
+                  entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
                   brightness_pct: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'brightness_pct') | int(80) }}"
                   color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(4000) }}"
           - conditions:
@@ -452,7 +587,7 @@ automation:
                   option: light.ledstrip_study_workbench
       - service: script.flash_selected_light
         data:
-          entity_id: "{{ states('input_select.study_rotary_selection') }}"
+          entity_id: "{{ 'light.study' if states('input_select.study_rotary_selection') == 'light.study_lights' and not is_state('input_select.study_lighting_mode', 'Ambient') else states('input_select.study_rotary_selection') }}"
       - delay: "00:00:30"
       - service: input_select.select_option
         target:
@@ -475,7 +610,7 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: "{{ states('input_select.study_rotary_selection') }}"
+          entity_id: "{{ 'light.study' if states('input_select.study_rotary_selection') == 'light.study_lights' and not is_state('input_select.study_lighting_mode', 'Ambient') else states('input_select.study_rotary_selection') }}"
         data:
           transition: 0.4
           brightness_step_pct: "{{ trigger.event.data.rotation / 15 }}"
@@ -572,7 +707,7 @@ automation:
       - delay:
           seconds: 10
       - service: light.turn_off
-        entity_id: light.study_lights
+        entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
 
   - alias: '[study|desk] Toggle desk powerstrip sockets'
     id: yaml_automation_study_desk_toggle_desk_powerstrip_sockets
@@ -854,6 +989,9 @@ automation:
         to: "on"
     condition:
       - condition: state
+        entity_id: input_select.study_lighting_mode
+        state: Ambient
+      - condition: state
         entity_id: light.study_cabinet_a_rgb_ledstrip
         state: "on"
     action:
@@ -862,9 +1000,9 @@ automation:
         target:
           entity_id: light.study_desk_a_rgb_ledstrip
         data:
-          brightness: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'brightness') }}"
+          brightness_pct: 100
           rgbw_color: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'rgbw_color') }}"
-          #effect: "{{ state_attr('light.study_cabinet_a_rgb_ledstrip', 'effect') }}"
+          effect: 'None'
           transition: 10
 
   - alias: "[study|light] Toggle LEDstrips based on desk power and ambient light"
@@ -872,7 +1010,7 @@ automation:
     description: >
       Turn ON when desk power >50W for 1m AND lux <20 AND light.study is off.
       Turn OFF when desk power <50W for 5m AND light.study is off AND chair vibration is off for 5m.
-      Also turn OFF when study light sensor >400 lux for 5m (regardless of anything else).
+      Also turn OFF above 400 lux for 5m. These rules only apply in Ambient mode.
     mode: single
     trigger:
       # --- TURN ON when the whole "should be on" situation is true for 1m ---
@@ -897,7 +1035,10 @@ automation:
         above: 400
         for: "00:05:00"
         id: off_lux
-    condition: []
+    condition:
+      - condition: state
+        entity_id: input_select.study_lighting_mode
+        state: Ambient
     action:
       - choose:
           - conditions:
@@ -911,6 +1052,7 @@ automation:
                     - light.study_desk_a_rgb_ledstrip
                 data:
                   brightness_pct: 100
+                  effect: 'None'
                   color_temp_kelvin: >
                     {{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(3500) }}
           - conditions:
@@ -932,6 +1074,57 @@ automation:
 #    SCRIPTS    #
 #################
 script:
+  study_ledstrips_apply_mode:
+    alias: Study LEDstrips Apply Mode
+    mode: restart
+    sequence:
+      - variables:
+          selected: "{{ states('input_select.study_lighting_mode') }}"
+          # Entering Ambient follows the existing desk-power/lux requirement.
+          mode: >-
+            {{ 'Off' if selected == 'Ambient' and not
+               (states('sensor.plug_study_desk_power') | float(0) > 50
+                and states('sensor.study_light_1') | float(9999) < 20
+                and is_state('light.study', 'off')) else selected }}
+      - repeat:
+          for_each:
+            - light.study_desk_a_rgb_ledstrip
+            - light.study_cabinet_a_rgb_ledstrip
+          sequence:
+            - if:
+                - "{{ states(repeat.item) in ['on', 'off'] }}"
+              then:
+                - choose:
+                    - conditions: "{{ mode == 'Off' }}"
+                      sequence:
+                        - service: light.turn_off
+                          target:
+                            entity_id: '{{ repeat.item }}'
+                          data:
+                            transition: 5
+                    - conditions: "{{ mode in ['Work', 'Play'] }}"
+                      sequence:
+                        - service: light.turn_on
+                          target:
+                            entity_id: '{{ repeat.item }}'
+                          data:
+                            brightness_pct: 100
+                            rgbw_color: "{{ [96, 180, 255, 95] if mode == 'Work' else [210, 15, 255, 0] }}"
+                            effect: >-
+                              {% set effect = 'Study ' ~ mode %}
+                              {{ effect if effect in (state_attr(repeat.item, 'effect_list') or []) else 'None' }}
+                            transition: 30
+                    - conditions: "{{ mode == 'Ambient' }}"
+                      sequence:
+                        - service: light.turn_on
+                          target:
+                            entity_id: '{{ repeat.item }}'
+                          data:
+                            brightness_pct: 100
+                            effect: 'None'
+                            color_temp_kelvin: "{{ state_attr('switch.adaptive_lighting_adaptive_lighting', 'color_temp_kelvin') | int(3500) }}"
+                            transition: 30
+
   turn_off_all_study_desk_devices:
     alias: "Turn off all study desk devices"
     sequence:
@@ -1061,27 +1254,6 @@ scene:
         color_temp_kelvin: 2203
         transition: 1
 
-  - name: study_ledstrips_work_mode
-    entities:
-      light.study_desk_a_rgb_ledstrip:
-        state: on
-        rgbw_color: [135,7,255,133]
-        effect: 'None'
-      light.study_cabinet_a_rgb_ledstrip:
-        state: on
-        rgbw_color: [135,7,255,133]
-        effect: 'None'
-
-  - name: study_ledstrips_play_mode
-    entities:
-      light.study_desk_a_rgb_ledstrip:
-        state: on
-        brightness: 200
-        effect: 'Rainbow Swirl'  # Customize as needed
-      light.study_cabinet_a_rgb_ledstrip:
-        state: on
-        brightness: 200
-        effect: 'Rainbow Swirl'
 ################
 #    GROUPS    #
 ################

@@ -1,0 +1,70 @@
+# Shared inline effects, compiled into both study LEDstrip firmwares.
+light:
+  - id: !extend ledstrip
+    restore_mode: ALWAYS_OFF
+    effects:
+      - addressable_lambda:
+          name: Study Work
+          update_interval: 50ms
+          lambda: |-
+            static std::vector<Color> previous;
+            static uint32_t last_update = 0;
+            static float elapsed = 0.0f;
+            const uint32_t now = millis();
+            if (initial_run) {
+              previous.resize(it.size());
+              for (int i = 0; i < it.size(); i++) previous[i] = it[i].get();
+              elapsed = 0.0f;
+              last_update = now;
+            }
+            const float dt = (now - last_update) / 1000.0f;
+            last_update = now;
+            elapsed = fminf(30.0f, elapsed + dt);
+            const float blend = elapsed / 30.0f;  // Fade from the previous pixels over 30 seconds.
+            static float phase = 0.0f;
+            if (initial_run) phase = 0.0f;
+            phase = fmodf(phase + dt / 60.0f, 1.0f);  // One gentle travelling wave per minute.
+            for (int i = 0; i < it.size(); i++) {
+              const float wave = 0.5f + 0.5f * sinf(6.2831853f * (float(i) / it.size() - phase));
+              const float pulse = 0.96f + 0.04f * sinf(6.2831853f * phase * 2.0f);
+              const Color target((96 + 20 * wave) * pulse, (180 + 20 * wave) * pulse,
+                                 255 * pulse, (80 + 15 * wave) * pulse);
+              const Color old = previous[i];
+              it[i] = Color(
+                  old.red + (target.red - old.red) * blend,
+                  old.green + (target.green - old.green) * blend,
+                  old.blue + (target.blue - old.blue) * blend,
+                  old.white + (target.white - old.white) * blend);
+            }
+      - addressable_lambda:
+          name: Study Play
+          update_interval: 50ms
+          lambda: |-
+            static std::vector<Color> previous;
+            static uint32_t last_update = 0;
+            static float elapsed = 0.0f;
+            const uint32_t now = millis();
+            if (initial_run) {
+              previous.resize(it.size());
+              for (int i = 0; i < it.size(); i++) previous[i] = it[i].get();
+              elapsed = 0.0f;
+              last_update = now;
+            }
+            const float dt = (now - last_update) / 1000.0f;
+            last_update = now;
+            elapsed = fminf(30.0f, elapsed + dt);
+            const float blend = elapsed / 30.0f;  // Fade from the previous pixels over 30 seconds.
+            static float phase = 0.0f;
+            if (initial_run) phase = 0.0f;
+            phase = fmodf(phase + dt / 90.0f, 1.0f);  // Broad violet/copper bands drift over 90 seconds.
+            for (int i = 0; i < it.size(); i++) {
+              float copper = 0.5f + 0.5f * sinf(6.2831853f * (float(i) / it.size() - phase));
+              copper = copper * copper * (3.0f - 2.0f * copper);
+              const Color target(210 + 45 * copper, 15 + 79 * copper, 255 - 237 * copper, 0);
+              const Color old = previous[i];
+              it[i] = Color(
+                  old.red + (target.red - old.red) * blend,
+                  old.green + (target.green - old.green) * blend,
+                  old.blue + (target.blue - old.blue) * blend,
+                  old.white + (target.white - old.white) * blend);
+            }
