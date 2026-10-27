@@ -1,0 +1,56 @@
+defaults:
+  fan_name: "Fan"
+  fan_id: fan_1
+  fan_output_id: fan_output_1
+  tach_sensor_id: fanspeed_sensor_1
+  pwm_pin: GPIO1
+  tach_pin: GPIO2
+  ledc_channel: "0"
+  pwm_frequency: "25000 Hz"
+  pwm_inverted: "true"
+  zero_means_zero: "true"
+  fan_restore_mode: "RESTORE_DEFAULT_ON"
+  tach_internal_filter: "13us"
+  tach_update_interval: "1s"
+  tach_rpm_multiplier: "0.5"
+  tach_publish_interval: "60s"
+  tach_delta: "100"
+
+output:
+  - platform: ledc
+    id: ${fan_output_id}
+    pin: ${pwm_pin}
+    channel: ${ledc_channel}
+    frequency: ${pwm_frequency}
+    inverted: ${pwm_inverted}
+    zero_means_zero: ${zero_means_zero}
+
+fan:
+  - platform: speed
+    output: ${fan_output_id}
+    id: ${fan_id}
+    name: "${fan_name}"
+    speed_count: 100
+    restore_mode: ${fan_restore_mode}
+
+sensor:
+  - platform: pulse_counter
+    name: "${fan_name} Speed"
+    id: ${tach_sensor_id}
+    pin:
+      number: ${tach_pin}
+      mode: INPUT
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: ${tach_internal_filter}
+    unit_of_measurement: "RPM"
+    icon: "mdi:fan"
+    state_class: measurement
+    update_interval: ${tach_update_interval}
+    accuracy_decimals: 0
+    filters:
+      - multiply: ${tach_rpm_multiplier}
+      - or:
+          - throttle_average: ${tach_publish_interval}
+          - delta: ${tach_delta}

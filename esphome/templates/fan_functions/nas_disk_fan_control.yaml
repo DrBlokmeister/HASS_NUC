@@ -1,0 +1,488 @@
+defaults:
+  controlled_fan_1_id: fan_1
+  controlled_fan_2_id: fan_2
+  controlled_fan_3_id: fan_3
+
+  disk_1_temperature_entity: sensor.tower_disk_disk1_temperature
+  disk_2_temperature_entity: sensor.tower_disk_disk2_temperature
+  disk_3_temperature_entity: sensor.tower_disk_disk3_temperature
+  disk_4_temperature_entity: sensor.tower_disk_disk4_temperature
+  disk_5_temperature_entity: sensor.tower_disk_disk5_temperature
+  parity_temperature_entity: sensor.tower_disk_parity_temperature
+
+  disk_1_spin_entity: switch.tower_disk_disk1_spin
+  disk_2_spin_entity: switch.tower_disk_disk2_spin
+  disk_3_spin_entity: switch.tower_disk_disk3_spin
+  disk_4_spin_entity: switch.tower_disk_disk4_spin
+  disk_5_spin_entity: switch.tower_disk_disk5_spin
+
+select:
+  - platform: template
+    name: "NAS Fan Control Mode"
+    id: nas_fan_control_mode
+    icon: "mdi:fan-cog"
+    options:
+      - "Auto"
+      - "Fixed"
+      - "Individual"
+    initial_option: "Auto"
+    optimistic: true
+    restore_value: true
+
+number:
+  - platform: template
+    name: "NAS Fan Base Speed"
+    id: nas_fan_base_speed
+    icon: "mdi:fan-speed-1"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 20
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "NAS Fan Failsafe Speed"
+    id: nas_fan_failsafe_speed
+    icon: "mdi:fan-alert"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 70
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "NAS Fan Maximum Speed"
+    id: nas_fan_maximum_speed
+    icon: "mdi:fan-speed-3"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 70
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "NAS Fan Base Temperature"
+    id: nas_fan_base_temperature
+    icon: "mdi:thermometer-low"
+    unit_of_measurement: "°C"
+    min_value: 20
+    max_value: 50
+    step: 1
+    initial_value: 30
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "NAS Fan Maximum Temperature"
+    id: nas_fan_maximum_temperature
+    icon: "mdi:thermometer-high"
+    unit_of_measurement: "°C"
+    min_value: 30
+    max_value: 70
+    step: 1
+    initial_value: 50
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "NAS Fan Fixed Speed"
+    id: nas_fan_fixed_speed
+    icon: "mdi:fan"
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 1
+    initial_value: 40
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "NAS Disk Hotspot Offset"
+    id: nas_disk_hotspot_offset
+    icon: "mdi:thermometer-chevron-down"
+    unit_of_measurement: "°C"
+    min_value: 0
+    max_value: 15
+    step: 1
+    initial_value: 5
+    optimistic: true
+    restore_value: true
+
+sensor:
+  - platform: homeassistant
+    id: ha_disk_1_temperature
+    entity_id: ${disk_1_temperature_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_2_temperature
+    entity_id: ${disk_2_temperature_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_3_temperature
+    entity_id: ${disk_3_temperature_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_4_temperature
+    entity_id: ${disk_4_temperature_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_5_temperature
+    entity_id: ${disk_5_temperature_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_parity_temperature
+    entity_id: ${parity_temperature_entity}
+    internal: true
+
+  - platform: template
+    name: "NAS Mean Disk Temperature"
+    id: nas_mean_disk_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+
+  - platform: template
+    name: "NAS Median Disk Temperature"
+    id: nas_median_disk_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+
+  - platform: template
+    name: "NAS Maximum Disk Temperature"
+    id: nas_max_disk_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+
+  - platform: template
+    name: "NAS Fan Control Temperature"
+    id: nas_fan_control_temperature
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: never
+
+  - platform: template
+    name: "NAS Automatic Fan Speed"
+    id: nas_automatic_fan_speed
+    unit_of_measurement: "%"
+    icon: "mdi:fan-auto"
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    name: "NAS Available Disk Temperature Count"
+    id: nas_available_disk_temperature_count
+    icon: "mdi:harddisk"
+    accuracy_decimals: 0
+    update_interval: never
+
+binary_sensor:
+  - platform: homeassistant
+    id: ha_disk_1_spinning
+    entity_id: ${disk_1_spin_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_2_spinning
+    entity_id: ${disk_2_spin_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_3_spinning
+    entity_id: ${disk_3_spin_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_4_spinning
+    entity_id: ${disk_4_spin_entity}
+    internal: true
+
+  - platform: homeassistant
+    id: ha_disk_5_spinning
+    entity_id: ${disk_5_spin_entity}
+    internal: true
+
+interval:
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            api.connected:
+          then:
+            - lambda: |-
+                const auto set_fan_speed = [](auto *fan, bool unavailable, int speed) {
+                  if (unavailable) {
+                    return;
+                  }
+
+                  auto call = fan->turn_on();
+                  call.set_speed(speed);
+                  call.perform();
+                };
+
+                const auto set_managed_fans = [&](int speed) {
+                  speed = std::clamp(speed, 1, 100);
+
+                  set_fan_speed(
+                      id(${controlled_fan_1_id}),
+                      id(${controlled_fan_1_id}_recovery_active) ||
+                          id(${controlled_fan_1_id}_calibration_active) ||
+                          id(${controlled_fan_1_id}_health_lockout),
+                      speed
+                  );
+                  set_fan_speed(
+                      id(${controlled_fan_2_id}),
+                      id(${controlled_fan_2_id}_recovery_active) ||
+                          id(${controlled_fan_2_id}_calibration_active) ||
+                          id(${controlled_fan_2_id}_health_lockout),
+                      speed
+                  );
+                  set_fan_speed(
+                      id(${controlled_fan_3_id}),
+                      id(${controlled_fan_3_id}_recovery_active) ||
+                          id(${controlled_fan_3_id}_calibration_active) ||
+                          id(${controlled_fan_3_id}_health_lockout),
+                      speed
+                  );
+                };
+
+                const float configured_maximum_speed = std::clamp(
+                    id(nas_fan_maximum_speed).state,
+                    1.0f,
+                    100.0f
+                );
+                const float configured_base_speed = std::clamp(
+                    id(nas_fan_base_speed).state,
+                    1.0f,
+                    configured_maximum_speed
+                );
+
+                int available_spin_states = 0;
+                int spinning_disk_count = 0;
+
+                const auto process_spin_state =
+                    [&available_spin_states, &spinning_disk_count](auto *spin_sensor) {
+                      if (!spin_sensor->has_state()) {
+                        return;
+                      }
+
+                      available_spin_states++;
+
+                      if (spin_sensor->state) {
+                        spinning_disk_count++;
+                      }
+                    };
+
+                process_spin_state(id(ha_disk_1_spinning));
+                process_spin_state(id(ha_disk_2_spinning));
+                process_spin_state(id(ha_disk_3_spinning));
+                process_spin_state(id(ha_disk_4_spinning));
+                process_spin_state(id(ha_disk_5_spinning));
+
+                const bool all_data_disks_spun_down =
+                    available_spin_states == 5 &&
+                    spinning_disk_count == 0;
+
+                std::vector<float> temperatures;
+                const float disk_temperatures[] = {
+                    id(ha_disk_1_temperature).state,
+                    id(ha_disk_2_temperature).state,
+                    id(ha_disk_3_temperature).state,
+                    id(ha_disk_4_temperature).state,
+                    id(ha_disk_5_temperature).state,
+                    id(ha_parity_temperature).state,
+                };
+
+                for (const float temperature : disk_temperatures) {
+                  if (std::isfinite(temperature) &&
+                      temperature >= 5.0f &&
+                      temperature <= 80.0f) {
+                    temperatures.push_back(temperature);
+                  }
+                }
+
+                id(nas_available_disk_temperature_count)->publish_state(
+                    static_cast<float>(temperatures.size())
+                );
+
+                const auto publish_no_temperature = []() {
+                  id(nas_mean_disk_temperature)->publish_state(NAN);
+                  id(nas_median_disk_temperature)->publish_state(NAN);
+                  id(nas_max_disk_temperature)->publish_state(NAN);
+                  id(nas_fan_control_temperature)->publish_state(NAN);
+                };
+
+                if (all_data_disks_spun_down) {
+                  publish_no_temperature();
+                  id(nas_automatic_fan_speed)->publish_state(configured_base_speed);
+
+                  if (id(nas_fan_control_mode).current_option() == "Auto") {
+                    set_managed_fans(static_cast<int>(std::lround(configured_base_speed)));
+                  }
+                  return;
+                }
+
+                if (temperatures.empty()) {
+                  const float failsafe_speed = std::clamp(
+                      id(nas_fan_failsafe_speed).state,
+                      1.0f,
+                      100.0f
+                  );
+
+                  publish_no_temperature();
+                  id(nas_automatic_fan_speed)->publish_state(failsafe_speed);
+
+                  if (id(nas_fan_control_mode).current_option() == "Auto") {
+                    set_managed_fans(static_cast<int>(std::lround(failsafe_speed)));
+                  }
+                  return;
+                }
+
+                std::sort(temperatures.begin(), temperatures.end());
+
+                float sum = 0.0f;
+                for (const float temperature : temperatures) {
+                  sum += temperature;
+                }
+
+                const float mean =
+                    sum / static_cast<float>(temperatures.size());
+
+                float median;
+                if ((temperatures.size() % 2U) == 0U) {
+                  const size_t upper_index = temperatures.size() / 2U;
+                  const size_t lower_index = upper_index - 1U;
+                  median =
+                      (temperatures[lower_index] + temperatures[upper_index]) /
+                      2.0f;
+                } else {
+                  median = temperatures[temperatures.size() / 2U];
+                }
+
+                const float maximum = temperatures.back();
+                const float control_temperature = std::max(
+                    median,
+                    maximum - id(nas_disk_hotspot_offset).state
+                );
+
+                id(nas_mean_disk_temperature)->publish_state(mean);
+                id(nas_median_disk_temperature)->publish_state(median);
+                id(nas_max_disk_temperature)->publish_state(maximum);
+                id(nas_fan_control_temperature)->publish_state(control_temperature);
+
+                const float base_temperature =
+                    id(nas_fan_base_temperature).state;
+                const float maximum_temperature =
+                    id(nas_fan_maximum_temperature).state;
+
+                float requested_speed;
+
+                if (maximum_temperature <= base_temperature) {
+                  requested_speed = configured_maximum_speed;
+                } else if (control_temperature <= base_temperature) {
+                  requested_speed = configured_base_speed;
+                } else if (control_temperature >= maximum_temperature) {
+                  requested_speed = configured_maximum_speed;
+                } else {
+                  const float fraction =
+                      (control_temperature - base_temperature) /
+                      (maximum_temperature - base_temperature);
+
+                  requested_speed =
+                      configured_base_speed +
+                      fraction *
+                          (configured_maximum_speed - configured_base_speed);
+                }
+
+                requested_speed = std::clamp(
+                    requested_speed,
+                    configured_base_speed,
+                    configured_maximum_speed
+                );
+
+                id(nas_automatic_fan_speed)->publish_state(requested_speed);
+
+                int commanded_speed =
+                    static_cast<int>(std::lround(requested_speed));
+
+                if (id(nas_fan_control_mode).current_option() == "Fixed") {
+                  commanded_speed = static_cast<int>(
+                      std::lround(id(nas_fan_fixed_speed).state)
+                  );
+                } else if (
+                    id(nas_fan_control_mode).current_option() == "Individual"
+                ) {
+                  return;
+                }
+
+                set_managed_fans(commanded_speed);
+          else:
+            - lambda: |-
+                if (id(nas_fan_control_mode).current_option() != "Auto") {
+                  return;
+                }
+
+                const int failsafe_speed = std::clamp(
+                    static_cast<int>(
+                        std::lround(id(nas_fan_failsafe_speed).state)
+                    ),
+                    1,
+                    100
+                );
+
+                const auto set_fan_speed = [failsafe_speed](auto *fan, bool unavailable) {
+                  if (unavailable) {
+                    return;
+                  }
+
+                  auto call = fan->turn_on();
+                  call.set_speed(failsafe_speed);
+                  call.perform();
+                };
+
+                id(nas_mean_disk_temperature)->publish_state(NAN);
+                id(nas_median_disk_temperature)->publish_state(NAN);
+                id(nas_max_disk_temperature)->publish_state(NAN);
+                id(nas_fan_control_temperature)->publish_state(NAN);
+                id(nas_available_disk_temperature_count)->publish_state(0.0f);
+                id(nas_automatic_fan_speed)->publish_state(failsafe_speed);
+
+                set_fan_speed(
+                    id(${controlled_fan_1_id}),
+                    id(${controlled_fan_1_id}_recovery_active) ||
+                        id(${controlled_fan_1_id}_calibration_active) ||
+                        id(${controlled_fan_1_id}_health_lockout)
+                );
+                set_fan_speed(
+                    id(${controlled_fan_2_id}),
+                    id(${controlled_fan_2_id}_recovery_active) ||
+                        id(${controlled_fan_2_id}_calibration_active) ||
+                        id(${controlled_fan_2_id}_health_lockout)
+                );
+                set_fan_speed(
+                    id(${controlled_fan_3_id}),
+                    id(${controlled_fan_3_id}_recovery_active) ||
+                        id(${controlled_fan_3_id}_calibration_active) ||
+                        id(${controlled_fan_3_id}_health_lockout)
+                );

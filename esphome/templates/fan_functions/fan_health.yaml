@@ -1,0 +1,501 @@
+defaults:
+  fan_name: "Fan"
+  fan_id: fan_1
+  tach_sensor_id: fanspeed_sensor_1
+
+  # Two-point calibration. Between these points the model interpolates linearly;
+  # outside them it extrapolates linearly. Keep monitoring disabled below a PWM
+  # where this approximation is known to be reliable.
+  calibration_pwm_low: "20"
+  calibration_rpm_low: "800"
+  calibration_pwm_high: "80"
+  calibration_rpm_high: "2400"
+  monitor_min_pwm: "20"
+
+  # Trigger when measured RPM stays below this fraction of expected RPM.
+  # Only underspeed is considered a disturbance; overspeed (for example from
+  # blowing air through the fan) is deliberately ignored.
+  minimum_rpm_ratio: "0.65"
+  disturbance_delay: "15s"
+
+  # Recovery behaviour.
+  recovery_attempts: "5"
+  recovery_off_time: "5s"
+  recovery_settle_time: "15s"
+
+  # Quick two-point calibration behaviour.
+  calibration_off_time: "5s"
+  calibration_settle_time: "30s"
+
+  notification_id_prefix: "fan_fault"
+
+globals:
+  - id: ${fan_id}_recovery_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: ${fan_id}_calibration_active
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: ${fan_id}_maintenance_force_off
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: ${fan_id}_maintenance_speed
+    type: int
+    restore_value: false
+    initial_value: "0"
+
+  - id: ${fan_id}_health_lockout
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: ${fan_id}_recovery_success
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: ${fan_id}_saved_was_on
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+  - id: ${fan_id}_saved_speed
+    type: int
+    restore_value: false
+    initial_value: "0"
+
+  - id: ${fan_id}_calibration_low_rpm
+    type: float
+    restore_value: false
+    initial_value: "0.0"
+
+  - id: ${fan_id}_calibration_high_rpm
+    type: float
+    restore_value: false
+    initial_value: "0.0"
+
+switch:
+  - platform: template
+    name: "${fan_name} Disturbance Protection"
+    id: ${fan_id}_disturbance_protection
+    icon: "mdi:fan-alert"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_off_action:
+      - script.stop: ${fan_id}_recover
+      - lambda: |-
+          id(${fan_id}_recovery_active) = false;
+          id(${fan_id}_maintenance_force_off) = false;
+          id(${fan_id}_health_lockout) = false;
+          id(${fan_id}_recovery_success) = false;
+
+          ESP_LOGI(
+              "fan_health",
+              "${fan_name}: disturbance protection disabled and fault lockout cleared"
+          );
+
+binary_sensor:
+  - platform: template
+    id: ${fan_id}_disturbance_candidate
+    internal: true
+    lambda: |-
+      if (!id(${fan_id}_disturbance_protection).state ||
+          id(${fan_id}_health_lockout) ||
+          id(${fan_id}_recovery_active) ||
+          id(${fan_id}_calibration_active) ||
+          !id(${fan_id}).state) {
+        return false;
+      }
+
+      const int pwm = id(${fan_id}).speed;
+
+      if (pwm < ${monitor_min_pwm}) {
+        return false;
+      }
+
+      constexpr float pwm_low = ${calibration_pwm_low};
+      constexpr float rpm_low = ${calibration_rpm_low};
+      constexpr float pwm_high = ${calibration_pwm_high};
+      constexpr float rpm_high = ${calibration_rpm_high};
+
+      if (pwm_high <= pwm_low) {
+        return false;
+      }
+
+      const float slope =
+          (rpm_high - rpm_low) / (pwm_high - pwm_low);
+      const float expected_rpm =
+          rpm_low + (static_cast<float>(pwm) - pwm_low) * slope;
+      const float actual_rpm = id(${tach_sensor_id}).state;
+
+      if (expected_rpm <= 0.0f) {
+        return false;
+      }
+
+      if (!std::isfinite(actual_rpm)) {
+        return true;
+      }
+
+      return actual_rpm < expected_rpm * ${minimum_rpm_ratio};
+    filters:
+      - delayed_on: ${disturbance_delay}
+      - delayed_off: 2s
+    on_press:
+      - script.execute: ${fan_id}_recover
+
+  - platform: template
+    name: "${fan_name} Fault"
+    id: ${fan_id}_fault
+    device_class: problem
+    entity_category: diagnostic
+    lambda: |-
+      return id(${fan_id}_health_lockout);
+
+button:
+  - platform: template
+    name: "${fan_name} Quick Calibration"
+    id: ${fan_id}_quick_calibration_button
+    icon: "mdi:chart-line"
+    entity_category: diagnostic
+    on_press:
+      - script.execute: ${fan_id}_quick_calibration
+
+fan:
+  - id: !extend ${fan_id}
+    on_turn_on:
+      - lambda: |-
+          const bool maintenance_active =
+              id(${fan_id}_recovery_active) ||
+              id(${fan_id}_calibration_active);
+
+          if (id(${fan_id}_health_lockout) ||
+              id(${fan_id}_maintenance_force_off)) {
+            auto call = id(${fan_id})->turn_off();
+            call.perform();
+            return;
+          }
+
+          if (maintenance_active &&
+              id(${fan_id}).speed != id(${fan_id}_maintenance_speed)) {
+            auto call = id(${fan_id})->turn_on();
+            call.set_speed(id(${fan_id}_maintenance_speed));
+            call.perform();
+          }
+
+    on_turn_off:
+      - lambda: |-
+          const bool maintenance_active =
+              id(${fan_id}_recovery_active) ||
+              id(${fan_id}_calibration_active);
+
+          if (maintenance_active &&
+              !id(${fan_id}_maintenance_force_off) &&
+              !id(${fan_id}_health_lockout)) {
+            auto call = id(${fan_id})->turn_on();
+            call.set_speed(id(${fan_id}_maintenance_speed));
+            call.perform();
+          }
+
+    on_speed_set:
+      - lambda: |-
+          const bool maintenance_active =
+              id(${fan_id}_recovery_active) ||
+              id(${fan_id}_calibration_active);
+
+          if (id(${fan_id}_health_lockout) ||
+              id(${fan_id}_maintenance_force_off)) {
+            auto call = id(${fan_id})->turn_off();
+            call.perform();
+            return;
+          }
+
+          if (maintenance_active &&
+              x != id(${fan_id}_maintenance_speed)) {
+            auto call = id(${fan_id})->turn_on();
+            call.set_speed(id(${fan_id}_maintenance_speed));
+            call.perform();
+          }
+
+script:
+  - id: ${fan_id}_recover
+    mode: single
+    then:
+      - lambda: |-
+          id(${fan_id}_recovery_active) = true;
+          id(${fan_id}_recovery_success) = false;
+          id(${fan_id}_maintenance_force_off) = false;
+          id(${fan_id}_maintenance_speed) = id(${fan_id}).speed;
+
+          constexpr float pwm_low = ${calibration_pwm_low};
+          constexpr float rpm_low = ${calibration_rpm_low};
+          constexpr float pwm_high = ${calibration_pwm_high};
+          constexpr float rpm_high = ${calibration_rpm_high};
+
+          const float slope =
+              (rpm_high - rpm_low) / (pwm_high - pwm_low);
+          const float expected_rpm =
+              rpm_low +
+              (static_cast<float>(id(${fan_id}_maintenance_speed)) - pwm_low) *
+                  slope;
+
+          ESP_LOGW(
+              "fan_health",
+              "${fan_name}: disturbance detected at %d%%: measured %.0f RPM, expected %.0f RPM",
+              id(${fan_id}_maintenance_speed),
+              id(${tach_sensor_id}).state,
+              expected_rpm
+          );
+
+      - if:
+          condition:
+            api.connected:
+          then:
+            - homeassistant.action:
+                action: persistent_notification.create
+                data:
+                  title: "${fan_name} disturbance detected"
+                  notification_id: "${notification_id_prefix}_${fan_id}"
+                data_template:
+                  message: >-
+                    ${fan_name} is running too slowly. PWM={{ pwm }}%, measured={{ actual_rpm | round(0) }} RPM,
+                    expected={{ expected_rpm | round(0) }} RPM. ESPHome will power-cycle the fan up to
+                    ${recovery_attempts} times.
+                variables:
+                  pwm: !lambda |-
+                    return id(${fan_id}_maintenance_speed);
+                  actual_rpm: !lambda |-
+                    return id(${tach_sensor_id}).state;
+                  expected_rpm: !lambda |-
+                    constexpr float pwm_low = ${calibration_pwm_low};
+                    constexpr float rpm_low = ${calibration_rpm_low};
+                    constexpr float pwm_high = ${calibration_pwm_high};
+                    constexpr float rpm_high = ${calibration_rpm_high};
+                    const float slope =
+                        (rpm_high - rpm_low) / (pwm_high - pwm_low);
+                    return rpm_low +
+                          (static_cast<float>(id(${fan_id}_maintenance_speed)) - pwm_low) *
+                              slope;
+
+      - repeat:
+          count: ${recovery_attempts}
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(${fan_id}_recovery_success) &&
+                          id(${fan_id}_disturbance_protection).state;
+                then:
+                  - lambda: |-
+                      ESP_LOGW(
+                          "fan_health",
+                          "${fan_name}: recovery attempt %d/${recovery_attempts}",
+                          static_cast<int>(iteration) + 1
+                      );
+
+                      id(${fan_id}_maintenance_force_off) = true;
+
+                  - fan.turn_off: ${fan_id}
+                  - delay: ${recovery_off_time}
+
+                  - lambda: |-
+                      id(${fan_id}_maintenance_force_off) = false;
+
+                  - fan.turn_on:
+                      id: ${fan_id}
+                      speed: !lambda |-
+                        return id(${fan_id}_maintenance_speed);
+
+                  - delay: ${recovery_settle_time}
+
+                  - lambda: |-
+                      constexpr float pwm_low = ${calibration_pwm_low};
+                      constexpr float rpm_low = ${calibration_rpm_low};
+                      constexpr float pwm_high = ${calibration_pwm_high};
+                      constexpr float rpm_high = ${calibration_rpm_high};
+
+                      const float slope =
+                          (rpm_high - rpm_low) / (pwm_high - pwm_low);
+                      const float expected_rpm =
+                          rpm_low +
+                          (static_cast<float>(id(${fan_id}_maintenance_speed)) - pwm_low) *
+                              slope;
+                      const float actual_rpm = id(${tach_sensor_id}).state;
+
+                      id(${fan_id}_recovery_success) =
+                          std::isfinite(actual_rpm) &&
+                          actual_rpm >= expected_rpm * ${minimum_rpm_ratio};
+
+                      if (id(${fan_id}_recovery_success)) {
+                        ESP_LOGI(
+                            "fan_health",
+                            "${fan_name}: recovered at %.0f RPM (expected %.0f RPM)",
+                            actual_rpm,
+                            expected_rpm
+                        );
+                      }
+
+      - if:
+          condition:
+            lambda: |-
+              return id(${fan_id}_recovery_success);
+          then:
+            - lambda: |-
+                id(${fan_id}_recovery_active) = false;
+                id(${fan_id}_maintenance_force_off) = false;
+
+            - if:
+                condition:
+                  api.connected:
+                then:
+                  - homeassistant.action:
+                      action: persistent_notification.dismiss
+                      data:
+                        notification_id: "${notification_id_prefix}_${fan_id}"
+          else:
+            - lambda: |-
+                id(${fan_id}_health_lockout) = true;
+                id(${fan_id}_recovery_active) = false;
+                id(${fan_id}_maintenance_force_off) = false;
+
+            - fan.turn_off: ${fan_id}
+
+            - logger.log:
+                level: ERROR
+                format: "${fan_name}: failed to recover after ${recovery_attempts} attempts; fan locked off"
+
+            - if:
+                condition:
+                  api.connected:
+                then:
+                  - homeassistant.action:
+                      action: persistent_notification.create
+                      data:
+                        title: "${fan_name} failed"
+                        notification_id: "${notification_id_prefix}_${fan_id}"
+                        message: >-
+                          ${fan_name} failed to recover after ${recovery_attempts} power-cycle attempts and has been
+                          locked OFF. Disable the '${fan_name} Disturbance Protection' switch to clear the lockout.
+
+  - id: ${fan_id}_quick_calibration
+    mode: single
+    then:
+      - lambda: |-
+          id(${fan_id}_saved_was_on) = id(${fan_id}).state;
+          id(${fan_id}_saved_speed) = id(${fan_id}).speed;
+          id(${fan_id}_calibration_active) = true;
+          id(${fan_id}_health_lockout) = false;
+          id(${fan_id}_maintenance_force_off) = true;
+          id(${fan_id}_calibration_low_rpm) = NAN;
+          id(${fan_id}_calibration_high_rpm) = NAN;
+
+          ESP_LOGI(
+              "fan_calibration",
+              "${fan_name}: starting quick two-point calibration at ${calibration_pwm_low}%% and ${calibration_pwm_high}%%"
+          );
+
+      - fan.turn_off: ${fan_id}
+      - delay: ${calibration_off_time}
+
+      - lambda: |-
+          id(${fan_id}_maintenance_force_off) = false;
+          id(${fan_id}_maintenance_speed) = ${calibration_pwm_low};
+
+      - fan.turn_on:
+          id: ${fan_id}
+          speed: ${calibration_pwm_low}
+
+      - delay: ${calibration_settle_time}
+
+      - lambda: |-
+          id(${fan_id}_calibration_low_rpm) = id(${tach_sensor_id}).state;
+          id(${fan_id}_maintenance_speed) = ${calibration_pwm_high};
+
+      - fan.turn_on:
+          id: ${fan_id}
+          speed: ${calibration_pwm_high}
+
+      - delay: ${calibration_settle_time}
+
+      - lambda: |-
+          id(${fan_id}_calibration_high_rpm) = id(${tach_sensor_id}).state;
+
+      - if:
+          condition:
+            lambda: |-
+              return std::isfinite(id(${fan_id}_calibration_low_rpm)) &&
+                    std::isfinite(id(${fan_id}_calibration_high_rpm)) &&
+                    id(${fan_id}_calibration_low_rpm) > 0.0f &&
+                    id(${fan_id}_calibration_high_rpm) > 0.0f;
+          then:
+            - lambda: |-
+                const float low_rpm = id(${fan_id}_calibration_low_rpm);
+                const float high_rpm = id(${fan_id}_calibration_high_rpm);
+                const float slope =
+                    (high_rpm - low_rpm) /
+                    (${calibration_pwm_high} - ${calibration_pwm_low});
+                const float intercept =
+                    low_rpm - slope * ${calibration_pwm_low};
+
+                ESP_LOGI(
+                    "fan_calibration",
+                    "${fan_name}: calibration complete: low=${calibration_pwm_low}%%/%.1f RPM, high=${calibration_pwm_high}%%/%.1f RPM, slope=%.4f, intercept=%.1f",
+                    low_rpm,
+                    high_rpm,
+                    slope,
+                    intercept
+                );
+
+            - if:
+                condition:
+                  api.connected:
+                then:
+                  - homeassistant.action:
+                      action: persistent_notification.create
+                      data:
+                        title: "${fan_name} quick calibration"
+                        notification_id: "${notification_id_prefix}_${fan_id}_calibration"
+                      data_template:
+                        message: >-
+                          Copy these values into the ${fan_name} fan_health package include:
+                          calibration_pwm_low: "${calibration_pwm_low}",
+                          calibration_rpm_low: "{{ low_rpm | round(1) }}",
+                          calibration_pwm_high: "${calibration_pwm_high}",
+                          calibration_rpm_high: "{{ high_rpm | round(1) }}".
+                      variables:
+                        low_rpm: !lambda |-
+                          return id(${fan_id}_calibration_low_rpm);
+                        high_rpm: !lambda |-
+                          return id(${fan_id}_calibration_high_rpm);
+          else:
+            - logger.log:
+                level: ERROR
+                format: "${fan_name}: quick calibration failed because no valid RPM samples were received"
+
+      - if:
+          condition:
+            lambda: |-
+              return id(${fan_id}_saved_was_on);
+          then:
+            - lambda: |-
+                id(${fan_id}_maintenance_speed) = id(${fan_id}_saved_speed);
+
+            - fan.turn_on:
+                id: ${fan_id}
+                speed: !lambda |-
+                  return id(${fan_id}_saved_speed);
+          else:
+            - lambda: |-
+                id(${fan_id}_maintenance_force_off) = true;
+
+            - fan.turn_off: ${fan_id}
+
+      - lambda: |-
+          id(${fan_id}_calibration_active) = false;
+          id(${fan_id}_maintenance_force_off) = false;
