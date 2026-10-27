@@ -1143,29 +1143,104 @@ cards:
                 entity_id: button.ha_unifi_speedtest_run_speedtest_wan_ppp0
               confirmation:
                 text: Run a speedtest on primary WAN (ppp0)?
-      - type: custom:mini-graph-card
-        entities:
+
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: WAN Speedtest
+          show_states: true
+          colorize_states: true
+        graph_span: 24h
+        span:
+          start: day
+        update_interval: 5min
+        now:
+          show: true
+          label: Now
+          color: '#FF9800'
+        apex_config:
+          chart:
+            height: 250px
+          legend:
+            show: false
+        yaxis:
+          - id: speed
+            min: 0
+            max: ~1000
+            decimals: 0
+            align_to: 200
+            apex_config:
+              tickAmount: 5
+              title:
+                text: Mbps
+          - id: ping
+            opposite: true
+            min: 0
+            max: ~20
+            decimals: 0
+            apex_config:
+              tickAmount: 5
+              title:
+                text: ms
+        all_series_config:
+          type: line
+          curve: straight
+          stroke_width: 3
+          float_precision: 0
+          extend_to: false
+          show:
+            in_header: false
+            legend_value: false
+        series:
           - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl
-            name: Down
+            name: Down Yesterday
+            yaxis_id: speed
+            offset: '-1d'
+            color: '#42A5F5'
+            opacity: 0.35
+            stroke_width: 2
+            stroke_dash: 5
           - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ul
-            name: Up
+            name: Up Yesterday
+            yaxis_id: speed
+            offset: '-1d'
+            color: '#66BB6A'
+            opacity: 0.35
+            stroke_width: 2
+            stroke_dash: 5
+          - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping
+            name: Ping Yesterday
+            yaxis_id: ping
+            offset: '-1d'
+            color: '#FFB74D'
+            opacity: 0.3
+            stroke_width: 1
+            stroke_dash: 5
+          - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_dl
+            name: Download
+            yaxis_id: speed
+            color: '#42A5F5'
+            stroke_width: 3
+            float_precision: 0
+            show:
+              in_header: raw
+          - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ul
+            name: Upload
+            yaxis_id: speed
+            color: '#66BB6A'
+            stroke_width: 3
+            float_precision: 0
+            show:
+              in_header: raw
           - entity: sensor.ha_unifi_speedtest_primary_wan_wan_ppp0_unifi_speed_test_primary_wan_ppp0_ping
             name: Ping
-            y_axis: 'secondary'
-        icon: mdi:swap-vertical-bold
-        name: Speedtest
-        hours_to_show: 48
-        points_per_hour: 1
-        hour24: true
-        font_size: 70
-        height: 250
-        line_width: 2.5
-        lower_bound: 0
-        lower_bound_secondary: 0
-        show:
-          labels: true
-          average: true
-          labels_secondary: true
+            yaxis_id: ping
+            color: '#FFB74D'
+            stroke_width: 2
+            float_precision: 1
+            show:
+              in_header: raw
+
 
   - type: custom:apexcharts-card
     header:
