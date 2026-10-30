@@ -26,9 +26,13 @@ light:
             phase = fmodf(phase + dt / 60.0f, 1.0f);  // One gentle travelling wave per minute.
             for (int i = 0; i < it.size(); i++) {
               const float wave = 0.5f + 0.5f * sinf(6.2831853f * (float(i) / it.size() - phase));
-              const float pulse = 0.96f + 0.04f * sinf(6.2831853f * phase * 2.0f);
-              const Color target((96 + 20 * wave) * pulse, (180 + 20 * wave) * pulse,
-                                 255 * pulse, (80 + 15 * wave) * pulse);
+              float accent = fminf(1.0f, fmaxf(0.0f, (wave - 0.35f) / 0.5f));
+              accent = accent * accent * (3.0f - 2.0f * accent);  // Broad blue core, soft edges.
+              const float pulse = 0.99f + 0.01f * sinf(6.2831853f * phase * 2.0f);
+              // Blue-tinged ice (90, 165, 255, 65) -> saturated blue (18, 35, 255, 0).
+              // Remove white in the accent so it cannot wash out the blue.
+              const Color target((90 - 72 * accent) * pulse, (165 - 130 * accent) * pulse,
+                                 255 * pulse, 65 * (1.0f - accent) * pulse);
               const Color old = previous[i];
               it[i] = Color(
                   old.red + (target.red - old.red) * blend,
