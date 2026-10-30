@@ -357,3 +357,115 @@ unifi_link_speed_port:
       border-color: rgba(120,120,120,0.35);
       opacity: 0.42;
       filter: g
+
+
+# Templates for the Server overview tab
+# Templates used only by the redesigned server tab.
+server_status:
+  show_state: false
+  show_label: true
+  variables:
+    a_key: ''
+    a_usage: ''
+    b_helpers: |-
+      [[[
+      const s = id => hass.states[id]?.state;
+      const known = id => s(id) != null && !['unknown','unavailable','none','None',''].includes(s(id));
+      const n = id => known(id) && Number.isFinite(Number(s(id))) ? Number(s(id)) : null;
+      const attr = (id, key) => hass.states[id]?.attributes?.[key];
+      const binary = id => ['on','off'].includes(s(id));
+      const fmt = (v, digits=0, unit='') => v == null ? '—' : `${v.toFixed(digits)}${unit}`;
+      const health = (summary, color='green') => ({summary, color});
+      return {s,known,n,attr,binary,fmt,health};
+      ]]]
+    c_health:
+      summary: Unavailable
+      color: disabled
+  label: |-
+    [[[
+    return variables.c_health.summary;
+    ]]]
+  color: |-
+    [[[
+    return variables.c_health.color;
+    ]]]
+  styles:
+    grid:
+    - grid-template-areas: '"i n" "i l"'
+    - grid-template-columns: 34px minmax(0, 1fr)
+    - column-gap: 8px
+    card:
+    - padding: 12px
+    - min-height: 86px
+    - text-align: left
+    - border-radius: var(--ha-card-border-radius, 12px)
+    icon:
+    - width: 28px
+    - color: |-
+        [[[
+        return variables.c_health.color === 'disabled' ? 'var(--disabled-text-color)' : `var(--${variables.c_health.color === 'green' ? 'success' : variables.c_health.color === 'red' ? 'error' : variables.c_health.color === 'amber' ? 'warning' : 'info'}-color)`;
+        ]]]
+    name:
+    - justify-self: start
+    - font-size: 14px
+    - font-weight: '500'
+    - white-space: normal
+    label:
+    - justify-self: start
+    - font-size: 12px
+    - color: var(--secondary-text-color)
+    - white-space: pre-line
+    - line-height: '1.45'
+  extra_styles: |2
+
+    ha-card { transition: background-color .15s ease; }
+    ha-card:hover { background: var(--secondary-background-color); }
+    ha-card:focus-visible { outline: 2px solid var(--primary-color); }
+server_disk:
+  template: server_status
+  variables:
+    c_health: |-
+      [[[
+      const h=variables.b_helpers, k=variables.a_key;
+      const health=`binary_sensor.tower_disk_${k}_health`, temp=`sensor.tower_disk_${k}_temperature`;
+      const spin=`switch.tower_disk_${k}_spin`;
+      const spinning=k==='cache' ? true : h.s(spin)==='on';
+      const standby=k!=='cache' && h.s(spin)==='off';
+      const t=standby ? null : h.n(temp);
+      const u=k==='parity' ? null : h.n(variables.a_usage);
+      let summary=k==='parity' ? `${h.fmt(t,0)} °C · ${standby?'Standby':spinning?'Spinning':'Spin state unknown'}` : `${h.fmt(u,1,'%')} · ${h.fmt(t,0)} °C`;
+      if(k!=='parity') summary += `\n${standby?'Standby':spinning?'Active':'Spin state unknown'}`;
+      if(h.s(health)==='on') return h.health('Health problem\n'+summary,'red');
+      if(k!=='parity' && (h.n(`sensor.tower_disk_${k}_errors`) || 0)>0) return h.health('Read/write errors\n'+summary,'red');
+      if(!h.binary(health)) return h.health('Health unavailable\n'+summary,'disabled');
+      if(k!=='parity' && u==null) return h.health('Usage unavailable\n'+summary,'disabled');
+      if(u!=null && u >= 90) return h.health(summary,'red');
+      if(u!=null && u >= (k==='cache'?75:80)) return h.health(summary,'amber');
+      if(!standby && t==null) return h.health(summary,'amber');
+      if(t!=null && t>=55) return h.health(summary,'red');
+      if(t!=null && t>=45) return h.health(summary,'amber');
+      return h.health(summary);
+      ]]]
+server_container:
+  template: server_status
+  show_entity_picture: true
+  entity_picture: |-
+    [[[
+    return entity?.attributes?.icon_url || undefined;
+    ]]]
+  styles:
+    entity_picture:
+    - width: 28px
+    - height: 28px
+    - object-fit: contain
+  variables:
+    c_health: |-
+      [[[
+      const h=variables.b_helpers, k=variables.a_key;
+      const cpu=h.n(`sensor.docker_tower_${k}_cpu`), mem=h.n(`sensor.docker_tower_${k}_memory`);
+      const unit=h.attr(`sensor.docker_tower_${k}_memory`,'unit_of_measurement');
+      const bytes=mem == null ? null : mem * ({B:1,kB:1000,KB:1000,MB:1e6,GB:1e9,KiB:1024,MiB:1048576,GiB:1073741824}[unit] || NaN);
+      const ram=Number.isFinite(bytes) ? (bytes>=1073741824 ? (bytes/1073741824).toFixed(2)+' GiB' : (bytes/1048576).toFixed(0)+' MiB') : '—';
+      const state=entity?.state;
+      return h.health(`${state==='on'?'Running':state==='off'?'Stopped':'Unavailable'}\nCPU ${h.fmt(cpu,1,'%')} · RAM ${ram}`, state==='on'?'green':'disabled');
+      ]]]

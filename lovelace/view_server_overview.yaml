@@ -1,0 +1,2593 @@
+# Redesigned server tab; the original view_server.yaml is unchanged.
+title: Server overview
+path: server-overview
+icon: mdi:server-network
+type: masonry
+badges: []
+cards:
+- type: vertical-stack
+  cards:
+  - type: markdown
+    content: '## Critical status'
+    text_only: true
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+    - type: custom:button-card
+      template: server_status
+      name: Parity integrity
+      icon: mdi:shield-check
+      entity: binary_sensor.tower_parity_valid
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const validity = 'binary_sensor.tower_parity_valid';
+          const running = 'binary_sensor.tower_parity_check_running';
+          const paused = 'binary_sensor.tower_parity_check_paused';
+          const errors = h.n('sensor.tower_last_parity_check_errors');
+          if (h.s(validity) === 'on') return h.health('Parity integrity problem', 'red');
+          if (errors != null && errors > 0) return h.health(`${errors} reported parity errors`, 'red');
+          if (!h.binary(validity) || !h.binary(running) || !h.binary(paused)) return h.health('Parity status incomplete', 'disabled');
+          if (h.s(paused) === 'on') return h.health(`Paused · ${h.fmt(h.n('sensor.tower_parity_check_progress'),1,'%')}`, 'amber');
+          if (h.s(running) === 'on') return h.health(`Checking · ${h.fmt(h.n('sensor.tower_parity_check_speed'),1,' MB/s')}`, 'blue');
+          return h.health(errors == null ? 'Valid · last result unavailable' : 'Valid · no errors reported', errors == null ? 'amber' : 'green');
+          ]]]
+      triggers_update:
+      - binary_sensor.tower_parity_check_paused
+      - binary_sensor.tower_parity_check_running
+      - binary_sensor.tower_parity_valid
+      - sensor.time
+      - sensor.tower_last_parity_check_errors
+      - sensor.tower_parity_check_progress
+      - sensor.tower_parity_check_speed
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Parity and array
+            content: &id001
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Current operation
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_parity_check_running
+                  name: Running
+                - entity: binary_sensor.tower_parity_check_paused
+                  name: Paused
+                - entity: sensor.tower_parity_check_progress
+                  name: Progress
+                - entity: sensor.tower_parity_check_speed
+                  name: Speed
+                - entity: sensor.tower_parity_check_elapsed
+                  name: Elapsed
+                - entity: sensor.tower_parity_check_estimated
+                  name: Estimated remaining
+                - entity: binary_sensor.tower_parity_valid
+                  name: Parity integrity problem
+              - type: entities
+                title: Last reported check
+                show_header_toggle: false
+                entities:
+                - entity: sensor.tower_last_parity_check
+                  name: Check timestamp
+                - entity: sensor.tower_last_parity_check_errors
+                  name: Reported errors
+              - type: markdown
+                text_only: true
+                content: A previous check timestamp with zero reported errors is not proof of a completed successful check.
+                  Estimated remaining time is supplied by Unraid and may be unavailable.
+              - type: conditional
+                conditions:
+                - entity: binary_sensor.tower_parity_check_running
+                  state: 'on'
+                - entity: binary_sensor.tower_parity_check_paused
+                  state: 'off'
+                card:
+                  type: custom:mushroom-template-card
+                  primary: Pause parity
+                  icon: mdi:pause
+                  tap_action:
+                    action: perform-action
+                    perform_action: button.press
+                    target:
+                      entity_id: button.tower_pause_parity_check
+                    confirmation:
+                      text: Pause the parity check on Tower?
+              - type: conditional
+                conditions:
+                - entity: binary_sensor.tower_parity_check_paused
+                  state: 'on'
+                card:
+                  type: custom:mushroom-template-card
+                  primary: Resume parity
+                  icon: mdi:play
+                  tap_action:
+                    action: perform-action
+                    perform_action: button.press
+                    target:
+                      entity_id: button.tower_resume_parity_check
+                    confirmation:
+                      text: Resume the parity check on Tower?
+              - type: conditional
+                conditions:
+                - entity: binary_sensor.tower_parity_check_running
+                  state: 'off'
+                - entity: binary_sensor.tower_parity_check_paused
+                  state: 'off'
+                card:
+                  type: grid
+                  square: false
+                  columns: 2
+                  cards:
+                  - type: custom:mushroom-template-card
+                    primary: Check parity
+                    icon: mdi:shield-search
+                    tap_action:
+                      action: perform-action
+                      perform_action: switch.turn_on
+                      target:
+                        entity_id: switch.tower_parity_check
+                      confirmation:
+                        text: Start a non-correcting parity check on Tower?
+                  - type: custom:mushroom-template-card
+                    primary: Correct parity
+                    icon: mdi:shield-sync
+                    tap_action:
+                      action: perform-action
+                      perform_action: button.press
+                      target:
+                        entity_id: button.tower_parity_check_correcting
+                      confirmation:
+                        text: Start a CORRECTING parity check on Tower? This can write corrections to the parity disk.
+              - type: conditional
+                conditions:
+                - condition: or
+                  conditions:
+                  - entity: binary_sensor.tower_parity_check_running
+                    state: 'on'
+                  - entity: binary_sensor.tower_parity_check_paused
+                    state: 'on'
+                card:
+                  type: custom:mushroom-template-card
+                  primary: Cancel check
+                  icon: mdi:stop
+                  tap_action:
+                    action: perform-action
+                    perform_action: switch.turn_off
+                    target:
+                      entity_id: switch.tower_parity_check
+                    confirmation:
+                      text: Cancel the parity check on Tower?
+              - type: conditional
+                conditions:
+                - entity: switch.tower_array
+                  state: 'on'
+                card:
+                  type: custom:mushroom-template-card
+                  primary: Stop array
+                  icon: mdi:stop-circle-outline
+                  tap_action:
+                    action: perform-action
+                    perform_action: switch.turn_off
+                    target:
+                      entity_id: switch.tower_array
+                    confirmation:
+                      text: Stop the Tower array? Array services and containers may be interrupted.
+              - type: conditional
+                conditions:
+                - entity: switch.tower_array
+                  state: 'off'
+                card:
+                  type: custom:mushroom-template-card
+                  primary: Start array
+                  icon: mdi:nas
+                  tap_action:
+                    action: perform-action
+                    perform_action: switch.turn_on
+                    target:
+                      entity_id: switch.tower_array
+                    confirmation:
+                      text: Start the Tower array?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_parity_valid
+    - type: custom:button-card
+      template: server_status
+      name: Storage
+      icon: mdi:harddisk
+      entity: sensor.tower_array_usage
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const faults = ['binary_sensor.tower_disks_disabled','binary_sensor.tower_disks_missing','binary_sensor.tower_disks_invalid','binary_sensor.tower_filesystems_unmountable'];
+          const bad = faults.filter(id => h.s(id) === 'on');
+          const keys = ['cache','parity','disk1','disk2','disk3','disk4','disk5'];
+          const badHealth = keys.filter(k => h.s(`binary_sensor.tower_disk_${k}_health`) === 'on');
+          if (bad.length || badHealth.length) return h.health(`${badHealth.length ? badHealth.join(', ').replace(/disk/g,'Disk ') + ' · ' : ''}Disk / filesystem problem`, 'red');
+          const diskErrors=keys.filter(k=>k!=='parity' && (h.n(`sensor.tower_disk_${k}_errors`) || 0)>0);
+          if(diskErrors.length) return h.health(`${diskErrors.join(', ').replace(/disk/g,'Disk ')} · read/write errors`,'red');
+          if (h.s('binary_sensor.tower_array_started') === 'off') return h.health('Array stopped', 'red');
+          const capacity = ['cache','disk1','disk2','disk3','disk4','disk5'].map(k => ({k,value:h.n(`sensor.tower_disk_${k}_usage`)}));
+          const full = capacity.filter(x => x.value != null && x.value >= (x.k === 'cache' ? 75 : 80)).sort((a,b) => b.value-a.value);
+          if (full.length) {const x=full[0];return h.health(`${x.k === 'cache' ? 'Cache' : x.k.replace('disk','Disk ')} · ${h.fmt(x.value,1,'%')} full${full.length > 1 ? ` · +${full.length-1}` : ''}`, x.value >= 90 ? 'red' : 'amber');}
+          const hot=keys.map(k=>({k,t:h.n(`sensor.tower_disk_${k}_temperature`)})).filter(x=>x.t!=null && x.t>=45 && (x.k==='cache' || h.s(`switch.tower_disk_${x.k}_spin`)==='on')).sort((a,b)=>b.t-a.t);
+          if(hot.length) return h.health(`${hot[0].k==='cache'?'Cache':hot[0].k.replace('disk','Disk ')} · ${h.fmt(hot[0].t,0)} °C`,hot[0].t>=55?'red':'amber');
+          const missing = !h.binary('binary_sensor.tower_array_started') || h.n('sensor.tower_array_usage')==null || faults.some(id => !h.binary(id)) || keys.some(k => !h.binary(`binary_sensor.tower_disk_${k}_health`)) || capacity.some(x => x.value == null);
+          if (missing) return h.health('Storage status incomplete', 'disabled');
+          return h.health(`Array ${h.fmt(h.n('sensor.tower_array_usage'),1,'%')} · Cache ${h.fmt(h.n('sensor.tower_disk_cache_usage'),1,'%')}`);
+          ]]]
+      triggers_update:
+      - binary_sensor.tower_array_started
+      - binary_sensor.tower_disk_cache_health
+      - binary_sensor.tower_disk_disk1_health
+      - binary_sensor.tower_disk_disk2_health
+      - binary_sensor.tower_disk_disk3_health
+      - binary_sensor.tower_disk_disk4_health
+      - binary_sensor.tower_disk_disk5_health
+      - binary_sensor.tower_disk_parity_health
+      - binary_sensor.tower_disks_disabled
+      - binary_sensor.tower_disks_invalid
+      - binary_sensor.tower_disks_missing
+      - binary_sensor.tower_filesystems_unmountable
+      - sensor.time
+      - sensor.tower_array_usage
+      - sensor.tower_disk_cache_errors
+      - sensor.tower_disk_cache_temperature
+      - sensor.tower_disk_cache_usage
+      - sensor.tower_disk_disk1_errors
+      - sensor.tower_disk_disk1_temperature
+      - sensor.tower_disk_disk1_usage
+      - sensor.tower_disk_disk2_errors
+      - sensor.tower_disk_disk2_temperature
+      - sensor.tower_disk_disk2_usage
+      - sensor.tower_disk_disk3_errors
+      - sensor.tower_disk_disk3_temperature
+      - sensor.tower_disk_disk3_usage
+      - sensor.tower_disk_disk4_errors
+      - sensor.tower_disk_disk4_temperature
+      - sensor.tower_disk_disk4_usage
+      - sensor.tower_disk_disk5_errors
+      - sensor.tower_disk_disk5_temperature
+      - sensor.tower_disk_disk5_usage
+      - sensor.tower_disk_parity_temperature
+      - switch.tower_disk_disk1_spin
+      - switch.tower_disk_disk2_spin
+      - switch.tower_disk_disk3_spin
+      - switch.tower_disk_disk4_spin
+      - switch.tower_disk_disk5_spin
+      - switch.tower_disk_parity_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Storage
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Array and cache
+                show_header_toggle: false
+                entities:
+                - entity: sensor.tower_array_state
+                  name: Array state
+                - entity: sensor.tower_array_usage
+                  name: Array usage
+                - entity: sensor.tower_disk_cache_usage
+                  name: Cache usage
+                - entity: binary_sensor.tower_mover_active
+                  name: Mover active
+              - type: entities
+                title: Disk and filesystem checks
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disks_disabled
+                  name: Disabled disks
+                - entity: binary_sensor.tower_disks_missing
+                  name: Missing disks
+                - entity: binary_sensor.tower_disks_invalid
+                  name: Invalid disks
+                - entity: binary_sensor.tower_filesystems_unmountable
+                  name: Unmountable filesystems
+              - type: entities
+                title: Boot flash
+                show_header_toggle: false
+                entities:
+                - entity: sensor.tower_disk_flash_usage
+                  name: Flash usage
+                - entity: binary_sensor.tower_disk_flash_health
+                  name: Reported flash health
+              - type: markdown
+                text_only: true
+                content: Flash usage and flash health are independent. Unknown health is not a healthy result. Open an individual
+                  disk card on the main view for its capacity, temperature, errors and spin controls.
+      hold_action:
+        action: more-info
+        entity: sensor.tower_array_usage
+    - type: custom:button-card
+      template: server_status
+      name: Cooling
+      icon: mdi:fan
+      entity: sensor.fan_controller_nas_fan_1_speed
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const keys=[1,2,3];
+          const bad = keys.filter(i => h.s(`binary_sensor.fan_controller_nas_nas_fan_${i}_fault`) === 'on');
+          if (bad.length) return h.health(`Fan ${bad.join(', ')} fault`, 'red');
+          const stalled = keys.filter(i => h.s(`fan.fan_controller_nas_fan_${i}`) === 'on' && h.n(`sensor.fan_controller_nas_fan_${i}_speed`) === 0);
+          if (stalled.length) return h.health(`Fan ${stalled.join(', ')} · 0 RPM`, 'red');
+          const missing = keys.some(i => !h.binary(`fan.fan_controller_nas_fan_${i}`) || !h.binary(`binary_sensor.fan_controller_nas_nas_fan_${i}_fault`) || h.n(`sensor.fan_controller_nas_fan_${i}_speed`) == null);
+          if (missing) return h.health('Fan monitoring incomplete', 'disabled');
+          const spinning=keys.filter(i => h.n(`sensor.fan_controller_nas_fan_${i}_speed`) > 0).length;
+          const avg=keys.reduce((a,i)=>a+h.n(`sensor.fan_controller_nas_fan_${i}_speed`),0)/3;
+          const disks=['disk1','disk2','disk3','disk4','disk5'];
+          const allAsleep=disks.every(k => h.s(`switch.tower_disk_${k}_spin`) === 'off');
+          const inputs=h.n('sensor.fan_controller_nas_available_disk_temperature_count');
+          if (!allAsleep && (inputs == null || inputs === 0)) return h.health(`${spinning}/3 spinning · temperature inputs missing`, 'amber');
+          return h.health(`${spinning}/3 spinning · ${h.fmt(avg,0,' RPM')}${allAsleep ? '\nDisks in standby' : ''}`, spinning === 3 ? 'green' : 'amber');
+          ]]]
+      triggers_update:
+      - binary_sensor.fan_controller_nas_nas_fan_1_fault
+      - binary_sensor.fan_controller_nas_nas_fan_2_fault
+      - binary_sensor.fan_controller_nas_nas_fan_3_fault
+      - fan.fan_controller_nas_fan_1
+      - fan.fan_controller_nas_fan_2
+      - fan.fan_controller_nas_fan_3
+      - sensor.fan_controller_nas_available_disk_temperature_count
+      - sensor.fan_controller_nas_fan_1_speed
+      - sensor.fan_controller_nas_fan_2_speed
+      - sensor.fan_controller_nas_fan_3_speed
+      - sensor.time
+      - switch.tower_disk_disk1_spin
+      - switch.tower_disk_disk2_spin
+      - switch.tower_disk_disk3_spin
+      - switch.tower_disk_disk4_spin
+      - switch.tower_disk_disk5_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: NAS fan controller
+            content:
+              type: vertical-stack
+              cards:
+              - type: markdown
+                content: |
+                  [Open NAS fan controller device page](/config/devices/device/a12711ab8cab8c27749cfeaae20e0177)
+
+                  Average RPM covers connected fans 1–3, including stopped fans. Unused outputs 4–6 are excluded.
+
+                  Disk-temperature summaries are intentionally unavailable while all data disks are asleep; cache is not a controller input.
+              - type: entities
+                show_header_toggle: false
+                entities:
+                - type: section
+                  label: Connected fans
+                - entity: fan.fan_controller_nas_fan_1
+                  name: Fan 1
+                - entity: sensor.fan_controller_nas_fan_1_speed
+                  name: Fan 1 measured speed
+                - entity: binary_sensor.fan_controller_nas_nas_fan_1_fault
+                  name: Fan 1 fault
+                - entity: fan.fan_controller_nas_fan_2
+                  name: Fan 2
+                - entity: sensor.fan_controller_nas_fan_2_speed
+                  name: Fan 2 measured speed
+                - entity: binary_sensor.fan_controller_nas_nas_fan_2_fault
+                  name: Fan 2 fault
+                - entity: fan.fan_controller_nas_fan_3
+                  name: Fan 3
+                - entity: sensor.fan_controller_nas_fan_3_speed
+                  name: Fan 3 measured speed
+                - entity: binary_sensor.fan_controller_nas_nas_fan_3_fault
+                  name: Fan 3 fault
+                - type: section
+                  label: Automatic cooling
+                - entity: select.fan_controller_nas_fan_control_mode
+                  name: Control mode
+                - entity: sensor.fan_controller_nas_automatic_fan_speed
+                  name: Automatic target speed
+                - entity: sensor.fan_controller_nas_fan_control_temperature
+                  name: Control temperature
+                - entity: sensor.fan_controller_nas_mean_disk_temperature
+                  name: Mean disk temperature
+                - entity: sensor.fan_controller_nas_median_disk_temperature
+                  name: Median disk temperature
+                - entity: sensor.fan_controller_nas_maximum_disk_temperature
+                  name: Hottest disk
+                - entity: sensor.fan_controller_nas_available_disk_temperature_count
+                  name: Available disk temperatures
+                - type: section
+                  label: Controller diagnostics
+                - entity: sensor.fan_controller_nas_12v_rail
+                  name: 12V supply
+                - entity: sensor.fan_controller_nas_wifi_signal
+                  name: Wi-Fi signal
+                - entity: sensor.fan_controller_nas_ip
+                  name: IP address
+                - entity: sensor.fan_controller_nas_esphome_version
+                  name: ESPHome version
+              - type: history-graph
+                title: Fan speeds · last 6 hours
+                hours_to_show: 6
+                entities:
+                - entity: sensor.fan_controller_nas_fan_1_speed
+                  name: Fan 1
+                - entity: sensor.fan_controller_nas_fan_2_speed
+                  name: Fan 2
+                - entity: sensor.fan_controller_nas_fan_3_speed
+                  name: Fan 3
+      hold_action:
+        action: more-info
+        entity: sensor.fan_controller_nas_fan_1_speed
+    - type: custom:button-card
+      template: server_status
+      name: VPN
+      icon: mdi:shield-lock
+      entity: sensor.airvpn_connected_since
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const id='sensor.airvpn_connected_since';
+          const date=Date.parse(h.s(id));
+          if (!h.known(id) || !Number.isFinite(date) || date > Date.now()+300000) return h.health('Connection status unavailable', 'disabled');
+          const name=h.s('sensor.airvpn_server_name'), country=h.s('sensor.airvpn_server_country');
+          if (!h.known('sensor.airvpn_server_name') || !h.known('sensor.airvpn_server_country')) return h.health('Connected · server details unavailable','amber');
+          const hours=Math.max(0,Math.floor((Date.now()-date)/3600000));
+          return h.health(`${name} · ${country}\nConnected ${hours ? hours+'h' : '<1h'}`);
+          ]]]
+      triggers_update:
+      - sensor.airvpn_connected_since
+      - sensor.airvpn_server_country
+      - sensor.airvpn_server_name
+      - sensor.time
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: AirVPN
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: AirVPN
+                show_header_toggle: false
+                entities:
+                - entity: sensor.airvpn_server_name
+                  name: Server
+                - entity: sensor.airvpn_server_country
+                  name: Country
+                - entity: sensor.airvpn_connected_since
+                  name: Connected since
+                - entity: sensor.airvpn_exit_ip
+                  name: Exit IP
+                - entity: sensor.airvpn_vpn_ip
+                  name: VPN IP
+                - entity: sensor.airvpn_data_downloaded
+                  name: Downloaded
+                - entity: sensor.airvpn_data_uploaded
+                  name: Uploaded
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: VPN bandwidth
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 160
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.airvpn_download_speed
+                  name: Download
+                  color: '#03a9f4'
+                - entity: sensor.airvpn_upload_speed
+                  name: Upload
+                  color: '#4caf50'
+              - type: markdown
+                text_only: true
+                content: Connection information comes from the AirVPN account endpoint. Missing data means connection status
+                  is unknown; it does not independently prove the local tunnel is down.
+      hold_action:
+        action: more-info
+        entity: sensor.airvpn_connected_since
+    - type: custom:button-card
+      template: server_status
+      name: Remote backup
+      icon: mdi:server-network
+      entity: binary_sensor.rpi4_omv
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const ping='binary_sensor.rpi4_omv';
+          if (h.s(ping) === 'off') return h.health('Unreachable','red');
+          if (!h.binary(ping)) return h.health('Reachability unavailable','disabled');
+          const checks=['binary_sensor.rpi4_omv_reachable','binary_sensor.rpi4_omv_disk_1_available','binary_sensor.rpi4_omv_disk_1_read_write','binary_sensor.rpi4_omv_disk_2_available','binary_sensor.rpi4_omv_disk_2_read_write','binary_sensor.rpi4_omv_smb_active','binary_sensor.rpi4_omv_smb_port_445_listening','binary_sensor.rpi4_omv_external_backups_share_available','binary_sensor.rpi4_omv_photos_share_available','binary_sensor.rpi4_omv_backups_share_available','binary_sensor.rpi4_omv_service_active','binary_sensor.rpi4_omv_root_filesystem_read_write'];
+          if(checks.some(id=>h.s(id)==='off')) return h.health('Reachable · storage / service problem','red');
+          const units=h.n('sensor.rpi4_omv_failed_systemd_units'), errors=h.n('sensor.rpi4_omv_recent_storage_errors');
+          if(errors != null && errors > 0) return h.health(`${errors} recent storage errors`,'red');
+          if(units != null && units > 0) return h.health(`Reachable · ${units} failed unit${units===1?'':'s'}`,'amber');
+          const full=['sensor.rpi4_omv_disk_1_usage','sensor.rpi4_omv_disk_2_usage','sensor.rpi4_omv_root_usage'].map(h.n).filter(v=>v!=null && v>=90);
+          if(full.length) return h.health(`Reachable · storage ${Math.max(...full).toFixed(0)}% full`,'amber');
+          if(checks.some(id=>!h.binary(id)) || units == null || errors == null) return h.health('Reachable · monitoring incomplete','amber');
+          return h.health('Reachable · storage and SMB OK');
+          ]]]
+      triggers_update:
+      - binary_sensor.rpi4_omv
+      - binary_sensor.rpi4_omv_backups_share_available
+      - binary_sensor.rpi4_omv_disk_1_available
+      - binary_sensor.rpi4_omv_disk_1_read_write
+      - binary_sensor.rpi4_omv_disk_2_available
+      - binary_sensor.rpi4_omv_disk_2_read_write
+      - binary_sensor.rpi4_omv_external_backups_share_available
+      - binary_sensor.rpi4_omv_photos_share_available
+      - binary_sensor.rpi4_omv_reachable
+      - binary_sensor.rpi4_omv_root_filesystem_read_write
+      - binary_sensor.rpi4_omv_service_active
+      - binary_sensor.rpi4_omv_smb_active
+      - binary_sensor.rpi4_omv_smb_port_445_listening
+      - sensor.rpi4_omv_disk_1_usage
+      - sensor.rpi4_omv_disk_2_usage
+      - sensor.rpi4_omv_failed_systemd_units
+      - sensor.rpi4_omv_recent_storage_errors
+      - sensor.rpi4_omv_root_usage
+      - sensor.time
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Remote backup server
+            content:
+              type: vertical-stack
+              cards:
+              - type: markdown
+                text_only: true
+                content: Reachability and share health do not confirm that a backup completed. No backup-success timestamp
+                  is currently available here.
+              - type: entities
+                show_header_toggle: false
+                entities:
+                - type: section
+                  label: Connectivity
+                - entity: binary_sensor.rpi4_omv
+                  name: Ping reachable
+                  icon: mdi:server-network
+                - entity: binary_sensor.rpi4_omv_reachable
+                  name: System details reachable
+                - entity: sensor.rpi4_omv_round_trip_time_average
+                  name: Average RTT
+                  icon: mdi:speedometer
+                - type: section
+                  label: System
+                - entity: sensor.rpi4_omv_cpu_usage
+                  name: CPU usage
+                - entity: sensor.rpi4_omv_cpu_temperature
+                  name: CPU temperature
+                - entity: sensor.rpi4_omv_load_1_minute
+                  name: Load average
+                - entity: sensor.rpi4_omv_memory_usage
+                  name: Memory usage
+                - entity: sensor.rpi4_omv_memory_available
+                  name: Memory available
+                - entity: sensor.rpi4_omv_uptime
+                  name: Uptime
+                - type: section
+                  label: Storage
+                - entity: binary_sensor.rpi4_omv_disk_1_available
+                  name: Disk 1 available
+                - entity: binary_sensor.rpi4_omv_disk_1_read_write
+                  name: Disk 1 read/write
+                - entity: sensor.rpi4_omv_disk_1_usage
+                  name: Disk 1 usage
+                - entity: sensor.rpi4_omv_disk_1_free
+                  name: Disk 1 free
+                - entity: binary_sensor.rpi4_omv_disk_2_available
+                  name: Disk 2 available
+                - entity: binary_sensor.rpi4_omv_disk_2_read_write
+                  name: Disk 2 read/write
+                - entity: sensor.rpi4_omv_disk_2_usage
+                  name: Disk 2 usage
+                - entity: sensor.rpi4_omv_disk_2_free
+                  name: Disk 2 free
+                - entity: binary_sensor.rpi4_omv_root_filesystem_read_write
+                  name: Root filesystem read/write
+                - entity: sensor.rpi4_omv_root_usage
+                  name: Root filesystem usage
+                - type: section
+                  label: OMV and SMB
+                - entity: binary_sensor.rpi4_omv_service_active
+                  name: OMV service
+                - entity: binary_sensor.rpi4_omv_smb_active
+                  name: SMB service
+                - entity: binary_sensor.rpi4_omv_smb_port_445_listening
+                  name: SMB port 445
+                - entity: binary_sensor.rpi4_omv_external_backups_share_available
+                  name: External Backups share
+                - entity: binary_sensor.rpi4_omv_photos_share_available
+                  name: Photos share
+                - entity: binary_sensor.rpi4_omv_backups_share_available
+                  name: Backups share
+                - type: section
+                  label: Diagnostics
+                - entity: sensor.rpi4_omv_failed_systemd_units
+                  name: Failed systemd units
+                - entity: sensor.rpi4_omv_recent_storage_errors
+                  name: Recent storage errors
+      hold_action:
+        action: more-info
+        entity: binary_sensor.rpi4_omv
+    - type: custom:button-card
+      template: server_status
+      name: PiKVM NAS
+      icon: mdi:server-network
+      entity: binary_sensor.pikvm_nas
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          if(h.s('binary_sensor.pikvm_nas')==='off') return h.health('Unreachable','red');
+          if(!h.binary('binary_sensor.pikvm_nas')) return h.health('Reachability unavailable','disabled');
+          return h.health(`Reachable · ${h.fmt(h.n('sensor.pikvm_nas_round_trip_time_average'),1,' ms')}`);
+          ]]]
+      triggers_update:
+      - binary_sensor.pikvm_nas
+      - sensor.pikvm_nas_round_trip_time_average
+      - sensor.time
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: PiKVM NAS
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: PiKVM
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.pikvm_nas
+                  name: Reachable
+                - entity: sensor.pikvm_nas_cpu_temp
+                  name: CPU temperature
+                - entity: sensor.pikvm_nas_link_quality
+                  name: Link quality
+                - entity: sensor.pikvm_nas_round_trip_time_average
+                  name: Average latency
+                - entity: sensor.pikvm_nas_bit_rate
+                  name: Link bit rate
+                - entity: sensor.pikvm_nas_tx_retries
+                  name: Transmit retries
+                - entity: sensor.pikvm_nas_ap_mac
+                  name: Access point
+                - entity: sensor.pikvm_nas_ssid
+                  name: Wi-Fi network
+              - type: custom:mushroom-template-card
+                entity: sensor.pikvm_nas_signal_level
+                primary: Wi-Fi signal
+                secondary: '{% set value = states(''sensor.pikvm_nas_signal_level'') %}{% if value | is_number %}{{ -(value
+                  | float | abs) | round(0) }} dBm{% else %}Unavailable{% endif %}'
+                icon: mdi:wifi
+                tap_action:
+                  action: more-info
+                  entity: sensor.pikvm_nas_signal_level
+              - type: markdown
+                text_only: true
+                content: The legacy collector drops the signal’s minus sign. This dashboard corrects the current display only;
+                  the sensor and its history remain unchanged.
+      hold_action:
+        action: more-info
+        entity: binary_sensor.pikvm_nas
+  - type: conditional
+    conditions:
+    - entity: binary_sensor.tower_parity_check_paused
+      state: 'off'
+    - entity: binary_sensor.tower_parity_check_running
+      state: 'on'
+    card:
+      type: tile
+      entity: sensor.tower_parity_check_progress
+      name: Parity check progress
+      icon: mdi:shield-sync
+      color: blue
+      features:
+      - type: bar-gauge
+        min: 0
+        max: 100
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Parity and array
+            content: *id001
+  - type: conditional
+    conditions:
+    - entity: binary_sensor.tower_parity_check_paused
+      state: 'on'
+    card:
+      type: tile
+      entity: sensor.tower_parity_check_progress
+      name: Parity check paused
+      icon: mdi:shield-sync
+      color: amber
+      features:
+      - type: bar-gauge
+        min: 0
+        max: 100
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Parity and array
+            content: *id001
+  - type: conditional
+    conditions:
+    - condition: or
+      conditions:
+      - entity: sensor.tower_ups_ut850eg_status
+        state_not: ONLINE
+      - entity: binary_sensor.tower_ups_connected
+        state_not: 'on'
+      - condition: numeric_state
+        entity: sensor.tower_ups_battery
+        below: 31
+      - entity: sensor.tower_ups_ut850eg_battery_health
+        state_not: Good
+    card: &id004
+      type: custom:button-card
+      template: server_status
+      name: UPS
+      icon: mdi:battery-charging
+      entity: sensor.tower_ups_ut850eg_status
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const s=h.s('sensor.tower_ups_ut850eg_status');
+          if(!h.known('sensor.tower_ups_ut850eg_status') || !h.binary('binary_sensor.tower_ups_connected')) return h.health('UPS monitoring unavailable','disabled');
+          if(h.s('binary_sensor.tower_ups_connected')==='off') return h.health('UPS disconnected','red');
+          if(!String(s).toUpperCase().includes('ONLINE')) return h.health(`${s} · ${h.s('sensor.tower_ups_runtime') || 'runtime unavailable'}`,'red');
+          const battery=h.n('sensor.tower_ups_battery');
+          const health=h.s('sensor.tower_ups_ut850eg_battery_health');
+          if(h.known('sensor.tower_ups_ut850eg_battery_health') && String(health).toLowerCase() !== 'good') return h.health(`Battery health: ${health}`,'amber');
+          if(battery == null) return h.health('Online · battery status unavailable','amber');
+          return h.health(`Online · ${h.fmt(battery,0,'%')}\n${h.s('sensor.tower_ups_runtime') || 'Runtime unavailable'}`, battery <= 30 ? 'amber' : 'green');
+          ]]]
+      triggers_update:
+      - binary_sensor.tower_ups_connected
+      - sensor.time
+      - sensor.tower_ups_battery
+      - sensor.tower_ups_runtime
+      - sensor.tower_ups_ut850eg_battery_health
+      - sensor.tower_ups_ut850eg_status
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: UPS
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: UPS
+                show_header_toggle: false
+                entities:
+                - entity: sensor.tower_ups_ut850eg_status
+                  name: Power state
+                - entity: binary_sensor.tower_ups_connected
+                  name: UPS connection
+                - entity: sensor.tower_ups_battery
+                  name: Battery charge
+                - entity: sensor.tower_ups_runtime
+                  name: Estimated runtime
+                - entity: sensor.tower_ups_ut850eg_battery_health
+                  name: Battery health
+                - entity: sensor.tower_ups_load
+                  name: Load
+                - entity: sensor.tower_ups_power
+                  name: UPS output power
+                - entity: sensor.tower_ups_ut850eg_input_voltage
+                  name: Input voltage
+                - entity: sensor.tower_ups_ut850eg_output_voltage
+                  name: Output voltage
+                - entity: sensor.tower_ups_ut850eg_energy
+                  name: UPS energy
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Battery and load
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 160
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_ups_battery
+                  name: Battery
+                  color: '#4caf50'
+                - entity: sensor.tower_ups_load
+                  name: Load
+                  color: '#03a9f4'
+      hold_action:
+        action: more-info
+        entity: sensor.tower_ups_ut850eg_status
+  - type: conditional
+    conditions:
+    - entity: binary_sensor.tower_config_valid
+      state: 'on'
+    card:
+      type: custom:button-card
+      template: server_status
+      name: Configuration problem
+      icon: mdi:cog-alert
+      entity: binary_sensor.tower_config_valid
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+          return h.health('Unraid reports invalid configuration','red');
+          ]]]
+      triggers_update:
+      - binary_sensor.tower_config_valid
+      - sensor.time
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Server diagnostics
+            content: &id002
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Server
+                show_header_toggle: false
+                entities:
+                - entity: sensor.tower_unraid_version
+                  name: Unraid version
+                - entity: sensor.tower_api_version
+                  name: API version
+                - entity: sensor.tower_uptime_2
+                  name: Started
+                - entity: binary_sensor.tower_config_valid
+                  name: Configuration problem
+                - entity: binary_sensor.tower_safe_mode
+                  name: Safe mode
+                - entity: sensor.tower_active_notifications
+                  name: Active notifications
+                - entity: sensor.tower_unread_warning_notifications
+                  name: Unread warnings
+                - entity: sensor.tower_unread_alert_notifications
+                  name: Unread alerts
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.tower_cloud_connected
+                primary: Unraid Connect
+                secondary: 'Cloud: {{ state_attr(''binary_sensor.tower_cloud_connected'',''status'') or ''Unavailable'' }}
+                  · Relay: {{ state_attr(''binary_sensor.tower_cloud_connected'',''relay_status'') or ''Unavailable'' }}'
+                icon: mdi:cloud-outline
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: binary_sensor.tower_cloud_connected
+              - type: markdown
+                text_only: true
+                content: |-
+                  Safe mode is a troubleshooting boot mode that disables plugins. Cloud and relay are separate Unraid Connect states. The integration’s cloud binary state is not used to infer a disconnected relay.
+
+                  [Unraid device](/config/devices/device/db9950b8bef71e0918844cce1953eeb5)
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_config_valid
+  - type: conditional
+    conditions:
+    - condition: or
+      conditions:
+      - condition: numeric_state
+        entity: sensor.tower_unread_alert_notifications
+        above: 0
+      - condition: numeric_state
+        entity: sensor.tower_unread_warning_notifications
+        above: 0
+    card:
+      type: custom:button-card
+      template: server_status
+      name: Unraid notifications
+      icon: mdi:bell-alert
+      entity: sensor.tower_unread_alert_notifications
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const alerts=h.n('sensor.tower_unread_alert_notifications'), warnings=h.n('sensor.tower_unread_warning_notifications');
+          return h.health(`${h.fmt(alerts)} unread alerts · ${h.fmt(warnings)} unread warnings`,alerts>0?'red':'amber');
+          ]]]
+      triggers_update:
+      - sensor.time
+      - sensor.tower_unread_alert_notifications
+      - sensor.tower_unread_warning_notifications
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Server diagnostics
+            content: *id002
+      hold_action:
+        action: more-info
+        entity: sensor.tower_unread_alert_notifications
+  - type: conditional
+    conditions:
+    - condition: or
+      conditions:
+      - condition: or
+        conditions:
+        - entity: sensor.tower_cpu_usage
+          state: unknown
+        - entity: sensor.tower_cpu_usage
+          state: unavailable
+      - condition: or
+        conditions:
+        - entity: sensor.tower_ram_usage
+          state: unknown
+        - entity: sensor.tower_ram_usage
+          state: unavailable
+      - condition: or
+        conditions:
+        - entity: sensor.plug_nas_power
+          state: unknown
+        - entity: sensor.plug_nas_power
+          state: unavailable
+      - condition: or
+        conditions:
+        - entity: sensor.tower_unraid_version
+          state: unknown
+        - entity: sensor.tower_unraid_version
+          state: unavailable
+    card:
+      type: custom:button-card
+      template: server_status
+      name: Monitoring incomplete
+      icon: mdi:lan-disconnect
+      entity: sensor.tower_unraid_version
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+          const ids=["sensor.tower_cpu_usage", "sensor.tower_ram_usage", "sensor.plug_nas_power", "sensor.tower_unraid_version"]; const missing=ids.filter(id=>!h.known(id)); return h.health(missing.length+' core readings unavailable','amber');
+          ]]]
+      triggers_update:
+      - sensor.plug_nas_power
+      - sensor.time
+      - sensor.tower_cpu_usage
+      - sensor.tower_ram_usage
+      - sensor.tower_unraid_version
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Server diagnostics
+            content: *id002
+      hold_action:
+        action: more-info
+        entity: sensor.tower_unraid_version
+  - type: conditional
+    conditions:
+    - condition: or
+      conditions:
+      - condition: numeric_state
+        entity: sensor.tower_cpu_temperature
+        above: 79.99
+      - condition: numeric_state
+        entity: sensor.nas_exhaust_multi_sensor_temperature
+        above: 39.99
+    card: &id003
+      type: custom:button-card
+      template: server_status
+      name: System resources
+      icon: mdi:chart-line
+      entity: sensor.tower_cpu_usage
+      variables:
+        c_health: |-
+          [[[
+          const h = variables.b_helpers;
+
+          const cpuTemp=h.n('sensor.tower_cpu_temperature'), exhaust=h.n('sensor.nas_exhaust_multi_sensor_temperature');
+          if(cpuTemp!=null && cpuTemp>=80) return h.health(`CPU temperature ${h.fmt(cpuTemp,0)} °C`,cpuTemp>=90?'red':'amber');
+          if(exhaust!=null && exhaust>=40) return h.health(`Exhaust temperature ${h.fmt(exhaust,0)} °C`,exhaust>=50?'red':'amber');
+          return h.health(`CPU ${h.fmt(h.n('sensor.tower_cpu_usage'),1,'%')} · RAM ${h.fmt(h.n('sensor.tower_ram_usage'),1,'%')} · ${h.fmt(h.n('sensor.plug_nas_power'),0,' W')}`,
+           ['sensor.tower_cpu_usage','sensor.tower_ram_usage','sensor.plug_nas_power'].every(h.known)?'blue':'disabled');
+          ]]]
+      triggers_update:
+      - sensor.nas_exhaust_multi_sensor_temperature
+      - sensor.plug_nas_power
+      - sensor.time
+      - sensor.tower_cpu_temperature
+      - sensor.tower_cpu_usage
+      - sensor.tower_ram_usage
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: System resources
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: CPU and temperatures
+                show_header_toggle: false
+                entities:
+                - entity: sensor.tower_cpu_usage
+                  name: Host CPU usage
+                - entity: sensor.tower_cpu_temperature
+                  name: CPU temperature
+                - entity: sensor.nas_exhaust_multi_sensor_temperature
+                  name: Exhaust temperature
+                - entity: sensor.nas_exhaust_multi_sensor_battery
+                  name: Exhaust sensor battery
+              - type: vertical-stack
+                cards:
+                - type: entities
+                  title: Memory
+                  show_header_toggle: false
+                  entities:
+                  - entity: sensor.tower_ram_usage
+                    name: Host memory usage
+                  - entity: sensor.tower_ram_used
+                    name: Memory used
+                  - entity: sensor.tower_ram_buffer_cache
+                    name: Buffers / cache
+                  - entity: sensor.tower_ram_active
+                    name: Active memory
+                - type: custom:mushroom-template-card
+                  entity: sensor.tower_swap_usage
+                  primary: Swap
+                  secondary: '{% if state_attr(''sensor.tower_swap_usage'',''total'') == ''0 B'' %}Not configured{% elif states(''sensor.tower_swap_usage'')
+                    | is_number %}{{ states(''sensor.tower_swap_usage'') }}% used{% else %}Unavailable{% endif %}'
+                  icon: mdi:swap-horizontal
+                  tap_action:
+                    action: more-info
+                    entity: sensor.tower_swap_usage
+                - type: custom:apexcharts-card
+                  graph_span: 24h
+                  update_interval: 1min
+                  header:
+                    show: true
+                    title: Host memory
+                    show_states: true
+                    colorize_states: true
+                  apex_config:
+                    chart:
+                      height: 230
+                      animations:
+                        enabled: false
+                    legend:
+                      show: false
+                    stroke:
+                      curve: straight
+                    grid:
+                      borderColor: rgba(127,127,127,0.15)
+                    tooltip:
+                      shared: true
+                      intersect: false
+                  all_series_config:
+                    stroke_width: 2
+                    float_precision: 1
+                    fill_raw: 'null'
+                    group_by:
+                      func: avg
+                      duration: 5min
+                      fill: 'null'
+                    show:
+                      legend_value: false
+                  series:
+                  - entity: sensor.tower_ram_usage
+                    name: Used
+                    color: '#ff9800'
+              - type: vertical-stack
+                cards:
+                - type: entities
+                  title: NAS power plug
+                  show_header_toggle: false
+                  entities:
+                  - entity: sensor.plug_nas_power
+                    name: NAS wall power
+                  - entity: sensor.tower_cpu_power
+                    name: CPU package power
+                  - entity: sensor.plug_nas_energy_today
+                    name: Energy today
+                  - entity: sensor.plug_nas_current
+                    name: Current
+                  - entity: sensor.plug_nas_voltage
+                    name: Voltage
+                  - entity: sensor.plug_nas_power_factor
+                    name: Power factor
+                  - entity: sensor.plug_nas_apparent_power
+                    name: Apparent power
+                  - entity: sensor.plug_nas_reactive_power
+                    name: Reactive power
+                  - entity: sensor.plug_nas_wifi_signal
+                    name: Wi-Fi signal
+                - type: custom:apexcharts-card
+                  graph_span: 24h
+                  update_interval: 1min
+                  header:
+                    show: true
+                    title: NAS wall power
+                    show_states: true
+                    colorize_states: true
+                  apex_config:
+                    chart:
+                      height: 230
+                      animations:
+                        enabled: false
+                    legend:
+                      show: false
+                    stroke:
+                      curve: straight
+                    grid:
+                      borderColor: rgba(127,127,127,0.15)
+                    tooltip:
+                      shared: true
+                      intersect: false
+                  all_series_config:
+                    stroke_width: 2
+                    float_precision: 1
+                    fill_raw: 'null'
+                    group_by:
+                      func: avg
+                      duration: 5min
+                      fill: 'null'
+                    show:
+                      legend_value: false
+                  series:
+                  - entity: sensor.plug_nas_power
+                    name: NAS
+                    color: '#ff9800'
+            size: wide
+      hold_action:
+        action: more-info
+        entity: sensor.tower_cpu_usage
+- type: vertical-stack
+  cards:
+  - *id003
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    update_interval: 1min
+    header:
+      show: true
+      title: CPU and power
+      show_states: true
+      colorize_states: true
+    apex_config:
+      chart:
+        height: 160
+        animations:
+          enabled: false
+      legend:
+        show: false
+      stroke:
+        curve: straight
+      grid:
+        borderColor: rgba(127,127,127,0.15)
+      tooltip:
+        shared: true
+        intersect: false
+    all_series_config:
+      stroke_width: 2
+      float_precision: 1
+      fill_raw: 'null'
+      group_by:
+        func: avg
+        duration: 5min
+        fill: 'null'
+      show:
+        legend_value: false
+    series:
+    - entity: sensor.tower_cpu_usage
+      name: CPU
+      color: '#03a9f4'
+      yaxis_id: cpu
+    - entity: sensor.plug_nas_power
+      name: NAS power
+      color: '#ff9800'
+      yaxis_id: power
+    yaxis:
+    - id: cpu
+      min: 0
+      max: 100
+      decimals: 0
+      apex_config:
+        title:
+          text: '%'
+    - id: power
+      min: 0
+      opposite: true
+      decimals: 0
+      apex_config:
+        title:
+          text: W
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    update_interval: 1min
+    header:
+      show: true
+      title: Temperatures · CPU / exhaust / storage
+      show_states: true
+      colorize_states: true
+    apex_config:
+      chart:
+        height: 160
+        animations:
+          enabled: false
+      legend:
+        show: false
+      stroke:
+        curve: straight
+        dashArray:
+        - 0
+        - 6
+        - 3
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+      grid:
+        borderColor: rgba(127,127,127,0.15)
+      tooltip:
+        shared: true
+        intersect: false
+    all_series_config:
+      stroke_width: 2
+      float_precision: 1
+      fill_raw: 'null'
+      group_by:
+        func: avg
+        duration: 5min
+        fill: 'null'
+      show:
+        legend_value: false
+    series:
+    - entity: sensor.tower_cpu_temperature
+      name: CPU
+      color: '#ff9800'
+      stroke_width: 3
+    - entity: sensor.nas_exhaust_multi_sensor_temperature
+      name: Exhaust
+      color: '#9c27b0'
+      stroke_width: 3
+    - entity: sensor.tower_disk_cache_temperature
+      name: Cache
+      color: '#4caf50'
+      stroke_width: 2
+    - entity: sensor.tower_disk_parity_temperature
+      name: Parity
+      color: '#1565c0'
+      stroke_width: 1
+      show:
+        in_header: false
+    - entity: sensor.tower_disk_disk1_temperature
+      name: Disk 1
+      color: '#039be5'
+      stroke_width: 1
+      show:
+        in_header: false
+    - entity: sensor.tower_disk_disk2_temperature
+      name: Disk 2
+      color: '#00acc1'
+      stroke_width: 1
+      show:
+        in_header: false
+    - entity: sensor.tower_disk_disk3_temperature
+      name: Disk 3
+      color: '#546e7a'
+      stroke_width: 1
+      show:
+        in_header: false
+    - entity: sensor.tower_disk_disk4_temperature
+      name: Disk 4
+      color: '#5c6bc0'
+      stroke_width: 1
+      show:
+        in_header: false
+    - entity: sensor.tower_disk_disk5_temperature
+      name: Disk 5
+      color: '#00897b'
+      stroke_width: 1
+      show:
+        in_header: false
+    yaxis:
+    - min: 0
+      max: ~80
+      decimals: 0
+      apex_config:
+        title:
+          text: °C
+  - type: custom:apexcharts-card
+    graph_span: 24h
+    update_interval: 1min
+    header:
+      show: true
+      title: Host memory
+      show_states: true
+      colorize_states: true
+    apex_config:
+      chart:
+        height: 160
+        animations:
+          enabled: false
+      legend:
+        show: false
+      stroke:
+        curve: straight
+      grid:
+        borderColor: rgba(127,127,127,0.15)
+      tooltip:
+        shared: true
+        intersect: false
+    all_series_config:
+      stroke_width: 2
+      float_precision: 1
+      fill_raw: 'null'
+      group_by:
+        func: avg
+        duration: 5min
+        fill: 'null'
+      show:
+        legend_value: false
+    series:
+    - entity: sensor.tower_ram_usage
+      name: Used
+      color: '#ff9800'
+    yaxis:
+    - min: 0
+      max: 100
+      decimals: 0
+      apex_config:
+        title:
+          text: '%'
+- type: vertical-stack
+  cards:
+  - type: markdown
+    content: '## Storage'
+    text_only: true
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_cache_health
+      name: Cache
+      icon: mdi:harddisk-plus
+      variables:
+        a_key: cache
+        a_usage: sensor.tower_disk_cache_usage
+      triggers_update:
+      - binary_sensor.tower_disk_cache_health
+      - sensor.tower_disk_cache_temperature
+      - sensor.time
+      - sensor.tower_disk_cache_usage
+      - sensor.tower_disk_cache_errors
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Cache
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Cache
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_cache_health
+                  name: Reported health
+                - entity: sensor.tower_disk_cache_usage
+                  name: Capacity used
+                - entity: sensor.tower_disk_cache_temperature
+                  name: Temperature
+                - entity: sensor.tower_disk_cache_errors
+                  name: Read/write errors
+              - type: custom:mushroom-template-card
+                entity: sensor.tower_disk_cache_usage
+                primary: Capacity
+                secondary: '{{ state_attr(''sensor.tower_disk_cache_usage'',''used'') or ''—'' }} used · {{ state_attr(''sensor.tower_disk_cache_usage'',''free'')
+                  or ''—'' }} free · {{ state_attr(''sensor.tower_disk_cache_usage'',''total'') or ''—'' }} total'
+                icon: mdi:harddisk
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: sensor.tower_disk_cache_usage
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_cache_temperature
+                  name: Cache
+                  color: '#03a9f4'
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_cache_health
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_parity_health
+      name: Parity disk
+      icon: mdi:harddisk
+      variables:
+        a_key: parity
+        a_usage: ''
+      triggers_update:
+      - binary_sensor.tower_disk_parity_health
+      - sensor.tower_disk_parity_temperature
+      - sensor.time
+      - switch.tower_disk_parity_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Parity disk
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Parity disk
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_parity_health
+                  name: Reported health
+                - entity: sensor.tower_disk_parity_temperature
+                  name: Temperature
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_parity_temperature
+                  name: Parity disk
+                  color: '#03a9f4'
+              - type: history-graph
+                title: Spin history · last 24 hours
+                hours_to_show: 24
+                entities:
+                - entity: switch.tower_disk_parity_spin
+                  name: Parity disk
+              - type: custom:mushroom-template-card
+                primary: Toggle spin state
+                icon: mdi:harddisk
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: switch.tower_disk_parity_spin
+                  confirmation:
+                    text: Change the spin state of Parity disk on Tower?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_parity_health
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_disk1_health
+      name: Disk 1
+      icon: mdi:harddisk
+      variables:
+        a_key: disk1
+        a_usage: sensor.tower_disk_disk1_usage
+      triggers_update:
+      - binary_sensor.tower_disk_disk1_health
+      - sensor.tower_disk_disk1_temperature
+      - sensor.time
+      - sensor.tower_disk_disk1_usage
+      - sensor.tower_disk_disk1_errors
+      - switch.tower_disk_disk1_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Disk 1
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Disk 1
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_disk1_health
+                  name: Reported health
+                - entity: sensor.tower_disk_disk1_usage
+                  name: Capacity used
+                - entity: sensor.tower_disk_disk1_temperature
+                  name: Temperature
+                - entity: sensor.tower_disk_disk1_errors
+                  name: Read/write errors
+              - type: custom:mushroom-template-card
+                entity: sensor.tower_disk_disk1_usage
+                primary: Capacity
+                secondary: '{{ state_attr(''sensor.tower_disk_disk1_usage'',''used'') or ''—'' }} used · {{ state_attr(''sensor.tower_disk_disk1_usage'',''free'')
+                  or ''—'' }} free · {{ state_attr(''sensor.tower_disk_disk1_usage'',''total'') or ''—'' }} total'
+                icon: mdi:harddisk
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: sensor.tower_disk_disk1_usage
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_disk1_temperature
+                  name: Disk 1
+                  color: '#03a9f4'
+              - type: history-graph
+                title: Spin history · last 24 hours
+                hours_to_show: 24
+                entities:
+                - entity: switch.tower_disk_disk1_spin
+                  name: Disk 1
+              - type: custom:mushroom-template-card
+                primary: Toggle spin state
+                icon: mdi:harddisk
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: switch.tower_disk_disk1_spin
+                  confirmation:
+                    text: Change the spin state of Disk 1 on Tower?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_disk1_health
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_disk2_health
+      name: Disk 2
+      icon: mdi:harddisk
+      variables:
+        a_key: disk2
+        a_usage: sensor.tower_disk_disk2_usage
+      triggers_update:
+      - binary_sensor.tower_disk_disk2_health
+      - sensor.tower_disk_disk2_temperature
+      - sensor.time
+      - sensor.tower_disk_disk2_usage
+      - sensor.tower_disk_disk2_errors
+      - switch.tower_disk_disk2_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Disk 2
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Disk 2
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_disk2_health
+                  name: Reported health
+                - entity: sensor.tower_disk_disk2_usage
+                  name: Capacity used
+                - entity: sensor.tower_disk_disk2_temperature
+                  name: Temperature
+                - entity: sensor.tower_disk_disk2_errors
+                  name: Read/write errors
+              - type: custom:mushroom-template-card
+                entity: sensor.tower_disk_disk2_usage
+                primary: Capacity
+                secondary: '{{ state_attr(''sensor.tower_disk_disk2_usage'',''used'') or ''—'' }} used · {{ state_attr(''sensor.tower_disk_disk2_usage'',''free'')
+                  or ''—'' }} free · {{ state_attr(''sensor.tower_disk_disk2_usage'',''total'') or ''—'' }} total'
+                icon: mdi:harddisk
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: sensor.tower_disk_disk2_usage
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_disk2_temperature
+                  name: Disk 2
+                  color: '#03a9f4'
+              - type: history-graph
+                title: Spin history · last 24 hours
+                hours_to_show: 24
+                entities:
+                - entity: switch.tower_disk_disk2_spin
+                  name: Disk 2
+              - type: custom:mushroom-template-card
+                primary: Toggle spin state
+                icon: mdi:harddisk
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: switch.tower_disk_disk2_spin
+                  confirmation:
+                    text: Change the spin state of Disk 2 on Tower?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_disk2_health
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_disk3_health
+      name: Disk 3
+      icon: mdi:harddisk
+      variables:
+        a_key: disk3
+        a_usage: sensor.tower_disk_disk3_usage
+      triggers_update:
+      - binary_sensor.tower_disk_disk3_health
+      - sensor.tower_disk_disk3_temperature
+      - sensor.time
+      - sensor.tower_disk_disk3_usage
+      - sensor.tower_disk_disk3_errors
+      - switch.tower_disk_disk3_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Disk 3
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Disk 3
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_disk3_health
+                  name: Reported health
+                - entity: sensor.tower_disk_disk3_usage
+                  name: Capacity used
+                - entity: sensor.tower_disk_disk3_temperature
+                  name: Temperature
+                - entity: sensor.tower_disk_disk3_errors
+                  name: Read/write errors
+              - type: custom:mushroom-template-card
+                entity: sensor.tower_disk_disk3_usage
+                primary: Capacity
+                secondary: '{{ state_attr(''sensor.tower_disk_disk3_usage'',''used'') or ''—'' }} used · {{ state_attr(''sensor.tower_disk_disk3_usage'',''free'')
+                  or ''—'' }} free · {{ state_attr(''sensor.tower_disk_disk3_usage'',''total'') or ''—'' }} total'
+                icon: mdi:harddisk
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: sensor.tower_disk_disk3_usage
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_disk3_temperature
+                  name: Disk 3
+                  color: '#03a9f4'
+              - type: history-graph
+                title: Spin history · last 24 hours
+                hours_to_show: 24
+                entities:
+                - entity: switch.tower_disk_disk3_spin
+                  name: Disk 3
+              - type: custom:mushroom-template-card
+                primary: Toggle spin state
+                icon: mdi:harddisk
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: switch.tower_disk_disk3_spin
+                  confirmation:
+                    text: Change the spin state of Disk 3 on Tower?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_disk3_health
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_disk4_health
+      name: Disk 4
+      icon: mdi:harddisk
+      variables:
+        a_key: disk4
+        a_usage: sensor.tower_disk_disk4_usage
+      triggers_update:
+      - binary_sensor.tower_disk_disk4_health
+      - sensor.tower_disk_disk4_temperature
+      - sensor.time
+      - sensor.tower_disk_disk4_usage
+      - sensor.tower_disk_disk4_errors
+      - switch.tower_disk_disk4_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Disk 4
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Disk 4
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_disk4_health
+                  name: Reported health
+                - entity: sensor.tower_disk_disk4_usage
+                  name: Capacity used
+                - entity: sensor.tower_disk_disk4_temperature
+                  name: Temperature
+                - entity: sensor.tower_disk_disk4_errors
+                  name: Read/write errors
+              - type: custom:mushroom-template-card
+                entity: sensor.tower_disk_disk4_usage
+                primary: Capacity
+                secondary: '{{ state_attr(''sensor.tower_disk_disk4_usage'',''used'') or ''—'' }} used · {{ state_attr(''sensor.tower_disk_disk4_usage'',''free'')
+                  or ''—'' }} free · {{ state_attr(''sensor.tower_disk_disk4_usage'',''total'') or ''—'' }} total'
+                icon: mdi:harddisk
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: sensor.tower_disk_disk4_usage
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_disk4_temperature
+                  name: Disk 4
+                  color: '#03a9f4'
+              - type: history-graph
+                title: Spin history · last 24 hours
+                hours_to_show: 24
+                entities:
+                - entity: switch.tower_disk_disk4_spin
+                  name: Disk 4
+              - type: custom:mushroom-template-card
+                primary: Toggle spin state
+                icon: mdi:harddisk
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: switch.tower_disk_disk4_spin
+                  confirmation:
+                    text: Change the spin state of Disk 4 on Tower?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_disk4_health
+    - type: custom:button-card
+      template: server_disk
+      entity: binary_sensor.tower_disk_disk5_health
+      name: Disk 5
+      icon: mdi:harddisk
+      variables:
+        a_key: disk5
+        a_usage: sensor.tower_disk_disk5_usage
+      triggers_update:
+      - binary_sensor.tower_disk_disk5_health
+      - sensor.tower_disk_disk5_temperature
+      - sensor.time
+      - sensor.tower_disk_disk5_usage
+      - sensor.tower_disk_disk5_errors
+      - switch.tower_disk_disk5_spin
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Disk 5
+            content:
+              type: vertical-stack
+              cards:
+              - type: entities
+                title: Disk 5
+                show_header_toggle: false
+                entities:
+                - entity: binary_sensor.tower_disk_disk5_health
+                  name: Reported health
+                - entity: sensor.tower_disk_disk5_usage
+                  name: Capacity used
+                - entity: sensor.tower_disk_disk5_temperature
+                  name: Temperature
+                - entity: sensor.tower_disk_disk5_errors
+                  name: Read/write errors
+              - type: custom:mushroom-template-card
+                entity: sensor.tower_disk_disk5_usage
+                primary: Capacity
+                secondary: '{{ state_attr(''sensor.tower_disk_disk5_usage'',''used'') or ''—'' }} used · {{ state_attr(''sensor.tower_disk_disk5_usage'',''free'')
+                  or ''—'' }} free · {{ state_attr(''sensor.tower_disk_disk5_usage'',''total'') or ''—'' }} total'
+                icon: mdi:harddisk
+                multiline_secondary: true
+                tap_action:
+                  action: more-info
+                  entity: sensor.tower_disk_disk5_usage
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Temperature · last 24 hours
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 210
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.tower_disk_disk5_temperature
+                  name: Disk 5
+                  color: '#03a9f4'
+              - type: history-graph
+                title: Spin history · last 24 hours
+                hours_to_show: 24
+                entities:
+                - entity: switch.tower_disk_disk5_spin
+                  name: Disk 5
+              - type: custom:mushroom-template-card
+                primary: Toggle spin state
+                icon: mdi:harddisk
+                tap_action:
+                  action: perform-action
+                  perform_action: switch.toggle
+                  target:
+                    entity_id: switch.tower_disk_disk5_spin
+                  confirmation:
+                    text: Change the spin state of Disk 5 on Tower?
+      hold_action:
+        action: more-info
+        entity: binary_sensor.tower_disk_disk5_health
+- type: vertical-stack
+  cards:
+  - type: custom:button-card
+    template: server_status
+    name: Running containers
+    icon: mdi:docker
+    entity: sensor.docker_tower_containers_running
+    variables:
+      c_health: |-
+        [[[
+        const h = variables.b_helpers;
+
+        const list=Object.values(hass.states).filter(e=>/^switch\.(tower|study_tower)_container_/.test(e.entity_id));
+        const running=list.filter(e=>e.state==='on').length;
+        const unknown=list.filter(e=>!['on','off'].includes(e.state)).length;
+        return h.health(list.length ? `${running} running · ${list.length} total${unknown ? ` · ${unknown} unavailable` : ''}` : 'Container inventory unavailable',unknown || !list.length?'amber':'blue');
+        ]]]
+    triggers_update:
+    - sensor.time
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: All containers
+          content:
+            type: vertical-stack
+            cards:
+            - type: markdown
+              text_only: true
+              content: All containers · select a container for its resource history and confirmed start/stop control. Stopped
+                containers are neutral; no expected-running policy is applied.
+            - type: custom:auto-entities
+              show_empty: true
+              card:
+                type: grid
+                square: false
+                columns: 2
+              card_param: cards
+              filter:
+                template: |2
+
+                  {% set ns = namespace(cards=[]) %}
+                  {% for e in states.switch | sort(attribute='name') %}
+                    {% if e.entity_id is match('^switch\.(tower|study_tower)_container_') %}
+                      {% set key = e.entity_id.split('_container_',1)[1] %}
+                      {% set name = e.name | replace('Tower Container ', '') %}
+                      {% set ns.cards = ns.cards + [{'type':'custom:decluttering-card','template':'server_container','variables':[{'status_entity':e.entity_id},{'key':key},{'name':name}]}] %}
+                    {% endif %}
+                  {% endfor %}
+                  {{ ns.cards | tojson }}
+          size: wide
+    hold_action:
+      action: more-info
+      entity: sensor.docker_tower_containers_running
+  - type: grid
+    square: false
+    columns: 1
+    cards:
+    - type: custom:mushroom-template-card
+      primary: Resource history
+      secondary: 8 priority containers
+      icon: mdi:chart-line
+      tap_action:
+        action: fire-dom-event
+        browser_mod:
+          service: browser_mod.popup
+          data:
+            title: Container resource history
+            content:
+              type: vertical-stack
+              cards:
+              - type: markdown
+                text_only: true
+                content: 'Resource source: **Docker Monitor**. The same eight workloads keep consistent ordering and colors
+                  in both charts. CPU can exceed 100% across multiple cores; missing samples remain gaps.'
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: CPU · eight priority containers
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 250
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.docker_tower_firefox_cpu
+                  name: Firefox
+                  color: '#03a9f4'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_stash_cpu
+                  name: Stash
+                  color: '#ff9800'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_immich_cpu
+                  name: Immich
+                  color: '#9c27b0'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_transmission_cpu
+                  name: Transmission
+                  color: '#4caf50'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_plex_cpu
+                  name: Plex
+                  color: '#ffc107'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_oepl_monitor_cpu
+                  name: OEPL
+                  color: '#e91e63'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_influxdb_1_8_cpu
+                  name: InfluxDB
+                  color: '#00bcd4'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                - entity: sensor.docker_tower_postgresql_immich_cpu
+                  name: Postgres · Immich
+                  color: '#795548'
+                  transform: 'const v=Number(x); return x!=null && x!=="" && Number.isFinite(v) ? v : null;'
+                yaxis:
+                - min: 0
+                  decimals: 0
+                  apex_config:
+                    title:
+                      text: CPU % (one core)
+              - type: custom:apexcharts-card
+                graph_span: 24h
+                update_interval: 1min
+                header:
+                  show: true
+                  title: Memory · eight priority containers
+                  show_states: true
+                  colorize_states: true
+                apex_config:
+                  chart:
+                    height: 250
+                    animations:
+                      enabled: false
+                  legend:
+                    show: false
+                  stroke:
+                    curve: straight
+                  grid:
+                    borderColor: rgba(127,127,127,0.15)
+                  tooltip:
+                    shared: true
+                    intersect: false
+                all_series_config:
+                  stroke_width: 2
+                  float_precision: 1
+                  fill_raw: 'null'
+                  group_by:
+                    func: avg
+                    duration: 5min
+                    fill: 'null'
+                  show:
+                    legend_value: false
+                series:
+                - entity: sensor.docker_tower_firefox_memory
+                  name: Firefox
+                  color: '#03a9f4'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_stash_memory
+                  name: Stash
+                  color: '#ff9800'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_immich_memory
+                  name: Immich
+                  color: '#9c27b0'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_transmission_memory
+                  name: Transmission
+                  color: '#4caf50'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_plex_memory
+                  name: Plex
+                  color: '#ffc107'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_oepl_monitor_memory
+                  name: OEPL
+                  color: '#e91e63'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_influxdb_1_8_memory
+                  name: InfluxDB
+                  color: '#00bcd4'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                - entity: sensor.docker_tower_postgresql_immich_memory
+                  name: Postgres · Immich
+                  color: '#795548'
+                  unit: MiB
+                  transform: 'const v=Number(x); const f={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024}[entity.attributes.unit_of_measurement];
+                    return x!=null && x!=="" && Number.isFinite(v) && f!=null ? v*f : null;'
+                yaxis:
+                - min: 0
+                  decimals: 0
+                  apex_config:
+                    title:
+                      text: MiB
+            size: wide
+  - type: markdown
+    text_only: true
+    content: 'CPU and memory: Docker Monitor · select a container for details.'
+  - type: custom:auto-entities
+    show_empty: true
+    card:
+      type: grid
+      square: false
+      columns: 2
+    card_param: cards
+    filter:
+      template: |2
+
+        {% set ns = namespace(cards=[]) %}
+        {% for e in states.switch | sort(attribute='name') %}
+          {% if e.entity_id is match('^switch\.(tower|study_tower)_container_') and e.state == 'on' %}
+            {% set key = e.entity_id.split('_container_',1)[1] %}
+            {% set name = e.name | replace('Tower Container ', '') %}
+            {% set ns.cards = ns.cards + [{'type':'custom:decluttering-card','template':'server_container','variables':[{'status_entity':e.entity_id},{'key':key},{'name':name}]}] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.cards | tojson }}
+- type: vertical-stack
+  cards:
+  - type: markdown
+    content: '## Server and power'
+    text_only: true
+  - type: conditional
+    conditions:
+    - entity: sensor.tower_ups_ut850eg_status
+      state: ONLINE
+    - entity: binary_sensor.tower_ups_connected
+      state: 'on'
+    - condition: numeric_state
+      entity: sensor.tower_ups_battery
+      above: 30
+    - entity: sensor.tower_ups_ut850eg_battery_health
+      state: Good
+    card: *id004
+  - type: custom:button-card
+    template: server_status
+    name: Server details
+    icon: mdi:server
+    entity: sensor.tower_unraid_version
+    variables:
+      c_health: |-
+        [[[
+        const h = variables.b_helpers;
+
+        return h.health(h.known('sensor.tower_unraid_version') ? `Unraid ${h.s('sensor.tower_unraid_version')}` : 'Version unavailable','blue');
+        ]]]
+    triggers_update:
+    - sensor.time
+    - sensor.tower_unraid_version
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Server diagnostics
+          content: *id002
+    hold_action:
+      action: more-info
+      entity: sensor.tower_unraid_version
+- type: custom:collapsable-cards
+  title: Desk powerstrip
+  cards:
+  - type: grid
+    square: false
+    columns: 3
+    cards:
+    - type: custom:mushroom-template-card
+      entity: sensor.plug_study_desk_power
+      primary: Power
+      secondary: '{{ states(''sensor.plug_study_desk_power'') | float(0) | round(0) }} W'
+      icon: mdi:flash
+      icon_color: |-
+        {% set p = states('sensor.plug_study_desk_power') | float(0) %} {% if p >= 1000 %}
+          red
+        {% elif p >= 600 %}
+          amber
+        {% else %}
+          green
+        {% endif %}
+      fill_container: true
+    - type: custom:mushroom-template-card
+      entity: sensor.plug_study_desk_current
+      primary: Current
+      secondary: '{{ states(''sensor.plug_study_desk_current'') | float(0) | round(1) }} A'
+      icon: mdi:current-ac
+      icon_color: blue
+      fill_container: true
+    - type: custom:mushroom-template-card
+      entity: sensor.plug_study_desk_voltage
+      primary: Voltage
+      secondary: '{{ states(''sensor.plug_study_desk_voltage'') | float(0) | round(1) }} V'
+      icon: mdi:sine-wave
+      icon_color: teal
+      fill_container: true
+  - type: grid
+    square: false
+    columns: 2
+    cards:
+    - type: custom:mushroom-template-card
+      entity: switch.powerstrip_study_desk_socket_1
+      primary: Computer
+      secondary: |-
+        {%- if is_state(entity, 'on') -%}
+          On
+        {%- elif is_state(entity, 'off') -%}
+          Off
+        {%- else -%}
+          Unknown
+        {%- endif -%}
+      icon: mdi:desktop-tower-monitor
+      icon_color: |-
+        {%- if is_state(entity, 'on') -%}
+          green
+        {%- elif is_state(entity, 'off') -%}
+          grey
+        {%- else -%}
+          amber
+        {%- endif -%}
+      tap_action:
+        action: toggle
+        confirmation:
+          text: Toggle power for the computer socket?
+      hold_action:
+        action: more-info
+      card_mod:
+        style: |
+          ha-card {
+            min-height: 64px;
+            --icon-size: 28px;
+          }
+    - type: custom:mushroom-template-card
+      entity: switch.powerstrip_study_desk_socket_2
+      primary: Laptop Dock
+      secondary: |-
+        {%- if is_state(entity, 'on') -%}
+          On
+        {%- elif is_state(entity, 'off') -%}
+          Off
+        {%- else -%}
+          Unknown
+        {%- endif -%}
+      icon: mdi:laptop
+      icon_color: |-
+        {%- if is_state(entity, 'on') -%}
+          green
+        {%- elif is_state(entity, 'off') -%}
+          grey
+        {%- else -%}
+          amber
+        {%- endif -%}
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      card_mod:
+        style: |
+          ha-card {
+            min-height: 64px;
+            --icon-size: 28px;
+          }
+    - type: custom:mushroom-template-card
+      entity: switch.powerstrip_study_desk_socket_3
+      primary: Peripherals
+      secondary: |-
+        {%- if is_state(entity, 'on') -%}
+          On
+        {%- elif is_state(entity, 'off') -%}
+          Off
+        {%- else -%}
+          Unknown
+        {%- endif -%}
+      icon: mdi:keyboard-outline
+      icon_color: |-
+        {%- if is_state(entity, 'on') -%}
+          green
+        {%- elif is_state(entity, 'off') -%}
+          grey
+        {%- else -%}
+          amber
+        {%- endif -%}
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      card_mod:
+        style: |
+          ha-card {
+            min-height: 64px;
+            --icon-size: 28px;
+          }
+    - type: custom:mushroom-template-card
+      entity: switch.powerstrip_study_desk_socket_4
+      primary: Monitors
+      secondary: |-
+        {%- if is_state(entity, 'on') -%}
+          On
+        {%- elif is_state(entity, 'off') -%}
+          Off
+        {%- else -%}
+          Unknown
+        {%- endif -%}
+      icon: mdi:monitor-multiple
+      icon_color: |-
+        {%- if is_state(entity, 'on') -%}
+          green
+        {%- elif is_state(entity, 'off') -%}
+          grey
+        {%- else -%}
+          amber
+        {%- endif -%}
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      card_mod:
+        style: |
+          ha-card {
+            min-height: 64px;
+            --icon-size: 28px;
+          }
+    - type: custom:mushroom-template-card
+      entity: switch.powerstrip_study_desk_socket_usb
+      primary: USB
+      secondary: |-
+        {%- if is_state(entity, 'on') -%}
+          On
+        {%- elif is_state(entity, 'off') -%}
+          Off
+        {%- else -%}
+          Unknown
+        {%- endif -%}
+      icon: mdi:usb-port
+      icon_color: |-
+        {%- if is_state(entity, 'on') -%}
+          green
+        {%- elif is_state(entity, 'off') -%}
+          grey
+        {%- else -%}
+          amber
+        {%- endif -%}
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      card_mod:
+        style: |
+          ha-card {
+            min-height: 64px;
+            --icon-size: 28px;
+          }

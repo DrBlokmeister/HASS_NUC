@@ -3365,3 +3365,116 @@ room_climate_card:
     card_mod:
       style: |
         ha-card{min-height:72px;--icon-size:30px}
+
+
+# Templates for the Server overview tab
+# Templates used only by the redesigned server tab.
+server_container:
+  card:
+    type: custom:button-card
+    template: server_container
+    entity: '[[status_entity]]'
+    name: '[[name]]'
+    icon: mdi:docker
+    variables:
+      a_key: '[[key]]'
+    triggers_update:
+    - '[[status_entity]]'
+    - sensor.docker_tower_[[key]]_cpu
+    - sensor.docker_tower_[[key]]_memory
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: '[[name]]'
+          content:
+            type: vertical-stack
+            cards:
+            - type: entities
+              title: Container
+              show_header_toggle: false
+              entities:
+              - entity: '[[status_entity]]'
+                name: State
+              - entity: sensor.docker_tower_[[key]]_cpu
+                name: CPU · Docker Monitor
+              - entity: sensor.docker_tower_[[key]]_memory
+                name: Memory · Docker Monitor
+              - entity: sensor.docker_tower_[[key]]_status
+                name: Docker status
+              - entity: sensor.docker_tower_[[key]]_up_time
+                name: Started
+            - type: custom:apexcharts-card
+              graph_span: 24h
+              update_interval: 1min
+              header:
+                show: true
+                title: Resources · last 24 hours
+                show_states: true
+                colorize_states: true
+              apex_config:
+                chart:
+                  height: 240
+                  animations:
+                    enabled: false
+                legend:
+                  show: false
+                stroke:
+                  curve: straight
+                grid:
+                  borderColor: rgba(127,127,127,0.15)
+                tooltip:
+                  shared: true
+                  intersect: false
+              all_series_config:
+                stroke_width: 2
+                float_precision: 1
+                fill_raw: 'null'
+                group_by:
+                  func: avg
+                  duration: 5min
+                  fill: 'null'
+                show:
+                  legend_value: false
+              series:
+              - entity: sensor.docker_tower_[[key]]_cpu
+                name: CPU
+                color: '#03a9f4'
+                yaxis_id: cpu
+                transform: 'const v = Number(x); return x != null && x !== "" && Number.isFinite(v) ? v : null;'
+              - entity: sensor.docker_tower_[[key]]_memory
+                name: Memory
+                color: '#ff9800'
+                yaxis_id: memory
+                unit: MiB
+                transform: 'const v=Number(x); const factors={B:1/1048576,kB:1000/1048576,MB:1000000/1048576,GB:1000000000/1048576,KiB:1/1024,MiB:1,GiB:1024};
+                  const f=factors[entity.attributes.unit_of_measurement]; return x!=null && x!=="" && Number.isFinite(v) &&
+                  f!=null ? v*f : null;'
+              yaxis:
+              - id: cpu
+                min: 0
+                decimals: 0
+                apex_config:
+                  title:
+                    text: CPU % (one core)
+              - id: memory
+                min: 0
+                opposite: true
+                decimals: 0
+                apex_config:
+                  title:
+                    text: MiB
+            - type: custom:mushroom-template-card
+              primary: Start / stop [[name]]
+              icon: mdi:power
+              tap_action:
+                action: perform-action
+                perform_action: switch.toggle
+                target:
+                  entity_id: '[[status_entity]]'
+                confirmation:
+                  text: Start or stop the [[name]] container on Tower?
+    hold_action:
+      action: more-info
+      entity: '[[status_entity]]'
