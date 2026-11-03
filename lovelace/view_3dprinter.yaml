@@ -37,26 +37,39 @@ cards:
       - type: conditional
         conditions:
           - condition: state
-            state_not: unavailable
-            entity: sensor.blokmeisterams_id
-          - condition: state
-            state_not: unknown
-            entity: sensor.blokmeisterams_id
+            entity: binary_sensor.blokmeisterams_active
+            state: 'on'
         elements:
-          - type: state-label
-            entity: sensor.blokmeisterams_id
+          - type: state-icon
+            entity: binary_sensor.blokmeisterams_active
+            icon: mdi:play-circle
+            title: AMS active
+            state_color: false
             tap_action:
-              action: none
+              action: more-info
             style:
               top: 77%
               left: 9.6%
-              text-align: center
-              font-size: 0.8em
-              background-color: rgba(0,0,0,0)
-              box-shadow: 0 0 3px 3px rgba(0, 0, 0, 0)
-              border-radius: 10px
-              pointer-events: none
-              color: '#FFFFFF'
+              '--mdc-icon-size': 1.4em
+              '--state-icon-color': '#4CAF50'
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: binary_sensor.blokmeisterams_active
+            state: 'off'
+        elements:
+          - type: state-icon
+            entity: binary_sensor.blokmeisterams_active
+            icon: mdi:pause-circle-outline
+            title: AMS idle
+            state_color: false
+            tap_action:
+              action: more-info
+            style:
+              top: 77%
+              left: 9.6%
+              '--mdc-icon-size': 1.4em
+              '--state-icon-color': '#9E9E9E'
       - type: custom:config-template-card
         entities:
           - sensor.blokmeisterams_tray_1
