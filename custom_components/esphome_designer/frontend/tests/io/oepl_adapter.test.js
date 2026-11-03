@@ -90,6 +90,18 @@ describe('OEPLAdapter', () => {
         expect(mockLogger.warn).toHaveBeenCalledWith('Widget type "unknown_widget" does not support OEPL export yet.');
     });
 
+    it('targets the configured OEPL device id', async () => {
+        mockRegistry.get.mockReturnValue({ exportOEPL: () => ({ type: 'text', value: 'hi' }) });
+
+        const json = await new OEPLAdapter().generate({
+            currentPageIndex: 0,
+            settings: { oeplEntityId: '95b2d0433f2c26d08088d6296a00a70d' },
+            pages: [{ widgets: [{ id: 'w1', type: 'label' }] }]
+        });
+
+        expect(JSON.parse(json).target).toEqual({ device_id: '95b2d0433f2c26d08088d6296a00a70d' });
+    });
+
     it('logs plugin export failures and returns null from generateWidget', () => {
         mockRegistry.get.mockReturnValue({
             exportOEPL: () => {

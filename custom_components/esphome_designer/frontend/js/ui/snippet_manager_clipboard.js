@@ -1,4 +1,5 @@
 import { isSecureBrowserContext } from '../utils/browser_runtime.js';
+import { getOEPLTarget } from '../utils/oepl_target.js';
 
 const SYSTEM_SECTION_KEYS = new Set([
     "esphome", "esp32", "esp8266", "psram", "wifi", "api", "ota",
@@ -137,7 +138,7 @@ export function extractUiOnlyYaml(yaml) {
 /**
  * @param {{
  *   service: string,
- *   target: { entity_id?: string },
+ *   target: { entity_id?: string, device_id?: string },
  *   data: {
  *     background: string,
  *     rotate: string|number,
@@ -150,14 +151,15 @@ export function extractUiOnlyYaml(yaml) {
  * @returns {string}
  */
 export function formatOEPLServiceYaml(serviceData, settings = {}) {
-    const entityId = settings.oeplEntityId || "open_epaper_link.0000000000000000";
     const dither = settings.oeplDither ?? 2;
+    const target = getOEPLTarget(settings.oeplEntityId);
 
-    serviceData.target.entity_id = entityId;
+    serviceData.target = target;
     serviceData.data.dither = dither;
 
+    const [targetKey, targetValue] = Object.entries(target)[0];
     let finalYaml = `service: ${serviceData.service}\n`;
-    finalYaml += `target:\n  entity_id: ${serviceData.target.entity_id}\n`;
+    finalYaml += `target:\n  ${targetKey}: ${JSON.stringify(targetValue)}\n`;
     finalYaml += `data:\n`;
     finalYaml += `  background: ${serviceData.data.background}\n`;
     finalYaml += `  rotate: ${serviceData.data.rotate}\n`;

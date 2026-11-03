@@ -1,6 +1,6 @@
 /**
  * @typedef {{ id: string, name: string, device_model?: string, device_type?: string, page_count: number }} LayoutRow
- * @typedef {{ name?: string, isComingSoon?: boolean, isUnavailable?: boolean, unavailableReason?: string }} DeviceProfileSummary
+ * @typedef {{ name?: string, legacyAliasFor?: string, isComingSoon?: boolean, isUnavailable?: boolean, unavailableReason?: string }} DeviceProfileSummary
  */
 
 /**
@@ -134,17 +134,19 @@ export function createLayoutManagerModalMarkup() {
  */
 export function generateDeviceOptions(deviceProfiles, supportedIds) {
     if (deviceProfiles) {
-        return Object.entries(deviceProfiles).map(([key, profile]) => {
-            let displayName = profile.name || key;
-            const unavailable = isUnavailableProfile(profile);
-            if (unavailable) {
-                displayName += " (coming soon)";
-            } else if (!supportedIds.includes(key)) {
-                displayName += " (untested)";
-            }
-            const disabledAttr = unavailable ? ` disabled title="${escapeHtml(profile.unavailableReason || "Coming soon")}"` : "";
-            return `<option value="${escapeHtml(key)}"${disabledAttr}>${escapeHtml(displayName)}</option>`;
-        }).join("");
+        return Object.entries(deviceProfiles)
+            .filter(([, profile]) => !profile.legacyAliasFor)
+            .map(([key, profile]) => {
+                let displayName = profile.name || key;
+                const unavailable = isUnavailableProfile(profile);
+                if (unavailable) {
+                    displayName += " (coming soon)";
+                } else if (!supportedIds.includes(key)) {
+                    displayName += " (untested)";
+                }
+                const disabledAttr = unavailable ? ` disabled title="${escapeHtml(profile.unavailableReason || "Coming soon")}"` : "";
+                return `<option value="${escapeHtml(key)}"${disabledAttr}>${escapeHtml(displayName)}</option>`;
+            }).join("");
     }
 
     return '<option value="reterminal_e1001">reTerminal E1001</option>';

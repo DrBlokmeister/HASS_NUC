@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { YamlGenerator } from '../../js/io/adapters/yaml_generator.js';
 import { resolveAdapterProfile } from '../../js/io/adapters/esphome_adapter_profile.js';
+import { findDeviceProfileConflicts } from '../../js/io/device_profile_validation.js';
 import { generateBinarySensorSection, generateOutputSection, generatePSRAMSection } from '../../js/io/hardware_generators.js';
 
 const fetchDynamicHardwareProfilesMock = vi.fn(async () => []);
@@ -24,6 +25,10 @@ vi.mock('../../js/core/events.js', () => ({
 
 describe('built-in device profiles', async () => {
     const devices = await import('../../js/io/devices.js');
+
+    it('does not define duplicate hardware profiles without an explicit legacy alias', () => {
+        expect(findDeviceProfileConflicts(devices.DEVICE_PROFILES, devices.SUPPORTED_DEVICE_IDS)).toEqual([]);
+    });
 
     it('includes the Lilygo T5 4.7 profile as built-in but untested', () => {
         const profile = devices.DEVICE_PROFILES.lilygo_t5_47;
@@ -66,6 +71,13 @@ describe('built-in device profiles', async () => {
         expect(devices.SUPPORTED_DEVICE_IDS).toContain('reterminal_e1001');
     });
 
+    it('never includes legacy aliases in the selectable profile id list', () => {
+        expect(devices.buildSupportedDeviceIds({
+            canonical: { name: 'Canonical' },
+            old_id: { name: 'Legacy', legacyAliasFor: 'canonical' }
+        })).toEqual(['canonical']);
+    });
+
     it('surfaces the corrected JC4832W535 board id while hiding the legacy alias', () => {
         const profile = devices.DEVICE_PROFILES.guition_esp32_jc4832w535;
         const legacy = devices.DEVICE_PROFILES.guition_esp32_jc8048w535;
@@ -77,7 +89,9 @@ describe('built-in device profiles', async () => {
         expect(devices.SUPPORTED_DEVICE_IDS).toContain('guition_esp32_jc4832w535');
 
         expect(legacy).toBeTruthy();
+        expect(legacy.legacyAliasFor).toBe('guition_esp32_jc4832w535');
         expect(legacy.isUntestedProfile).toBe(true);
+        expect(legacy.touch).toEqual(profile.touch);
         expect(devices.SUPPORTED_DEVICE_IDS).not.toContain('guition_esp32_jc8048w535');
     });
 
@@ -204,6 +218,56 @@ describe('built-in device profiles', async () => {
             reset_pin: 'GPIO41'
         });
         expect(devices.SUPPORTED_DEVICE_IDS).toContain('seeedstudio_reterminal_sticky');
+    });
+
+    it('resolves the shipped reTerminal Sticky id through a hidden canonical alias', () => {
+        const canonical = devices.DEVICE_PROFILES.seeedstudio_reterminal_sticky;
+        const legacy = devices.DEVICE_PROFILES.reterminal_sticky;
+        const resolved = resolveAdapterProfile('reterminal_sticky', {}, devices.DEVICE_PROFILES);
+
+        expect(legacy).toMatchObject({
+            legacyAliasFor: 'seeedstudio_reterminal_sticky',
+            isUntestedProfile: true,
+            hardwarePackage: canonical.hardwarePackage,
+            displayPlatform: canonical.displayPlatform,
+            displayModel: canonical.displayModel,
+            resolution: canonical.resolution
+        });
+        expect(legacy.pins).toEqual(canonical.pins);
+        expect(legacy.touch).toEqual(canonical.touch);
+        expect(resolved).toMatchObject({
+            id: 'reterminal_sticky',
+            hardwarePackage: canonical.hardwarePackage,
+            displayModel: canonical.displayModel
+        });
+        expect(devices.SUPPORTED_DEVICE_IDS).toContain('seeedstudio_reterminal_sticky');
+        expect(devices.SUPPORTED_DEVICE_IDS).not.toContain('reterminal_sticky');
+    });
+
+    it('refreshes derived aliases when their canonical profile changes', () => {
+        const profiles = {
+            canonical: {
+                name: 'Canonical',
+                displayModel: 'FIRST',
+                pins: { display: { cs: 'GPIO1' } }
+            }
+        };
+        const aliases = { old_id: { targetId: 'canonical', name: 'Legacy ID' } };
+
+        devices.applyLegacyDeviceProfileAliases(profiles, aliases);
+        profiles.canonical = {
+            ...profiles.canonical,
+            displayModel: 'SECOND',
+            pins: { display: { cs: 'GPIO2' } }
+        };
+        devices.applyLegacyDeviceProfileAliases(profiles, aliases);
+
+        expect(profiles.old_id).toMatchObject({
+            name: 'Legacy ID',
+            legacyAliasFor: 'canonical',
+            displayModel: 'SECOND',
+            pins: { display: { cs: 'GPIO2' } }
+        });
     });
 
     it('includes verified E1003, Pico, and Elecrow P4 profiles', () => {

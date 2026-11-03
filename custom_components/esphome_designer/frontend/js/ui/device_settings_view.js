@@ -3,7 +3,7 @@ import { DEVICE_PROFILES, SUPPORTED_DEVICE_IDS } from '../io/devices.js';
 import { Logger } from '../utils/logger.js';
 
 /**
- * @typedef {{ name?: string, isCustomProfile?: boolean, isOfflineImport?: boolean, isComingSoon?: boolean, isUnavailable?: boolean, unavailableReason?: string }} DeviceSettingsProfile
+ * @typedef {{ name?: string, legacyAliasFor?: string, isCustomProfile?: boolean, isOfflineImport?: boolean, isComingSoon?: boolean, isUnavailable?: boolean, unavailableReason?: string }} DeviceSettingsProfile
  */
 
 /**
@@ -32,6 +32,7 @@ export function populateDeviceSelectView(instance) {
     const userProfiles = [];
 
     Object.entries(/** @type {Record<string, DeviceSettingsProfile>} */ (DEVICE_PROFILES)).forEach(([key, profile]) => {
+        if (profile.legacyAliasFor) return;
         const isUser = profile.isCustomProfile || profile.isOfflineImport;
         if (isUser) userProfiles.push([key, profile]);
         else builtInProfiles.push([key, profile]);
@@ -86,8 +87,9 @@ export function populateDeviceSelectView(instance) {
     instance.modelInput.appendChild(customOpt);
 
     const currentProfile = /** @type {Record<string, DeviceSettingsProfile>} */ (DEVICE_PROFILES)[currentVal];
+    const visibleCurrentVal = currentProfile?.legacyAliasFor || currentVal;
     if (currentVal === 'custom' || (currentProfile && !isUnavailableProfile(currentProfile))) {
-        instance.modelInput.value = currentVal;
+        instance.modelInput.value = visibleCurrentVal;
     } else if ((currentProfile && isUnavailableProfile(currentProfile)) || !instance.modelInput.value || instance.modelInput.selectedOptions[0]?.disabled) {
         const firstEnabled = Array.from(instance.modelInput.options).find((option) => !option.disabled);
         instance.modelInput.value = firstEnabled?.value || 'reterminal_e1001';

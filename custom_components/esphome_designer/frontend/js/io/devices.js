@@ -231,45 +231,6 @@ export const DEVICE_PROFILES = {
       touch: true
     }
   },
-  reterminal_sticky: {
-    name: "Seeedstudio reTerminal Sticky",
-    displayType: "grayscale",
-    chip: "esp32-s3",
-    board: "esp32-s3-devkitc-1",
-    displayPlatform: "epaper_spi",
-    displayModel: "seeed-reterminal-sticky",
-    displayId: "my_display",
-    touchscreenId: "device_touchscreen",
-    isPackageBased: true,
-    isUntestedProfile: true,
-    hardwarePackage: "hardware/seeedstudio-reterminal-sticky.yaml",
-    resolution: { width: 800, height: 480 },
-    shape: "rect",
-    psram_mode: "octal",
-    pins: {
-      display: { cs: "GPIO15", dc: "GPIO16", reset: "GPIO17", busy: "GPIO18" },
-      i2c: { sda: "GPIO1", scl: "GPIO0" },
-      spi: { clk: "GPIO13", mosi: "GPIO14", miso: "GPIO12" },
-      buzzer: "GPIO48",
-      buttons: { left: "GPIO5", right: "GPIO6", home: "GPIO4", refresh: "GPIO4" }
-    },
-    touch: {
-      platform: "gt911",
-      id: "device_touchscreen",
-      i2c_id: "i2c_touch",
-      interrupt_pin: "GPIO21",
-      reset_pin: "GPIO41",
-      transform: { mirror_y: true }
-    },
-    features: {
-      psram: true,
-      buzzer: true,
-      buttons: true,
-      sht4x: true,
-      epaper: true,
-      touch: true
-    }
-  },
   trmnl_diy_esp32s3: {
     name: "Seeed Studio Trmnl DIY Kit (ESP32-S3)",
     displayType: "binary",
@@ -518,19 +479,6 @@ export const DEVICE_PROFILES = {
       transform: { mirror_x: true, swap_xy: true },
       calibration: { x_min: 14, x_max: 461, y_min: 12, y_max: 310 }
     }
-  },
-  // Legacy compatibility alias for layouts saved before the corrected board id existed.
-  guition_esp32_jc8048w535: {
-    name: "Guition JC4832W535 v3 3.5\" 480x320 (Legacy ID)",
-    displayType: "color",
-    chip: "esp32-s3",
-    displayPlatform: "qspi_dbi",
-    displayModel: "JC4832W535",
-    isPackageBased: true,
-    isUntestedProfile: true,
-    hardwarePackage: "hardware/guition-esp32-jc8048w535.yaml",
-    resolution: { width: 320, height: 480 },
-    features: { psram: true, buzzer: false, buttons: false, lcd: true, lvgl: true, touch: true }
   },
   m5stack_tab5: {
     name: "M5Stack Tab5",
@@ -880,6 +828,46 @@ export const DEVICE_PROFILES = {
 };
 
 /**
+ * IDs retained only so layouts saved by older releases continue to resolve.
+ * Alias profiles are derived from their canonical target below, keeping the
+ * hardware definition single-sourced while preserving direct registry lookup.
+ */
+export const LEGACY_DEVICE_PROFILE_ALIASES = {
+  reterminal_sticky: {
+    targetId: "seeedstudio_reterminal_sticky",
+    name: "Seeed Studio reTerminal Sticky (Legacy ID)"
+  },
+  guition_esp32_jc8048w535: {
+    targetId: "guition_esp32_jc4832w535",
+    name: "Guition JC4832W535 v3 3.5\" 480x320 (Legacy ID)"
+  }
+};
+
+/**
+ * Materializes compatibility IDs from canonical profiles. Reapplying aliases
+ * after dynamic profile loading ensures they cannot drift from their targets.
+ *
+ * @param {Record<string, any>} profiles
+ * @param {Record<string, {targetId: string, name?: string}>} aliases
+ */
+export function applyLegacyDeviceProfileAliases(profiles, aliases = LEGACY_DEVICE_PROFILE_ALIASES) {
+  Object.entries(aliases).forEach(([aliasId, alias]) => {
+    const target = profiles[alias.targetId];
+    if (!target) {
+      throw new Error(`Legacy device profile alias ${aliasId} points to missing target ${alias.targetId}`);
+    }
+    profiles[aliasId] = {
+      ...target,
+      name: alias.name || target.name,
+      legacyAliasFor: alias.targetId,
+      isUntestedProfile: true
+    };
+  });
+}
+
+applyLegacyDeviceProfileAliases(DEVICE_PROFILES);
+
+/**
  * Returns the currently supported, selectable device profile IDs.
  * Dynamic profile loads reuse this to keep the exported list in sync.
  *
@@ -888,7 +876,7 @@ export const DEVICE_PROFILES = {
  */
 export function buildSupportedDeviceIds(profiles = DEVICE_PROFILES) {
   return Object.entries(profiles)
-    .filter(([, profile]) => !profile.isUntestedProfile && !profile.isComingSoon && !profile.isUnavailable)
+    .filter(([, profile]) => !profile.legacyAliasFor && !profile.isUntestedProfile && !profile.isComingSoon && !profile.isUnavailable)
     .map(([id]) => id);
 }
 
@@ -960,6 +948,8 @@ export async function loadExternalProfiles() {
       Logger.log(`[Devices] Restoring ${offlineIds.length} offline profiles from localStorage.`);
       applyOfflineProfiles(DEVICE_PROFILES, offlineProfiles);
     }
+
+    applyLegacyDeviceProfileAliases(DEVICE_PROFILES);
 
     SUPPORTED_DEVICE_IDS = buildSupportedDeviceIds(DEVICE_PROFILES);
 

@@ -1,6 +1,7 @@
 import { BaseAdapter } from './base_adapter.js';
 import { Logger } from '../../utils/logger.js';
 import { registry } from '../../core/plugin_registry.js';
+import { getOEPLTarget } from '../../utils/oepl_target.js';
 
 const ORIENTATION_ROTATION = {
     portrait: 90,
@@ -77,16 +78,12 @@ export class OEPLAdapter extends BaseAdapter {
             ? (layout.darkMode ? "black" : "white")
             : (layout.darkMode ? "black" : "white"); // Fallback
 
-        // Get entity ID from settings, with fallback placeholder
         const settings = layout.settings || {};
-        const entityId = settings.oeplEntityId || "open_epaper_link.0000000000000000";
 
         // Build proper JSON object - no comments allowed in JSON
         const output = {
             service: "open_epaper_link.drawcustom",
-            target: {
-                entity_id: entityId
-            },
+            target: getOEPLTarget(settings.oeplEntityId),
             data: {
                 background: background,
                 rotate: rotate,

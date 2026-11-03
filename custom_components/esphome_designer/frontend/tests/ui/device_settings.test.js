@@ -53,6 +53,11 @@ vi.mock('../../js/core/events.js', () => ({
 vi.mock('../../js/io/devices.js', () => ({
     DEVICE_PROFILES: {
         reterminal_e1001: { name: 'reTerminal e1001' },
+        reterminal_sticky: {
+            name: 'reTerminal Sticky (Legacy ID)',
+            legacyAliasFor: 'reterminal_e1001',
+            isUntestedProfile: true
+        },
         reterminal_e1004: {
             name: 'reTerminal E1004',
             isComingSoon: true,
@@ -165,6 +170,17 @@ describe('DeviceSettings', () => {
 
         ds.close();
         expect(ds.modal.classList.contains('hidden')).toBe(true);
+    });
+
+    it('shows the canonical option when a saved layout uses a legacy device id', () => {
+        mockAppState.settings.device_model = 'reterminal_sticky';
+        ds.init();
+        ds.open();
+
+        expect(ds.modelInput.value).toBe('reterminal_e1001');
+        expect(Array.from(ds.modelInput.options).some((option) => option.value === 'reterminal_sticky')).toBe(false);
+
+        mockAppState.settings.device_model = 'reterminal_e1001';
     });
 
     it('populates device model select with built-in, imported, and custom option', () => {

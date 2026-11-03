@@ -25,6 +25,11 @@ vi.mock('../../js/io/devices.js', () => ({
             unavailableReason: 'Driver is not upstream yet'
         },
         reterminal_e1001: { name: 'reTerminal e1001' },
+        reterminal_sticky: {
+            name: 'reTerminal Sticky (Legacy ID)',
+            legacyAliasFor: 'reterminal_e1001',
+            isUntestedProfile: true
+        },
         user_profile: { name: 'Imported Profile', isCustomProfile: true }
     },
     SUPPORTED_DEVICE_IDS: ['reterminal_e1001']
@@ -61,6 +66,7 @@ describe('device_settings_view', () => {
         expect(e1004Option?.textContent).toContain('coming soon');
         expect(e1004Option?.disabled).toBe(true);
         expect(e1004Option?.title).toBe('Driver is not upstream yet');
+        expect(Array.from(instance.modelInput.options).some((option) => option.value === 'reterminal_sticky')).toBe(false);
         expect(options.some((label) => label?.includes('Imported'))).toBe(true);
         expect(options.includes('Custom Profile...')).toBe(true);
         expect(instance.customHardwarePanel.updateVisibility).toHaveBeenCalled();
@@ -87,6 +93,18 @@ describe('device_settings_view', () => {
         populateDeviceSelectView({ modelInput });
 
         expect(modelInput.value).toBe('reterminal_e1001');
+    });
+
+    it('maps a saved legacy id to its canonical visible option', async () => {
+        const { populateDeviceSelectView } = await import('../../js/ui/device_settings_view.js');
+        const modelInput = /** @type {HTMLSelectElement} */ (document.getElementById('deviceModel'));
+        modelInput.innerHTML = '<option value="reterminal_sticky">Legacy Sticky</option>';
+        modelInput.value = 'reterminal_sticky';
+
+        populateDeviceSelectView({ modelInput });
+
+        expect(modelInput.value).toBe('reterminal_e1001');
+        expect(Array.from(modelInput.options).some((option) => option.value === 'reterminal_sticky')).toBe(false);
     });
 
     it('updates visibility for sleep modes, protocol mode, and LCD dim strategy', async () => {

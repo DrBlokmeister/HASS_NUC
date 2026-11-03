@@ -31,7 +31,10 @@ export function populateDeviceSettingsForm(deviceSettings) {
     const settings = AppState.settings;
 
     if (deviceSettings.nameInput) deviceSettings.nameInput.value = settings.device_name || "My E-Ink Display";
-    if (deviceSettings.modelInput) deviceSettings.modelInput.value = settings.device_model || "reterminal_e1001";
+    if (deviceSettings.modelInput) {
+        const modelId = settings.device_model || "reterminal_e1001";
+        deviceSettings.modelInput.value = DEVICE_PROFILES[modelId]?.legacyAliasFor || modelId;
+    }
     if (deviceSettings.renderingModeInput) deviceSettings.renderingModeInput.value = settings.renderingMode || 'direct';
     if (deviceSettings.orientationInput) deviceSettings.orientationInput.value = settings.orientation || "landscape";
     if (deviceSettings.darkModeInput) deviceSettings.darkModeInput.checked = !!settings.darkMode;

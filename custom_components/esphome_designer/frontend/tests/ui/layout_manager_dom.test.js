@@ -48,6 +48,7 @@ describe('layout_manager_dom helpers', () => {
     it('generates modal markup and device option markup for the layout dialogs', () => {
         const deviceOptionsHtml = generateDeviceOptions({
             reterminal_e1001: { name: 'E1001' },
+            reterminal_sticky: { name: 'Sticky (Legacy ID)', legacyAliasFor: 'reterminal_e1001' },
             reterminal_e1004: { name: 'E1004', isComingSoon: true, unavailableReason: 'Driver missing' },
             trmnl: { name: 'TRMNL' }
         }, ['reterminal_e1001']);
@@ -56,6 +57,7 @@ describe('layout_manager_dom helpers', () => {
         const newLayoutMarkup = createNewLayoutModalMarkup(deviceOptionsHtml);
 
         expect(deviceOptionsHtml).toContain('value="reterminal_e1001"');
+        expect(deviceOptionsHtml).not.toContain('value="reterminal_sticky"');
         expect(deviceOptionsHtml).toContain('value="reterminal_e1004" disabled title="Driver missing"');
         expect(deviceOptionsHtml).toContain('E1004 (coming soon)');
         expect(deviceOptionsHtml).toContain('TRMNL (untested)');
