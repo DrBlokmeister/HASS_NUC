@@ -687,6 +687,11 @@ automation:
 
   - alias: "[study|light] Powercycle study3 when unavailable"
     id: study_light_powercycle_study3_when_unavailable
+    description: >-
+      Save the study bulbs' states, power cycle their supply, and restore them
+      after reconnecting. Use study3's last known state from the trigger when
+      it is already unavailable.
+    mode: single
     trigger:
       - platform: state
         entity_id: light.study_3
@@ -698,16 +703,57 @@ automation:
         entity_id: switch.shelly_study
         state: "on"
     action:
-      - service: switch.turn_off
-        entity_id: switch.shelly_study
+      - variables:
+          study_lights:
+            - light.study_1
+            - light.study_2
+            - light.study_3
+            - light.study_4
+            - light.study_5
+          saved_states: >-
+            {% set ns = namespace(entities={}) %}
+            {% for light in expand(study_lights) %}
+              {% set previous = light %}
+              {% if light.entity_id == 'light.study_3'
+                    and light.state not in ['on', 'off']
+                    and trigger is defined
+                    and trigger.from_state is defined
+                    and trigger.from_state is not none %}
+                {% set previous = trigger.from_state %}
+              {% endif %}
+              {% if previous.state in ['on', 'off'] %}
+                {% set ns.entities = dict(ns.entities, **{
+                  light.entity_id: dict(previous.attributes, state=previous.state)
+                }) %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.entities }}
+      - condition: template
+        value_template: "{{ saved_states | count > 0 }}"
+      - action: scene.create
+        data:
+          scene_id: study_lights_before_powercycle
+          entities: "{{ saved_states }}"
+      - action: switch.turn_off
+        target:
+          entity_id: switch.shelly_study
       - delay:
           seconds: 2
-      - service: switch.turn_on
-        entity_id: switch.shelly_study
+      - action: switch.turn_on
+        target:
+          entity_id: switch.shelly_study
       - delay:
           seconds: 10
-      - service: light.turn_off
-        entity_id: "{{ 'light.study_lights' if is_state('input_select.study_lighting_mode', 'Ambient') else 'light.study' }}"
+      - wait_template: >-
+          {{ expand(study_lights)
+              | selectattr('state', 'in', ['on', 'off'])
+              | list | count == study_lights | count }}
+        timeout:
+          minutes: 2
+        continue_on_timeout: true
+      - action: scene.turn_on
+        target:
+          entity_id: scene.study_lights_before_powercycle
 
   - alias: '[study|desk] Toggle desk powerstrip sockets'
     id: yaml_automation_study_desk_toggle_desk_powerstrip_sockets
