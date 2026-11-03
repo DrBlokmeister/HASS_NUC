@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Final
@@ -18,6 +19,7 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfInformation,
     UnitOfPower,
+    UnitOfRatio,
     UnitOfTemperature,
 )
 from homeassistant.helpers import entity_registry as er
@@ -118,7 +120,7 @@ class CpuSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     """CPU usage sensor with model and core count attributes."""
 
     _attr_translation_key = "cpu_usage"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -164,7 +166,7 @@ class RAMUsageSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     """RAM usage percentage sensor with human-readable attributes."""
 
     _attr_translation_key = "ram_usage"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -220,7 +222,7 @@ class RAMUsedSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     _attr_translation_key = "ram_used"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_suggested_unit_of_measurement = UnitOfInformation.GIBIBYTES
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
@@ -260,7 +262,7 @@ class SwapUsageSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     """Swap usage percentage sensor."""
 
     _attr_translation_key = "swap_usage"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
     _attr_entity_registry_enabled_default = False
@@ -308,7 +310,7 @@ class SwapUsedSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     _attr_translation_key = "swap_used"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_suggested_unit_of_measurement = UnitOfInformation.GIBIBYTES
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
 
@@ -342,7 +344,7 @@ class RAMBuffCacheSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     _attr_translation_key = "ram_buffcache"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_suggested_unit_of_measurement = UnitOfInformation.GIBIBYTES
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
 
@@ -376,7 +378,7 @@ class RAMActiveSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     _attr_translation_key = "ram_active"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_suggested_unit_of_measurement = UnitOfInformation.GIBIBYTES
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
 
@@ -410,7 +412,7 @@ class SwapFreeSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     _attr_translation_key = "swap_free"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_suggested_unit_of_measurement = UnitOfInformation.GIBIBYTES
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
 
@@ -1248,7 +1250,7 @@ class ArrayUsageSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
     """Array usage percentage sensor with human-readable attributes."""
 
     _attr_translation_key = "array_usage"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -1293,7 +1295,7 @@ class ParityProgressSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
     """Parity check progress sensor."""
 
     _attr_translation_key = "parity_progress"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
@@ -1365,7 +1367,7 @@ class LastParityCheckDateSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=UTC)
                 return dt
-            except (ValueError, AttributeError):
+            except ValueError, AttributeError:
                 return None
         # Handle numeric timestamps (epoch seconds)
         if isinstance(date_val, (int, float)):
@@ -1592,7 +1594,7 @@ class DiskUsageSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
     """Disk usage percentage sensor with human-readable attributes."""
 
     _attr_translation_key = "disk_usage"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -1693,7 +1695,7 @@ class UPSBatterySensor(UnraidSensorEntity[UnraidSystemCoordinator]):
 
     _attr_translation_key = "ups_battery"
     _attr_device_class = SensorDeviceClass.BATTERY
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
 
@@ -1753,7 +1755,7 @@ class UPSLoadSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
     """UPS load percentage sensor."""
 
     _attr_translation_key = "ups_load"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -2067,7 +2069,7 @@ class UPSEnergySensor(UnraidSensorEntity[UnraidSystemCoordinator], RestoreEntity
                     "Restored UPS energy value: %.3f kWh",
                     self._total_energy_kwh,
                 )
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 _LOGGER.warning(
                     "Could not restore UPS energy value from state: %s",
                     last_state.state,
@@ -2171,7 +2173,7 @@ class ShareUsageSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
     """Share usage percentage sensor with human-readable attributes."""
 
     _attr_translation_key = "share_usage"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -2300,6 +2302,45 @@ def parse_docker_mem_usage(mem_usage: str | None) -> tuple[int | None, int | Non
     return (_parse_size_to_bytes(parts[0]), _parse_size_to_bytes(parts[1]))
 
 
+def _running_container_stats(
+    data: UnraidSystemData | None,
+    all_stats: dict[str, DockerContainerStats],
+) -> list[DockerContainerStats] | None:
+    """Get a complete snapshot for current running containers."""
+    if data is None:
+        return None
+    valid_ids = {container.id for container in data.containers if container.is_running}
+    if not valid_ids:
+        return None
+    readings: list[DockerContainerStats] = []
+    for container_id in valid_ids:
+        stats = all_stats.get(container_id)
+        if stats is None:
+            return None
+        readings.append(stats)
+    return readings
+
+
+def _docker_memory_used(
+    data: UnraidSystemData | None,
+    all_stats: dict[str, DockerContainerStats],
+) -> int | None:
+    """Sum actual bytes only when every running container has a usage reading."""
+    readings = _running_container_stats(data, all_stats)
+    if readings is None:
+        return None
+    total_used = 0
+    for stats in readings:
+        try:
+            used, _limit = parse_docker_mem_usage(stats.memUsage)
+        except OverflowError:
+            return None
+        if used is None:
+            return None
+        total_used += used
+    return total_used
+
+
 class _ContainerStatsMixin:
     """
     Shared lookup logic for per-container WebSocket stat sensors.
@@ -2354,7 +2395,7 @@ class ContainerCpuSensor(
     """Container CPU usage sensor (WebSocket-powered)."""
 
     _attr_translation_key = "container_cpu"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
     _attr_suggested_display_precision = 1
@@ -2458,7 +2499,7 @@ class ContainerMemoryPercentSensor(
     """Container memory percentage sensor (WebSocket-powered)."""
 
     _attr_translation_key = "container_memory_percent"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_registry_enabled_default = False
     _attr_suggested_display_precision = 1
@@ -2602,10 +2643,10 @@ class ContainerMemoryLimitSensor(
 
 
 class DockerTotalCpuSensor(UnraidBaseEntity[UnraidSystemCoordinator], SensorEntity):
-    """Total Docker CPU usage sensor (sum of all containers, WebSocket-powered)."""
+    """Docker CPU usage as a share of host capacity, powered by WebSocket stats."""
 
     _attr_translation_key = "docker_total_cpu"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -2628,28 +2669,29 @@ class DockerTotalCpuSensor(UnraidBaseEntity[UnraidSystemCoordinator], SensorEnti
 
     @property
     def native_value(self) -> float | None:
-        """Return sum of CPU usage across currently active containers."""
-        all_stats = self._ws_manager.container_stats.stats
-        if not all_stats:
-            return None
+        """Return Docker CPU use as a percentage of the whole host."""
         data: UnraidSystemData | None = self.coordinator.data
-        if data is not None:
-            # Running containers only: stats of stopped containers linger in
-            # the snapshot (the stream stops sending them) and would otherwise
-            # keep counting toward the total forever.
-            valid_ids = {c.id for c in data.containers if c.is_running}
-            values = [
-                s.cpuPercent
-                for cid, s in all_stats.items()
-                if cid in valid_ids and s.cpuPercent is not None
-            ]
-        else:
-            values = [
-                s.cpuPercent for s in all_stats.values() if s.cpuPercent is not None
-            ]
-        if not values:
+        if data is None:
             return None
-        return round(sum(values), 2)
+        # Unraid reports physical cores separately; Docker's scale uses threads.
+        logical_cpus = data.info.cpu_threads
+        if logical_cpus is None or logical_cpus <= 0 or not math.isfinite(logical_cpus):
+            return None
+        readings = _running_container_stats(
+            data, self._ws_manager.container_stats.stats
+        )
+        if readings is None:
+            return None
+        total_cpu = 0.0
+        for stats in readings:
+            value = stats.cpuPercent
+            if value is None or value < 0 or not math.isfinite(value):
+                return None
+            total_cpu += value
+        if not math.isfinite(total_cpu):
+            return None
+        # Samples arrive independently; bound transiently inconsistent totals.
+        return round(min(100.0, total_cpu / logical_cpus), 2)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -2663,10 +2705,10 @@ class DockerTotalCpuSensor(UnraidBaseEntity[UnraidSystemCoordinator], SensorEnti
 class DockerTotalMemoryPercentSensor(
     UnraidBaseEntity[UnraidSystemCoordinator], SensorEntity
 ):
-    """Total Docker memory usage sensor (sum of all containers, WebSocket-powered)."""
+    """Docker memory usage as a share of host RAM, powered by WebSocket stats."""
 
     _attr_translation_key = "docker_total_memory_percent"
-    _attr_native_unit_of_measurement = "%"
+    _attr_native_unit_of_measurement = UnitOfRatio.PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
 
@@ -2689,25 +2731,17 @@ class DockerTotalMemoryPercentSensor(
 
     @property
     def native_value(self) -> float | None:
-        """Return sum of memory percentage across currently active containers."""
-        all_stats = self._ws_manager.container_stats.stats
-        if not all_stats:
-            return None
+        """Return actual Docker memory use as a percentage of host RAM."""
         data: UnraidSystemData | None = self.coordinator.data
-        if data is not None:
-            valid_ids = {c.id for c in data.containers if c.is_running}
-            values = [
-                s.memPercent
-                for cid, s in all_stats.items()
-                if cid in valid_ids and s.memPercent is not None
-            ]
-        else:
-            values = [
-                s.memPercent for s in all_stats.values() if s.memPercent is not None
-            ]
-        if not values:
+        if data is None:
             return None
-        return round(sum(values), 2)
+        total_memory = data.metrics.memory_total
+        if total_memory is None or total_memory <= 0 or not math.isfinite(total_memory):
+            return None
+        used = _docker_memory_used(data, self._ws_manager.container_stats.stats)
+        if used is None:
+            return None
+        return round(min(100.0, used / total_memory * 100), 2)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -2721,12 +2755,12 @@ class DockerTotalMemoryPercentSensor(
 class DockerTotalMemoryBytesSensor(
     UnraidBaseEntity[UnraidSystemCoordinator], SensorEntity
 ):
-    """Total Docker memory used in bytes (derived from memory % x system RAM)."""
+    """Total Docker memory used in bytes from running container usage."""
 
     _attr_translation_key = "docker_total_memory_bytes"
     _attr_device_class = SensorDeviceClass.DATA_SIZE
     _attr_native_unit_of_measurement = "B"
-    _attr_suggested_unit_of_measurement = "GiB"
+    _attr_suggested_unit_of_measurement = UnitOfInformation.GIBIBYTES
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 2
 
@@ -2749,24 +2783,10 @@ class DockerTotalMemoryBytesSensor(
 
     @property
     def native_value(self) -> int | None:
-        """
-        Return total Docker memory used in bytes.
-
-        Computed as sum(container memPercent) x system_memory_total / 100.
-        """
-        all_stats = self._ws_manager.container_stats.stats
-        if not all_stats:
-            return None
-        data: UnraidSystemData | None = self.coordinator.data
-        if data is None or data.metrics.memory_total is None:
-            return None
-        valid_ids = {c.id for c in data.containers if c.is_running}
-        total_pct = sum(
-            s.memPercent
-            for cid, s in all_stats.items()
-            if cid in valid_ids and s.memPercent is not None
+        """Return the same complete byte total used by Docker memory percentage."""
+        return _docker_memory_used(
+            self.coordinator.data, self._ws_manager.container_stats.stats
         )
-        return int(total_pct * data.metrics.memory_total / 100)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -3105,7 +3125,7 @@ class ParitySpeedSensor(UnraidSensorEntity[UnraidStorageCoordinator]):
         # speed is str | None since unraid-api v1.9.0
         try:
             speed_val = float(speed)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
         # API reports parity speed directly in MB/s
         return round(speed_val, 1)
@@ -3630,6 +3650,8 @@ class VirtualMachineStatusSensor(UnraidSensorEntity[UnraidSystemCoordinator]):
         }
         if vm.state:
             attrs["raw_state"] = vm.state
+        if vm.uuid:
+            attrs["uuid"] = vm.uuid
         return attrs
 
 
@@ -3687,23 +3709,6 @@ async def async_setup_entry(
         _create_ups_sensors(system_coordinator, server_uuid, server_name, entry)
     )
 
-    # System temperature sensors (dynamic, per hardware sensor)
-    if (
-        system_coordinator.data
-        and system_coordinator.data.metrics.temperature is not None
-    ):
-        valid_temp_sensors = _get_valid_temperature_sensors(system_coordinator.data)
-        if valid_temp_sensors:
-            entities.append(
-                TemperatureAverageSensor(system_coordinator, server_uuid, server_name)
-            )
-            for sensor in valid_temp_sensors:
-                entities.append(
-                    SystemTemperatureSensor(
-                        system_coordinator, server_uuid, server_name, sensor
-                    )
-                )
-
     # Storage sensors
     entities.extend(
         [
@@ -3751,6 +3756,42 @@ async def async_setup_entry(
 
     _LOGGER.debug("Adding %d sensor entities", len(entities))
     async_add_entities(entities)
+
+    # Supported servers may supply hardware readings after the initial poll.
+    # Keep each sensor and the average's identity stable across absent readings.
+    entry.async_on_unload(
+        async_add_dynamic_resource_entities(
+            coordinator=system_coordinator,
+            async_add_entities=async_add_entities,
+            get_resources=lambda: (
+                _get_valid_temperature_sensors(system_coordinator.data)
+                if system_coordinator.data
+                else []
+            ),
+            get_key=lambda sensor: sensor.id,
+            create_entities=lambda sensor: [
+                SystemTemperatureSensor(
+                    system_coordinator, server_uuid, server_name, sensor
+                )
+            ],
+        )
+    )
+    entry.async_on_unload(
+        async_add_dynamic_resource_entities(
+            coordinator=system_coordinator,
+            async_add_entities=async_add_entities,
+            get_resources=lambda: (
+                ["temperature_average"]
+                if system_coordinator.data
+                and _get_valid_temperature_sensors(system_coordinator.data)
+                else []
+            ),
+            get_key=lambda key: key,
+            create_entities=lambda _: [
+                TemperatureAverageSensor(system_coordinator, server_uuid, server_name)
+            ],
+        )
+    )
 
     # Container stats sensors (WebSocket-powered). Containers created after
     # setup get sensors on the next coordinator refresh — no reload needed.

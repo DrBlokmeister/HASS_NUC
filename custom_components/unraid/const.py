@@ -63,6 +63,12 @@ PLACEHOLDER_UUIDS: Final = frozenset(
     }
 )
 
+
+def is_placeholder_uuid(uuid: str | None) -> bool:
+    """Return True if *uuid* is a known non-unique placeholder SMBIOS UUID."""
+    return uuid is not None and uuid.lower() in PLACEHOLDER_UUIDS
+
+
 # =============================================================================
 # Configuration Keys
 # =============================================================================
@@ -78,6 +84,32 @@ DEFAULT_PORT: Final = 80  # HTTP port for Unraid GraphQL API
 DEFAULT_UPS_CAPACITY_VA: Final = 0  # 0 = informational only
 DEFAULT_UPS_NOMINAL_POWER: Final = 0  # 0 = disabled, user must set for UPS Power sensor
 DEFAULT_ENABLE_CONTAINER_UPDATES: Final = True  # create container update entities
+
+# Docker update dialog text uses only cached, currently installed image metadata.
+DOCKER_UPDATE_SUMMARY: Final = (
+    "A new image is available for this container. The Unraid API does "
+    "not provide detailed release notes; use the link for more information."
+)
+DOCKER_UPDATE_SUMMARY_NO_LINK: Final = (
+    "A new image is available for this container. The Unraid API does "
+    "not provide detailed release notes."
+)
+DOCKER_UPDATE_NOTES: Final = (
+    "**Image:** {image}\n\n"
+    "**Installed tag:** {tag}\n\n"
+    "**Update status:** {status}\n\n"
+    "The Unraid API does not supply a target version or a changelog. "
+    "The installed image tag may be mutable. Available links provide general "
+    "project information.\n"
+)
+DOCKER_UPDATE_NOTE_LINKS: Final = (
+    ("projectUrl", "Project"),
+    ("registryUrl", "Registry"),
+    ("supportUrl", "Support"),
+)
+DOCKER_UPDATE_NO_UPDATE: Final = "No update reported"
+DOCKER_UPDATE_UNKNOWN: Final = "Unknown"
+DOCKER_UPDATE_UNAVAILABLE: Final = "Unavailable"
 
 # =============================================================================
 # Polling Intervals (fixed per HA Core guidelines - not user-configurable)
