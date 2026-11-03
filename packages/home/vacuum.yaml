@@ -46,16 +46,6 @@ utility_meter:
 ########################
 template:
   - sensor:
-      # - name: "Alfred Battery"
-      #   unique_id: yaml_template_sensor_alfred_battery
-      #   icon: mdi:battery
-      #   device_class: battery
-      #   unit_of_measurement: "%"
-      #   state: >-
-      #     {{ state_attr('vacuum.alfred', 'battery_level') | int(0) }}
-      #   availability: >-
-      #     {{ states('vacuum.alfred') not in ['none', 'None', 'unavailable', 'unknown', '']
-      #         and state_attr('vacuum.alfred', 'battery_level') is not none }}
       - name: "Dustin Power Estimate"
         unique_id: yaml_template_sensor_dustin_power_estimate
         icon: mdi:flash
@@ -110,7 +100,7 @@ template:
         unit_of_measurement: "W"
         state: >-
           {% set vacuum_state = states('vacuum.alfred') %}
-          {% set battery = state_attr('vacuum.alfred', 'battery_level') | int(100) %}
+          {% set battery = states('sensor.alfred_battery') | int(100) %}
           {% if vacuum_state in ['unknown', 'unavailable', 'none', 'None', ''] %}
             0
           {% elif vacuum_state == 'docked' and battery < 100 %}
@@ -567,6 +557,16 @@ automation:
           map_entity_id: "{{ 'camera.moeke_map' if trigger.id == 'Moeke' else 'image.alfred_map' }}"
           map_type: "{{ 'camera' if trigger.id == 'Moeke' else 'image' }}"
           notification_tag: "vacuumerror_{{ vacuum_slug }}"
+          alfred_error_description: >-
+            {% set error = state_attr('vacuum.alfred', 'error') %}
+            {{ error if error not in [none, '', 'None', 'unknown', 'unavailable'] else '' }}
+          fallback_notification_message: >-
+            {% if trigger.id == 'Alfred' %}
+              Alfred on the second floor reported an error.
+              {{ alfred_error_description if alfred_error_description else 'No error details are available; please check the vacuum.' }}
+            {% else %}
+              Moeke on the first floor reported an error. Please check the vacuum.
+            {% endif %}
       - choose:
           - conditions:
               - condition: template
@@ -578,6 +578,7 @@ automation:
                   entity_id: "{{ map_entity_id }}"
               - service: conversation.process
                 response_variable: gpt_vacuum_error_response
+                continue_on_error: true
                 data:
                   agent_id: conversation.chatgpt_mini
                   text: >-
@@ -605,6 +606,7 @@ automation:
         default:
           - service: conversation.process
             response_variable: gpt_vacuum_error_response
+            continue_on_error: true
             data:
               agent_id: conversation.chatgpt_mini
               text: >-
@@ -612,9 +614,9 @@ automation:
                 that their second-floor robot vacuum cleaner "Alfred" encountered
                 an error.
                 Entity state: {{ states('vacuum.alfred') }}
-                Error description: {{ state_attr('vacuum.alfred', 'error') }}
+                Error description: {{ alfred_error_description or 'No error details are available.' }}
                 Error information:
-                - None means no error description is available.
+                - If no error details are available, say so and ask the user to check the vacuum. Do not guess the cause.
                 - Device Stuck, clean area means the device is stuck and the area around it needs clearing.
                 - Wheels on top of void, move robot means the wheels are suspended and the robot needs moving.
                 Mention the second floor and Alfred by name, clearly describe the
@@ -624,7 +626,17 @@ automation:
         continue_on_error: true
         data:
           title: "Error with {{ trigger.id }}"
-          message: "{{ gpt_vacuum_error_response.response.speech.plain.speech }}"
+          message: >-
+            {% if gpt_vacuum_error_response is defined
+                  and gpt_vacuum_error_response.response is defined
+                  and gpt_vacuum_error_response.response.speech is defined
+                  and gpt_vacuum_error_response.response.speech.plain is defined
+                  and gpt_vacuum_error_response.response.speech.plain.speech is string
+                  and gpt_vacuum_error_response.response.speech.plain.speech | trim %}
+              {{ gpt_vacuum_error_response.response.speech.plain.speech }}
+            {% else %}
+              {{ fallback_notification_message }}
+            {% endif %}
           data:
             ttl: 0
             priority: high
@@ -1158,7 +1170,7 @@ group:
     name: "Vacuum Automations Group"
     entities:
       - automation.home_vacuum_scheduled_cleanup
-      - automation.home_vacuum_backup_cleanup_downstairs
+      - automation.home_vacuum_backup_cleanup
       - automation.home_vacuum_button_control_moeke
       - automation.home_vacuum_notify_phone_if_vacuum_is_in_error
       - automation.home_vacuum_notify_if_moeke_clean_water_reservoir_is_empty

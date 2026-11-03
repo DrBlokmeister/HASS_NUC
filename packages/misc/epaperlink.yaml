@@ -51,24 +51,27 @@ template:
         device_class: timestamp
         icon: mdi:clock-in
         state: >
+          {# Excluded tag references (retained for later):
+          'sensor.0000039223703418_last_seen',
+          'sensor.garbage_monitor_tag_last_seen',
+          'sensor.780105561c817600_last_seen',
+          'sensor.0000021f86d83b1e_last_seen',
+          'sensor.0000021aea62341f_last_seen',
+          'sensor.00007e1f75f1b29b_last_seen',
+          #}
           {% set ns = namespace(times=[]) %}
           {% set sensors = [
             'sensor.0000021c3bc6341b_last_seen',
             'sensor.00000218736e3b1e_last_seen',
-            'sensor.0000039223703418_last_seen',
-            'sensor.garbage_monitor_tag_last_seen',
+            'sensor.00000219a2923b10_last_seen',
             'sensor.0000021d7356341f_last_seen',
             'sensor.00007e225dc2b29f_last_seen',
             'sensor.00007e22cc92b292_last_seen',
             'sensor.00007e1f8b30b297_last_seen',
             'sensor.0000021dc9ca341b_last_seen',
             'sensor.0000021d1c8e3413_last_seen',
-            'sensor.780105561c817600_last_seen',
-            'sensor.0000021f86d83b1e_last_seen',
-            'sensor.0000021aea62341f_last_seen',
+            'sensor.780105561a2ce800_last_seen',
             'sensor.0000021dca1c3413_last_seen',
-            'sensor.00007e1f75f1b29b_last_seen',
-            'sensor.780105561a2ce800_last_seen'
           ] %}
           {% for sensor in sensors %}
             {% if states(sensor) not in ['unknown', 'unavailable', 'none', ''] %}
@@ -90,24 +93,27 @@ template:
             unavailable
           {% endif %}
         availability: >
+          {# Excluded tag references (retained for later):
+          states('sensor.0000039223703418_last_seen'),
+          states('sensor.garbage_monitor_tag_last_seen'),
+          states('sensor.780105561c817600_last_seen'),
+          states('sensor.0000021f86d83b1e_last_seen'),
+          states('sensor.0000021aea62341f_last_seen'),
+          states('sensor.00007e1f75f1b29b_last_seen'),
+          #}
           {{
             [
               states('sensor.0000021c3bc6341b_last_seen'),
               states('sensor.00000218736e3b1e_last_seen'),
-              states('sensor.0000039223703418_last_seen'),
-              states('sensor.garbage_monitor_tag_last_seen'),
+              states('sensor.00000219a2923b10_last_seen'),
               states('sensor.0000021d7356341f_last_seen'),
               states('sensor.00007e225dc2b29f_last_seen'),
               states('sensor.00007e22cc92b292_last_seen'),
               states('sensor.00007e1f8b30b297_last_seen'),
               states('sensor.0000021dc9ca341b_last_seen'),
               states('sensor.0000021d1c8e3413_last_seen'),
-              states('sensor.780105561c817600_last_seen'),
-              states('sensor.0000021f86d83b1e_last_seen'),
-              states('sensor.0000021aea62341f_last_seen'),
+              states('sensor.780105561a2ce800_last_seen'),
               states('sensor.0000021dca1c3413_last_seen'),
-              states('sensor.00007e1f75f1b29b_last_seen'),
-              states('sensor.780105561a2ce800_last_seen')
             ]
             | reject('in', ['unknown', 'unavailable', 'none', ''])
             | list
@@ -118,8 +124,7 @@ template:
         icon: mdi:transfer
         unit_of_measurement: transfers
         state: >
-          {{ states.sensor
-              | selectattr('entity_id', 'search', '_pending_updates$')
+          {{ expand(state_attr('sensor.epaperlink_pending_transfer_sensors', 'entity_id') or [])
               | map(attribute='state')
               | map('float', default=0)
               | sum }}
@@ -180,34 +185,63 @@ sensor:
     type: sum
     ignore_non_numeric: true
     #unit_of_measurement: transfers
-    entities: # Use template code:  - {{ states.sensor | selectattr('entity_id', 'search', '_pending_updates$') | map(attribute='entity_id') | list | join('\n - ') }}
+    entities: # Included production tags only
+      - sensor.0000021c3bc6341b_pending_updates # Washing Machine
+      - sensor.00000218736e3b1e_pending_updates # Study Climate
+      - sensor.00000219a2923b10_pending_updates # Garbage Display
+      - sensor.0000021d7356341f_pending_updates # Moeke Status
+      - sensor.00007e225dc2b29f_pending_updates # Electricity Price Kitchen
+      - sensor.00007e22cc92b292_pending_updates # Electricity Price Study
+      - sensor.00007e1f8b30b297_pending_updates # Electricity Price Washroom
+      - sensor.0000021dc9ca341b_pending_updates # Litterbox Status; TODO verify physical MAC against New tag 0000021f3abd3415
+      - sensor.0000021d1c8e3413_pending_updates # Powerstrip Study
+      - sensor.780105561a2ce800_pending_updates # Weekly Forecast
+      - sensor.0000021dca1c3413_pending_updates # Air Conditioner Stats
+      # Excluded tag entries retained for later:
       # - sensor.00007e1f7f9fb299_pending_updates      # Unknown / unused tag
-      - sensor.00007e1f8b30b297_pending_updates        # Electricity Price Washroom
       # - sensor.780105561c92b300_pending_updates      # Unknown / unused tag
-      - sensor.0000039223703418_pending_updates        # Study Energy
+      # - sensor.0000039223703418_pending_updates        # Study Energy
       # - sensor.00007e225dceb293_pending_updates      # Unknown / unused tag
-      - sensor.0000021c3bc6341b_pending_updates        # Washing Machine
+      # - sensor.00007e225dd0b29c_pending_updates      # Unknown / unused tag
+      # - sensor.780105561a342201_pending_updates      # Unknown / unused tag
+      # - sensor.780105561c817600_pending_updates        # Study Calendar
+      # - sensor.780105561c294d00_pending_updates      # Unknown / unused tag
+      # - sensor.0000021e6b5b3b17_pending_updates      # Unknown / unused tag
+      # - sensor.0000c87b913bdaec_pending_updates      # Unknown / unused tag
+      # - sensor.00007e1f8186b290_pending_updates      # Unknown / unused tag
+      # - sensor.0000021f86d83b1e_pending_updates        # Washing Machine Progress
+      # - sensor.00007e22b1d7b299_pending_updates      # Electricity Price Washroom — old tag
+      # - sensor.00007e1f75f1b29b_pending_updates        # Buienradar
+      # - sensor.00007e22b1b2b29a_pending_updates      # Electricity Price Kitchen — old tag
+      # - sensor.000040866ce6fc84_pending_updates      # Unknown / unused tag
+      # - sensor.fd600b561a2ce800_pending_updates      # Unknown / unused tag
+      # - sensor.fd600bb900090900_pending_updates      # Unknown / unused tag
+      # - sensor.0000021d2ef23419_pending_updates      # Unknown / unused tag
+      # - sensor.fd600bd70007074d_pending_updates      # Unknown / unused tag
+      # - sensor.7801055600817600_pending_updates      # Unknown / unused tag
+
+  # Washing Machine
       # - sensor.00007e225dd0b29c_pending_updates      # Unknown / unused tag
       # - sensor.780105561a342201_pending_updates      # Unknown / unused tag
       - sensor.00007e22cc92b292_pending_updates        # Electricity Price Study
-      - sensor.780105561c817600_pending_updates        # Study Calendar
+      # - sensor.780105561c817600_pending_updates        # Study Calendar
       # - sensor.780105561c294d00_pending_updates      # Unknown / unused tag
       # - sensor.0000021e6b5b3b17_pending_updates      # Unknown / unused tag
       - sensor.00000218736e3b1e_pending_updates        # Study Climate
       # - sensor.0000c87b913bdaec_pending_updates      # Unknown / unused tag
       # - sensor.00007e1f8186b290_pending_updates      # Unknown / unused tag
       - sensor.00000219a2923b10_pending_updates     # Garbage Display
-      - sensor.0000021f86d83b1e_pending_updates        # Washing Machine Progress
+      # - sensor.0000021f86d83b1e_pending_updates        # Washing Machine Progress
       - sensor.780105561a2ce800_pending_updates        # Weekly Weather Forecast
       # - sensor.00007e22b1d7b299_pending_updates      # Electricity Price Washroom — old tag
-      - sensor.00007e1f75f1b29b_pending_updates        # Buienradar
+      # - sensor.00007e1f75f1b29b_pending_updates        # Buienradar
       - sensor.00007e225dc2b29f_pending_updates        # Electricity Price Kitchen
       # - sensor.00007e22b1b2b29a_pending_updates      # Electricity Price Kitchen — old tag
       # - sensor.000040866ce6fc84_pending_updates      # Unknown / unused tag
       # - sensor.fd600b561a2ce800_pending_updates      # Unknown / unused tag
       # - sensor.fd600bb900090900_pending_updates      # Unknown / unused tag
       - sensor.0000021d7356341f_pending_updates        # Moeke Status
-      - sensor.0000021dc9ca341b_pending_updates        # Litterbox Status
+      - sensor.0000021dc9ca341b_pending_updates # Litterbox: TODO verify physical MAC against New tag 0000021f3abd3415
       # - sensor.0000021d2ef23419_pending_updates      # Unknown / unused tag
       # - sensor.fd600bd70007074d_pending_updates      # Unknown / unused tag
       # - sensor.7801055600817600_pending_updates      # Unknown / unused tag
@@ -230,12 +264,12 @@ sensor:
     time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
   # Study Energy
-  - platform: derivative
-    source: sensor.0000039223703418_checkin_count
-    name: 0000039223703418 Checkins Per Hour
-    round: 0
-    unit_time: h
-    time_window: "01:00:00"
+  # - platform: derivative
+    # source: sensor.0000039223703418_checkin_count
+    # name: 0000039223703418 Checkins Per Hour
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
   # Garbage Display
   - platform: derivative
@@ -294,28 +328,28 @@ sensor:
     time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
   # Calendar Study
-  - platform: derivative
-    source: sensor.780105561c817600_checkin_count
-    name: 780105561c817600 Checkins Per Hour
-    round: 0
-    unit_time: h
-    time_window: "01:00:00"
+  # - platform: derivative
+    # source: sensor.780105561c817600_checkin_count
+    # name: 780105561c817600 Checkins Per Hour
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
   # Washing Machine Progress
-  - platform: derivative
-    source: sensor.0000021f86d83b1e_checkin_count
-    name: 0000021f86d83b1e Checkins Per Hour
-    round: 0
-    unit_time: h
-    time_window: "01:00:00"
+  # - platform: derivative
+    # source: sensor.0000021f86d83b1e_checkin_count
+    # name: 0000021f86d83b1e Checkins Per Hour
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
   # Network Statistics
-  - platform: derivative
-    source: sensor.0000021aea62341f_checkin_count
-    name: 0000021aea62341f Checkins Per Hour
-    round: 0
-    unit_time: h
-    time_window: "01:00:00"
+  # - platform: derivative
+    # source: sensor.0000021aea62341f_checkin_count
+    # name: 0000021aea62341f Checkins Per Hour
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
 
     # Test Tag 1
@@ -327,25 +361,41 @@ sensor:
   #   time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
     # Test Tag 2
-  - platform: derivative
-    source: sensor.0000021dba8e341f_checkin_count
-    name: "0000021DBA8E341F Checkins Per Hour"
-    round: 0
-    unit_time: h
-    time_window: "01:00:00"
+  # - platform: derivative
+    # source: sensor.0000021dba8e341f_checkin_count
+    # name: "0000021DBA8E341F Checkins Per Hour"
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
     #max_sub_interval: "01:00:00"
     # Test Tag 3
+  # - platform: derivative
+    # source: sensor.0000021dca1b3414_checkin_count
+    # name: "0000021DCA1B3414 Checkins Per Hour"
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
+    #max_sub_interval: "01:00:00"
+    # Test Tag 4
+  # - platform: derivative
+    # source: sensor.0000021dc3e4341d_checkin_count
+    # name: "0000021DC3E4341D Checkins Per Hour"
+    # round: 0
+    # unit_time: h
+    # time_window: "01:00:00"
+
+  # Weekly Forecast
   - platform: derivative
-    source: sensor.0000021dca1b3414_checkin_count
-    name: "0000021DCA1B3414 Checkins Per Hour"
+    source: sensor.780105561a2ce800_checkin_count
+    name: 780105561a2ce800 Checkins Per Hour
     round: 0
     unit_time: h
     time_window: "01:00:00"
-    #max_sub_interval: "01:00:00"
-    # Test Tag 4
+
+  # Air Conditioner Stats
   - platform: derivative
-    source: sensor.0000021dc3e4341d_checkin_count
-    name: "0000021DC3E4341D Checkins Per Hour"
+    source: sensor.0000021dca1c3413_checkin_count
+    name: 0000021dca1c3413 Checkins Per Hour
     round: 0
     unit_time: h
     time_window: "01:00:00"
@@ -457,28 +507,28 @@ automation:
     action:
       - delay:
           seconds: 2
-      - service: script.update_study_energy_display
-        continue_on_error: true
-        data:
-          display_device_id: bee8d1c7023925de74fc4e839cae072e
-          sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_study_energy_display
+        # continue_on_error: true
+        # data:
+          # display_device_id: bee8d1c7023925de74fc4e839cae072e
+          # sleep_duration: *epaperlink_scheduled_ttl
       - delay:
           seconds: 2
-      - service: script.update_study_energy_display #Sanity check. This for Moeke/Litterbox tags (this is tag 0000021DC3BF3413 http://blokmeisternuc.local:8123/config/devices/device/8a5608d777be457d781e79b5948c2332)
-        continue_on_error: true
-        data:
-          display_device_id: 8a5608d777be457d781e79b5948c2332
-          sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_study_energy_display #Sanity check. This for Moeke/Litterbox tags (this is tag 0000021DC3BF3413 http://blokmeisternuc.local:8123/config/devices/device/8a5608d777be457d781e79b5948c2332)
+        # continue_on_error: true
+        # data:
+          # display_device_id: 8a5608d777be457d781e79b5948c2332
+          # sleep_duration: *epaperlink_scheduled_ttl
       - delay:
           seconds: 2
       - service: script.update_study_climate_display
         data:
           display_device_id: ab510c02b314bf3bf98fa4d65f911229
           sleep_duration: *epaperlink_scheduled_ttl
-      - service: script.update_router_speedtest_display
-        data:
-          display_device_id: 696378a0a18ab5f3b2eca6c1c991b0f8
-          sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_router_speedtest_display
+        # data:
+          # display_device_id: 696378a0a18ab5f3b2eca6c1c991b0f8
+          # sleep_duration: *epaperlink_scheduled_ttl
 
   - alias: '[misc|epaperlink]Timed update electricity price display'
     id: misc_epaperlink_timed_update_electricity_price_display
@@ -591,10 +641,10 @@ automation:
         data:
           display_device_id: a5fb0b3999b39d6b82d0c338d9bc211e
           sleep_duration: *epaperlink_scheduled_ttl
-      - service: script.update_moeke_water_tank_display #Sanity check for tag 0000021EF7993413 (http://blokmeisternuc.local:8123/config/devices/device/1a55b4b3210d9df377ff1da5f8bd8ebe)
-        data:
-          display_device_id: 1a55b4b3210d9df377ff1da5f8bd8ebe
-          sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_moeke_water_tank_display #Sanity check for tag 0000021EF7993413 (http://blokmeisternuc.local:8123/config/devices/device/1a55b4b3210d9df377ff1da5f8bd8ebe)
+        # data:
+          # display_device_id: 1a55b4b3210d9df377ff1da5f8bd8ebe
+          # sleep_duration: *epaperlink_scheduled_ttl
 
   - alias: "[misc|epaperlink] Update Pixel Litterbox Display"
     id: misc_epaperlink_update_pixel_litterbox_display
@@ -617,7 +667,7 @@ automation:
     action:
       - service: script.update_litterbox_display
         data:
-          display_device_id: 5f61de1a08a9f1dcb162b383d8be9a4e
+          display_device_id: 5f61de1a08a9f1dcb162b383d8be9a4e # TODO: Check physical MAC; table calls 0000021f3abd3415 New, registry uses 0000021dc9ca341b
           sleep_duration: *epaperlink_scheduled_ttl
 
   - alias: "[misc|epaperlink] Update Study Powerstrip Display"
@@ -649,31 +699,31 @@ automation:
           display_device_id: fcf0279b783325a85401128ab88eefd4
           sleep_duration: *epaperlink_scheduled_ttl
 
-  - alias: "[misc|epaperlink] Update Calendar Displays"
-    id: yaml_script_misc_epaperlink_update_calendar_displays
-    variables:
-      epaper_refresh_interval_seconds: 3600
-      epaper_ready_delay_seconds: 120
-    mode: restart
-    trigger:
-      - platform: time
-        at: "05:00:00"
-      - platform: time
-        at: "06:00:00"
-      - platform: time
-        at: "07:00:00"
-      - platform: time
-        at: "08:00:00"
-      - platform: time
-        at: "09:00:00"
-      - platform: time
-        at: "10:00:00"
-    condition:
-    action:
-      - service: script.update_epaper_calendar_display
-        data:
-          display_device_id: 0384f3ad3a85237fcb589d95931ddc60
-          sleep_duration: *epaperlink_scheduled_ttl
+  # - alias: "[misc|epaperlink] Update Calendar Displays"
+    # id: yaml_script_misc_epaperlink_update_calendar_displays
+    # variables:
+      # epaper_refresh_interval_seconds: 3600
+      # epaper_ready_delay_seconds: 120
+    # mode: restart
+    # trigger:
+      # - platform: time
+        # at: "05:00:00"
+      # - platform: time
+        # at: "06:00:00"
+      # - platform: time
+        # at: "07:00:00"
+      # - platform: time
+        # at: "08:00:00"
+      # - platform: time
+        # at: "09:00:00"
+      # - platform: time
+        # at: "10:00:00"
+    # condition:
+    # action:
+      # - service: script.update_epaper_calendar_display
+        # data:
+          # display_device_id: 0384f3ad3a85237fcb589d95931ddc60
+          # sleep_duration: *epaperlink_scheduled_ttl
 
   - alias: "[misc|epaperlink] Tag Button Update of Displays"
     id: automation_yaml_misc_epaperlink_tag_button_update_of_displays
@@ -697,20 +747,20 @@ automation:
               - service: script.update_energy_price_today_larger_display
                 data:
                   display_device_id: 29d7d4483b27d042b60d86ac92541aa2
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.device_id == '00007E22B1D7B299' }}"
-            sequence:
-              - service: script.update_energy_price_today_larger_display
-                data:
-                  display_device_id: fceb879457ffabc7cdd9e21651afbe11
-          - conditions:
-              - condition: template
-                value_template: "{{ trigger.event.data.device_id == '00007E22B1B2B29A' }}"
-            sequence:
-              - service: script.update_energy_price_today_larger_display
-                data:
-                  display_device_id: 29d7d4483b27d042b60d86ac92541aa2
+          # - conditions:
+              # - condition: template
+                # value_template: "{{ trigger.event.data.device_id == '00007E22B1D7B299' }}"
+            # sequence:
+              # - service: script.update_energy_price_today_larger_display
+                # data:
+                  # display_device_id: fceb879457ffabc7cdd9e21651afbe11
+          # - conditions:
+              # - condition: template
+                # value_template: "{{ trigger.event.data.device_id == '00007E22B1B2B29A' }}"
+            # sequence:
+              # - service: script.update_energy_price_today_larger_display
+                # data:
+                  # display_device_id: 29d7d4483b27d042b60d86ac92541aa2
 
   - alias: "[misc|epaperlink] Update Air Conditioner Statistics Display"
     id: yaml_automation_misc_epaperlink_update_air_conditioner_statistics_display
@@ -785,18 +835,22 @@ automation:
           - conditions:
               - condition: template
                 value_template: >
+                  {# Excluded tag references (retained for later):
+                  "sensor.0000039223703418_last_seen",
+                  #}
                   {%- set outdated = namespace(found=false) -%}
                   {%- for sensor in [
-                      "sensor.0000021c3bc6341b_last_seen",
-                      "sensor.00000218736e3b1e_last_seen",
-                      "sensor.0000039223703418_last_seen",
-                      "sensor.00000219a2923b10_last_seen",
-                      "sensor.0000021d7356341f_last_seen",
-                      "sensor.00007e225dc2b29f_last_seen",
-                      "sensor.00007e22cc92b292_last_seen",
-                      "sensor.00007e1f8b30b297_last_seen",
-                      "sensor.0000021dc9ca341b_last_seen",
-                      "sensor.0000021d1c8e3413_last_seen"
+                      'sensor.0000021c3bc6341b_last_seen',
+                      'sensor.00000218736e3b1e_last_seen',
+                      'sensor.00000219a2923b10_last_seen',
+                      'sensor.0000021d7356341f_last_seen',
+                      'sensor.00007e225dc2b29f_last_seen',
+                      'sensor.00007e22cc92b292_last_seen',
+                      'sensor.00007e1f8b30b297_last_seen',
+                      'sensor.0000021dc9ca341b_last_seen',
+                      'sensor.0000021d1c8e3413_last_seen',
+                      'sensor.780105561a2ce800_last_seen',
+                      'sensor.0000021dca1c3413_last_seen',
                     ] -%}
                       {%- set last_seen = states(sensor) -%}
                       {%- if last_seen == 'unavailable' or (last_seen == 'unknown') or (last_seen == '') or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
@@ -812,18 +866,22 @@ automation:
                   title: "Tag Not Seen Alert"
                   notification_id: tag_not_seen_alert
                   message: >
+                    {# Excluded tag references (retained for later):
+                    "sensor.0000039223703418_last_seen",
+                    #}
                     One or more tags have not been seen for more than 5 minutes:
                     {% for sensor in [
-                        "sensor.0000021c3bc6341b_last_seen",
-                        "sensor.00000218736e3b1e_last_seen",
-                        "sensor.0000039223703418_last_seen",
-                        "sensor.00000219a2923b10_last_seen",
-                        "sensor.0000021d7356341f_last_seen",
-                        "sensor.00007e225dc2b29f_last_seen",
-                        "sensor.00007e22cc92b292_last_seen",
-                        "sensor.00007e1f8b30b297_last_seen",
-                        "sensor.0000021dc9ca341b_last_seen",
-                        "sensor.0000021d1c8e3413_last_seen"
+                        'sensor.0000021c3bc6341b_last_seen',
+                        'sensor.00000218736e3b1e_last_seen',
+                        'sensor.00000219a2923b10_last_seen',
+                        'sensor.0000021d7356341f_last_seen',
+                        'sensor.00007e225dc2b29f_last_seen',
+                        'sensor.00007e22cc92b292_last_seen',
+                        'sensor.00007e1f8b30b297_last_seen',
+                        'sensor.0000021dc9ca341b_last_seen',
+                        'sensor.0000021d1c8e3413_last_seen',
+                        'sensor.780105561a2ce800_last_seen',
+                        'sensor.0000021dca1c3413_last_seen',
                       ] %}
                         {%- set last_seen = states(sensor) -%}
                         {%- if last_seen == 'unavailable' or last_seen == 'unknown' or last_seen == '' or (as_timestamp(now()) - as_timestamp(last_seen | default(0)) > 600) -%}
@@ -996,17 +1054,17 @@ automation:
                     ttl: 0
                     priority: high
 
-  - alias: '[misc|epaperlink] Update Test Tag Displays Hourly'
-    id: yaml_automation_misc_epaperlink_update_test_tag_displays_hourly
-    variables:
-      epaper_refresh_interval_seconds: 3600
-      epaper_ready_delay_seconds: 120
-    description: 'Update all four test tag e-paper displays once per hour with overview info'
-    mode: single
-    trigger:
-      - platform: time_pattern
-        minutes: "0"
-    action:
+  # - alias: '[misc|epaperlink] Update Test Tag Displays Hourly'
+    # id: yaml_automation_misc_epaperlink_update_test_tag_displays_hourly
+    # variables:
+      # epaper_refresh_interval_seconds: 3600
+      # epaper_ready_delay_seconds: 120
+    # description: 'Update all four test tag e-paper displays once per hour with overview info'
+    # mode: single
+    # trigger:
+      # - platform: time_pattern
+        # minutes: "0"
+    # action:
       # - service: script.update_epaper_tag_overview
       #   data:
       #     display_device_id: 53d2ca8307e6b3b63de5a4f21f3bd65a
@@ -1015,30 +1073,30 @@ automation:
       #     checkins_entity_id: sensor.0000021dc3ca3411_checkins_per_hour
       #     rssi_entity_id: sensor.0000021dc3ca3411_rssi
       #     sleep_duration: *epaperlink_scheduled_ttl
-      - service: script.update_epaper_tag_overview
-        data:
-          display_device_id: e76212580c62854dba3177bd312db385
-          mac_address: 0000021DBA8E341F
-          tag_label: "Test Tag 2"
-          checkins_entity_id: sensor.0000021dba8e341f_checkins_per_hour
-          rssi_entity_id: sensor.0000021dba8e341f_rssi
-          sleep_duration: *epaperlink_scheduled_ttl
-      - service: script.update_epaper_tag_overview
-        data:
-          display_device_id: b75bcc738e59bd0c656de14fcc3f30f9
-          mac_address: 0000021DCA1B3414
-          tag_label: "Test Tag 3"
-          checkins_entity_id: sensor.0000021dca1b3414_checkins_per_hour
-          rssi_entity_id: sensor.0000021dca1b3414_rssi
-          sleep_duration: *epaperlink_scheduled_ttl
-      - service: script.update_epaper_tag_overview
-        data:
-          display_device_id: 8c58bdceb5e736e3e5a8a55e2ee1da40
-          mac_address: 0000021DC3E4341D
-          tag_label: "Test Tag 4"
-          checkins_entity_id: sensor.0000021dc3e4341d_checkins_per_hour
-          rssi_entity_id: sensor.0000021dc3e4341d_rssi
-          sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_epaper_tag_overview
+        # data:
+          # display_device_id: e76212580c62854dba3177bd312db385
+          # mac_address: 0000021DBA8E341F
+          # tag_label: "Test Tag 2"
+          # checkins_entity_id: sensor.0000021dba8e341f_checkins_per_hour
+          # rssi_entity_id: sensor.0000021dba8e341f_rssi
+          # sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_epaper_tag_overview
+        # data:
+          # display_device_id: b75bcc738e59bd0c656de14fcc3f30f9
+          # mac_address: 0000021DCA1B3414
+          # tag_label: "Test Tag 3"
+          # checkins_entity_id: sensor.0000021dca1b3414_checkins_per_hour
+          # rssi_entity_id: sensor.0000021dca1b3414_rssi
+          # sleep_duration: *epaperlink_scheduled_ttl
+      # - service: script.update_epaper_tag_overview
+        # data:
+          # display_device_id: 8c58bdceb5e736e3e5a8a55e2ee1da40
+          # mac_address: 0000021DC3E4341D
+          # tag_label: "Test Tag 4"
+          # checkins_entity_id: sensor.0000021dc3e4341d_checkins_per_hour
+          # rssi_entity_id: sensor.0000021dc3e4341d_rssi
+          # sleep_duration: *epaperlink_scheduled_ttl
 
   - alias: '[misc|epaperlink] Reload Integration Each Morning'
     id: yaml_automation_misc_epaperlink_reload_integration_each_morning
@@ -4977,151 +5035,151 @@ script:
                 update was skipped.
 
   #################################################################################### update_study_energy_display #####################################################################################
-  update_study_energy_display:
-    alias: "Update Study Energy Display"
-    mode: queued
-    fields:
-      display_device_id:
-        description: "The device ID of the display to be updated"
-        example: "bee8d1c7023925de74fc4e839cae072e"
-        default: "bee8d1c7023925de74fc4e839cae072e"
-      sleep_duration:
-        description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
-        example: 960
-        default: 960
-        required: false
-        advanced: true
-    sequence:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
-            sequence:
-              - service: open_epaper_link.drawcustom
-                target:
-                  device_id: "{{ display_device_id }}"
-                data:
-                  background: white
-                  rotate: 0
-                  ttl: "{{ sleep_duration | default(960) | int(960) }}"
-                  payload:
+  # update_study_energy_display:
+    # alias: "Update Study Energy Display"
+    # mode: queued
+    # fields:
+      # display_device_id:
+        # description: "The device ID of the display to be updated"
+        # example: "bee8d1c7023925de74fc4e839cae072e"
+        # default: "bee8d1c7023925de74fc4e839cae072e"
+      # sleep_duration:
+        # description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
+        # example: 960
+        # default: 960
+        # required: false
+        # advanced: true
+    # sequence:
+      # - choose:
+          # - conditions:
+              # - condition: template
+                # value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
+            # sequence:
+              # - service: open_epaper_link.drawcustom
+                # target:
+                  # device_id: "{{ display_device_id }}"
+                # data:
+                  # background: white
+                  # rotate: 0
+                  # ttl: "{{ sleep_duration | default(960) | int(960) }}"
+                  # payload:
                     # Desk
-                    - type: text
-                      value: "Desk:"
-                      font: ppb.ttf
-                      x: 3
-                      "y": 23
-                      size: 14
-                      color: 'black'
-                      anchor: lb
-                    - type: text
-                      value: "{{ states('sensor.averaged_computer_power')|round(0,default='NaN') | string }}"
-                      font: ppb.ttf
-                      x: 119
-                      "y": 23
-                      size: 30
-                      color: 'red'
-                      anchor: rb
-                    - type: text
-                      value: "w"
-                      font: ppb.ttf
-                      x: 141
-                      "y": 23
-                      size: 14
-                      color: 'black'
-                      anchor: rb
+                    # - type: text
+                      # value: "Desk:"
+                      # font: ppb.ttf
+                      # x: 3
+                      # "y": 23
+                      # size: 14
+                      # color: 'black'
+                      # anchor: lb
+                    # - type: text
+                      # value: "{{ states('sensor.averaged_computer_power')|round(0,default='NaN') | string }}"
+                      # font: ppb.ttf
+                      # x: 119
+                      # "y": 23
+                      # size: 30
+                      # color: 'red'
+                      # anchor: rb
+                    # - type: text
+                      # value: "w"
+                      # font: ppb.ttf
+                      # x: 141
+                      # "y": 23
+                      # size: 14
+                      # color: 'black'
+                      # anchor: rb
                     # NAS
-                    - type: text
-                      value: "NAS:"
-                      font: ppb.ttf
-                      x: 3
-                      "y": 57
-                      size: 14
-                      color: 'black'
-                      anchor: lb
-                    - type: text
-                      value: "{{ states('sensor.plug_nas_power')|round(0,default='NaN') | string }}"
-                      font: ppb.ttf
-                      x: 119
-                      "y": 57
-                      size: 30
-                      color: 'red'
-                      anchor: rb
-                    - type: text
-                      value: "w"
-                      font: ppb.ttf
-                      x: 141
-                      "y": 57
-                      size: 14
-                      color: 'black'
-                      anchor: rb
+                    # - type: text
+                      # value: "NAS:"
+                      # font: ppb.ttf
+                      # x: 3
+                      # "y": 57
+                      # size: 14
+                      # color: 'black'
+                      # anchor: lb
+                    # - type: text
+                      # value: "{{ states('sensor.plug_nas_power')|round(0,default='NaN') | string }}"
+                      # font: ppb.ttf
+                      # x: 119
+                      # "y": 57
+                      # size: 30
+                      # color: 'red'
+                      # anchor: rb
+                    # - type: text
+                      # value: "w"
+                      # font: ppb.ttf
+                      # x: 141
+                      # "y": 57
+                      # size: 14
+                      # color: 'black'
+                      # anchor: rb
                     # Total energy
-                    - type: text
-                      value: "Desk:"
-                      font: ppb.ttf
-                      x: 1
-                      "y": 90
-                      size: 14
-                      color: 'black'
-                      anchor: lb
-                    - type: text
-                      value: "{{ states('sensor.plug_study_desk_energy_today')|round(1,default='NaN') | string }}"
-                      font: ppb.ttf
-                      x: 118
-                      "y": 90
-                      size: 30
-                      color: 'red'
-                      anchor: rb
-                    - type: text
-                      value: "kWh"
-                      font: ppb.ttf
-                      x: 150
-                      "y": 90
-                      size: 14
-                      color: 'black'
-                      anchor: rb
+                    # - type: text
+                      # value: "Desk:"
+                      # font: ppb.ttf
+                      # x: 1
+                      # "y": 90
+                      # size: 14
+                      # color: 'black'
+                      # anchor: lb
+                    # - type: text
+                      # value: "{{ states('sensor.plug_study_desk_energy_today')|round(1,default='NaN') | string }}"
+                      # font: ppb.ttf
+                      # x: 118
+                      # "y": 90
+                      # size: 30
+                      # color: 'red'
+                      # anchor: rb
+                    # - type: text
+                      # value: "kWh"
+                      # font: ppb.ttf
+                      # x: 150
+                      # "y": 90
+                      # size: 14
+                      # color: 'black'
+                      # anchor: rb
                       # Water
-                    - type: text
-                      value: "Total:"
-                      font: ppb.ttf
-                      x: 3
-                      "y": 128
-                      size: 14
-                      color: 'black'
-                      anchor: lb
-                    - type: text
-                      value: "{{ states('sensor.daily_energy_use')|round(1,default='NaN') | string }}"
-                      font: ppb.ttf
-                      x: 119
-                      "y": 128
-                      size: 30
-                      color: 'red'
-                      anchor: rb
-                    - type: text
-                      value: "kWh"
-                      font: ppb.ttf
-                      x: 150
-                      "y": 128
-                      size: 14
-                      color: 'black'
-                      anchor: rb
+                    # - type: text
+                      # value: "Total:"
+                      # font: ppb.ttf
+                      # x: 3
+                      # "y": 128
+                      # size: 14
+                      # color: 'black'
+                      # anchor: lb
+                    # - type: text
+                      # value: "{{ states('sensor.daily_energy_use')|round(1,default='NaN') | string }}"
+                      # font: ppb.ttf
+                      # x: 119
+                      # "y": 128
+                      # size: 30
+                      # color: 'red'
+                      # anchor: rb
+                    # - type: text
+                      # value: "kWh"
+                      # font: ppb.ttf
+                      # x: 150
+                      # "y": 128
+                      # size: 14
+                      # color: 'black'
+                      # anchor: rb
                       # Update
-                    - type: text
-                      value: "Update: {{ now().strftime('%b %d %H:%M') }}"
-                      font: ppb.ttf
-                      x: 152
-                      "y": 152
-                      size: 12
-                      color: 'black'
-                      anchor: rb
-        default:
-          - service: system_log.write
-            data:
-              level: warning
-              message: >-
-                Script script.update_study_energy_display received invalid display_device_id
-                '{{ display_device_id }}'; device was not found and the display
-                update was skipped.
+                    # - type: text
+                      # value: "Update: {{ now().strftime('%b %d %H:%M') }}"
+                      # font: ppb.ttf
+                      # x: 152
+                      # "y": 152
+                      # size: 12
+                      # color: 'black'
+                      # anchor: rb
+        # default:
+          # - service: system_log.write
+            # data:
+              # level: warning
+              # message: >-
+                # Script script.update_study_energy_display received invalid display_device_id
+                # '{{ display_device_id }}'; device was not found and the display
+                # update was skipped.
 
   # update_precipitation_display:
   #   alias: "Update Precipitation Display"
@@ -5645,476 +5703,476 @@ script:
                 update was skipped.
 
   ################################################################################### update_epaper_calendar_display ###################################################################################
-  update_epaper_calendar_display:
-    alias: "[epaper|calendar] Update Epaper Tag with Calendar Events"
-    description: "Fetch next 48h calendar events, show top 5 on e-paper tag."
-    mode: single
-    fields:
-      display_device_id:
-        description: "The device ID of the OpenEPaperLink display to update."
-        example: "0384f3ad3a85237fcb589d95931ddc60"
-        default: "0384f3ad3a85237fcb589d95931ddc60"
-        required: true
-      sleep_duration:
-        description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
-        example: 1800
-        default: 1800
-        required: false
-        advanced: true
-    sequence:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
-            sequence:
-              - alias: 'Fetch calendar events for next 48h'
-                service: calendar.get_events
-                target:
-                  entity_id:
-                    - calendar.sander_blok_gmail_com
-                    - calendar.feestdagen_in_nederland
-                    - calendar.theater
-                    - calendar.optredens_in_bandsintown
-                data:
-                  duration:
-                    hours: 48
-                response_variable: calendar_events
-              - alias: "Prepare event list"
-                variables:
-                  all_events: >
-                    {{
-                      (
-                        (calendar_events|default({})).get('calendar.sander_blok_gmail_com', {}).get('events', []) +
-                        (calendar_events|default({})).get('calendar.feestdagen_in_nederland', {}).get('events', []) +
-                        (calendar_events|default({})).get('calendar.theater', {}).get('events', []) +
-                        (calendar_events|default({})).get('calendar.optredens_in_bandsintown', {}).get('events', [])
-                      )
-                      | sort(attribute='start')
-                    }}
-                  show_events: "{{ all_events[:5] }}"
-              - alias: "Draw to Epaper"
-                service: open_epaper_link.drawcustom
-                target:
-                  device_id: "{{ display_device_id }}"
-                data:
-                  dither: 2
-                  ttl: "{{ sleep_duration | default(1800) | int(1800) }}"
-                  background: white
-                  dry-run: false
-                  rotate: 270
-                  payload:
+  # update_epaper_calendar_display:
+    # alias: "[epaper|calendar] Update Epaper Tag with Calendar Events"
+    # description: "Fetch next 48h calendar events, show top 5 on e-paper tag."
+    # mode: single
+    # fields:
+      # display_device_id:
+        # description: "The device ID of the OpenEPaperLink display to update."
+        # example: "0384f3ad3a85237fcb589d95931ddc60"
+        # default: "0384f3ad3a85237fcb589d95931ddc60"
+        # required: true
+      # sleep_duration:
+        # description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
+        # example: 1800
+        # default: 1800
+        # required: false
+        # advanced: true
+    # sequence:
+      # - choose:
+          # - conditions:
+              # - condition: template
+                # value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
+            # sequence:
+              # - alias: 'Fetch calendar events for next 48h'
+                # service: calendar.get_events
+                # target:
+                  # entity_id:
+                    # - calendar.sander_blok_gmail_com
+                    # - calendar.feestdagen_in_nederland
+                    # - calendar.theater
+                    # - calendar.optredens_in_bandsintown
+                # data:
+                  # duration:
+                    # hours: 48
+                # response_variable: calendar_events
+              # - alias: "Prepare event list"
+                # variables:
+                  # all_events: >
+                    # {{
+                      # (
+                        # (calendar_events|default({})).get('calendar.sander_blok_gmail_com', {}).get('events', []) +
+                        # (calendar_events|default({})).get('calendar.feestdagen_in_nederland', {}).get('events', []) +
+                        # (calendar_events|default({})).get('calendar.theater', {}).get('events', []) +
+                        # (calendar_events|default({})).get('calendar.optredens_in_bandsintown', {}).get('events', [])
+                      # )
+                      # | sort(attribute='start')
+                    # }}
+                  # show_events: "{{ all_events[:5] }}"
+              # - alias: "Draw to Epaper"
+                # service: open_epaper_link.drawcustom
+                # target:
+                  # device_id: "{{ display_device_id }}"
+                # data:
+                  # dither: 2
+                  # ttl: "{{ sleep_duration | default(1800) | int(1800) }}"
+                  # background: white
+                  # dry-run: false
+                  # rotate: 270
+                  # payload:
                     # Row 1
-                    - type: rectangle
-                      x_start: 0
-                      x_end: 184
-                      y_start: 0
-                      y_end: 76
-                      outline: black
-                      width: 2
-                      fill: >
-                        {% set ev = show_events[0] if show_events|count > 0 else None %}
-                        {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
-                          half_yellow
-                        {% else %}
-                          white
-                        {% endif %}
-                    - type: text
-                      value: >
-                        {% set ev = show_events[0] if show_events|count > 0 else None %}
-                        {% if ev is not none %}
-                          {% if "T" in ev.start %}
-                            {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
-                          {% else %}
-                            {{ as_datetime(ev.start).strftime('%d %b') }}
-                          {% endif %}
-                        {% else %}
-                          {{ " " }}
-                        {% endif %}
-                      x: 6
-                      y: 6
-                      size: 12
-                      color: black
-                    - type: text
-                      value: >
-                        {% set ev = show_events[0] if show_events|count > 0 else None %}
-                        {{ ev.summary if ev is not none else " " }}
-                      max_width: 174
-                      x: 10
-                      y: 20
-                      size: 15
-                      color: black
+                    # - type: rectangle
+                      # x_start: 0
+                      # x_end: 184
+                      # y_start: 0
+                      # y_end: 76
+                      # outline: black
+                      # width: 2
+                      # fill: >
+                        # {% set ev = show_events[0] if show_events|count > 0 else None %}
+                        # {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
+                          # half_yellow
+                        # {% else %}
+                          # white
+                        # {% endif %}
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[0] if show_events|count > 0 else None %}
+                        # {% if ev is not none %}
+                          # {% if "T" in ev.start %}
+                            # {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                          # {% else %}
+                            # {{ as_datetime(ev.start).strftime('%d %b') }}
+                          # {% endif %}
+                        # {% else %}
+                          # {{ " " }}
+                        # {% endif %}
+                      # x: 6
+                      # y: 6
+                      # size: 12
+                      # color: black
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[0] if show_events|count > 0 else None %}
+                        # {{ ev.summary if ev is not none else " " }}
+                      # max_width: 174
+                      # x: 10
+                      # y: 20
+                      # size: 15
+                      # color: black
                     # Row 2
-                    - type: rectangle
-                      x_start: 0
-                      x_end: 184
-                      y_start: 76
-                      y_end: 153
-                      outline: black
-                      width: 2
-                      fill: >
-                        {% set ev = show_events[1] if show_events|count > 1 else None %}
-                        {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
-                          half_yellow
-                        {% else %}
-                          white
-                        {% endif %}
-                    - type: text
-                      value: >
-                        {% set ev = show_events[1] if show_events|count > 1 else None %}
-                        {% if ev is not none %}
-                          {% if "T" in ev.start %}
-                            {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
-                          {% else %}
-                            {{ as_datetime(ev.start).strftime('%d %b') }}
-                          {% endif %}
-                        {% else %}
-                          {{ " " }}
-                        {% endif %}
-                      x: 6
-                      y: 82
-                      size: 12
-                      color: black
-                    - type: text
-                      value: >
-                        {% set ev = show_events[1] if show_events|count > 1 else None %}
-                        {{ ev.summary if ev is not none else " " }}
-                      max_width: 174
-                      x: 10
-                      y: 96
-                      size: 15
-                      color: black
+                    # - type: rectangle
+                      # x_start: 0
+                      # x_end: 184
+                      # y_start: 76
+                      # y_end: 153
+                      # outline: black
+                      # width: 2
+                      # fill: >
+                        # {% set ev = show_events[1] if show_events|count > 1 else None %}
+                        # {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
+                          # half_yellow
+                        # {% else %}
+                          # white
+                        # {% endif %}
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[1] if show_events|count > 1 else None %}
+                        # {% if ev is not none %}
+                          # {% if "T" in ev.start %}
+                            # {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                          # {% else %}
+                            # {{ as_datetime(ev.start).strftime('%d %b') }}
+                          # {% endif %}
+                        # {% else %}
+                          # {{ " " }}
+                        # {% endif %}
+                      # x: 6
+                      # y: 82
+                      # size: 12
+                      # color: black
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[1] if show_events|count > 1 else None %}
+                        # {{ ev.summary if ev is not none else " " }}
+                      # max_width: 174
+                      # x: 10
+                      # y: 96
+                      # size: 15
+                      # color: black
                     # Row 3
-                    - type: rectangle
-                      x_start: 0
-                      x_end: 184
-                      y_start: 153
-                      y_end: 230
-                      outline: black
-                      width: 2
-                      fill: >
-                        {% set ev = show_events[2] if show_events|count > 2 else None %}
-                        {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
-                          half_yellow
-                        {% else %}
-                          white
-                        {% endif %}
-                    - type: text
-                      value: >
-                        {% set ev = show_events[2] if show_events|count > 2 else None %}
-                        {% if ev is not none %}
-                          {% if "T" in ev.start %}
-                            {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
-                          {% else %}
-                            {{ as_datetime(ev.start).strftime('%d %b') }}
-                          {% endif %}
-                        {% else %}
-                          {{ " " }}
-                        {% endif %}
-                      x: 6
-                      y: 159
-                      size: 12
-                      color: black
-                    - type: text
-                      value: >
-                        {% set ev = show_events[2] if show_events|count > 2 else None %}
-                        {{ ev.summary if ev is not none else " " }}
-                      max_width: 174
-                      x: 10
-                      y: 173
-                      size: 15
-                      color: black
+                    # - type: rectangle
+                      # x_start: 0
+                      # x_end: 184
+                      # y_start: 153
+                      # y_end: 230
+                      # outline: black
+                      # width: 2
+                      # fill: >
+                        # {% set ev = show_events[2] if show_events|count > 2 else None %}
+                        # {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
+                          # half_yellow
+                        # {% else %}
+                          # white
+                        # {% endif %}
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[2] if show_events|count > 2 else None %}
+                        # {% if ev is not none %}
+                          # {% if "T" in ev.start %}
+                            # {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                          # {% else %}
+                            # {{ as_datetime(ev.start).strftime('%d %b') }}
+                          # {% endif %}
+                        # {% else %}
+                          # {{ " " }}
+                        # {% endif %}
+                      # x: 6
+                      # y: 159
+                      # size: 12
+                      # color: black
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[2] if show_events|count > 2 else None %}
+                        # {{ ev.summary if ev is not none else " " }}
+                      # max_width: 174
+                      # x: 10
+                      # y: 173
+                      # size: 15
+                      # color: black
                     # Row 4
-                    - type: rectangle
-                      x_start: 0
-                      x_end: 184
-                      y_start: 230
-                      y_end: 307
-                      outline: black
-                      width: 2
-                      fill: >
-                        {% set ev = show_events[3] if show_events|count > 3 else None %}
-                        {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
-                          half_yellow
-                        {% else %}
-                          white
-                        {% endif %}
-                    - type: text
-                      value: >
-                        {% set ev = show_events[3] if show_events|count > 3 else None %}
-                        {% if ev is not none %}
-                          {% if "T" in ev.start %}
-                            {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
-                          {% else %}
-                            {{ as_datetime(ev.start).strftime('%d %b') }}
-                          {% endif %}
-                        {% else %}
-                          {{ " " }}
-                        {% endif %}
-                      x: 6
-                      y: 236
-                      size: 12
-                      color: black
-                    - type: text
-                      value: >
-                        {% set ev = show_events[3] if show_events|count > 3 else None %}
-                        {{ ev.summary if ev is not none else " " }}
-                      max_width: 174
-                      x: 10
-                      y: 250
-                      size: 15
-                      color: black
+                    # - type: rectangle
+                      # x_start: 0
+                      # x_end: 184
+                      # y_start: 230
+                      # y_end: 307
+                      # outline: black
+                      # width: 2
+                      # fill: >
+                        # {% set ev = show_events[3] if show_events|count > 3 else None %}
+                        # {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
+                          # half_yellow
+                        # {% else %}
+                          # white
+                        # {% endif %}
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[3] if show_events|count > 3 else None %}
+                        # {% if ev is not none %}
+                          # {% if "T" in ev.start %}
+                            # {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                          # {% else %}
+                            # {{ as_datetime(ev.start).strftime('%d %b') }}
+                          # {% endif %}
+                        # {% else %}
+                          # {{ " " }}
+                        # {% endif %}
+                      # x: 6
+                      # y: 236
+                      # size: 12
+                      # color: black
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[3] if show_events|count > 3 else None %}
+                        # {{ ev.summary if ev is not none else " " }}
+                      # max_width: 174
+                      # x: 10
+                      # y: 250
+                      # size: 15
+                      # color: black
                     # Row 5
-                    - type: rectangle
-                      x_start: 0
-                      x_end: 184
-                      y_start: 307
-                      y_end: 384
-                      outline: black
-                      width: 2
-                      fill: >
-                        {% set ev = show_events[4] if show_events|count > 4 else None %}
-                        {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
-                          half_yellow
-                        {% else %}
-                          white
-                        {% endif %}
-                    - type: text
-                      value: >
-                        {% set ev = show_events[4] if show_events|count > 4 else None %}
-                        {% if ev is not none %}
-                          {% if "T" in ev.start %}
-                            {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
-                          {% else %}
-                            {{ as_datetime(ev.start).strftime('%d %b') }}
-                          {% endif %}
-                        {% else %}
-                          {{ " " }}
-                        {% endif %}
-                      x: 6
-                      y: 313
-                      size: 12
-                      color: black
-                    - type: text
-                      value: >
-                        {% set ev = show_events[4] if show_events|count > 4 else None %}
-                        {{ ev.summary if ev is not none else " " }}
-                      max_width: 174
-                      x: 10
-                      y: 327
-                      size: 15
-                      color: black
-        default:
-          - service: system_log.write
-            data:
-              level: warning
-              message: >-
-                Script script.update_epaper_calendar_display received invalid display_device_id
-                '{{ display_device_id }}'; device was not found and the display
-                update was skipped.
+                    # - type: rectangle
+                      # x_start: 0
+                      # x_end: 184
+                      # y_start: 307
+                      # y_end: 384
+                      # outline: black
+                      # width: 2
+                      # fill: >
+                        # {% set ev = show_events[4] if show_events|count > 4 else None %}
+                        # {% if ev is not none and as_datetime(ev.start).date() == now().date() %}
+                          # half_yellow
+                        # {% else %}
+                          # white
+                        # {% endif %}
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[4] if show_events|count > 4 else None %}
+                        # {% if ev is not none %}
+                          # {% if "T" in ev.start %}
+                            # {{ as_datetime(ev.start).strftime('%a %d %b %H:%M') }}
+                          # {% else %}
+                            # {{ as_datetime(ev.start).strftime('%d %b') }}
+                          # {% endif %}
+                        # {% else %}
+                          # {{ " " }}
+                        # {% endif %}
+                      # x: 6
+                      # y: 313
+                      # size: 12
+                      # color: black
+                    # - type: text
+                      # value: >
+                        # {% set ev = show_events[4] if show_events|count > 4 else None %}
+                        # {{ ev.summary if ev is not none else " " }}
+                      # max_width: 174
+                      # x: 10
+                      # y: 327
+                      # size: 15
+                      # color: black
+        # default:
+          # - service: system_log.write
+            # data:
+              # level: warning
+              # message: >-
+                # Script script.update_epaper_calendar_display received invalid display_device_id
+                # '{{ display_device_id }}'; device was not found and the display
+                # update was skipped.
 
   ################################################################################### update_washing_machine_display ###################################################################################
-  update_washing_machine_display:
-    alias: "[epaper|laundry] Update Washing Machine Display"
-    mode: queued
-    fields:
-      display_device_id:
-        description: "The device ID of the display to be updated"
-        example: "165750b668ea226052a89d9bf8239287"
-        default: "165750b668ea226052a89d9bf8239287"
-      progress_percent:
-        description: "Current progress as a percentage (0–100)"
-        example: 0
-        default: 0
-      sleep_duration:
-        description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
-        example: 600
-        default: 600
-        required: false
-        advanced: true
-    sequence:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
-            sequence:
-              - service: open_epaper_link.drawcustom
-                target:
-                  device_id: "{{ display_device_id }}"
-                data:
-                  background: white
-                  rotate: 0
-                  ttl: "{{ sleep_duration | default(600) | int(600) }}"
-                  payload:
+  # update_washing_machine_display:
+    # alias: "[epaper|laundry] Update Washing Machine Display"
+    # mode: queued
+    # fields:
+      # display_device_id:
+        # description: "The device ID of the display to be updated"
+        # example: "165750b668ea226052a89d9bf8239287"
+        # default: "165750b668ea226052a89d9bf8239287"
+      # progress_percent:
+        # description: "Current progress as a percentage (0–100)"
+        # example: 0
+        # default: 0
+      # sleep_duration:
+        # description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
+        # example: 600
+        # default: 600
+        # required: false
+        # advanced: true
+    # sequence:
+      # - choose:
+          # - conditions:
+              # - condition: template
+                # value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
+            # sequence:
+              # - service: open_epaper_link.drawcustom
+                # target:
+                  # device_id: "{{ display_device_id }}"
+                # data:
+                  # background: white
+                  # rotate: 0
+                  # ttl: "{{ sleep_duration | default(600) | int(600) }}"
+                  # payload:
                     # Job State (top, big, centered)
-                    - type: text
-                      value: >
-                        {% if is_state('sensor.washer_job_state', 'none') %}
-                          Not Running
-                        {% else %}
-                          {{ states('sensor.washer_job_state') | title }}
-                        {% endif %}
-                      font: ppb.ttf
-                      x: 148
-                      y: 25
-                      size: 28
-                      color: 'black'
-                      anchor: mm
+                    # - type: text
+                      # value: >
+                        # {% if is_state('sensor.washer_job_state', 'none') %}
+                          # Not Running
+                        # {% else %}
+                          # {{ states('sensor.washer_job_state') | title }}
+                        # {% endif %}
+                      # font: ppb.ttf
+                      # x: 148
+                      # y: 25
+                      # size: 28
+                      # color: 'black'
+                      # anchor: mm
                     # Progress Bar (centered)
-                    - type: progress_bar
-                      x_start: 20
-                      y_start: 45
-                      x_end: 276
-                      y_end: 75
-                      fill: red
-                      outline: black
-                      width: 2
-                      progress: "{{ progress_percent | int(0) }}"
-                      direction: right
-                      show_percentage: true
-                      font: "ppb.ttf"
+                    # - type: progress_bar
+                      # x_start: 20
+                      # y_start: 45
+                      # x_end: 276
+                      # y_end: 75
+                      # fill: red
+                      # outline: black
+                      # width: 2
+                      # progress: "{{ progress_percent | int(0) }}"
+                      # direction: right
+                      # show_percentage: true
+                      # font: "ppb.ttf"
                     # Completion Time (below progress bar, left)
-                    - type: text
-                      value: >
-                        {%- set state = states('sensor.washer_job_state') -%}
-                        {%- if state != 'Finish' and state != 'Ready' %}
-                          Done @ {{ as_datetime(states('sensor.washer_completion_time')).astimezone().strftime('%a %d %b %H:%M') }}
-                        {%- else -%}
-                          Ready!
-                        {%- endif -%}
-                      font: ppb.ttf
-                      x: 148
-                      y: 100
-                      size: 18
-                      color: 'black'
-                      anchor: mb
-                    - type: text
-                      value: "Updated: {{ now().strftime('%H:%M') }}"
-                      font: ppb.ttf
-                      x: 3
-                      y: 125
-                      size: 12
-                      color: 'black'
-                      anchor: lb
-        default:
-          - service: system_log.write
-            data:
-              level: warning
-              message: >-
-                Script script.update_washing_machine_display received invalid display_device_id
-                '{{ display_device_id }}'; device was not found and the display
-                update was skipped.
+                    # - type: text
+                      # value: >
+                        # {%- set state = states('sensor.washer_job_state') -%}
+                        # {%- if state != 'Finish' and state != 'Ready' %}
+                          # Done @ {{ as_datetime(states('sensor.washer_completion_time')).astimezone().strftime('%a %d %b %H:%M') }}
+                        # {%- else -%}
+                          # Ready!
+                        # {%- endif -%}
+                      # font: ppb.ttf
+                      # x: 148
+                      # y: 100
+                      # size: 18
+                      # color: 'black'
+                      # anchor: mb
+                    # - type: text
+                      # value: "Updated: {{ now().strftime('%H:%M') }}"
+                      # font: ppb.ttf
+                      # x: 3
+                      # y: 125
+                      # size: 12
+                      # color: 'black'
+                      # anchor: lb
+        # default:
+          # - service: system_log.write
+            # data:
+              # level: warning
+              # message: >-
+                # Script script.update_washing_machine_display received invalid display_device_id
+                # '{{ display_device_id }}'; device was not found and the display
+                # update was skipped.
 
   ##################################################################################### update_epaper_tag_overview #####################################################################################
-  update_epaper_tag_overview:
-    alias: "[epaper|tags] Update Test Tag Overview Display"
-    mode: queued
-    fields:
-      display_device_id:
-        description: "The device ID of the display to be updated"
-        example: "53d2ca8307e6b3b63de5a4f21f3bd65a"
-      mac_address:
-        description: "The MAC address of the tag (for display)"
-        example: "0000021DC3CA3411"
-      tag_label:
-        description: "Label for this tag"
-        example: "Test Tag 1"
-      checkins_entity_id:
-        description: "Entity ID of checkins/hour sensor"
-        example: "sensor.0000021dc3ca3411_checkins_per_hour"
-      rssi_entity_id:
-        description: "Entity ID of RSSI sensor"
-        example: "sensor.0000021dc3ca3411_rssi"
-      sleep_duration:
-        description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
-        example: 600
-        default: 600
-        required: false
-        advanced: true
-    sequence:
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
-            sequence:
-              - service: open_epaper_link.drawcustom
-                target:
-                  device_id: "{{ display_device_id }}"
-                data:
-                  background: white
-                  rotate: 0
-                  ttl: "{{ sleep_duration | default(600) | int(600) }}"
-                  payload:
+  # update_epaper_tag_overview:
+    # alias: "[epaper|tags] Update Test Tag Overview Display"
+    # mode: queued
+    # fields:
+      # display_device_id:
+        # description: "The device ID of the display to be updated"
+        # example: "53d2ca8307e6b3b63de5a4f21f3bd65a"
+      # mac_address:
+        # description: "The MAC address of the tag (for display)"
+        # example: "0000021DC3CA3411"
+      # tag_label:
+        # description: "Label for this tag"
+        # example: "Test Tag 1"
+      # checkins_entity_id:
+        # description: "Entity ID of checkins/hour sensor"
+        # example: "sensor.0000021dc3ca3411_checkins_per_hour"
+      # rssi_entity_id:
+        # description: "Entity ID of RSSI sensor"
+        # example: "sensor.0000021dc3ca3411_rssi"
+      # sleep_duration:
+        # description: "How long (in seconds) the e-paper tag should sleep before checking in for a new update."
+        # example: 600
+        # default: 600
+        # required: false
+        # advanced: true
+    # sequence:
+      # - choose:
+          # - conditions:
+              # - condition: template
+                # value_template: "{{ device_attr(display_device_id, 'name') is not none }}"
+            # sequence:
+              # - service: open_epaper_link.drawcustom
+                # target:
+                  # device_id: "{{ display_device_id }}"
+                # data:
+                  # background: white
+                  # rotate: 0
+                  # ttl: "{{ sleep_duration | default(600) | int(600) }}"
+                  # payload:
                     # Tag Label (Top, Center, Large)
-                    - type: text
-                      value: "{{ tag_label }}"
-                      font: ppb.ttf
-                      x: 77
-                      y: 5
-                      size: 28
-                      color: 'black'
-                      anchor: mt
+                    # - type: text
+                      # value: "{{ tag_label }}"
+                      # font: ppb.ttf
+                      # x: 77
+                      # y: 5
+                      # size: 28
+                      # color: 'black'
+                      # anchor: mt
                     # MAC Address (Underneath label, smaller, gray)
-                    - type: text
-                      value: "{{ mac_address | string() }}"
-                      font: ppb.ttf
-                      x: 77
-                      y: 40
-                      size: 14
-                      color: 'red'
-                      anchor: mm
+                    # - type: text
+                      # value: "{{ mac_address | string() }}"
+                      # font: ppb.ttf
+                      # x: 77
+                      # y: 40
+                      # size: 14
+                      # color: 'red'
+                      # anchor: mm
                     # "Check-ins/hour" Label
-                    - type: text
-                      value: "Check-ins/h"
-                      font: ppb.ttf
-                      x: 77
-                      y: 62
-                      size: 13
-                      color: 'black'
-                      anchor: mm
+                    # - type: text
+                      # value: "Check-ins/h"
+                      # font: ppb.ttf
+                      # x: 77
+                      # y: 62
+                      # size: 13
+                      # color: 'black'
+                      # anchor: mm
                     # Check-ins/hour Value (Big, red, center)
-                    - type: text
-                      value: "{{ states(checkins_entity_id) | default('0') }}"
-                      font: ppb.ttf
-                      x: 77
-                      y: 87
-                      size: 38
-                      color: 'red'
-                      anchor: mm
+                    # - type: text
+                      # value: "{{ states(checkins_entity_id) | default('0') }}"
+                      # font: ppb.ttf
+                      # x: 77
+                      # y: 87
+                      # size: 38
+                      # color: 'red'
+                      # anchor: mm
                     # "RSSI" Label
-                    - type: text
-                      value: "RSSI"
-                      font: ppb.ttf
-                      x: 77
-                      y: 113
-                      size: 13
-                      color: 'black'
-                      anchor: mm
+                    # - type: text
+                      # value: "RSSI"
+                      # font: ppb.ttf
+                      # x: 77
+                      # y: 113
+                      # size: 13
+                      # color: 'black'
+                      # anchor: mm
                     # RSSI Value (Medium, blue, center)
-                    - type: text
-                      value: "{{ states(rssi_entity_id) | default('N/A') }} dBm"
-                      font: ppb.ttf
-                      x: 77
-                      y: 128
-                      size: 18
-                      color: 'red'
-                      anchor: mm
+                    # - type: text
+                      # value: "{{ states(rssi_entity_id) | default('N/A') }} dBm"
+                      # font: ppb.ttf
+                      # x: 77
+                      # y: 128
+                      # size: 18
+                      # color: 'red'
+                      # anchor: mm
                     # Small update timestamp (optional, bottom left)
-                    - type: text
-                      value: "Updated: {{ states('sensor.time') | string }}"
-                      font: ppb.ttf
-                      x: 1
-                      y: 153
-                      size: 8
-                      color: 'black'
-                      anchor: lb
-        default:
-          - service: system_log.write
-            data:
-              level: warning
-              message: >-
-                Script script.update_epaper_tag_overview received invalid display_device_id
-                '{{ display_device_id }}'; device was not found and the display
-                update was skipped.
+                    # - type: text
+                      # value: "Updated: {{ states('sensor.time') | string }}"
+                      # font: ppb.ttf
+                      # x: 1
+                      # y: 153
+                      # size: 8
+                      # color: 'black'
+                      # anchor: lb
+        # default:
+          # - service: system_log.write
+            # data:
+              # level: warning
+              # message: >-
+                # Script script.update_epaper_tag_overview received invalid display_device_id
+                # '{{ display_device_id }}'; device was not found and the display
+                # update was skipped.
 
   drawcustom_snapshot_examples:
     alias: "Generate drawcustom snapshots"
