@@ -77,22 +77,9 @@ template:
           }}
       - name: Study LEDstrips Work Active
         unique_id: study_ledstrips_work_active
-        state: &study_work_present >-
-          {{ is_state('device_tracker.worklaptop', 'home')
-             or is_state('device_tracker.worklaptop_dock', 'home')
-             or (is_state('device_tracker.worklaptop_wifi_hp', 'home')
-                 and (state_attr('device_tracker.worklaptop_wifi_hp', 'ap_mac')
-                      | default('', true) | lower) == 'ac:8b:a9:15:ef:09') }}
-        availability: >-
-          {{ is_state('device_tracker.worklaptop', 'home')
-             or is_state('device_tracker.worklaptop_dock', 'home')
-             or (states('device_tracker.worklaptop') in ['home', 'not_home']
-                 and states('device_tracker.worklaptop_dock') in ['home', 'not_home']
-                 and states('device_tracker.worklaptop_wifi_hp') in ['home', 'not_home']
-                 and (is_state('device_tracker.worklaptop_wifi_hp', 'not_home')
-                      or state_attr('device_tracker.worklaptop_wifi_hp', 'ap_mac')
-                         not in [none, '', 'unknown', 'unavailable'])) }}
-        delay_off: '00:02:00' # Allow docking handovers and brief disconnects.
+        state: &study_work_present "{{ is_state('device_tracker.worklaptop', 'home') }}"
+        availability: "{{ states('device_tracker.worklaptop') in ['home', 'not_home'] }}"
+        delay_off: '00:02:00' # Ignore brief disconnects.
       - name: Study LEDstrips Play Active
         unique_id: study_ledstrips_play_active
         state: "{{ is_state('device_tracker.blokmeister_h2o2_proart', 'home') }}"
@@ -171,7 +158,17 @@ automation:
         entity_id: input_boolean.study_ledstrips_automatic
         to: 'on'
         id: enable
+      - platform: numeric_state
+        entity_id: sensor.plug_study_desk_power
+        above: 30
+        for: '00:01:00'
+        id: enable # Re-evaluate computers when the desk is used again.
     condition:
+      # Do not let a pending computer trigger undo the low-power shutdown.
+      - condition: template
+        value_template: >-
+          {{ is_number(states('sensor.plug_study_desk_power'))
+             and states('sensor.plug_study_desk_power') | float(0) >= 30 }}
       - condition: state
         entity_id: input_boolean.study_ledstrips_automatic
         state: 'on'
@@ -205,12 +202,30 @@ automation:
             {% else %} {{ current }}
             {% endif %}
       - condition: template
-        value_template: '{{ desired != current }}'
+        value_template: "{{ desired != current and (desired != 'Work' or work_present) }}"
       - service: input_select.select_option
         target:
           entity_id: input_select.study_lighting_mode
         data:
           option: '{{ desired }}'
+
+  - alias: '[study|ledstrips] Turn off Work or Play when desk power is low'
+    id: study_ledstrips_turn_off_when_desk_power_low
+    mode: single
+    trigger:
+      # Including the selected mode also covers entering Work/Play while power is already low.
+      - platform: template
+        value_template: >-
+          {{ states('input_select.study_lighting_mode') in ['Work', 'Play']
+             and is_number(states('sensor.plug_study_desk_power'))
+             and states('sensor.plug_study_desk_power') | float(9999) < 30 }}
+        for: '00:01:00'
+    action:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.study_lighting_mode
+        data:
+          option: 'Off'
 
   - alias: '[study|ledstrips] Apply selected mode'
     id: study_ledstrips_apply_selected_mode
