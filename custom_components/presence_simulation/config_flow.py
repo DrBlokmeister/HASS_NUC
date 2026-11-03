@@ -1,16 +1,11 @@
-from datetime import datetime
 from typing import Dict
 from homeassistant import config_entries
 from homeassistant.helpers.selector import (
-    DateSelector,
-    DateSelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
     LabelSelector,
     LabelSelectorConfig,
-    TimeSelector,
-    TimeSelectorConfig,
 )
 import re
 import logging
@@ -28,32 +23,8 @@ RANDOM_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=0, max=86400))
 BRIGHTNESS_VALIDATOR = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
 
 
-def _history_end_parts(value):
-    """Return date and time defaults from a stored ISO datetime."""
-    if not value:
-        return None, None
-    try:
-        history_end = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-    except ValueError:
-        return None, None
-    return history_end.date().isoformat(), history_end.strftime("%H:%M:%S")
-
-
-def _set_history_end(info):
-    """Combine the UI date and time fields into the existing option."""
-    history_end_date = info.pop("history_end_date", None)
-    history_end_time = info.pop("history_end_time", None)
-    if bool(history_end_date) != bool(history_end_time):
-        return False
-    if history_end_date:
-        info["history_end"] = f"{history_end_date}T{history_end_time}"
-    else:
-        info.pop("history_end", None)
-    return True
-
-
 class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 5
+    VERSION = 6
 
     def __init__(self):
         super().__init__()
@@ -73,17 +44,10 @@ class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("random", default=0): RANDOM_VALIDATOR,
             vol.Required("unavailable_as_off", default=False): bool,
             vol.Required("brightness", default=0): BRIGHTNESS_VALIDATOR,
-            vol.Optional("history_end_date"): DateSelector(DateSelectorConfig()),
-            vol.Optional("history_end_time"): TimeSelector(TimeSelectorConfig()),
         }
         if not info:
             return self.async_show_form(
                 step_id="user", data_schema=vol.Schema(data_schema)
-            )
-        if not _set_history_end(info):
-            errors["base"] = "history_end_incomplete"
-            return self.async_show_form(
-                step_id="user", data_schema=vol.Schema(data_schema), errors=errors
             )
         #if the name match with an already existing entity, ask to change it
         all_entities = self.hass.states.async_entity_ids()
@@ -107,7 +71,7 @@ class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         else:
             self.data["entities"] = ",".join(self.data["entities"])
-            return self.async_create_entry(title="Simulation Presence", data=self.data)
+            return self.async_create_entry(title=self.data["switch"], data=self.data)
 
     @staticmethod
     def async_get_options_flow(entry):
@@ -117,7 +81,6 @@ class PresenceSimulationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, info=None):
-        errors: Dict[str, str] = {}
         _LOGGER.debug("config flow init %s", info)
         all_entities = self.hass.states.async_entity_ids()
 
@@ -146,12 +109,28 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         entities_val = self.config_entry.options.get("entities", self.config_entry.data["entities"])
         labels_val = self.config_entry.options.get("labels", self.config_entry.data.get("labels", []))
         delta_val = self.config_entry.options.get("delta", self.config_entry.data["delta"])
-        history_end_val = self.config_entry.options.get("history_end", self.config_entry.data.get("history_end"))
-        history_end_date, history_end_time = _history_end_parts(history_end_val)
+
+        entities_default = [
+            elm.strip()
+            for elm in (entities_val if isinstance(entities_val, list) else entities_val.split(","))
+            if elm.strip()
+        ]
+        # drop entities that no longer exist: keeping them makes the
+        # selector fail validation with "value must be one of ..."
+        missing = [elm for elm in entities_default if elm not in all_entities]
+        if missing:
+            _LOGGER.warning(
+                "Entities from the configuration no longer exist and will be removed: %s",
+                ", ".join(missing),
+            )
+            entities_default = [elm for elm in entities_default if elm in all_entities]
 
         data_schema = {
-            vol.Required("switch", default=switch_val): str,
-            vol.Required("entities", default=entities_val.split(",")): SelectSelector(SelectSelectorConfig(options=all_entities, multiple=True, mode=SelectSelectorMode.DROPDOWN)),
+            # name is immutable: shown as a single-option dropdown so it can't be edited
+            vol.Required("switch", default=switch_val): SelectSelector(
+                SelectSelectorConfig(options=[switch_val], mode=SelectSelectorMode.DROPDOWN)
+            ),
+            vol.Required("entities", default=entities_default): SelectSelector(SelectSelectorConfig(options=all_entities, multiple=True, mode=SelectSelectorMode.DROPDOWN)),
             vol.Required("labels", default=labels_val): LabelSelector(LabelSelectorConfig(multiple=True)),
             vol.Required("delta", default=delta_val): DELTA_VALIDATOR,
             vol.Required("interval", default=interval): INTERVAL_VALIDATOR,
@@ -159,10 +138,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             vol.Required("random", default=random): RANDOM_VALIDATOR,
             vol.Required("unavailable_as_off", default=unavailable_as_off): bool,
             vol.Required("brightness", default=brightness): BRIGHTNESS_VALIDATOR,
-            vol.Optional("history_end_date", default=history_end_date)
-                if history_end_date is not None else vol.Optional("history_end_date"): DateSelector(DateSelectorConfig()),
-            vol.Optional("history_end_time", default=history_end_time)
-                if history_end_time is not None else vol.Optional("history_end_time"): TimeSelector(TimeSelectorConfig()),
         }
         _LOGGER.debug("switch %s", self.config_entry.data["switch"])
         _LOGGER.debug("config_entry data %s", self.config_entry.data)
@@ -171,20 +146,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if not info:
             return self.async_show_form(
                 step_id="init", data_schema=vol.Schema(data_schema)
-            )
-
-        #if pop-up is saved but the name has changed, log an error and ask again
-        if info["switch"] != self.config_entry.data["switch"]:
-            _LOGGER.error("Presence Simulation Switch name can't be changed")
-            errors["base"] = "cannot_change_name"
-            return self.async_show_form(
-                step_id="init", data_schema=vol.Schema(data_schema), errors=errors
-            )
-
-        if not _set_history_end(info):
-            errors["base"] = "history_end_incomplete"
-            return self.async_show_form(
-                step_id="init", data_schema=vol.Schema(data_schema), errors=errors
             )
 
         info["entities"] = ",".join(info["entities"])

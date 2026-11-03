@@ -4,7 +4,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from datetime import datetime, timezone, timedelta
 import re
 import logging
-import pytz
+from homeassistant.util import dt as dt_util
 from .const import (
         DOMAIN,
         SWITCH_PLATFORM,
@@ -53,7 +53,8 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
         _LOGGER.debug("Config %s", conf["switch"])
         elms = []
         for elm in conf["entities"].split(","):
-            elms += [elm.strip()]
+            if elm.strip():
+                elms += [elm.strip()]
         self._entities = elms
         if "labels" in conf:
             self._labels = conf["labels"]
@@ -66,6 +67,7 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
         self._unavailable_as_off = conf.get("unavailable_as_off", False)
         self._brightness = conf.get("brightness", 0)
         self._history_end = conf.get("history_end", "")
+        self._use_snapshot = False
         self.reset_default_values()
         _LOGGER.debug("entities %s", conf["entities"])
 
@@ -89,7 +91,29 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
     async def turn_on_async(self, after_ha_restart=False, **kwargs):
         """Turn on the presence simulation"""
         _LOGGER.debug("Turn on of the presence simulation through the switch")
-        await self.hass.services.async_call(DOMAIN, "start", {"switch_id": self.id, "internal": True, "after_ha_restart": after_ha_restart})
+        await self.hass.services.async_call(
+            DOMAIN,
+            "start",
+            {
+                "switch_id": self.id,
+                "internal": True,
+                "after_ha_restart": after_ha_restart,
+            },
+            blocking=True,
+        )
+
+    async def async_turn_on(self, **kwargs):
+        """Use the event-loop-safe start route used by Home Assistant."""
+        await self.turn_on_async(**kwargs)
+
+    async def async_turn_off(self, **kwargs):
+        """Use the event-loop-safe stop route used by Home Assistant."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            "stop",
+            {"switch_id": self.id, "internal": True},
+            blocking=True,
+        )
 
     def turn_on(self, **kwargs):
         """Turn on the presence simulation"""
@@ -114,12 +138,9 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
         if len(self._next_events) > 0:
             self.attr["next_event_datetime"], self.attr["next_entity_id"], self.attr["next_entity_state"] = self._next_events[0]
             try:
-                self.attr["next_event_datetime"] = self.attr["next_event_datetime"].astimezone(self.hass.config.time_zone).strftime("%d/%m/%Y %H:%M:%S")
+                self.attr["next_event_datetime"] = dt_util.as_local(self.attr["next_event_datetime"]).strftime("%d/%m/%Y %H:%M:%S")
             except Exception as e:
-                try:
-                    self.attr["next_event_datetime"] = self.attr["next_event_datetime"].astimezone(pytz.timezone(self.hass.config.time_zone)).strftime("%d/%m/%Y %H:%M:%S")
-                except Exception as e:
-                    _LOGGER.warning("Exception while trying to convert utc to local time: %s",e)
+                _LOGGER.warning("Exception while trying to convert utc to local time: %s",e)
         else:
             for prop in ("next_event_datetime", "next_entity_id", "next_entity_state"):
                 if prop in self.attr:
@@ -153,8 +174,8 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
     def _format_datetime(self, value):
         """Format a scheduled datetime in the configured Home Assistant zone."""
         try:
-            return value.astimezone(pytz.timezone(self.hass.config.time_zone)).isoformat()
-        except (AttributeError, TypeError, pytz.UnknownTimeZoneError):
+            return dt_util.as_local(value).isoformat()
+        except (AttributeError, TypeError, ValueError):
             return str(value)
 
     @property
@@ -184,6 +205,9 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
     @property
     def history_end(self):
         return self._history_end_overriden
+    @property
+    def use_snapshot(self):
+        return self._use_snapshot_overriden
 
     async def reset_default_values_async(self):
         self._entities_overriden = self._entities
@@ -194,6 +218,7 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
         self._unavailable_as_off_overriden = self._unavailable_as_off
         self._brightness_overriden = self._brightness
         self._history_end_overriden = self._history_end
+        self._use_snapshot_overriden = self._use_snapshot
 
     def reset_default_values(self):
         self._entities_overriden = self._entities
@@ -204,6 +229,7 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
         self._unavailable_as_off_overriden = self._unavailable_as_off
         self._brightness_overriden = self._brightness
         self._history_end_overriden = self._history_end
+        self._use_snapshot_overriden = self._use_snapshot
 
 
     #def device_state_attributes(self):
@@ -243,6 +269,8 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
                     self._brightness_overriden = state.attributes["brightness"]
                 if "history_end" in state.attributes:
                     self._history_end_overriden = state.attributes["history_end"]
+                if "use_snapshot" in state.attributes:
+                    self._use_snapshot_overriden = state.attributes["use_snapshot"]
                 #just set internally to on, the simulation service will be called later once the HA Start event is fired
                 self.internal_turn_on()
             else:
@@ -250,6 +278,21 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
                 self.internal_turn_off()
         else:
           self.internal_turn_off()
+
+    async def async_will_remove_from_hass(self):
+        """Invalidate replay tasks when the switch is removed or disabled.
+
+        Removing/disabling the entity must stop the simulation immediately and
+        drop the reference kept in hass.data, otherwise background replay tasks
+        keep switching entities even though no switch is visible any more (#170).
+        """
+        services = self.hass.data.get(DOMAIN, {}).get("services")
+        if services is not None:
+            services.abort_simulation(self.id, update_state=False)
+        switches = self.hass.data.get(DOMAIN, {}).get(SWITCH_PLATFORM, {})
+        if switches.get(self.id) is self:
+            switches.pop(self.id, None)
+        await super().async_will_remove_from_hass()
 
 
     async def async_add_next_event(self, next_datetime, entity_id, state):
@@ -276,6 +319,22 @@ class PresenceSimulationSwitch(SwitchEntity,RestoreEntity):
         """Expose the exact source history window used for this run."""
         self.attr["history_start"] = self._format_datetime(history_start)
         self.attr["source_history_end"] = self._format_datetime(history_end)
+
+    async def set_use_snapshot(self, use_snapshot):
+        self.attr["use_snapshot"] = bool(use_snapshot)
+        self._use_snapshot_overriden = bool(use_snapshot)
+
+    async def set_snapshot_metadata(self, snapshot):
+        """Expose cache diagnostics without exposing its full contents."""
+        if not snapshot:
+            self.attr["snapshot_status"] = "missing"
+            return
+        self.attr["snapshot_status"] = "ready"
+        self.attr["snapshot_captured_at"] = snapshot.get("captured_at")
+        self.attr["snapshot_history_start"] = snapshot.get("history_start")
+        self.attr["snapshot_history_end"] = snapshot.get("history_end")
+        self.attr["snapshot_entity_count"] = len(snapshot.get("events", {}))
+        self.attr["snapshot_event_count"] = snapshot.get("event_count", 0)
 
     async def set_last_event(self, event_data):
         """Expose the latest action actually sent by the simulator."""
