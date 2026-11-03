@@ -1,0 +1,829 @@
+"""The Luxtronik heatpump integration."""
+
+# region Imports
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.const import (
+    ATTR_CONFIG_ENTRY_ID,
+    ATTR_DEVICE_ID,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_TIMEOUT,
+    MAJOR_VERSION,
+    MINOR_VERSION,
+    Platform as P,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import (
+    ConfigEntryError,
+    ConfigEntryNotReady,
+    ServiceValidationError,
+)
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
+from homeassistant.helpers.entity_registry import (
+    async_entries_for_device,
+    async_get,
+)
+
+from . import log_capture  # noqa: F401 - attaches the diagnostics log-capture handler
+from .binary_sensor_entities_predefined import BINARY_SENSORS
+from .common import normalize_write_value
+from .const import (
+    ATTR_PARAMETER,
+    ATTR_VALUE,
+    CONF_HA_SENSOR_PREFIX,
+    CONF_MAX_DATA_LENGTH,
+    CONFIG_ENTRY_VERSION,
+    DEFAULT_MAX_DATA_LENGTH,
+    DEFAULT_TIMEOUT,
+    DOMAIN,
+    LOGGER,
+    MIN_HA_VERSION,
+    PLATFORMS,
+    SERVICE_WRITE,
+    SERVICE_WRITE_SCHEMA,
+    WRITABLE_PARAMETER_PREFIXES,
+    DeviceKey,
+    LuxVisibility as LV,
+    SensorKey as SK,
+)
+from .coordinator import LuxtronikCoordinator, connect_and_get_coordinator
+from .number_entities_predefined import NUMBER_SENSORS
+from .sensor_entities_predefined import SENSORS
+
+# endregion Imports
+
+type LuxtronikConfigEntry = ConfigEntry[LuxtronikCoordinator]
+
+
+def _check_ha_version() -> None:
+    """Refuse to run on a Home Assistant core older than `MIN_HA_VERSION`.
+
+    HACS gates downloads on hacs.json, but a manual install (or a stale HACS
+    data store, #799) can land this release on an older core. There the
+    `via_device_id` in the sub-device infos fails deep inside the device
+    registry with a bare TypeError, and every sub-device entity goes
+    unavailable while the heat pump device sets up fine. On 2026.8 the
+    probatio schemas would be the first thing to break. Fail loud instead -
+    and before migration, so the entry keeps the version the remedy release
+    can still load (a `CONFIG_ENTRY_VERSION` bump is a one-way door).
+    """
+    if (MAJOR_VERSION, MINOR_VERSION) < MIN_HA_VERSION:
+        raise ConfigEntryError(
+            "Luxtronik requires Home Assistant "
+            f"{MIN_HA_VERSION[0]}.{MIN_HA_VERSION[1]} or newer; this core is "
+            f"{MAJOR_VERSION}.{MINOR_VERSION}. Update Home Assistant, or install "
+            "the last release supporting your core: 2026.10.06 for Home Assistant "
+            "2026.8, 2026.08.29 for 2026.7 and older"
+        )
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: LuxtronikConfigEntry) -> bool:
+    """Set up Luxtronik from a config entry."""
+
+    config = entry.data
+
+    _check_ha_version()
+
+    try:
+        coordinator = await connect_and_get_coordinator(hass, entry)
+    except Exception as err:
+        LOGGER.error("Luxtronik connection failed: %s", err)
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"connection_failed_{entry.entry_id}",
+            is_fixable=False,
+            is_persistent=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="connection_failed",
+            translation_placeholders={
+                "host": str(config.get(CONF_HOST, "unknown")),
+                "port": str(config.get(CONF_PORT, "")),
+                "error": str(err),
+            },
+        )
+        raise ConfigEntryNotReady from err
+
+    # Clear any previous connection failure issue
+    ir.async_delete_issue(hass, DOMAIN, f"connection_failed_{entry.entry_id}")
+
+    # Resolve unique_id lazily for entries that migrated from version 1
+    # without a live device (see I10) - runs once, on the first successful
+    # connection after migration.
+    if entry.unique_id is None:
+        hass.config_entries.async_update_entry(entry, unique_id=coordinator.unique_id)
+
+    # Registers the physical device and populates `device_infos`: the heat pump
+    # has to exist in the registry before the sub-devices can reference it by
+    # `via_device_id`, and pruning below needs the map to prune against.
+    #
+    # Pruning removes device-registry entries that no longer match this
+    # device's model (see I10 follow-up) - moved here from async_migrate_entry
+    # so a stale entry doesn't need a live connection just to migrate.
+    coordinator.async_register_devices()
+    await _async_delete_legacy_devices(hass, entry, coordinator)
+    await _async_remove_legacy_smart_grid_switch(hass, entry)
+    await _async_remove_withdrawn_ventilation_schedule_entities(hass, entry)
+    await _async_remove_undetected_solar_entities(hass, entry, coordinator)
+
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+
+    entry.runtime_data = coordinator
+
+    # Before the platforms, so no entity ever computes a state from the default.
+    coordinator.async_restore_evu2_manual()
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # 🛠️ Update title on initial setup only
+    host = config.get(CONF_HOST)
+    port = config.get(CONF_PORT)
+
+    if coordinator.manufacturer is not None:
+        new_title = f"{coordinator.manufacturer} @ {host}:{port}"
+    else:
+        new_title = f"Luxtronik @ {host}:{port}"
+
+    LOGGER.debug("new_title: %s", new_title)
+
+    # Preserve any user-provided title. Only auto-update when the existing
+    # title is empty. If the title already matches `new_title`, do nothing.
+    # Otherwise, assume the user renamed the entry and preserve it.
+    # Only treat existing title as valid when it's an explicit string value.
+
+    old_title = entry.title if isinstance(entry.title, str) else ""
+
+    if not old_title:
+        hass.config_entries.async_update_entry(entry, title=new_title.strip())
+    else:
+        if old_title == new_title.strip():
+            LOGGER.debug("Config entry title already up-to-date: %s", old_title)
+        else:
+            LOGGER.debug("Preserve user-set config entry title: %s", old_title)
+
+    setup_hass_services(hass, entry)
+
+    LOGGER.debug("Luxtronik integration setup completed for %s", entry.entry_id)
+
+    return True
+
+
+def setup_hass_services(hass: HomeAssistant, entry: LuxtronikConfigEntry):
+    """Register Home Assistant services (once)."""
+
+    if hass.services.has_service(DOMAIN, SERVICE_WRITE):
+        return
+
+    async def write_parameter(service):
+        """Write a parameter to the Luxtronik heatpump."""
+        parameter = service.data.get(ATTR_PARAMETER)
+        if not parameter or not isinstance(parameter, str):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_parameter_name",
+                translation_placeholders={"parameter": str(parameter)},
+            )
+
+        # int for identity datatypes (Unknown, ...), float kept for scaled ones
+        value = normalize_write_value(service.data.get(ATTR_VALUE))
+
+        # Only allow writing to known writable parameter prefixes
+        if not parameter.startswith(WRITABLE_PARAMETER_PREFIXES):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="parameter_not_writable",
+                translation_placeholders={
+                    "parameter": parameter,
+                    "prefixes": ", ".join(WRITABLE_PARAMETER_PREFIXES),
+                },
+            )
+
+        target_entry = _resolve_write_target(hass, service.data)
+        if target_entry is None:  # pragma: no cover
+            LOGGER.error("No active Luxtronik coordinator found for service call")
+            return
+
+        coordinator = target_entry.runtime_data
+        await coordinator.async_write(parameter, value)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_WRITE, write_parameter, schema=SERVICE_WRITE_SCHEMA
+    )
+
+
+def _resolve_write_target(
+    hass: HomeAssistant, service_data: Mapping[str, Any]
+) -> LuxtronikConfigEntry | None:
+    """Resolve which loaded Luxtronik config entry a `write` service call targets.
+
+    An explicit `device_id` or `config_entry_id` in the service call data pins
+    the write to that specific heat pump; `device_id` takes precedence if both
+    are given. With no explicit target, falls back to the single loaded config
+    entry (pre-existing single-pump behavior) - but raises rather than
+    guessing when more than one entry is loaded, since silently picking one
+    would risk writing a parameter to the wrong physical heat pump.
+
+    Returns None only when no target was given and no entry is loaded at all.
+    """
+    device_id = service_data.get(ATTR_DEVICE_ID)
+    config_entry_id = service_data.get(ATTR_CONFIG_ENTRY_ID)
+
+    if device_id:
+        # A device has a single owning config entry since HA 2026.8; the helper
+        # also maps a pre-migration composite device id (still held by older
+        # automations) to our split of it. An unknown device comes back as
+        # (None, None), another integration's device as (device, None).
+        _, target_entry = dr.async_get_device_and_config_entry_for_domain(
+            hass, device_id, domain=DOMAIN
+        )
+        if target_entry is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_write_target",
+                translation_placeholders={"target": f"device_id={device_id}"},
+            )
+    elif config_entry_id:
+        target_entry = hass.config_entries.async_get_entry(config_entry_id)
+        if target_entry is None or target_entry.domain != DOMAIN:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_write_target",
+                translation_placeholders={
+                    "target": f"config_entry_id={config_entry_id}"
+                },
+            )
+    else:
+        loaded_entries = [
+            entry
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            if entry.state is ConfigEntryState.LOADED and hasattr(entry, "runtime_data")
+        ]
+        if len(loaded_entries) > 1:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="ambiguous_write_target",
+                translation_placeholders={"count": str(len(loaded_entries))},
+            )
+        return loaded_entries[0] if loaded_entries else None
+
+    if (
+        target_entry is None
+        or target_entry.state is not ConfigEntryState.LOADED
+        or not hasattr(target_entry, "runtime_data")
+    ):
+        target = (
+            f"device_id={device_id}"
+            if device_id
+            else f"config_entry_id={config_entry_id}"
+        )
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_write_target",
+            translation_placeholders={"target": target},
+        )
+    return target_entry
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: LuxtronikConfigEntry) -> bool:
+    """Unload a config entry."""
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        await entry.runtime_data.async_shutdown()
+
+    # Unregister service when no entries remain
+    remaining = [
+        e
+        for e in hass.config_entries.async_entries(DOMAIN)
+        if e.entry_id != entry.entry_id
+    ]
+    if not remaining:
+        hass.services.async_remove(DOMAIN, SERVICE_WRITE)
+
+    return unload_ok
+
+
+async def update_listener(
+    hass: HomeAssistant, config_entry: LuxtronikConfigEntry
+) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(config_entry.entry_id)
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate old entry to the latest version."""
+    _check_ha_version()
+    current_version = config_entry.version
+    latest_version = CONFIG_ENTRY_VERSION
+
+    while current_version < latest_version:
+        LOGGER.debug("Starting migration from version %s", current_version)
+        new_data = {**config_entry.data}
+
+        if current_version == 1:
+            # Pure data transform - no live device required (see I10). The
+            # unique_id can't be derived from stored entry data alone; it is
+            # resolved lazily in async_setup_entry, where ConfigEntryNotReady
+            # gives automatic retries if the heat pump is offline.
+            if CONF_HA_SENSOR_PREFIX not in new_data:
+                new_data[CONF_HA_SENSOR_PREFIX] = "luxtronik"
+            await _async_update_config_entry(hass, config_entry, new_data, 2)
+            current_version = 2
+
+        elif current_version == 2:
+            # Pure data transform - no live device required (see I10 follow-up).
+            # Legacy device pruning now happens lazily in async_setup_entry.
+            await _async_update_config_entry(hass, config_entry, new_data, 3)
+            current_version = 3
+
+        elif current_version == 3:
+            if CONF_HA_SENSOR_PREFIX not in new_data and (
+                DOMAIN == "luxtronik2"
+                or len(hass.config_entries.async_entries("luxtronik2")) > 0
+            ):
+                new_data[CONF_HA_SENSOR_PREFIX] = "luxtronik2"
+            await _async_update_config_entry(hass, config_entry, new_data, 4)
+            current_version = 4
+
+        elif current_version == 4:
+            await _async_update_config_entry(hass, config_entry, new_data, 5)
+            current_version = 5
+
+        elif current_version == 5:
+            await _rename_entities(hass, config_entry)
+            new_data[CONF_TIMEOUT] = DEFAULT_TIMEOUT
+            new_data[CONF_MAX_DATA_LENGTH] = DEFAULT_MAX_DATA_LENGTH
+            await _async_update_config_entry(hass, config_entry, new_data, 6)
+            current_version = 6
+
+        elif current_version == 6:
+            await _rename_cooling_entities(hass, config_entry)
+            await _async_update_config_entry(hass, config_entry, new_data, 7)
+            current_version = 7
+
+        elif current_version == 7:
+            await _rename_curve_entities(hass, config_entry)
+            await _async_update_config_entry(hass, config_entry, new_data, 8)
+            current_version = 8
+
+        elif current_version == 8:
+            await _fix_select_entity_unique_ids(hass, config_entry)
+            await _async_update_config_entry(hass, config_entry, new_data, 9)
+            current_version = 9
+
+        elif current_version == 9:
+            await _rename_aux_heater_energy_entities(hass, config_entry)
+            await _async_update_config_entry(hass, config_entry, new_data, 10)
+            current_version = 10
+
+    LOGGER.info("Migration to version %s successful", current_version)
+    return True
+
+
+async def _async_update_config_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry, data: dict[str, Any], version: int
+) -> None:
+    """Update config entry with new data and version."""
+    hass.config_entries.async_update_entry(config_entry, data=data, version=version)
+
+
+async def _rename_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry
+):  # pragma: no cover
+    """Rename all entities for version 5 migration."""
+    await _up_many(
+        hass,
+        config_entry,
+        {
+            P.SENSOR: [
+                ("pump_frequency", SK.PUMP_FREQUENCY),
+                ("room_thermostat_temperature", SK.ROOM_THERMOSTAT_TEMPERATURE),
+                (
+                    "room_thermostat_temperature_target",
+                    SK.ROOM_THERMOSTAT_TEMPERATURE_TARGET,
+                ),
+            ],
+            P.BINARY_SENSOR: [
+                ("evu_unlocked", SK.EVU_UNLOCKED),
+                ("compressor", SK.COMPRESSOR),
+                ("pump_flow", SK.PUMP_FLOW),
+                ("compressor_heater", SK.COMPRESSOR_HEATER),
+                ("defrost_valve", SK.DEFROST_VALVE),
+                ("additional_heat_generator", SK.ADDITIONAL_HEAT_GENERATOR),
+                ("disturbance_output", SK.DISTURBANCE_OUTPUT),
+                ("circulation_pump_heating", SK.CIRCULATION_PUMP_HEATING),
+                ("additional_circulation_pump", SK.ADDITIONAL_CIRCULATION_PUMP),
+                ("approval_cooling", SK.APPROVAL_COOLING),
+            ],
+            P.NUMBER: [
+                ("release_second_heat_generator", SK.RELEASE_SECOND_HEAT_GENERATOR),
+                (
+                    "release_time_second_heat_generator",
+                    SK.RELEASE_TIME_SECOND_HEAT_GENERATOR,
+                ),
+                ("heating_target_correction", SK.HEATING_TARGET_CORRECTION),
+                ("pump_optimization_time", SK.PUMP_OPTIMIZATION_TIME),
+                ("heating_threshold_temperature", SK.HEATING_THRESHOLD_TEMPERATURE),
+                (
+                    "heating_min_flow_out_temperature",
+                    SK.HEATING_MIN_FLOW_OUT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit_curve1_temperature",
+                    SK.HEATING_CURVE_END_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit_curve2_temperature",
+                    SK.HEATING_CURVE_PARALLEL_SHIFT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit_curve_night_temperature",
+                    SK.HEATING_CURVE_NIGHT_TEMPERATURE,
+                ),
+                (
+                    "heating_night_lowering_to_temperature",
+                    SK.HEATING_NIGHT_LOWERING_TO_TEMPERATURE,
+                ),
+                ("heating_hysteresis", SK.HEATING_HYSTERESIS),
+                (
+                    "heating_max_flow_out_increase_temperature",
+                    SK.HEATING_MAX_FLOW_OUT_INCREASE_TEMPERATURE,
+                ),
+                (
+                    "heating_maximum_circulation_pump_speed",
+                    SK.HEATING_MAXIMUM_CIRCULATION_PUMP_SPEED,
+                ),
+                (
+                    "heating_room_temperature_impact_factor",
+                    SK.HEATING_ROOM_TEMPERATURE_IMPACT_FACTOR,
+                ),
+            ],
+            P.SWITCH: [
+                ("remote_maintenance", SK.REMOTE_MAINTENANCE),
+                ("efficiency_pump", SK.EFFICIENCY_PUMP),
+                ("pump_heat_control", SK.PUMP_HEAT_CONTROL),
+                ("heating", SK.HEATING),
+                ("pump_optimization", SK.PUMP_OPTIMIZATION),
+                ("heating_threshold", SK.HEATING_THRESHOLD),
+                ("domestic_water", SK.DOMESTIC_WATER),
+                ("cooling", SK.COOLING),
+            ],
+            P.CLIMATE: [
+                ("heating", SK.HEATING),
+                ("cooling", SK.COOLING),
+            ],
+        },
+    )
+
+
+async def _rename_cooling_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry
+):  # pragma: no cover
+    await _up_many(
+        hass,
+        config_entry,
+        {
+            P.NUMBER: [
+                ("cooling_threshold_temperature", SK.COOLING_OUTDOOR_TEMP_THRESHOLD),
+                ("cooling_start_delay_hours", SK.COOLING_START_DELAY_HOURS),
+                ("cooling_stop_delay_hours", SK.COOLING_STOP_DELAY_HOURS),
+            ]
+        },
+    )
+
+
+async def _rename_aux_heater_energy_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry
+):
+    """Rename the two aux heater energy counters for version 10 migration.
+
+    Their old names were near-synonymous and gave no hint which register
+    each read, and "second heat generator" was outright wrong for 1140 -
+    it counts the same element as 1059, not ZWE2. The new keys name the
+    register, which never changes, while the firmware era each belongs to
+    is carried by the translated name. #733
+    """
+    await _up_many(
+        hass,
+        config_entry,
+        {
+            P.SENSOR: [
+                (
+                    "additional_heat_generator_amount_counter",
+                    SK.ADDITIONAL_HEAT_GENERATOR_ENERGY_P1059,
+                ),
+                (
+                    "second_heat_generator_amount_counter",
+                    SK.ADDITIONAL_HEAT_GENERATOR_ENERGY_P1140,
+                ),
+            ],
+        },
+    )
+
+
+async def _rename_curve_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry
+):  # pragma: no cover
+    await _up_many(
+        hass,
+        config_entry,
+        {
+            P.NUMBER: [
+                ("flow_in_circuit2_temperature", SK.FLOW_IN_CIRCUIT1_TEMPERATURE),
+                ("flow_in_circuit3_temperature", SK.FLOW_IN_CIRCUIT2_TEMPERATURE),
+                (
+                    "flow_in_circuit2_target_temperature",
+                    SK.FLOW_IN_CIRCUIT1_TARGET_TEMPERATURE,
+                ),
+                (
+                    "flow_in_circuit3_target_temperature",
+                    SK.FLOW_IN_CIRCUIT2_TARGET_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit_curve1_temperature",
+                    SK.HEATING_CURVE_END_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit_curve2_temperature",
+                    SK.HEATING_CURVE_PARALLEL_SHIFT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit_curve_night_temperature",
+                    SK.HEATING_CURVE_NIGHT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit2_curve1_temperature",
+                    SK.HEATING_CURVE_CIRCUIT1_END_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit2_curve2_temperature",
+                    SK.HEATING_CURVE_CIRCUIT1_PARALLEL_SHIFT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit2_curve_night_temperature",
+                    SK.HEATING_CURVE_CIRCUIT1_NIGHT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit3_curve1_temperature",
+                    SK.HEATING_CURVE_CIRCUIT3_END_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit3_curve2_temperature",
+                    SK.HEATING_CURVE_CIRCUIT3_PARALLEL_SHIFT_TEMPERATURE,
+                ),
+                (
+                    "heating_circuit3_curve_night_temperature",
+                    SK.HEATING_CURVE_CIRCUIT3_NIGHT_TEMPERATURE,
+                ),
+            ]
+        },
+    )
+
+
+async def _async_remove_legacy_smart_grid_switch(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Drop the switch entity P1030 used to have before it became a select.
+
+    P1030 holds a four-option SmartGrid mode, not a flag: as a switch, turning
+    it off and on rewrote "SG 1.1" to "+/-" and silently changed the variant
+    the controller runs. The replacement lives on another platform, so the old
+    entity cannot be renamed into it - left in the registry it would linger as
+    an unavailable entity with no name, and automations calling switch.turn_on
+    on it would fail silently.
+
+    Done lazily here rather than through a CONFIG_ENTRY_VERSION bump, which
+    would stop the entry loading on older releases and take rollback away
+    from every user.
+    """
+    prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
+    unique_id = f"{P.SWITCH}.{prefix}_smartgrid"
+    ent_reg = async_get(hass)
+    entity_id = ent_reg.async_get_entity_id(P.SWITCH, DOMAIN, unique_id)
+    if entity_id is not None:
+        ent_reg.async_remove(entity_id)
+        LOGGER.info(
+            "Removed the legacy SmartGrid switch %s - P1030 is now the "
+            "Smart Grid mode select",
+            entity_id,
+        )
+
+
+# Literal keys, not `SensorKey` members: these entities no longer exist and
+# their keys were dropped from the enum. Their successors carry a `_day_` /
+# `_night_` infix, so no live unique_id can collide with this list.
+_WITHDRAWN_VENTILATION_SCHEDULE_KEYS = tuple(
+    f"timer_ventilation_schedule_{shape}"
+    for shape in (
+        "week",
+        "weekday",
+        "weekend",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+    )
+)
+
+
+async def _async_remove_withdrawn_ventilation_schedule_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Drop the ventilation schedule text entities 2026.08.15-2026.09.16 made.
+
+    They read registers 896-955 as single times of day, but each holds a
+    packed start-end window (#789, `lux_overrides.TimeOfDay2`), so on the
+    only kind of unit that has them - one with a ventilation module - they
+    never showed a valid state. Their replacements are separate day and
+    night schedule entities under new unique_ids (see
+    `timer_schedule_entities_predefined`). The text platform's sync only
+    manages the blocks it still describes; left alone, the old active block
+    would linger as "no longer provided" and the others stay disabled by the
+    integration forever. Same lazy approach as the SmartGrid switch above.
+    """
+    prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
+    ent_reg = async_get(hass)
+    for key in _WITHDRAWN_VENTILATION_SCHEDULE_KEYS:
+        # Mirrors text._timer_schedule_unique_id for the withdrawn keys.
+        unique_id = f"{P.TEXT}.{prefix}_{key}"
+        entity_id = ent_reg.async_get_entity_id(P.TEXT, DOMAIN, unique_id)
+        if entity_id is not None:
+            ent_reg.async_remove(entity_id)
+            LOGGER.info(
+                "Removed the withdrawn ventilation schedule entity %s - see "
+                "TIMER_SCHEDULES.md for why it is gone",
+                entity_id,
+            )
+
+
+_SOLAR_VISIBILITIES = (
+    LV.V0038_SOLAR_COLLECTOR,
+    LV.V0039_SOLAR_BUFFER,
+    LV.V0250_SOLAR,
+)
+
+
+async def _async_remove_undetected_solar_entities(
+    hass: HomeAssistant, config_entry: ConfigEntry, coordinator: LuxtronikCoordinator
+) -> None:
+    """Drop solar entities left behind by the old solar heuristic (#820).
+
+    Until 2026.10 it detected solar on 19 of the 33 heat pumps in the
+    diagnostics corpus, none of which has it. The fixed heuristic no longer
+    creates those entities, but their registry entries would linger as "no
+    longer provided". Same lazy approach as the SmartGrid switch above, but
+    gated on the live detection: on a unit that does have solar they are the
+    real thing.
+
+    A controller that does not return V0250 at all is left alone: every
+    unit in the corpus returns it, so its absence means an unknown register
+    layout, not "no solar". Removing is destructive (it drops the user's
+    name, area and labels), and a false negative would do it to a real
+    solar install.
+
+    The solar entities sit on the DHW device. On a unit without hot water
+    they were the only thing that put that device in the registry, so it
+    goes too once nothing is left on it - that also tidies an empty DHW
+    device on a heating-only unit that never had phantom solar.
+    """
+    if coordinator.get_value(LV.V0250_SOLAR) is None or coordinator.has_solar:
+        return
+    prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
+    ent_reg = async_get(hass)
+    for platform, descriptions in (
+        (P.BINARY_SENSOR, BINARY_SENSORS),
+        (P.NUMBER, NUMBER_SENSORS),
+        (P.SENSOR, SENSORS),
+    ):
+        for description in descriptions:
+            if description.visibility not in _SOLAR_VISIBILITIES:
+                continue
+            # Mirrors the entity_id/unique_id the platforms assign.
+            unique_id = f"{platform}.{prefix}_{description.key}"
+            entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, unique_id)
+            if entity_id is not None:
+                ent_reg.async_remove(entity_id)
+                LOGGER.info(
+                    "Removed %s - solar is not present on this heat pump",
+                    entity_id,
+                )
+    if coordinator.has_domestic_water:
+        return
+    dev_reg = dr.async_get(hass)
+    dhw_info = coordinator.device_infos[DeviceKey.domestic_water]
+    device = dev_reg.async_get_device(identifiers=dhw_info.get("identifiers", set()))
+    if device is None:
+        return
+    if not async_entries_for_device(ent_reg, device.id, include_disabled_entities=True):
+        dev_reg.async_remove_device(device.id)
+        LOGGER.info("Removed the empty hot water device - no hot water detected")
+
+
+async def _fix_select_entity_unique_ids(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
+    """Fix select entity unique_ids incorrectly using binary_sensor prefix.
+
+    PR #563 fixed ENTITY_ID_FORMAT import in select.py from
+    homeassistant.components.binary_sensor to homeassistant.components.select,
+    changing unique_ids from binary_sensor.{prefix}_xxx to select.{prefix}_xxx.
+    Migrate old unique_ids to prevent duplicate entities.
+    """
+    prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
+    ent_reg = async_get(hass)
+    select_keys = [
+        SK.THERMAL_DESINFECTION_DAY,
+        SK.DOMESTIC_WATER_MODE_SELECTOR,
+        SK.HEATING_MODE_SELECTOR,
+    ]
+    for key in select_keys:
+        old_unique_id = f"binary_sensor.{prefix}_{key}"
+        new_unique_id = f"select.{prefix}_{key}"
+        entity_id = ent_reg.async_get_entity_id(P.SELECT, DOMAIN, old_unique_id)
+        if entity_id is not None:
+            try:
+                ent_reg.async_update_entity(entity_id, new_unique_id=new_unique_id)
+                LOGGER.info(
+                    "Migrated select entity unique_id: %s -> %s",
+                    old_unique_id,
+                    new_unique_id,
+                )
+            except ValueError as err:
+                LOGGER.warning(
+                    "Could not migrate select entity %s: %s",
+                    old_unique_id,
+                    err,
+                )
+
+
+async def _up_many(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    mappings: dict[P, list[tuple[str, SK]]],
+):
+    prefix = config_entry.data[CONF_HA_SENSOR_PREFIX]
+    ent_reg = async_get(hass)
+
+    for platform, items in mappings.items():
+        for ident, new_id in items:
+            entity_id = f"{platform}.{prefix}_{ident}"
+            new_ident = f"{platform}.{prefix}_{new_id}"
+            try:
+                ent_reg.async_update_entity(
+                    entity_id, new_entity_id=new_ident, new_unique_id=new_ident
+                )
+            except KeyError as err:
+                LOGGER.info(
+                    "Skip rename entity - Not existing: %s -> %s",
+                    entity_id,
+                    new_ident,
+                    exc_info=err,
+                )
+            except ValueError as err:
+                LOGGER.warning(
+                    "Could not rename entity %s -> %s",
+                    entity_id,
+                    new_ident,
+                    exc_info=err,
+                )
+            except Exception as err:
+                LOGGER.error(
+                    "Could not rename entity %s -> %s",
+                    entity_id,
+                    new_ident,
+                    exc_info=err,
+                )
+
+
+def _identifiers_exists(
+    identifiers_list: list[set[tuple[str, str]]], identifiers: set[tuple[str, str]]
+) -> bool:
+    return any(ident == identifiers for ident in identifiers_list)
+
+
+async def _async_delete_legacy_devices(
+    hass: HomeAssistant, config_entry: ConfigEntry, coordinator: LuxtronikCoordinator
+) -> None:
+    """Remove device-registry entries that no longer match this device's model.
+
+    Takes an already-connected coordinator rather than connecting itself, so
+    it can run from `async_setup_entry` (where `ConfigEntryNotReady` gives
+    automatic retries) instead of from `async_migrate_entry`, which does not
+    retry on failure (see I10 follow-up).
+    """
+    dr_instance = dr.async_get(hass)
+    devices: list[dr.DeviceEntry] = dr.async_entries_for_config_entry(
+        dr_instance, config_entry.entry_id
+    )
+    identifiers_list = []
+    for device_info in coordinator.device_infos.values():
+        identifiers_list.append(device_info.get("identifiers", set()))
+    for device_entry in devices:
+        if not _identifiers_exists(identifiers_list, device_entry.identifiers):
+            dr_instance.async_remove_device(device_entry.id)

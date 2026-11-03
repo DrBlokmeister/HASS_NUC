@@ -1,0 +1,131 @@
+"""Luxtronik switch definitions."""
+
+from homeassistant.const import EntityCategory
+
+from .const import (
+    DeviceKey,
+    LuxMode,
+    LuxParameter as LP,
+    LuxVisibility as LV,
+    SensorKey,
+)
+from .model import LuxtronikSwitchDescription
+
+SWITCHES: list[LuxtronikSwitchDescription] = [
+    # Switch
+    # ...
+    # region Main heatpump
+    LuxtronikSwitchDescription(
+        luxtronik_key=LP.P0860_REMOTE_MAINTENANCE,
+        key=SensorKey.REMOTE_MAINTENANCE,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    LuxtronikSwitchDescription(
+        luxtronik_key=LP.P0869_EFFICIENCY_PUMP,
+        key=SensorKey.EFFICIENCY_PUMP,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+    ),
+    LuxtronikSwitchDescription(
+        luxtronik_key=LP.P1033_PUMP_HEAT_CONTROL,
+        key=SensorKey.PUMP_HEAT_CONTROL,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+    ),
+    LuxtronikSwitchDescription(
+        key=SensorKey.ELECTRICAL_POWER_LIMITATION_SWITCH,
+        luxtronik_key=LP.P1158_POWER_LIMIT_SWITCH,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        visibility=LV.V0357_ELECTRICAL_POWER_LIMITATION_SWITCH,
+    ),
+    LuxtronikSwitchDescription(
+        key=SensorKey.THERMAL_POWER_LIMITATION_SWITCH,
+        luxtronik_key=LP.P1175_THERMAL_POWER_LIMIT_SWITCH,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+    ),
+    # endregion Main heatpump
+    # region Heating
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.heating,
+        luxtronik_key=LP.P0003_MODE_HEATING,
+        key=SensorKey.HEATING,
+        device_class=None,
+        on_state=LuxMode.automatic,
+        off_state=LuxMode.off,
+    ),
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.heating,
+        luxtronik_key=LP.P0049_PUMP_OPTIMIZATION,
+        key=SensorKey.PUMP_OPTIMIZATION,
+        entity_category=EntityCategory.CONFIG,
+        visibility=LV.V0144_PUMP_OPTIMIZATION,
+    ),
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.heating,
+        luxtronik_key=LP.P0699_HEATING_THRESHOLD,
+        key=SensorKey.HEATING_THRESHOLD,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.heating,
+        luxtronik_key=LP.P0678_VENTING_HUP_ACTIVE,
+        key=SensorKey.PUMP_VENT_HUP,
+        entity_category=EntityCategory.CONFIG,
+        visibility=LV.V0163_PUMP_VENT_HUP,
+    ),
+    # No visibility gate: ID_Visi_Enlt_ZUP reads 1 on every known unit, with
+    # or without a ZUP fitted, so it cannot tell the two apart (#802).
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.heating,
+        luxtronik_key=LP.P0679_VENTING_ZUP_ACTIVE,
+        key=SensorKey.PUMP_VENT_ZUP,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+    ),
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.heating,
+        luxtronik_key=LP.P0158_VENTING_ACTIVE,
+        key=SensorKey.PUMP_VENT_ACTIVE,
+        entity_category=EntityCategory.CONFIG,
+    ),
+    # endregion Heating
+    # region Domestic water
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.domestic_water,
+        luxtronik_key=LP.P0004_MODE_DHW,
+        key=SensorKey.DOMESTIC_WATER,
+        device_class=None,
+        on_state=LuxMode.automatic,
+        on_states=[
+            LuxMode.automatic,
+            LuxMode.second_heatsource,
+            LuxMode.party,
+            LuxMode.holidays,
+        ],
+        off_state=LuxMode.off,
+    ),
+    # endregion Domestic water
+    # region Cooling
+    LuxtronikSwitchDescription(
+        device_key=DeviceKey.cooling,
+        luxtronik_key=LP.P0108_MODE_COOLING,
+        key=SensorKey.COOLING,
+        device_class=None,
+        on_state=LuxMode.automatic,
+        off_state=LuxMode.off,
+    ),
+    # endregion Cooling
+]
+
+# The SG2 contact of the SmartGrid interface, set by the user on the models
+# whose controller does not report it (#500). Not in SWITCHES: no register sits
+# behind it, so the generic register-presence filter would always drop it.
+# switch.py adds it on EVU2_MANUAL_INPUT_MODELS only, and only while SmartGrid
+# is on - which is also why it can be enabled by default.
+EVU2_MANUAL_SWITCH = LuxtronikSwitchDescription(
+    key=SensorKey.EVU2_MANUAL,
+    entity_category=EntityCategory.CONFIG,
+    entity_registry_enabled_default=True,
+)

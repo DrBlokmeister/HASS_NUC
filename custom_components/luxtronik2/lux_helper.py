@@ -1,0 +1,576 @@
+"""Helper for luxtronik heatpump module."""
+
+# region Imports
+from __future__ import annotations
+
+import contextlib
+import socket
+import struct
+import threading
+import time
+
+from luxtronik.calculations import Calculations
+from luxtronik.parameters import Parameters
+from luxtronik.visibilities import Visibilities
+
+from .const import (
+    LOGGER,
+    LUX_MODELS_ALPHA_INNOTEC,
+    LUX_MODELS_NOVELAN,
+    LUX_MODELS_OTHER,
+)
+
+# endregion Imports
+
+# List of ports that are known to respond to discovery packets.
+# Note: 47808 is also the IANA-reserved standard port for BACnet. discover()
+# only binds it for the brief duration of a broadcast+listen cycle and closes
+# it immediately after, but if another BACnet tool on the same host tries to
+# bind it at the same moment, one of the two will fail to bind.
+LUXTRONIK_DISCOVERY_PORTS = [4444, 47808]
+
+# Time (in seconds) to wait for response after sending discovery broadcast
+LUXTRONIK_DISCOVERY_TIMEOUT = 2
+
+# Content of packet that will be sent for discovering heat pumps
+LUXTRONIK_DISCOVERY_MAGIC_PACKET = "2000;111;1;\x00"
+
+# Content of response that is contained in responses to discovery broadcast
+LUXTRONIK_DISCOVERY_RESPONSE_PREFIX = "2500;111;"
+
+LUXTRONIK_SOCKET_READ_SIZE_INTEGER = 4
+LUXTRONIK_SOCKET_READ_SIZE_CHAR = 1
+
+LUXTRONIK_PARAMETERS_WRITE = 3002
+LUXTRONIK_PARAMETERS_READ = 3003
+LUXTRONIK_CALCULATIONS_READ = 3004
+LUXTRONIK_VISIBILITIES_READ = 3005
+
+# A write acknowledgement is eight bytes and a healthy controller returns it
+# immediately: measured at 3 ms and 4 ms on an MSW4-16 / V3.92.1 over a wired
+# LAN, where reading ~1900 values on the same socket takes about 0.1 s. The
+# connection timeout (60 s by default) is therefore wildly out of proportion
+# here, and a controller that reboots on a write and never acks at all (issue
+# #761) stalls the write for that whole minute, which is long enough to block
+# Home Assistant's startup. 5 s leaves three orders of magnitude of headroom
+# over the measurement while capping the damage from a silent controller.
+LUXTRONIK_WRITE_ACK_TIMEOUT = 5.0
+
+
+def discover(
+    broadcast_addresses: list[str] | None = None,
+) -> list[tuple[str, int | None]]:
+    """Broadcast discovery for Luxtronik heat pumps.
+
+    If you omit ``broadcast_addresses``, fallback to the OS-selected
+    default route.
+    """
+
+    targets: list[str] = (
+        list(broadcast_addresses) if broadcast_addresses else ["255.255.255.255"]
+    )
+    results: list[tuple[str, int | None]] = []
+
+    # pylint: disable=too-many-nested-blocks
+    for port in LUXTRONIK_DISCOVERY_PORTS:
+        LOGGER.info("Send discovery packets to port %s on %s", port, targets)
+        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        server.bind(("", port))
+        server.settimeout(LUXTRONIK_DISCOVERY_TIMEOUT)
+
+        # send AIT magic broadcast packet to every target broadcast address
+        magic_bytes = LUXTRONIK_DISCOVERY_MAGIC_PACKET.encode()
+        for target in targets:
+            server.sendto(magic_bytes, (target, port))
+            LOGGER.debug("Sent broadcast request to %s:%s", target, port)
+
+        while True:
+            try:
+                recv_bytes, con = server.recvfrom(1024)
+                res = recv_bytes.decode("ascii", errors="ignore")
+                # if we receive what we just sent, continue
+                if res == LUXTRONIK_DISCOVERY_MAGIC_PACKET:
+                    continue
+                ip_address = con[0]
+                res_list = res.split(";")
+                # if the response starts with the magic nonsense
+                if res.startswith(LUXTRONIK_DISCOVERY_RESPONSE_PREFIX):
+                    LOGGER.debug(
+                        f"Received valid Luxtronik response from {ip_address}: {res_list!s}"
+                    )
+                    try:
+                        res_port: int | None = int(res_list[2])
+                    except (ValueError, IndexError):
+                        res_port = None
+
+                    if res_port is None or res_port < 1 or res_port > 65535:
+                        LOGGER.info(
+                            f"Response contains [port={res_port}] which is not a valid port number,"
+                            "an old Luxtronic software version might be the reason. "
+                            "Skipping this port."
+                        )
+                    elif (ip_address, res_port) not in results:
+                        LOGGER.info(
+                            f"Discovered Luxtronik heatpump at {ip_address}:{res_port}"
+                        )
+                        results.append((ip_address, res_port))
+
+                else:
+                    LOGGER.debug(
+                        f"Skipping invalid response from {ip_address}: {res_list!s}"
+                    )
+
+            # if the timeout triggers, go on and use the other broadcast port
+            except TimeoutError:
+                break
+        server.close()
+    return results
+
+
+def get_manufacturer_by_model(model: str) -> str | None:
+    """Return the manufacturer."""
+    if model is None:
+        return None
+    if model.startswith(tuple(LUX_MODELS_NOVELAN)):
+        return "Novelan"
+    if model.startswith(tuple(LUX_MODELS_ALPHA_INNOTEC)):
+        return "Alpha Innotec"
+    return None
+
+
+def get_firmware_download_id(installed_version: str | None) -> int | None:
+    """Return the heatpump firmware id for the download portal."""
+    if installed_version is None:
+        return None
+    if installed_version.startswith("V1."):
+        return 0
+    if installed_version.startswith("V2."):
+        return 1
+    if installed_version.startswith("V3."):
+        return 2
+    if installed_version.startswith("V4."):
+        return 3
+    if installed_version.startswith("F1."):
+        return 4
+    if installed_version.startswith("WWB1."):
+        return 5
+    if installed_version.startswith("smo"):
+        return 6
+    return None
+
+
+def get_manufacturer_firmware_url_by_model(model: str, default_id: int) -> str:
+    """Return the manufacturer firmware download url."""
+    layout_id = 0
+
+    if model is None:
+        layout_id = default_id
+    elif model.startswith(tuple(LUX_MODELS_ALPHA_INNOTEC)):
+        layout_id = 1
+    elif model.startswith(tuple(LUX_MODELS_NOVELAN)):
+        layout_id = 2
+    elif model.startswith(tuple(LUX_MODELS_OTHER)):
+        layout_id = 3
+    return f"https://www.heatpump24.com/DownloadArea.php?layout={layout_id}"
+
+
+def _is_socket_closed(sock: socket.socket) -> bool:
+    try:
+        if sock.fileno() < 0:
+            return True
+    except Exception as err:  # pylint: disable=broad-except
+        # Debug, not error: this probe runs before every read attempt and the
+        # caller recovers by reconnecting, so a failure here is not itself a
+        # problem worth reporting at default log level.
+        LOGGER.debug(
+            "Unexpected exception when checking if a socket is closed", exc_info=err
+        )
+        return True
+    last_timeout: float | None = None
+    try:
+        last_timeout = sock.gettimeout()
+        # settimeout(0) puts the socket in non-blocking mode (raises BlockingIOError
+        # instead of waiting), portably across platforms - socket.MSG_DONTWAIT is
+        # POSIX-only and unavailable on Windows. MSG_PEEK reads without consuming.
+        sock.settimeout(0)
+        data = sock.recv(16, socket.MSG_PEEK)
+        if len(data) == 0:
+            return True
+    except BlockingIOError:
+        return False  # socket is open and reading from it would block
+    except ConnectionResetError:
+        return True  # socket was closed for some other reason
+    except OSError as err:
+        if err.errno == 107:  # Socket not connected
+            return True
+        # Debug, not error: this probe runs before every read attempt and the
+        # caller recovers by reconnecting, so a failure here is not itself a
+        # problem worth reporting at default log level.
+        LOGGER.debug(
+            "Unexpected exception when checking if a socket is closed", exc_info=err
+        )
+        return False
+    except Exception as err:  # pylint: disable=broad-except
+        # Debug, not error: this probe runs before every read attempt and the
+        # caller recovers by reconnecting, so a failure here is not itself a
+        # problem worth reporting at default log level.
+        LOGGER.debug(
+            "Unexpected exception when checking if a socket is closed", exc_info=err
+        )
+        return False
+    finally:
+        if last_timeout is not None:
+            sock.settimeout(last_timeout)
+    return False
+
+
+class Luxtronik:
+    """Main luxtronik class."""
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        socket_timeout: float,
+        max_data_length: int,
+        safe: bool = True,
+    ) -> None:
+        self._lock = threading.Lock()
+        self._socket = None
+        self._host = host
+        self._port = port
+        self._socket_timeout = socket_timeout
+        self._max_data_length = max_data_length
+        self._short_reads = 0
+        self.calculations = Calculations()
+        self.parameters = Parameters(safe=safe)
+        self.visibilities = Visibilities()
+
+    def __del__(self):
+        """Luxtronik helper descructor.
+
+        Best-effort only: explicit cleanup happens via disconnect() (called
+        from coordinator shutdown). __del__ can run on any thread, including
+        during interpreter shutdown when modules/globals may already be
+        torn down, so any failure here is swallowed rather than raised.
+        """
+        with contextlib.suppress(Exception):
+            self._disconnect()
+
+    def disconnect(self) -> None:
+        """Explicitly close the connection to the heatpump."""
+        self._disconnect()
+
+    def _disconnect(self):
+        if self._socket is not None:
+            if not _is_socket_closed(self._socket):
+                self._socket.close()
+            self._socket = None
+            LOGGER.debug(
+                "Disconnected from Luxtronik heatpump %s:%s", self._host, self._port
+            )
+
+    def connect(self) -> None:  # pragma: no cover
+        """Establish connection to the heatpump."""
+        with self._lock:
+            if self._socket is None or _is_socket_closed(self._socket):
+                self._disconnect()  # Ensure clean state
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.settimeout(self._socket_timeout)
+                try:
+                    self._socket.connect((self._host, self._port))
+                    LOGGER.debug(
+                        "Connected to Luxtronik heatpump %s:%s with timeout %.1fs",
+                        self._host,
+                        self._port,
+                        self._socket_timeout,
+                    )
+                except (TimeoutError, OSError) as err:
+                    LOGGER.error("Failed to connect: %s", err)
+                    self._disconnect()
+                    raise
+
+    def read(self):  # pragma: no cover
+        """Read data from heatpump."""
+        self._read_write(write=False)
+
+    def write(self):  # pragma: no cover
+        """Write parameter to heatpump."""
+        self._read_write(write=True)
+
+    def _read_write(self, write=False):  # pragma: no cover
+        self.connect()
+
+        try:
+            # Write and read are exclusive: the coordinator refreshes right
+            # after a write to confirm it, so reading here too would fetch
+            # ~1900 values that are immediately discarded and overwritten -
+            # doubling the socket traffic of every write against a controller
+            # that is happier with less of it. Upstream splits these the same
+            # way (write() writes, write_and_read() is a separate method).
+            if write:
+                self._write()
+            else:
+                self._read()
+        except (OSError, struct.error):
+            # Deliberately not logged here: the exception propagates to the
+            # coordinator, which re-raises it as UpdateFailed and lets
+            # DataUpdateCoordinator report it. Logging it as well produced two
+            # entries - one with a full traceback - for every transient blip.
+            self._disconnect()
+            raise
+
+    def _read(self):
+        self._read_data(
+            LUXTRONIK_PARAMETERS_READ,
+            LUXTRONIK_SOCKET_READ_SIZE_INTEGER,
+            self.parameters,
+            "parameters",
+        )
+        self._read_data(
+            LUXTRONIK_CALCULATIONS_READ,
+            LUXTRONIK_SOCKET_READ_SIZE_INTEGER,
+            self.calculations,
+            "calculations",
+        )
+        self._read_data(
+            LUXTRONIK_VISIBILITIES_READ,
+            LUXTRONIK_SOCKET_READ_SIZE_CHAR,
+            self.visibilities,
+            "visibilities",
+        )
+
+    def _write(self):
+        """Flush the queued parameter writes to the heat pump.
+
+        The queue is always emptied, whether the flush succeeds or raises.
+        Nothing retries a failed `write()` - the coordinator raises to the
+        caller and the entity re-syncs to the device's value - so an entry
+        left behind is never a pending retry. It would instead be re-sent by
+        the *next* write of any other parameter, silently applying a value the
+        user was already told had been reverted, and re-applying entries the
+        controller had already acknowledged.
+        """
+        try:
+            self._flush_queue()
+        finally:
+            self.parameters.queue = {}
+
+    def _flush_queue(self):
+        """Send each queued parameter as a 3002 write and await its ack."""
+        sock = self._socket
+        if sock is None:
+            raise OSError("Cannot write: socket is not connected")
+        ack_timeout = min(LUXTRONIK_WRITE_ACK_TIMEOUT, self._socket_timeout)
+        for index, value in list(self.parameters.queue.items()):
+            if isinstance(value, float):
+                value = int(value)
+
+            if not isinstance(index, int) or not isinstance(value, int):
+                LOGGER.warning("Parameter id '%s' or value '%s' invalid!", index, value)
+                continue
+            data = struct.pack(">iii", LUXTRONIK_PARAMETERS_WRITE, index, value)
+            sock.sendall(data)
+            # The controller acknowledges a 3002 write with two ints: the
+            # echoed command (3002) and the echoed *parameter index* - NOT the
+            # value it stored. Verified on an Alpha Innotec MSW4-16: writing
+            # index 894 (ID_Einst_BA_Lueftung_akt) the value 0 acks with 894,
+            # which cannot be any of that parameter's codes (0-3). So the ack
+            # says only "I received a write for this parameter", never whether
+            # the value was accepted, clamped or rejected - confirming a write
+            # requires reading the parameter back (see the WRITE_CONFIRM_*
+            # retry loop in coordinator.async_write_many).
+            #
+            # Only the ack runs on the short timeout; the connection timeout
+            # is restored immediately afterwards so the polling reads that
+            # share this socket keep their full budget. A timeout here
+            # propagates to `_read_write` - the only production caller - which
+            # disconnects, so a late ack can never be left in the stream to
+            # misalign the next read. That also means a stalled ack aborts the
+            # whole flush: a multi-parameter batch costs one ack timeout, not
+            # one per parameter.
+            sock.settimeout(ack_timeout)
+            try:
+                cmd = self._read_int()
+                echoed_index = self._read_int()
+            except TimeoutError as err:
+                # Re-raised with attribution rather than logged: `_read_write`
+                # logs nothing by design, so a bare "timed out" here is
+                # indistinguishable from a poll or connect timeout. This
+                # threshold is ours rather than the user's, so it has to name
+                # itself in the report. Still a TimeoutError, hence still an
+                # OSError, so the disconnect above still happens.
+                raise TimeoutError(
+                    f"No write acknowledgement for parameter {index} "
+                    f"within {ack_timeout:.1f}s"
+                ) from err
+            finally:
+                sock.settimeout(self._socket_timeout)
+            LOGGER.debug(
+                "Parameter '%d' set to '%s' (ack cmd=%s echoed_index=%s)",
+                index,
+                value,
+                cmd,
+                echoed_index,
+            )
+            if echoed_index != index:
+                # An ack for a different parameter means the socket stream is
+                # no longer aligned to message boundaries, so every subsequent
+                # read is misaligned garbage rather than heat pump data.
+                LOGGER.warning(
+                    "Write ack mismatch: wrote parameter '%d' but the heat pump "
+                    "echoed '%s' (cmd=%s). The connection may be out of sync.",
+                    index,
+                    echoed_index,
+                    cmd,
+                )
+
+    def _read_exact(self, count: int) -> bytes:
+        """Receive exactly ``count`` bytes from the socket.
+
+        TCP gives no framing guarantee: ``recv(n)`` may return fewer than ``n``
+        bytes whenever a segment boundary falls inside the value being read.
+        Treating such a short read as a failed item (as the upstream library
+        does) both drops that item and leaves its remaining bytes in the
+        stream, so every following value is decoded from misaligned bytes and
+        lands on the wrong sensor. Loop until the full value has arrived
+        instead, and let a dead connection raise rather than spin.
+        """
+        if self._socket is None:
+            raise OSError("Cannot read: socket is not connected")
+        chunks: list[bytes] = []
+        remaining = count
+        while remaining > 0:
+            chunk = self._socket.recv(remaining)
+            if not chunk:
+                raise ConnectionError(
+                    f"Connection to {self._host}:{self._port} closed by peer"
+                )
+            chunks.append(chunk)
+            remaining -= len(chunk)
+            if remaining:
+                # Counted rather than logged: a chatty controller can fragment
+                # every single value, and there are ~1700 of them per poll.
+                # `_read_data` reports the total for the block instead.
+                self._short_reads += 1
+        return b"".join(chunks)
+
+    def _read_int(self) -> int:
+        """Read one big-endian 32 bit integer."""
+        return struct.unpack(
+            ">i", self._read_exact(LUXTRONIK_SOCKET_READ_SIZE_INTEGER)
+        )[0]
+
+    def _read_char(self) -> int:
+        """Read one signed byte."""
+        return struct.unpack(">b", self._read_exact(LUXTRONIK_SOCKET_READ_SIZE_CHAR))[0]
+
+    def _read_data(  # pragma: no cover
+        self, command: int, item_size: int, parser, label: str, retries: int = 4
+    ) -> None:
+        """Generic method to read data from the socket with timeout and retry handling."""
+        for attempt in range(retries + 1):
+            # Must be reset per attempt: items read before a failed attempt
+            # would otherwise be prepended to the retry's data and shift every
+            # index of the reparsed block.
+            data = []
+            self._short_reads = 0
+            try:
+                # check if connection still exists before reading
+                if self._socket is None or _is_socket_closed(self._socket):
+                    LOGGER.warning(
+                        "Socket is not connected. Attempting to reconnect..."
+                    )
+                    self.connect()
+
+                if self._socket is None:
+                    raise OSError("Socket not connected after connect()")
+
+                self._socket.sendall(struct.pack(">ii", command, 0))
+                cmd = self._read_int()
+                LOGGER.debug("Command %s (%s)", cmd, label)
+
+                # Optional status field for calculations
+                if command == LUXTRONIK_CALCULATIONS_READ:
+                    stat = self._read_int()
+                    LOGGER.debug("Stat %s", stat)
+
+                length = self._read_int()
+                if length > self._max_data_length:
+                    LOGGER.warning(
+                        "Skip reading %s! Length oversized! %s > %s",
+                        label,
+                        length,
+                        self._max_data_length,
+                    )
+                    return
+                elif length <= 0 and command == LUXTRONIK_VISIBILITIES_READ:
+                    LOGGER.warning(
+                        "Invalid length for %s (%s), forcing disconnect", label, length
+                    )
+                    self._disconnect()
+                    return
+
+                LOGGER.debug("Length %s (%s)", length, label)
+
+                read_item = (
+                    self._read_int
+                    if item_size == LUXTRONIK_SOCKET_READ_SIZE_INTEGER
+                    else self._read_char
+                )
+
+                # Any failure here aborts the whole block: the parsers assign
+                # values by list position, so a single skipped item would
+                # silently relabel every sensor after it (issue #723). The
+                # retry handler below disconnects, which also discards the
+                # desynchronised remainder of the response.
+                for _ in range(length):
+                    data.append(read_item())
+
+                if len(data) != length:
+                    raise OSError(
+                        f"Incomplete {label} block: got {len(data)} of {length} items"
+                    )
+
+                LOGGER.debug(
+                    "Read %d %s items (%d fragmented)",
+                    length,
+                    label,
+                    self._short_reads,
+                )
+                parser.parse(data)
+                return  # Success, exit after first successful attempt
+
+            except (TimeoutError, ConnectionResetError, OSError) as err:
+                self._disconnect()
+
+                if attempt < retries:
+                    delay = 1  # min(30, 10 * attempt)  # cap delay to avoid long waits
+                    # Debug, not warning: an attempt that is about to be retried
+                    # is not yet a problem. Only exhausting them all is, and
+                    # that is reported below.
+                    LOGGER.debug(
+                        "Error while reading %s (attempt %d/%d): %s - retrying in %ss",
+                        label,
+                        attempt + 1,
+                        retries + 1,
+                        err,
+                        delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    LOGGER.error(
+                        "All %d attempts to read %s failed. Last error: %s",
+                        retries + 1,
+                        label,
+                        err,
+                    )
+                    return
+
+            except Exception as err:
+                LOGGER.error(
+                    "Unexpected error during read of %s: %s", label, err, exc_info=True
+                )
+                self._disconnect()
+                return

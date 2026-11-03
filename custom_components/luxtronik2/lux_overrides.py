@@ -1,0 +1,879 @@
+from copy import deepcopy
+from datetime import UTC, datetime
+from typing import Final
+
+from luxtronik.calculations import Calculations
+from luxtronik.datatypes import (
+    Base,
+    Bool,
+    Celsius,
+    Energy,
+    HeatpumpCode,
+    Kelvin,
+    MixedCircuitMode,
+    Percent,
+    Percent2,
+    Power,
+    Seconds,
+    SelectionBase,
+    SwitchoffFile,
+    Timestamp,
+    Unknown,
+)
+from luxtronik.parameters import Parameters
+from luxtronik.visibilities import Visibilities
+
+from .const import (
+    CONF_CALCULATIONS,
+    CONF_PARAMETERS,
+    CONF_VISIBILITIES,
+    HEATING_CONTROL_MODE_CODES,
+    LOGGER,
+    PARSED_COUNT_ATTR,
+    SMART_GRID_MODE_CODES,
+)
+
+
+class MajorMinorVersion(Base):
+    """MajorMinorVersion datatype, converts from and to a RBEVersion"""
+
+    datatype_class = "version"
+
+    def from_heatpump(self, value):
+        major = value // 100
+        minor = value % 100
+        return f"{major}.{minor:02d}"
+
+
+class Energy2(Base):
+    """Energy counter stored in 0.01 kWh units, unlike the library's `Energy`.
+
+    Both scales occur on the same controller - see the energy-input parameters
+    in `parameters_to_add_update` for which registers were measured onto this
+    one, and why upstream's unit annotation cannot be used to tell them apart.
+    """
+
+    measurement_type = "energy"
+
+    def from_heatpump(self, value):
+        return value / 100
+
+    def to_heatpump(self, value):
+        # round, not int: 0.29 * 100 is 28.999999999999996 in binary floating point
+        return round(value * 100)
+
+
+class UtcTimestamp(Base):
+    """Unix epoch register as an aware UTC datetime; 0 means "never".
+
+    The library's `Timestamp` returns a naive datetime in the host's local
+    zone and maps 0 to the epoch itself, so a TIMESTAMP-class sensor on it
+    would show 1970-01-01 on a unit that has never recorded the event and
+    trip HA's tz-aware requirement on one that has.
+    """
+
+    measurement_type = "timestamp"
+
+    @classmethod
+    def from_heatpump(cls, value):
+        if not isinstance(value, int) or value <= 0:
+            return None
+        return datetime.fromtimestamp(value, UTC)
+
+    @classmethod
+    def to_heatpump(cls, value):
+        if isinstance(value, int):
+            return value
+        if isinstance(value, datetime):
+            return int(value.timestamp())
+        return None
+
+
+class SecondsToHours(Base):
+    """Seconds to hours datatype, converts from and to hours."""
+
+    measurement_type = "hours"
+
+    def from_heatpump(self, value):
+        # Round to the nearest half hour so UI values stay in 0.5-hour increments.
+        return round(value / 1800) / 2
+
+    def to_heatpump(self, value):
+        return int(value * 3600)
+
+
+class FrequencyAutomatic(Base):
+    """Frequency with Automatic mode (0=Auto, 1-101=20-120 Hz)."""
+
+    measurement_type = "frequency"
+
+    def from_heatpump(self, value):
+        # 0 stays 0 (Automatic), 1-101 maps to 20-120 Hz
+        if value == 0:
+            return 0
+        return value + 19  # 1 → 20 Hz, 2 → 21 Hz, ..., 101 → 120 Hz
+
+    def to_heatpump(self, value):
+        # 0 stays 0 (Automatic), 20-120 maps to 1-101
+        if value == 0:
+            return 0
+        return int(value - 19)  # 20 Hz → 1, 21 Hz → 2, ..., 120 Hz → 101
+
+
+class TimeOfDay(Base):
+    """TimeOfDay datatype, converts from and to TimeOfDay.
+
+    Always renders "HH:MM". The registers this covers are timer-program
+    schedule times, and the heat pump's own controller can only set those to
+    a whole minute, so a raw value carrying seconds is a register artefact
+    rather than a setting anyone made. Rendering it as "HH:MM:SS" would only
+    widen the string past what the consuming text entities allow. The seconds
+    are dropped on display only: `to_heatpump` still accepts them, and an
+    untouched row is never written back, so the raw value on the device is
+    left as it is.
+    """
+
+    datatype_class = "timeofday"
+
+    @classmethod
+    def from_heatpump(cls, value):
+        if not isinstance(value, int):
+            return None
+        hours = value // 3600
+        minutes = (value // 60) % 60
+
+        return f"{hours:02d}:{minutes:02d}"
+
+    @classmethod
+    def to_heatpump(cls, value):
+        if isinstance(value, int):
+            return value
+        if not isinstance(value, str):
+            return None
+        d = [int(v) for v in value.split(":")]
+
+        val = d[0] * 3600 + d[1] * 60
+        if len(d) == 3:
+            val += d[2]
+
+        return val
+
+
+class TimeOfDay2(Base):
+    """A start-end window packed into one register, rendered "HH:MM-HH:MM".
+
+    The ventilation schedule (896-955) does not store one time per register
+    like the other timer circuits: each 32-bit value carries the whole
+    window, start minute-of-day in the low 16 bits and end minute-of-day in
+    the high 16 bits. Derived from the first unit with a live ventilation
+    module (#789) and confirmed minute for minute against photographs of
+    its controller pages. The inverter silence timer (1093-1113) packs the
+    same way: one corpus unit holds 27526320 = 0x01A404B0 = 20:00-07:00
+    there with the raw value intact. Upstream `main` assigns a `TimeOfDay2`
+    to both blocks, so the name is kept for a drop-in swap once that library
+    ships. The one deliberate difference: hours are zero-padded, because the
+    schedule text entities budget a fixed-width pair (see `TimeOfDay`).
+
+    `to_heatpump` refuses a half outside the day: in a packed register an
+    oversized start would spill into the end field's bits.
+    """
+
+    datatype_class = "timeofday2"
+
+    @classmethod
+    def from_heatpump(cls, value):
+        if not isinstance(value, int):
+            return None
+        start = value & 0xFFFF
+        end = value >> 16
+        return f"{start // 60:02d}:{start % 60:02d}-{end // 60:02d}:{end % 60:02d}"
+
+    @classmethod
+    def to_heatpump(cls, value):
+        if isinstance(value, int):
+            return value
+        if not isinstance(value, str):
+            return None
+        try:
+            start_text, end_text = value.split("-")
+            start_hours, start_minutes = (int(v) for v in start_text.split(":"))
+            end_hours, end_minutes = (int(v) for v in end_text.split(":"))
+        except ValueError:
+            return None
+        start = start_hours * 60 + start_minutes
+        end = end_hours * 60 + end_minutes
+        if not (0 <= start < 1440 and 0 <= end < 1440):
+            return None
+        return (end << 16) | start
+
+
+class TimerProgram(SelectionBase):
+    """TimerProgram datatype, converts from and to list of TimerProgram codes"""
+
+    codes = {
+        0: "week",
+        1: "5+2",
+        2: "days",
+    }
+
+
+class VentilationTimerProgram(SelectionBase):
+    """The ventilation circuit's selector (P895) counts from 3, not 0.
+
+    Read off a KHZ LWC 60 with a ventilation module (#789): the controller's
+    Lueftung -> Zeitschaltprogramm menu reports 3 for week, 4 for 5+2 and 5
+    for days - all three sampled. Every unit without a module reports
+    0, which is "no module" rather than a shape - deliberately absent from
+    the table so it decodes to None without the unknown-code warning. Should
+    a unit with a module ever report 0, the ventilation select shows an
+    empty state and no schedule text entity is active; no such unit has
+    been seen.
+    """
+
+    codes = {
+        3: "week",
+        4: "5+2",
+        5: "days",
+    }
+
+
+class KnownCodeSelection(SelectionBase):
+    """SelectionBase that keeps a code it does not know instead of dropping it.
+
+    Upstream returns None for an unrecognised code, but None already means
+    "the controller never sent this register" - and for a parameter below
+    UPSTREAM_MAX_DEFINED_INDEX nothing downstream can tell those two apart
+    afterwards. Passing the raw value through keeps them distinguishable, so
+    a firmware with an undocumented extra mode degrades to a fallback rather
+    than looking like a missing register.
+    """
+
+    def from_heatpump(self, value):
+        return self.codes.get(value, value)
+
+    def to_heatpump(self, value):
+        # Symmetric with from_heatpump: the luxtronik2.write service hands
+        # over the raw number the user typed, which upstream would map to
+        # None and Luxtronik.write would then discard unwritten. Anything
+        # that is not a known name is passed through for the library's own
+        # int check to judge.
+        raw = super().to_heatpump(value)
+        return value if raw is None else raw
+
+
+class SmartGridMode(KnownCodeSelection):
+    """SmartGridMode datatype for P1030 - see SMART_GRID_MODE_CODES."""
+
+    measurement_type = "selection"
+
+    codes = dict(SMART_GRID_MODE_CODES)
+
+
+class HeatingCircuitControlMode(KnownCodeSelection):
+    """HeatingCircuitControlMode datatype for P0103.
+
+    Without this datatype the parameter is Unknown, and the select's string
+    option is queued as-is and discarded unwritten.
+    """
+
+    measurement_type = "selection"
+
+    codes = dict(HEATING_CONTROL_MODE_CODES)
+
+
+class OnOffMode(KnownCodeSelection):
+    """OnOffMode datatype for a plain enable flag stored as 0/1 (P1087)."""
+
+    measurement_type = "selection"
+
+    codes = {0: "off", 1: "on"}
+
+
+class PoolPVMode(SelectionBase):
+    """PoolPVMode datatype, converts from and to a PoolPVMode"""
+
+    measurement_type = "selection"
+
+    codes = {
+        0: "Automatic",
+        1: "PV_Off",
+        2: "Pool_Party",
+        3: "Pool_Holidays",
+        4: "Pool_Off",
+    }
+
+
+# Highest index the installed luxtronik library defines per block, captured
+# before the overrides below extend those dicts.  Everything at or below this
+# index is part of upstream's own definition set and is returned by every
+# controller observed, so absence is only ever concluded above it - which is
+# exactly where the indices this module adds live.  Measured, not guessed:
+# parameters 0..1125 (dense), calculations max 259, visibilities 0..354.
+UPSTREAM_MAX_DEFINED_INDEX: Final[dict[str, int]] = {
+    CONF_PARAMETERS: max(Parameters.parameters),
+    CONF_CALCULATIONS: max(Calculations.calculations),
+    CONF_VISIBILITIES: max(Visibilities.visibilities),
+}
+
+
+# Define your new/updated custom parameters in a dictionary
+parameters_to_add_update = {
+    6: Timestamp("ID_SU_FrkdHz", True),
+    7: Timestamp("ID_SU_FrkdBw", True),
+    119: PoolPVMode("ID_Ba_Sw_akt", True),
+    695: MixedCircuitMode("ID_Ba_Hz_MK1_akt", True),
+    696: MixedCircuitMode("ID_Ba_Hz_MK2_akt", True),
+    731: Timestamp("ID_SU_FstdHz", True),
+    732: Timestamp("ID_SU_FstdBw", True),
+    973: Celsius("ID_Einst_BW_max", True),
+    980: Percent2("ID_RBE_Einflussfaktor_RT_akt", True),
+    993: Celsius("ID_Einst_min_VL_Kuehl", True),
+    979: Celsius("ID_Einst_Minimale_Ruecklaufsolltemperatur", True),
+    1045: FrequencyAutomatic("ID_Einst_P155_DHW_Freq", True),
+    # Time of the last defrost cycle, named after upstream `main`. Only
+    # V3-series air units populate it (7 of 30 corpus pumps, V3.88-V3.92);
+    # every V1/V2 air unit reads 0 even with a live defrost timer, brine
+    # units always 0, and a V1.73 unit does not return the register at all.
+    # Read-only: the controller stamps it itself.
+    1119: UtcTimestamp("LAST_DEFROST_TIMESTAMP", False),
+    # Smart Grid temperature offsets, #765. Upstream leaves all three as
+    # Unknown_Parameter_112x / Unknown and marks them non-writeable; the
+    # controller writes them from its own service menu, so that flag is
+    # overridden here deliberately.
+    #
+    # They are Kelvin deltas stored in tenths, established three ways: the
+    # reporter's A/B test on an LWC407 (V1.86.2) moved the controller from
+    # -2.0/+2.0/+2.0 K to -1.5/+2.5/+5.0 K and the registers followed
+    # (-20/20/20 -> -15/25/50); the HMD2 manual (83055600 rev d, p.43) lists
+    # the same three settings under "Smart Grid" with those defaults and
+    # ranges; and across 29 pumps in the diagnostics corpus every unit at
+    # factory default reads -20/20/20, while all four deviating units are
+    # exactly the four with Smart Grid switched on at P1030.
+    1120: Kelvin("SMART_GRID_HEATING_REDUCTION", True),
+    1121: Kelvin("SMART_GRID_HEATING_INCREASE", True),
+    1122: Kelvin("SMART_GRID_DHW_INCREASE", True),
+    # Inverter silent mode, named after upstream `main`: an on/off switch, a
+    # timer-program selector and 21 packed start-end windows. The corpus has
+    # the switch and selector at 0 on every unit, so the selector's codes
+    # are unsampled (the unknown-code warning reports anything outside the
+    # copied table); the windows are pinned by one unit holding 20:00-07:00.
+    1087: OnOffMode("SILENT_MODE", True),
+    1092: TimerProgram("ID_Einst_SuSilence", True),
+    **{
+        1093 + index: TimeOfDay2(f"ID_Einst_SilenceTimer_{index}", True)
+        for index in range(21)
+    },
+    1146: Celsius("Extra_DHW_target_temp", True),
+    1147: SecondsToHours("Extra_DHW_duration", True),
+    1148: Celsius("HEATING_TARGET_TEMP_ROOM_THERMOSTAT", True),
+    1159: Percent("ELECTRICAL_POWER_LIMIT_VALUE", True),
+    # Read-only energy counters in 0.01 kWh units, hence Energy2 and no factor
+    # on their descriptions. Measured in #734 against the heat-quantity
+    # calculations: regressing calc 151/152 on these over 19 snapshots of one
+    # unit gives a marginal COP of 6.4 (heating) and 3.8 (DHW) at /100, but
+    # 0.64 and 0.38 at /10 - below 1, so impossible for a compressor. Lifetime
+    # totals put the same upper bound under 2 at /10 on six further units.
+    # Upstream's "kWh/10" note claims /10 for these and is simply wrong here;
+    # it also sits on 1059 and calculations 151/152/154, which need /10.
+    # 1139 read 0.0 on every unit seen in #734, so it followed its siblings by
+    # analogy until the readings below measured it.
+    #
+    # #752 confirmed the scale directly for the first time: on an LD9 whose
+    # controller page was photographed at the moment of the dump, 1136 read
+    # 543197 against a displayed 5431.9 kWh and 1137 read 222335 against
+    # 2223.3 kWh. The same unit identified 1138 as the pool counter - 113191
+    # against a displayed 1131.9 kWh - which had sat unregistered because a
+    # unit without a pool reads 0.0 there.
+    #
+    # A second unit in that issue, an LD5 that cools, settled 1139 the same way
+    # - 83272 counts against a displayed 832.7 kWh - and identified 1135 as the
+    # cooling heat quantity, 410381 counts against a displayed 4103.8 kWh. 1135
+    # had sat unregistered because a unit that never cools reads 0 there.
+    #
+    # Compressor 2's copy of the 852/854/878/879 family on a twin unit, same
+    # 0.01 kWh units: the #782 LD7 (V4.81.3) read 10802976 on 1015 against
+    # 108029.7 kWh on its Wärmemenge page 2, and 1016/1018 matched the same
+    # way. 1010 is the twin flag that gates them - 1 on that unit, 0 on every
+    # other pump in the diagnostics corpus. Names are the library's own. #815
+    1010: Bool("ID_Einst_isTwin", False),
+    1015: Energy2("ID_Waermemenge_Hz_2", False),
+    1016: Energy2("ID_Waermemenge_BW_2", False),
+    1017: Energy2("ID_Waermemenge_SW_2", False),
+    1018: Energy2("ID_Waermemenge_Seit_2", False),
+    1135: Energy2("COOLING_HEAT_AMOUNT", False),
+    1136: Energy2("HEAT_ENERGY_INPUT", False),
+    1137: Energy2("DHW_ENERGY_INPUT", False),
+    1138: Energy2("POOL_ENERGY_INPUT", False),
+    1139: Energy2("COOLING_ENERGY_INPUT", False),
+    # Auxiliary-heater heat counters. 0.1 kWh per count on a series-3
+    # controller, so Energy's own /10 is the whole conversion there (measured
+    # against the rated element power in #625), but 0.01 kWh on series 2, where
+    # their descriptions take a further /10 - see
+    # AUX_HEATER_ENERGY_FACTOR_BY_SERIES in sensor_entities_predefined.py for
+    # the per-generation evidence. The split cannot live here: these overrides
+    # are applied once per process, while one process can serve two config
+    # entries whose heat pumps are different generations. The name of 1059 must
+    # stay ID_Waermemenge_ZWE, which is how const.py resolves it.
+    1059: Energy("ID_Waermemenge_ZWE", False),
+    1140: Energy("SECOND_HEAT_GENERATOR_AMOUNT_COUNTER", False),
+    # Bouni/python-luxtronik's in-progress definitions mark these read-only,
+    # but our switch/number entities treat them as user-writable by design.
+    1158: Bool("POWER_LIMIT_SWITCH", True),
+    1175: Bool("THERMAL_POWER_LIMIT_SWITCH", True),
+    1176: Power("THERMAL_POWER_LIMIT_HEATING", True),
+    1177: Power("THERMAL_POWER_LIMIT_WATER", True),
+    # 1178 was previously (wrongly) mapped here as THERMAL_POWER_LIMIT_COOLING;
+    # a hardware owner confirmed via the unit's own web interface that cooling
+    # is actually 1179, and upstream's naming for 1178 turned out to be a copy
+    # of this same guess rather than independent confirmation (see #680). Left
+    # unregistered until 1178's real purpose is confirmed.
+    1179: Power("THERMAL_POWER_LIMIT_COOLING", True),
+    # Add more as needed
+}
+
+calculations_to_add_update = {
+    # Names follow upstream main (luxtronik/definitions/calculations.py),
+    # which has since named the pump spread and PWM registers that the
+    # pinned 0.3.14 still ships as Unknown_Calculation_*. Main lists
+    # Circulation_Pump only as an alias of HUP_PWM for 241, so HUP_PWM is
+    # the name to carry. The datatypes stay the ones 0.3.14 ships - this is
+    # a rename, and the descriptions keep supplying their own scaling.
+    239: Unknown("VBO_Temp_Spread_Soll", False),
+    240: Unknown("VBO_Temp_Spread_Ist", False),
+    241: Percent2("HUP_PWM", False),
+    242: Unknown("HUP_Temp_Spread_Soll", False),
+    243: Unknown("HUP_Temp_Spread_Ist", False),
+    258: MajorMinorVersion("RBE_Version", False),
+}
+
+
+def _update_entry(existing, override, *, preserve_existing_name=False):
+    """Replace an entry by number while optionally preserving the existing name."""
+    name = override.name
+    if preserve_existing_name and getattr(existing, "name", None) is not None:
+        name = existing.name
+
+    updated = override.__class__(name, override.writeable)
+    if hasattr(existing, "value"):
+        updated.value = existing.value
+    return updated
+
+
+def update_Luxtronik_Parameters():
+    Parameters.parameters.update(parameters_to_add_update)  # pyright: ignore[reportCallIssue, reportArgumentType]
+    Calculations.calculations.update(calculations_to_add_update)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+    # Temperature settings stored as tenths of a degree. The last six are
+    # limit temperatures upstream `main` types as Celsius too; all 30 units
+    # in the diagnostics corpus hold plausible tenths there: 84 at 650-700,
+    # 87 at 350-650, 91 at 350-450, 92 at -200/-220, 94 at 1150-1400 and
+    # 96 at 500 on every unit.
+    Celsius_numbers = (
+        [14, 15, 16, 141, 142, 143, 774, 775, 776]
+        + [17, 47, 90, 93, 111]
+        + [84, 87, 91, 92, 94, 96]
+    )
+    update_Luxtronik_Parameter_Classes(Celsius_numbers, Celsius)
+
+    # Kelvin temperature-difference parameters stored as tenths.
+    delta_temperature_numbers = [88, 89]
+    update_Luxtronik_Parameter_Classes(delta_temperature_numbers, Kelvin)
+
+    # Operating-time counters (ID_Zaehler_BetrZeit*) in seconds, the
+    # parameter-side mirrors of calculations 56-66, and the heat-quantity
+    # date (ID_Waermemenge_Datum) as a Unix timestamp - eight corpus units
+    # sit on its 2018-01-01 factory default, eight more on 0, which the
+    # library's Timestamp renders as 1970-01-01 (as it does for 6/7/731/732).
+    # Typed as upstream `main` does; nothing reads them, this only makes
+    # diagnostics dumps readable.
+    operating_time_numbers = [668, 669, 670, 671, 672, 673, 728, 729, 730, 859]
+    update_Luxtronik_Parameter_Classes(operating_time_numbers, Seconds)
+    update_Luxtronik_Parameter_Classes([880], Timestamp)
+
+    # Timer program schedule parameters: mostly TimeOfDay entries, with a
+    # handful of TimerProgram mode selectors interspersed. 162-667 holds the
+    # heating, mixing circuits 1/2, DHW, circulation-pump and pool circuits;
+    # mixing circuit 3 sits apart at 788 (selector) and 789-848 (times).
+    # 607 is named ID_Einst_SuSwb_akt upstream but holds a time of day on
+    # every unit seen with a non-zero value there (06:30/07:00/07:30, each
+    # followed by an end time in 608 - #789), so it stays in the time range.
+    timer_program_numbers = {222, 283, 344, 405, 506, 788}
+    schedule_numbers = list(range(162, 668)) + list(range(788, 849))
+    time_of_day_numbers = [
+        n for n in schedule_numbers if n not in timer_program_numbers
+    ]
+    update_Luxtronik_Parameter_Classes(time_of_day_numbers, TimeOfDay)
+    update_Luxtronik_Parameter_Classes(list(timer_program_numbers), TimerProgram)
+    # The ventilation circuit sits apart at 895 (selector) and 896-955, and
+    # its time registers use a different storage format: one packed
+    # start-end window per register (#789, see TimeOfDay2).
+    update_Luxtronik_Parameter_Classes([895], VentilationTimerProgram)
+    update_Luxtronik_Parameter_Classes(list(range(896, 956)), TimeOfDay2)
+
+    # Mode selectors the upstream library still models as Unknown. Both are
+    # driven by a select entity, and an Unknown parameter has no to_heatpump,
+    # so the option string was queued as-is and then discarded by
+    # Luxtronik.write, which only writes ints.
+    update_Luxtronik_Parameter_Classes([1030], SmartGridMode)
+    update_Luxtronik_Parameter_Classes([103], HeatingCircuitControlMode)
+
+
+def update_Luxtronik_Parameter_Classes(numbers, datatype_class):
+    """Update only the class for a list or range of parameter numbers.
+
+    This is intended for parameters that already exist in the upstream library
+    and only need their datatype changed, e.g. from Unknown to Celsius.
+    """
+    if not isinstance(datatype_class, type) or not issubclass(datatype_class, Base):
+        raise TypeError("datatype_class must be a Base subclass")
+
+    for number in numbers:
+        existing = Parameters.parameters.get(number)
+        if existing is None:
+            continue
+
+        Parameters.parameters[number] = _update_entry(
+            existing,
+            datatype_class(getattr(existing, "name", str(number)), existing.writeable),
+            preserve_existing_name=True,
+        )
+
+
+_INSTANCE_DATA_ISOLATED = False
+
+
+def isolate_instance_data():
+    """Patch library classes to use instance-level data dicts.
+
+    The upstream luxtronik library stores parameter/calculation/visibility
+    data in class-level dicts shared across all instances.  When multiple
+    heat pumps are configured, ``parse()`` on one instance overwrites
+    values read by another, causing data mixing (see issue #515).
+
+    This patches ``__init__`` so every new instance gets its own deep copy
+    of the class-level dict.
+    """
+    # No lock needed: called only from synchronous code path (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    global _INSTANCE_DATA_ISOLATED
+    if _INSTANCE_DATA_ISOLATED:
+        return
+
+    _orig_params_init = Parameters.__init__
+
+    def _params_init(self, *args, **kwargs):
+        _orig_params_init(self, *args, **kwargs)
+        self.parameters = deepcopy(self.parameters)
+
+    Parameters.__init__ = _params_init
+
+    _orig_calcs_init = Calculations.__init__
+
+    def _calcs_init(self, *args, **kwargs):
+        _orig_calcs_init(self, *args, **kwargs)
+        self.calculations = deepcopy(self.calculations)
+
+    Calculations.__init__ = _calcs_init
+
+    _orig_vis_init = Visibilities.__init__
+
+    def _vis_init(self, *args, **kwargs):
+        _orig_vis_init(self, *args, **kwargs)
+        self.visibilities = deepcopy(self.visibilities)
+
+    Visibilities.__init__ = _vis_init
+
+    _INSTANCE_DATA_ISOLATED = True
+
+
+_PARSE_COUNTS_RECORDED = False
+_UNKNOWN_CODE_WARNING_INSTALLED = False
+_REPORTED_UNKNOWN_CODES: set[tuple[str, str, object]] = set()
+
+
+def record_parsed_block_lengths():
+    """Patch ``parse()`` to record how many values the controller returned.
+
+    ``parse()`` assigns ``.value`` only for the indices present in the raw
+    block; every other definition keeps whatever it had, which for a register
+    the unit does not have means ``None`` forever.  The definition dict is
+    static, so it cannot answer "does this controller have register N?" - but
+    the block length can: register N is present exactly when ``N < length``.
+
+    This is deliberately not inferred from ``.value is None``, because a
+    register that IS present also reads ``None`` when its datatype cannot
+    decode the raw value (``SelectionBase`` returns ``None`` for a code
+    missing from its table, e.g. an unrecognised heat pump model).
+    """
+    # No lock needed: called only from synchronous code path (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    global _PARSE_COUNTS_RECORDED
+    if _PARSE_COUNTS_RECORDED:
+        return
+
+    for cls in (Parameters, Calculations, Visibilities):
+        _orig_parse = cls.parse
+
+        def _parse(self, raw_data, _orig_parse=_orig_parse):
+            setattr(self, PARSED_COUNT_ATTR, len(raw_data))
+            return _orig_parse(self, raw_data)
+
+        cls.parse = _parse
+
+    _PARSE_COUNTS_RECORDED = True
+
+
+_UNKNOWN_VISIBILITY_NAMES_FIXED = False
+
+_UNKNOWN_PARAMETER_PREFIX = "Unknown_Parameter_"
+_UNKNOWN_VISIBILITY_PREFIX = "Unknown_Visibility_"
+
+
+def name_unknown_visibilities_correctly():
+    """Patch ``parse()`` so generated visibility names say "Visibility".
+
+    ``Visibilities.parse()`` names every index past its table
+    ``Unknown_Parameter_<index>`` - a copy-paste from ``parameters.py``, where
+    that prefix is right.  The same library already uses
+    ``Unknown_Visibility_<index>`` for the placeholders *inside* its table,
+    and upstream main uses it for the generated ones too, so the parameter
+    prefix is simply wrong here.
+
+    Not cosmetic: controllers routinely return 400 visibilities (46 of the 80
+    diagnostics dumps do), so every index from 355 up is generated on most
+    units, and a ``LuxVisibility`` member pointing at one has to spell the
+    placeholder exactly or its gate silently falls open.  Renaming here means
+    const.py can name them the way the rest of the table is named, and the
+    eventual library bump becomes a no-op for those keys.
+    """
+    # No lock needed: called only from synchronous code path (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    global _UNKNOWN_VISIBILITY_NAMES_FIXED
+    if _UNKNOWN_VISIBILITY_NAMES_FIXED:
+        return
+
+    _orig_parse = Visibilities.parse
+
+    def _parse(self, raw_data, _orig_parse=_orig_parse):
+        result = _orig_parse(self, raw_data)
+        for visibility in self.visibilities.values():
+            if visibility.name.startswith(_UNKNOWN_PARAMETER_PREFIX):
+                visibility.name = (
+                    _UNKNOWN_VISIBILITY_PREFIX
+                    + visibility.name.removeprefix(_UNKNOWN_PARAMETER_PREFIX)
+                )
+        return result
+
+    Visibilities.parse = _parse
+    _UNKNOWN_VISIBILITY_NAMES_FIXED = True
+
+
+def warn_on_unknown_selection_codes():
+    """Log once when the controller reports a code this integration cannot decode.
+
+    ``SelectionBase.from_heatpump`` returns ``None`` for any raw value missing
+    from its ``codes`` table, which otherwise fails silently - the entity just
+    shows an empty state. New heat pump models and new status/switchoff codes
+    reintroduce this every time the firmware moves ahead of our tables, so ask
+    the user to report it rather than letting it sit undetected.
+
+    Raw ``0`` is skipped for tables that have no entry for ``0``
+    (e.g. ``BivalenceLevel``): there it means "slot empty", not "unknown code",
+    and it is what a controller reports for anything it has not filled in yet.
+    """
+    # No lock needed: called only from synchronous code path (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    global _UNKNOWN_CODE_WARNING_INSTALLED
+    if _UNKNOWN_CODE_WARNING_INSTALLED:
+        return
+
+    _orig_from_heatpump = SelectionBase.from_heatpump
+
+    def _from_heatpump(self, value):
+        result = _orig_from_heatpump(self, value)
+        if result is None and not (value == 0 and 0 not in self.codes):
+            marker = (type(self).__name__, self.name, value)
+            if marker not in _REPORTED_UNKNOWN_CODES:
+                _REPORTED_UNKNOWN_CODES.add(marker)
+                LOGGER.warning(
+                    "Heat pump reported code %s for register '%s' (%s), which "
+                    "this integration cannot decode - the matching entity will "
+                    "have no state. Please report it at "
+                    "https://github.com/BenPru/luxtronik/issues so the code "
+                    "table can be extended, attaching the integration "
+                    "diagnostics download",
+                    value,
+                    self.name,
+                    type(self).__name__,
+                )
+        return result
+
+    SelectionBase.from_heatpump = _from_heatpump
+
+    _UNKNOWN_CODE_WARNING_INSTALLED = True
+
+
+def update_Luxtronik_SwitchoffCodes():
+    """Replace the pinned library's incomplete/shifted switchoff code table.
+
+    luxtronik 0.3.14 knows only codes 1-9, and misnumbers three of them. It was
+    released in June 2022 and is still the newest release on PyPI, so two merged
+    upstream fixes never reached any user: `19: PV max` (issue #89, March 2023)
+    and Bouni/python-luxtronik#186 (November 2024), which added 10-25 and
+    renumbered 1/2/4 to 0/1/2. Without this override, every controller reporting
+    one of the perfectly ordinary codes 10-25 (flow rate, low pressure pause,
+    LPC, restart, ...) decodes to `None` and triggers the "please report it"
+    warning from `warn_on_unknown_selection_codes()`.
+
+    PR #186 derived the corrected numbering by reading the strings the heat pump
+    itself displays and cross-checking them against the manual; issue #185 that
+    prompted it confirmed `22` the same way, by lining the five register slots up
+    with the five timestamps in the controller's own log. That is also where the
+    numbering used by the `switchoff_reason` sensor's translations comes from, so
+    both readings of the same history now agree.
+
+    `24: LPC` is upstream's own uncertain guess (possibly "limit power
+    consumption") and is deliberately left as the bare abbreviation.
+    """
+    SwitchoffFile.codes = {
+        0: "heatpump error",
+        1: "system error",
+        2: "operation mode second heat generator",
+        3: "evu lock",
+        # 4 is left unassigned upstream: the old table's entry for it moved to 2.
+        5: "air defrost",
+        6: "maximal usage temperature",
+        7: "minimal usage temperature",
+        8: "lower usage limit",
+        9: "no request",
+        10: "external energy source",
+        11: "flow rate",
+        12: "low pressure pause",
+        13: "superheating pause",
+        14: "inverter pause",
+        15: "desuperheater pause",
+        16: "operation mode for switching over",
+        17: "other shutdown",
+        18: "min. flow cooling",
+        19: "PV max",
+        20: "hot gas pause",
+        21: "overheating hot gas pause",
+        22: "no request",
+        23: "min. heat source out cooling",
+        24: "LPC",
+        25: "restart",
+        # 26 and 27 are not in upstream's table. Both were read off an HMD2
+        # display, whose "Abschaltungen" log lines were matched to the
+        # switchoff history by timestamp.
+        #
+        # 26 showed "max. return increase" (EN) / "TR Verhoging max" (NL) /
+        # "TR Erh max" (DE, expanded to "TR Erhöhung max" in de.json),
+        # which the HMD2 manual (83055600 rev d, p22) defines as the maximum
+        # permitted overshoot of the return temperature: once the return runs
+        # that far above its setpoint the controller ignores its internal
+        # minimum run times and switches every heat generator off.
+        # The logged event fits: a heating request started 5 minutes after a
+        # DHW run with the return still at ~51 degrees and ran for 30 seconds.
+        26: "maximum return temperature increase",
+        # 27 showed "Aanvoer max." for the same timestamps the switchoff
+        # history reported 27 (confirmed against a run that stopped at 66.0
+        # degrees flow and resumed two minutes later).
+        27: "maximum flow temperature",
+    }
+
+
+def update_Luxtronik_HeatpumpCodes():
+    # Updated list of Heatpump models
+    HeatpumpCode.codes = {
+        0: "ERC",
+        1: "SW1",
+        2: "SW2",
+        3: "WW1",
+        4: "WW2",
+        5: "L1I",
+        6: "L2I",
+        7: "L1A",
+        8: "L2A",
+        9: "KSW",
+        10: "KLW",
+        11: "SWC",
+        12: "LWC",
+        13: "L2G",
+        14: "WZS",
+        15: "L1I407",
+        16: "L2I407",
+        17: "L1A407",
+        18: "L2A407",
+        19: "L2G407",
+        20: "LWC407",
+        21: "L1AREV",
+        22: "L2AREV",
+        23: "WWC1",
+        24: "WWC2",
+        25: "L2G404",
+        26: "WZW",
+        27: "L1S",
+        28: "L1H",
+        29: "L2H",
+        30: "WZWD",
+        31: "ERC",
+        32: "ERC",
+        33: "ERC",
+        34: "ERC",
+        35: "ERC",
+        36: "ERC",
+        37: "ERC",
+        38: "ERC",
+        39: "ERC",
+        40: "WWB_20",
+        41: "LD5",
+        42: "LD7",
+        43: "SW 37_45",
+        44: "SW 58_69",
+        45: "SW 29_56",
+        46: "LD5 (230V)",
+        47: "LD7 (230 V)",
+        48: "LD9",
+        49: "LD5 REV",
+        50: "LD7 REV",
+        51: "LD5 REV 230V",
+        52: "LD7 REV 230V",
+        53: "LD9 REV 230V",
+        54: "SW 291",
+        55: "LW SEC",
+        56: "HMD 2",
+        57: "MSW 4",
+        58: "MSW 6",
+        59: "MSW 8",
+        60: "MSW 10",
+        61: "MSW 12",
+        62: "MSW 14",
+        63: "MSW 17",
+        64: "MSW 19",
+        65: "MSW 23",
+        66: "MSW 26",
+        67: "MSW 30",
+        68: "MSW 4S",
+        69: "MSW 6S",
+        70: "MSW 8S",
+        71: "MSW 10S",
+        72: "MSW 12S",
+        73: "MSW 16S",
+        74: "MSW2-6S",
+        75: "MSW4-16",
+        76: "LD2AG",
+        77: "LD9V",
+        78: "MSW3-12",
+        79: "MSW3-12S",
+        80: "MSW2-9S",
+        81: "LW 8",
+        82: "LW 12",
+        83: "HZ_HMD",
+        84: "LW V4",
+        85: "LW SEC 2",
+        86: "MSW1-4S",
+        87: "LP5V",
+        88: "LP8V",
+        89: "LP11V",
+        90: "LP16V",
+    }

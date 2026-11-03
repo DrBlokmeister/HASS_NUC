@@ -1,0 +1,277 @@
+"""Support for Luxtronik number sensors."""
+
+# region Imports
+from __future__ import annotations
+
+from datetime import date, datetime
+
+from homeassistant.components.number import (
+    ENTITY_ID_FORMAT,  # pyright: ignore[reportAttributeAccessIssue]
+    NumberEntity,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
+
+from . import LuxtronikConfigEntry
+from .base import LuxtronikEntity
+from .common import get_sensor_data, key_exists
+from .const import (
+    CONF_HA_SENSOR_PREFIX,
+    LOGGER,
+    DeviceKey,
+    SensorAttrFormat,
+    SensorKey,
+)
+from .coordinator import LuxtronikCoordinator, LuxtronikCoordinatorData
+from .model import LuxtronikEntityAttributeDescription, LuxtronikNumberDescription
+from .number_entities_predefined import NUMBER_SENSORS
+
+# endregion Imports
+
+PARALLEL_UPDATES = 1
+
+# The controller's circulation "Taktzeiten" menu steps by 1 min up to 10 min
+# and by 5 min above that (manual 83055200o, p. 28). HA numbers have a single
+# step, so a value the menu could not set is snapped before it is written.
+_CIRCULATION_CYCLE_KEYS = frozenset(
+    {SensorKey.CIRCULATION_ON_TIME, SensorKey.CIRCULATION_OFF_TIME}
+)
+
+
+def _snap_circulation_cycle_minutes(value: float) -> int:
+    """Round to whole minutes up to 10, and to the nearest 5 above."""
+    minutes = round(value)
+    if minutes <= 10:
+        return minutes
+    return max(10, 5 * round(minutes / 5))
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: LuxtronikConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up Luxtronik binary sensors dynamically through Luxtronik discovery."""
+
+    coordinator = entry.runtime_data
+
+    # Ensure coordinator has valid data before adding entities
+    if not coordinator.last_update_success:
+        return
+
+    unavailable_keys = [
+        i.luxtronik_key
+        for i in NUMBER_SENSORS
+        if not key_exists(coordinator.data, i.luxtronik_key)
+    ]
+    if unavailable_keys:
+        # Not all models/firmware versions support every parameter;
+        # missing keys are expected and not an error.
+        LOGGER.debug("Not present in Luxtronik data, skipping: %s", unavailable_keys)
+
+    async_add_entities(
+        [
+            LuxtronikNumberEntity(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in NUMBER_SENSORS
+            if (
+                coordinator.entity_active(description)
+                and key_exists(coordinator.data, description.luxtronik_key)
+            )
+        ]
+    )
+
+
+class LuxtronikNumberEntity(LuxtronikEntity[LuxtronikNumberDescription], NumberEntity):  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+    """Luxtronik Number Entity."""
+
+    _coordinator: LuxtronikCoordinator
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        coordinator: LuxtronikCoordinator,
+        description: LuxtronikNumberDescription,
+        device_info_ident: DeviceKey,
+    ) -> None:
+        """Init Luxtronik Number entity"""
+        super().__init__(
+            coordinator=coordinator,
+            description=description,
+            device_info_ident=device_info_ident,
+        )
+
+        prefix = entry.data[CONF_HA_SENSOR_PREFIX]
+        self.entity_id = ENTITY_ID_FORMAT.format(f"{prefix}_{description.key}")
+        self._attr_unique_id = self.entity_id
+
+        self._attr_mode = description.mode
+
+        # Debouncer for rate-limiting value updates
+        self._debouncer = Debouncer(
+            hass,
+            LOGGER,
+            cooldown=0.5,
+            immediate=False,
+            function=self._async_set_native_value,
+        )
+        self.async_on_remove(self._debouncer.async_shutdown)
+
+        # Store pending value for debounced write
+        self._pending_value: float | None = None
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+        data = self.coordinator.data if data is None else data
+        if data is None:
+            return
+
+        value = get_sensor_data(data, self.entity_description.luxtronik_key.value)
+
+        if value is None:
+            self._attr_native_value = None
+        elif isinstance(value, float | int):
+            factor = self.entity_description.factor or 1
+            precision = self.entity_description.native_precision
+            value = float(value) * factor
+            if precision is not None:
+                value = round(value, precision)
+            self._attr_native_value = value
+        else:
+            self._attr_native_value = value
+
+        super()._handle_coordinator_update()
+
+    async def async_set_native_value(self, value: float) -> None:
+        # Up front: the debounced write has no caller left to surface it to.
+        self.coordinator.raise_if_write_blocked()
+        if (
+            self.entity_description.key == SensorKey.DHW_MANUAL_FREQUENCY
+            and 0 < value < 20
+        ):
+            LOGGER.warning(
+                "DHW frequency control accepts only 0 (Automatic) or 20-120 Hz; rejecting %s",
+                value,
+            )
+            return
+        if self.entity_description.key in _CIRCULATION_CYCLE_KEYS:
+            value = _snap_circulation_cycle_minutes(value)
+
+        self._pending_value = value
+        await self._debouncer.async_call()
+
+    async def _async_set_native_value(self):
+        if self._pending_value is None:
+            return
+        value = self._pending_value
+
+        if self.entity_description.factor is not None:
+            value = int(value / self.entity_description.factor)
+        try:
+            data = await self.coordinator.async_write(
+                self.entity_description.luxtronik_key.value.split(".")[1], value
+            )
+        except HomeAssistantError as err:
+            # Debounced write, so no caller is left to surface this to;
+            # re-sync the entity to the device's actual value immediately
+            # instead of leaving the frontend showing the rejected value
+            # until the next poll (I3b).
+            LOGGER.error(
+                "Debounced write of %s failed, reverting to device value: %s",
+                self.entity_description.key,
+                err,
+            )
+            self._handle_coordinator_update(self.coordinator.data)
+            return
+        self._handle_coordinator_update(data)
+
+    @property
+    def native_min_value(self) -> float | None:
+        """Return the minimum value."""
+        min_key = self.entity_description.min_value_luxtronik_key
+        if min_key is not None:
+            try:
+                value = get_sensor_data(self.coordinator.data, min_key)
+                if value is not None:
+                    return float(value)
+            except (TypeError, ValueError):
+                pass
+        return self.entity_description.native_min_value
+
+    @property
+    def native_max_value(self) -> float | None:
+        """Return the maximum value."""
+        max_key = self.entity_description.max_value_luxtronik_key
+        if max_key is not None:
+            try:
+                value = get_sensor_data(self.coordinator.data, max_key)
+                if value is not None:
+                    return float(value)
+            except (TypeError, ValueError):
+                pass
+        return self.entity_description.native_max_value
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str]:
+        """Extra attributes, plus a human-readable mode for DHW manual frequency.
+
+        Must merge with (not replace) the base-computed attributes - other
+        Number entities may declare their own `extra_attributes` (e.g. the
+        DHW thermal desinfection target's `last_thermal_desinfection`), which
+        `_enrich_extra_attributes()` already populated into
+        `self._attr_extra_state_attributes`.
+        """
+        attributes = dict(self._attr_extra_state_attributes)
+        if self.entity_description.key == SensorKey.DHW_MANUAL_FREQUENCY:
+            val = self._attr_native_value
+            if val == 0:
+                attributes["mode"] = "Automatic"
+            elif val is not None:
+                attributes["mode"] = f"Manual at {int(val)} Hz"
+        return attributes
+
+    def formatted_data(self, attr: LuxtronikEntityAttributeDescription) -> str:
+        """Calculate the attribute value.
+
+        Compares the raw attribute reading (e.g. DHW temperature) against
+        this entity's own already-scaled `_attr_native_value` (e.g. the DHW
+        thermal desinfection target) - not `_attr_state * factor`, which is
+        never populated for entities (the only real one,
+        DHW_THERMAL_DESINFECTION_TARGET) that don't declare a `factor`.
+        """
+        if attr.format != SensorAttrFormat.TIMESTAMP_LAST_OVER:
+            return super().formatted_data(attr)
+        value = self._get_value(attr.luxtronik_key)
+        if value is None:
+            return ""
+        if (
+            self._attr_native_value is not None
+            and float(value) >= float(self._attr_native_value)
+            and (
+                attr.key not in self._attr_cache
+                or self._is_past(self._attr_cache[attr.key])
+            )
+        ):
+            self._attr_cache[attr.key] = dt_util.utcnow().date()
+        result = self._attr_cache.get(attr.key, "")
+
+        return str(result)
+
+    def _is_past(self, value: str | date) -> bool:
+        if value is None or value == "":
+            return True
+        if isinstance(value, str):
+            try:
+                value = datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return True
+        return value < dt_util.utcnow().date()

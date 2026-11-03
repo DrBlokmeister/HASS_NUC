@@ -1,0 +1,604 @@
+"""Support for Luxtronik sensors."""
+
+# region Imports
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from homeassistant.components.sensor import (
+    ENTITY_ID_FORMAT,  # pyright: ignore[reportAttributeAccessIssue]
+    SensorEntity,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.translation import async_get_cached_translations
+
+from . import LuxtronikConfigEntry
+from .base import LuxtronikEntity
+from .common import (
+    get_sensor_data,
+    key_exists,
+    read_smart_grid_inputs,
+    smart_grid_enabled,
+    smart_grid_mode,
+    smart_grid_status,
+    state_as_number_or_none,
+)
+from .const import (
+    CONF_HA_SENSOR_CURRENT_POWER_CONSUMPTION,
+    CONF_HA_SENSOR_PREFIX,
+    DOMAIN,
+    LOGGER,
+    DeviceKey,
+    LuxCalculation as LC,
+    LuxParameter as LP,
+    LuxRoomThermostatType,
+    SensorAttrFormat,
+    SensorAttrKey as SA,
+    SensorKey,
+)
+from .coordinator import LuxtronikCoordinator, LuxtronikCoordinatorData
+from .evu_helper import LuxtronikEVUTracker
+from .model import (
+    LuxtronikCopSensorDescription,
+    LuxtronikEntityAttributeDescription,
+    LuxtronikIndexSensorDescription,
+    LuxtronikSensorDescription,
+    LuxtronikSumSensorDescription,
+)
+from .sensor_entities_predefined import (
+    SENSORS,
+    SENSORS_COP,
+    SENSORS_INDEX,
+    SENSORS_ROOM_THERMOSTAT_TYPE,
+    SENSORS_STATUS,
+    SENSORS_SUM,
+)
+
+# endregion Imports
+
+PARALLEL_UPDATES = 0
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: LuxtronikConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up Luxtronik sensors dynamically through Luxtronik discovery."""
+
+    coordinator = entry.runtime_data
+
+    # Ensure coordinator has valid data before adding entities
+    if not coordinator.last_update_success:
+        return
+
+    unavailable_keys = [
+        i.luxtronik_key
+        for i in SENSORS + SENSORS_STATUS + SENSORS_ROOM_THERMOSTAT_TYPE
+        if not key_exists(coordinator.data, i.luxtronik_key)
+        and i.luxtronik_key != LC.UNSET
+    ]
+    if unavailable_keys:
+        # Not all models/firmware versions support every parameter;
+        # missing keys are expected and not an error.
+        LOGGER.debug("Not present in Luxtronik data, skipping: %s", unavailable_keys)
+
+    async_add_entities(
+        [
+            LuxtronikSensorEntity(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in SENSORS
+            if (
+                coordinator.entity_active(description)
+                and key_exists(coordinator.data, description.luxtronik_key)
+            )
+        ]
+    )
+
+    async_add_entities(
+        [
+            LuxtronikStatusSensorEntity(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in SENSORS_STATUS
+            if (
+                coordinator.entity_active(description)
+                and (
+                    # Check if firmware supports the Luxtronik Parameter/Calculation key
+                    key_exists(coordinator.data, description.luxtronik_key)
+                    or (
+                        # For SmartGrid status sensor, check if required parameters exist.
+                        # EVU2 may be read from another register than C0185 at
+                        # runtime (#669), but every controller defines C0185,
+                        # so this stays a valid presence check.
+                        description.key == SensorKey.SMART_GRID_STATUS
+                        and (
+                            key_exists(coordinator.data, LP.P1030_SMART_GRID_SWITCH)
+                            and key_exists(coordinator.data, LC.C0031_EVU_UNLOCKED)
+                            and key_exists(coordinator.data, LC.C0185_EVU2)
+                        )
+                    )
+                )
+            )
+        ]
+    )
+
+    async_add_entities(
+        [
+            LuxtronikIndexSensor(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in SENSORS_INDEX
+            if coordinator.entity_active(description)
+        ]
+    )
+
+    async_add_entities(
+        [
+            LuxtronikRoomThermostatTypeSensor(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in SENSORS_ROOM_THERMOSTAT_TYPE
+            if (
+                coordinator.entity_active(description)
+                and key_exists(coordinator.data, description.luxtronik_key)
+            )
+        ]
+    )
+
+    async_add_entities(
+        [
+            LuxtronikCopSensorEntity(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in SENSORS_COP
+            if (
+                coordinator.entity_active(description)
+                and key_exists(coordinator.data, description.numerator_key)
+                and key_exists(coordinator.data, description.denominator_key)
+            )
+        ]
+    )
+
+    async_add_entities(
+        [
+            LuxtronikSumSensorEntity(
+                hass, entry, coordinator, description, description.device_key
+            )
+            for description in SENSORS_SUM
+            if (
+                coordinator.entity_active(description)
+                # One summand is enough: a controller predating the second
+                # register still has a valid total from the first alone.
+                and any(
+                    key_exists(coordinator.data, key)
+                    for key in description.summand_keys
+                )
+            )
+        ]
+    )
+
+
+class LuxtronikSensorEntity(LuxtronikEntity[LuxtronikSensorDescription], SensorEntity):  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+    """Luxtronik Sensor Entity."""
+
+    _coordinator: LuxtronikCoordinator
+
+    _unrecorded_attributes = frozenset(
+        {
+            SA.SWITCH_GAP,
+            SA.CODE,
+            SA.CAUSE,
+            SA.REMEDY,
+            SA.TIMER_HEATPUMP_ON,
+            SA.TIMER_ADD_HEAT_GENERATOR_ON,
+            SA.TIMER_SEC_HEAT_GENERATOR_ON,
+            SA.TIMER_NET_INPUT_DELAY,
+            SA.TIMER_SCB_OFF,
+            SA.TIMER_SCB_ON,
+            SA.TIMER_COMPRESSOR_OFF,
+            SA.TIMER_HC_ADD,
+            SA.TIMER_HC_LESS,
+            SA.TIMER_TDI,
+            SA.TIMER_BLOCK_DHW,
+            SA.TIMER_DEFROST,
+            SA.TIMER_HOT_GAS,
+        }
+    )
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        coordinator: LuxtronikCoordinator,
+        description: LuxtronikSensorDescription,
+        device_info_ident: DeviceKey,
+    ) -> None:
+        """Init Luxtronik Sensor"""
+        super().__init__(
+            coordinator=coordinator,
+            description=description,
+            device_info_ident=device_info_ident,
+        )
+
+        self._sensor_prefix = prefix = entry.data[CONF_HA_SENSOR_PREFIX]
+        self.entity_id = ENTITY_ID_FORMAT.format(f"{prefix}_{description.key}")
+        self._attr_unique_id = self.entity_id
+
+    @property
+    def _value_factor(self) -> float:
+        """Factor to apply to the decoded register value.
+
+        Normally the description's own `factor`, unless it declares a
+        different one for this controller generation - a handful of registers
+        hold the same quantity in a different unit per generation (#752).
+        """
+        descr = self.entity_description
+        by_series = descr.factor_by_firmware_series
+        if by_series is not None:
+            factor = by_series.get(self.coordinator.firmware_series)
+            if factor is not None:
+                return factor
+        return descr.factor or 1
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+        data = self.coordinator.data if data is None else data
+        if data is None:
+            return
+
+        value = get_sensor_data(data, self.entity_description.luxtronik_key)
+
+        if value is None:
+            self._attr_native_value = None
+        elif self.entity_description.key == SensorKey.ERROR_REASON:
+            self._attr_native_value = value
+        elif isinstance(value, float | int):
+            factor = self._value_factor
+            precision = self.entity_description.native_precision
+            value = float(value) * factor
+            if precision is not None:
+                value = round(value, precision)
+            self._attr_native_value = value
+        else:
+            self._attr_native_value = value
+
+        super()._handle_coordinator_update()
+
+
+class LuxtronikStatusSensorEntity(LuxtronikSensorEntity):
+    """Luxtronik Status Sensor with extended attr."""
+
+    _coordinator: LuxtronikCoordinator
+
+    _unrecorded_attributes = frozenset(
+        LuxtronikSensorEntity._unrecorded_attributes
+        | {
+            SA.STATUS_TEXT,
+            SA.STATUS_RAW,
+            SA.EVU_FIRST_START_TIME,
+            SA.EVU_FIRST_END_TIME,
+            SA.EVU_SECOND_START_TIME,
+            SA.EVU_SECOND_END_TIME,
+            SA.EVU_MINUTES_UNTIL_NEXT_EVENT,
+            SA.EVU_DAYS,
+        }
+    )
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        coordinator: LuxtronikCoordinator,
+        description: LuxtronikSensorDescription,
+        device_info_ident: DeviceKey,
+    ) -> None:
+        """Init Luxtronik Status Sensor."""
+        super().__init__(hass, entry, coordinator, description, device_info_ident)
+        self._evu_tracker = LuxtronikEVUTracker()
+        self._smart_grid_available: bool = True
+
+    @property
+    def available(self) -> bool:
+        """SmartGrid status sensor is unavailable when SmartGrid is disabled."""
+        if self.entity_description.key == SensorKey.SMART_GRID_STATUS:
+            return super().available and self._smart_grid_available
+        return super().available
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+        if self.entity_description.key == SensorKey.SMART_GRID_STATUS:
+            self._update_smart_grid_status()
+            return
+
+        # For normal status sensors, use the parent's update logic
+        super()._handle_coordinator_update(data)
+
+        self._evu_tracker.update(
+            str(self._attr_native_value)
+            if self._attr_native_value is not None
+            else None
+        )
+
+        attr = self._attr_extra_state_attributes
+        attr[SA.STATUS_RAW] = self._attr_native_value
+        attr[SA.STATUS_TEXT] = self._build_status_text()
+        attr.update(self._evu_tracker.get_attributes())
+        self._enrich_extra_attributes()
+        self.async_write_ha_state()
+
+    def _get_entity_translations(self) -> dict[str, str]:
+        return async_get_cached_translations(
+            self.hass, self.hass.config.language, "entity", DOMAIN
+        )
+
+    def _build_status_text(self) -> str:
+        status_time_raw = self._get_value(LC.C0120_STATUS_TIME)
+        line_1_state = self._get_value(LC.C0117_STATUS_LINE_1)
+        line_2_state = self._get_value(LC.C0118_STATUS_LINE_2)
+        if status_time_raw is None or line_1_state is None or line_2_state is None:
+            return ""
+        status_time = self.formatted_data(
+            LuxtronikEntityAttributeDescription(
+                key=SA.STATUS_TEXT,
+                luxtronik_key=LC.C0120_STATUS_TIME,
+                format=SensorAttrFormat.HOUR_MINUTE,
+            )
+        )
+        translations = self._get_entity_translations()
+        line_1 = translations.get(
+            f"component.{DOMAIN}.entity.sensor.status_line_1.state.{line_1_state}"
+        )
+        line_2 = translations.get(
+            f"component.{DOMAIN}.entity.sensor.status_line_2.state.{line_2_state}"
+        )
+        # Show evu end time if available
+        suffix = self._evu_tracker.get_evu_status_suffix(
+            str(self._attr_native_value)
+            if self._attr_native_value is not None
+            else None
+        )
+        return (
+            f"{line_1} {line_2} {status_time}. {suffix}"
+            if suffix
+            else f"{line_1} {line_2} {status_time}."
+        )
+
+    def _update_smart_grid_status(self) -> None:
+        """Calculate and update SmartGrid status based on EVU and EVU2 inputs."""
+        # If SmartGrid is disabled (P1030), set sensor to unavailable
+        if not smart_grid_enabled(self.coordinator.data):
+            self._smart_grid_available = False
+            self._attr_native_value = None
+        else:
+            self._smart_grid_available = True
+
+            # Which terminal carries SG1/SG2 depends on the controller
+            # generation, so the inputs are derived rather than read (#669).
+            evu_on, evu2_on = read_smart_grid_inputs(self.coordinator.data)
+
+            # Which state a contact pair means depends on the SmartGrid
+            # variant selected at the controller: "+/-", "SG 1.0" and
+            # "SG 1.1" each have their own table (see SMART_GRID_STATE_TABLES).
+            self._attr_native_value = smart_grid_status(
+                smart_grid_mode(self.coordinator.data), evu_on, evu2_on
+            )
+
+        # Don't call super() to avoid setting value to None (luxtronik_key=UNSET)
+        self._enrich_extra_attributes()
+        self.async_write_ha_state()
+
+
+class LuxtronikIndexSensor(LuxtronikSensorEntity):
+    _min_index = 0
+    _max_index = 4
+
+    entity_description: LuxtronikIndexSensorDescription  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+
+        values = dict()
+        for i in range(self._min_index, self._max_index + 1):
+            luxtronik_key_timestamp = str(
+                self.entity_description.luxtronik_key_timestamp
+            ).format(ID=i)
+            luxtronik_key = str(self.entity_description.luxtronik_key).format(ID=i)
+            key = self.coordinator.get_value(luxtronik_key_timestamp)
+            values[key] = self.coordinator.get_value(luxtronik_key)
+
+        values = dict(sorted(values.items()))
+        attr = self._attr_extra_state_attributes
+
+        item = values.popitem()
+        self._attr_native_value = attr[SA.CODE] = item[1]
+        attr[SA.TIMESTAMP] = self.format_time(item[0])
+
+        i = 1
+        while len(values) > 0:
+            item = values.popitem()
+            attr[SA.CODE + f"_{i}"] = item[1]
+            attr[SA.TIMESTAMP + f"_{i}"] = self.format_time(item[0])
+            i += 1
+
+        self.async_write_ha_state()
+
+    def format_time(self, value_timestamp: int | None) -> datetime | None:
+        if value_timestamp is None:
+            return None
+        return datetime.fromtimestamp(value_timestamp, UTC)
+
+
+class LuxtronikRoomThermostatTypeSensor(LuxtronikSensorEntity):
+    """The room unit the controller has detected, as the coordinator derives it.
+
+    Reads `coordinator.room_thermostat_type` rather than the register so the
+    RBE / RBE Plus split (which needs the RBE firmware version) matches what
+    climate.py acts on. P0033 keeps its integer datatype on purpose: giving
+    it a selection datatype would break that property's `int(raw)` (#773).
+    """
+
+    _unknown_code_logged = False
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+        thermostat_type = self.coordinator.room_thermostat_type
+        if isinstance(thermostat_type, LuxRoomThermostatType):
+            self._attr_native_value = thermostat_type.name
+        else:
+            if thermostat_type is not None and not self._unknown_code_logged:
+                # An ENUM sensor cannot report a code it has no option for;
+                # log it once so the new code can be added from an issue.
+                LOGGER.warning(
+                    "Room thermostat type %s is not known to this integration; "
+                    "the room thermostat type sensor shows unknown - please "
+                    "open an issue with a diagnostics download",
+                    thermostat_type,
+                )
+                self._unknown_code_logged = True
+            self._attr_native_value = None
+        self.async_write_ha_state()
+
+
+class LuxtronikCopSensorEntity(LuxtronikSensorEntity):
+    """Instantaneous COP: current heat output divided by current power consumption.
+
+    Only meaningful while the heat pump is actively serving the circuit this
+    entity represents, so it goes unavailable outside that operating status
+    rather than showing a stale or misleading ratio from a different mode.
+
+    Reads C0080_STATUS through the normal (non-raw) get_sensor_data path,
+    same as base.py's SWITCH_GAP formatter - this applies
+    normalize_sensor_value()'s existing "heating but neither compressor
+    actually running -> no_request" reclassification
+    (common._derive_operation_mode),
+    which is exactly the condition under which a COP reading would be
+    meaningless anyway, so it's a useful extra gate, not just incidental.
+
+    The denominator (power consumption) can be sourced from an external HA
+    sensor instead of the heat pump's own (sometimes inaccurate)
+    current_power_consumption reading, if the user configured one via
+    CONF_HA_SENSOR_CURRENT_POWER_CONSUMPTION in the options flow - same
+    pattern climate.py already uses for the indoor-temperature override.
+    Only the denominator is overridable this way; the numerator
+    (current_heat_output) always comes from the heat pump.
+    """
+
+    entity_description: LuxtronikCopSensorDescription  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        coordinator: LuxtronikCoordinator,
+        description: LuxtronikCopSensorDescription,
+        device_info_ident: DeviceKey,
+    ) -> None:
+        """Init Luxtronik COP Sensor."""
+        super().__init__(hass, entry, coordinator, description, device_info_ident)
+        self._external_power_sensor_entity_id: str | None = entry.options.get(
+            CONF_HA_SENSOR_CURRENT_POWER_CONSUMPTION,
+            entry.data.get(CONF_HA_SENSOR_CURRENT_POWER_CONSUMPTION),
+        )
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+        data = self.coordinator.data if data is None else data
+        if data is None:
+            return
+
+        descr = self.entity_description
+        status = get_sensor_data(data, LC.C0080_STATUS)
+        numerator = get_sensor_data(data, descr.numerator_key)
+
+        if self._external_power_sensor_entity_id:
+            external_state = self.hass.states.get(self._external_power_sensor_entity_id)
+            denominator = (
+                state_as_number_or_none(external_state)
+                if external_state is not None
+                else None
+            )
+        else:
+            denominator = get_sensor_data(data, descr.denominator_key)
+
+        if (descr.required_status is not None and status != descr.required_status) or (
+            not isinstance(numerator, (float, int))
+            or not isinstance(denominator, (float, int))
+            or denominator <= 0
+            or numerator < 0
+        ):
+            self._attr_available = False
+            self._attr_native_value = None
+        else:
+            self._attr_available = True
+            self._attr_native_value = round(numerator / denominator, 2)
+
+        self.async_write_ha_state()
+
+
+class LuxtronikSumSensorEntity(LuxtronikSensorEntity):
+    """A total across several registers holding one split quantity.
+
+    Its only current use is the additional heat generator's lifetime energy,
+    which the controller splits across parameters 1059 and 1140: 1059 stops
+    advancing at a firmware change and 1140 resumes counting from there, so
+    neither register alone is the lifetime figure on a unit that spans the
+    handover. Summing them reproduces the constant kWh-per-ZWE-hour rate the
+    unit held before the change, which is the evidence the split is a clean
+    handover with no gap or overlap (#733).
+
+    Registers this controller does not expose read None and are skipped, so
+    firmware predating 1140 still gets a correct total from 1059 alone. That
+    differs from LuxtronikCopSensorEntity, where a missing input makes the
+    ratio meaningless and the entity goes unavailable. Only an entirely
+    absent set - which async_setup_entry already refuses to create an entity
+    for - yields no value.
+    """
+
+    entity_description: LuxtronikSumSensorDescription  # type: ignore  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    @callback
+    def _handle_coordinator_update(
+        self, data: LuxtronikCoordinatorData | None = None
+    ) -> None:
+        """Handle updated data from the coordinator."""
+        data = self.coordinator.data if data is None else data
+        if data is None:
+            return
+
+        descr = self.entity_description
+        summands: list[float] = []
+        for key in descr.summand_keys:
+            value = get_sensor_data(data, key)
+            if isinstance(value, float | int):
+                summands.append(float(value))
+
+        if not summands:
+            self._attr_available = False
+            self._attr_native_value = None
+        else:
+            self._attr_available = True
+            total = sum(summands) * self._value_factor
+            if descr.native_precision is not None:
+                total = round(total, descr.native_precision)
+            self._attr_native_value = total
+
+        self.async_write_ha_state()

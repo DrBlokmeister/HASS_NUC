@@ -1,0 +1,1450 @@
+"""Update coordinator for Luxtronik integration."""
+
+# region Imports
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Callable, Mapping
+from datetime import datetime, timedelta
+import operator
+import re
+from types import MappingProxyType
+from typing import Any, Final
+
+from homeassistant.components.switch import ENTITY_ID_FORMAT as SWITCH_ENTITY_ID_FORMAT
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PORT,
+    CONF_TIMEOUT,
+    STATE_OFF,
+    STATE_ON,
+    Platform,
+)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+    restore_state,
+)
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
+from packaging.version import InvalidVersion, Version
+
+from .common import (
+    evu2_manual_input_required,
+    evu2_manual_model,
+    get_sensor_data,
+    normalize_sensor_value,
+)
+from .const import (
+    CONF_CALCULATIONS,
+    CONF_HA_SENSOR_PREFIX,
+    CONF_MAX_DATA_LENGTH,
+    CONF_PARAMETERS,
+    CONF_SUPPORTS_TIME_24_00,
+    CONF_UPDATE_INTERVAL,
+    CONF_VISIBILITIES,
+    COOLING_COUNTER_MIN_SPACING,
+    DEFAULT_MAX_DATA_LENGTH,
+    DEFAULT_PORT,
+    DEFAULT_TIMEOUT,
+    DEFAULT_UPDATE_INTERVAL,
+    DHW_TRANSITION_HOLD,
+    DOMAIN,
+    LOGGER,
+    LUX_PARAMETER_MK_SENSORS,
+    LUX_SCHEDULE_TIME_24_00,
+    UPDATE_INTERVAL_OPTIONS,
+    DeviceKey,
+    LuxCalculation as LC,
+    LuxMkTypes,
+    LuxOperationMode,
+    LuxParameter as LP,
+    LuxRoomThermostatType,
+    LuxVisibility as LV,
+    SensorKey,
+)
+from .lux_helper import Luxtronik, get_manufacturer_by_model
+from .lux_overrides import (
+    TimeOfDay,
+    isolate_instance_data,
+    name_unknown_visibilities_correctly,
+    record_parsed_block_lengths,
+    update_Luxtronik_HeatpumpCodes,
+    update_Luxtronik_Parameters,
+    update_Luxtronik_SwitchoffCodes,
+    warn_on_unknown_selection_codes,
+)
+from .model import LuxtronikCoordinatorData, LuxtronikEntityDescription
+
+# endregion Imports
+
+
+# Some controllers do not reflect a freshly written parameter in their
+# readable register block immediately, so the confirming read-back still
+# returns the pre-write value (issue #729: LWC407 / firmware V1.88.3). The
+# write itself succeeded, so confirmation is retried for a bounded window
+# before a mismatch is reported as a failed write. Controllers that apply
+# writes instantly (~3 ms measured) confirm on the first read and never wait.
+#
+# The delay doubles per retry, capped: every attempt costs a *full* read of
+# ~1900 values, so probing cheaply at first (0.1 s catches a quick settler
+# without making it wait a fixed quarter second) then backing off keeps a
+# write that will never converge from burning reads. The cap stops the last
+# delay from overshooting the budget. Worst case: 6 reads over ~2.5 s of
+# waiting before a genuine rejection is reported.
+WRITE_CONFIRM_MAX_ATTEMPTS = 6
+WRITE_CONFIRM_INITIAL_DELAY = 0.1
+WRITE_CONFIRM_MAX_DELAY = 1.0
+# Seconds after a confirmed write before one follow-up read. The controller
+# stores a written value at once, but whatever behaviour it triggers (a DHW
+# run starting after a setpoint change, say) takes it a few seconds to work
+# out; without this read that reaction only shows up on the next regular poll.
+# Relies on the confirming `async_refresh` having cleared the coordinator's
+# request-refresh debouncer, so the follow-up runs at +4 s rather than being
+# held back by the debouncer's 10 s cooldown.
+WRITE_FOLLOWUP_DELAY = 4.0
+
+# Firmware series (major) whose V<n>.90.x releases crash the whole controller
+# on any write over port 8889 (issue #831); the integration goes read-only.
+READONLY_FIRMWARE_SERIES: Final[frozenset[int]] = frozenset({1, 2})
+# The investigation and confirmed downgrades, and the first public report.
+READONLY_FIRMWARE_LEARN_MORE_URL: Final = (
+    "https://github.com/BenPru/luxtronik/issues/761"
+)
+READONLY_FIRMWARE_FORUM_URL: Final = "https://forum.iobroker.net/post/1357814"
+
+# Values a temperature register reports when nothing is wired to it. 0.0 is
+# the absent-hardware reading; 5.0 and 75.0 are the controller's placeholders,
+# observed on unconnected TRL_ext / TEE / TFB1-3 channels (issue #729).
+# _detect_solar_present() keeps its own buffer pair (0.0 / 150.0): 150.0 is
+# buffer-specific and deliberately not in this set.
+LUX_TEMPERATURE_SENTINELS: Final[frozenset[float]] = frozenset({0.0, 5.0, 75.0})
+
+
+def _write_confirmed(written: Any, confirmed: Any) -> bool:
+    """Return True if a write's post-refresh read-back matches what was written.
+
+    Datatype conversion (raw int -> float/enum/etc., see `lux_helper.py`'s
+    vendored `to_heatpump`/`from_heatpump`) can change a value's type between
+    what an entity passes to `async_write`/`async_write_many` and what a
+    refresh reads back afterwards, so a plain `==` is too strict. Numeric
+    values are additionally compared after rounding to 1 decimal place to
+    absorb floating point noise from 0.1-step datatypes (e.g. Celsius: raw / 10).
+    """
+    if written == confirmed:
+        return True
+    if isinstance(written, (int, float)) and isinstance(confirmed, (int, float)):
+        return round(float(written), 1) == round(float(confirmed), 1)
+    return False
+
+
+class LuxtronikCoordinator(DataUpdateCoordinator[LuxtronikCoordinatorData]):
+    """Representation of a Luxtronik Coordinator."""
+
+    # Class-level defaults, read by async_shutdown and firmware_package_version
+    # on coordinators that tests build with object.__new__ (skipping __init__).
+    _readonly_issue_id: str | None = None
+    _readonly_issue_firmware: str | None = None
+    _invalid_firmware_logged: str | None = None
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: Luxtronik,
+        config: Mapping[str, Any],
+        config_entry: ConfigEntry | None = None,
+    ) -> None:
+        """Initialize Luxtronik Client."""
+
+        self._lock = asyncio.Lock()
+        self.client = client
+        self._config = config
+        self.device_infos = dict[str, DeviceInfo]()
+        # Deadline for the DHW transition hold; see _update_dhw_transition_hold().
+        self._dhw_hold_until: datetime | None = None
+        # Last valid cooling counter reading; see _update_cooling_counter().
+        self._cooling_counter: int | None = None
+        self._cooling_counter_read_at: datetime | None = None
+        self._cooling_counter_running = False
+        # Latch for the ventilation module; see has_ventilation.
+        self._ventilation_detected = False
+        # The raised read-only repair issue, if any; see _update_readonly_issue.
+        self._readonly_issue_id = None
+        self._readonly_issue_firmware = None
+        # Last unparsable firmware string warned about; see
+        # firmware_package_version.
+        self._invalid_firmware_logged = None
+        # User-supplied SG2 state; see _apply_evu2_manual.
+        self._evu2_manual = False
+        # Cancels the pending follow-up read; see _schedule_write_followup().
+        self._write_followup_unsub: Callable[[], None] | None = None
+
+        update_interval: timedelta = DEFAULT_UPDATE_INTERVAL
+        raw = config.get(CONF_UPDATE_INTERVAL)
+        if isinstance(raw, str) and raw in UPDATE_INTERVAL_OPTIONS:
+            update_interval = UPDATE_INTERVAL_OPTIONS[raw]
+
+        super().__init__(
+            hass,
+            LOGGER,
+            name=DOMAIN,
+            config_entry=config_entry,
+            update_method=self._async_update_data,
+            update_interval=update_interval,
+        )
+
+        LOGGER.debug(
+            "Coordinator update interval=%s s",
+            self.update_interval.total_seconds()
+            if self.update_interval is not None
+            else None,
+        )
+
+    async def _async_update_data(self) -> LuxtronikCoordinatorData:
+        async with self._lock:
+            try:
+                await self.hass.async_add_executor_job(self.client.read)
+                LOGGER.debug(
+                    "Update coordinator data  (Async, interval=%s s)",
+                    self.update_interval.total_seconds()
+                    if self.update_interval is not None
+                    else None,
+                )
+                data = LuxtronikCoordinatorData(
+                    parameters=self.client.parameters,
+                    calculations=self.client.calculations,
+                    visibilities=self.client.visibilities,
+                )
+                self._update_dhw_transition_hold(data)
+                self._update_cooling_counter(data)
+                self._detect_time_24_00_support(data)
+                self._apply_evu2_manual(data)
+                self.data = data
+                self._update_readonly_issue()
+
+                return self.data
+            except Exception as err:
+                # The first good poll after this is a first cooling counter
+                # reading again: compared with the reading from before the
+                # gap, it would report cooling for whatever ran meanwhile.
+                self._cooling_counter = None
+                self._cooling_counter_read_at = None
+                self._cooling_counter_running = False
+                raise UpdateFailed(f"Error fetching data: {err}") from err
+
+    def _update_dhw_transition_hold(self, data: LuxtronikCoordinatorData) -> None:
+        """Decide whether this poll falls inside a DHW transition hold.
+
+        The controller drops to no_request for a minute or two while moving from
+        normal domestic-water heating into thermal disinfection, even though the
+        DHW recirculation pump keeps running (issue #519). Reporting the heat
+        pump as idle there breaks utility meters that split energy by operating
+        mode, so we keep reporting domestic_water for a bounded window.
+
+        Reading the status through get_sensor_data() here is safe and
+        deliberate: `data.dhw_transition_hold` is still False at this point, so
+        the value returned is the un-held mode - exactly the input this decision
+        needs, with no second derivation path to keep in sync.
+
+        The hold can only ever extend a domestic_water state that actually
+        happened. It never starts one from the pump alone, and it is capped at
+        DHW_TRANSITION_HOLD so a permanently running pump cannot latch it.
+        """
+        now = dt_util.utcnow()
+
+        if get_sensor_data(data, LC.C0080_STATUS) == LuxOperationMode.domestic_water:
+            self._dhw_hold_until = now + DHW_TRANSITION_HOLD
+            return
+
+        if (
+            self._dhw_hold_until is not None
+            and now < self._dhw_hold_until
+            and get_sensor_data(data, LC.C0038_DHW_RECIRCULATION_PUMP)
+        ):
+            data.dhw_transition_hold = True
+            return
+
+        self._dhw_hold_until = None
+
+    def _update_cooling_counter(self, data: LuxtronikCoordinatorData) -> None:
+        """Decide whether the controller's cooling counter is running.
+
+        The controller reports passive cooling as no_request with status line
+        3 on heating - the same state as an idle heat pump in the heating
+        season (#404). The old temperature heuristic could not tell the two
+        apart: a 0.1 K tick in the return temperature flipped an idle unit to
+        cooling every minute or two (#826). C0066 counts the seconds the
+        controller spends cooling, updated every second, so it rising between
+        two polls is the controller's own answer.
+
+        A reading of 0 or None (a glitch poll reads every register as 0) is
+        ignored, keeping both the verdict and the baseline. A read too close to
+        the last one keeps the verdict too. A lower reading is a counter reset
+        and becomes the new baseline.
+        """
+        value = get_sensor_data(data, LC.C0066_OPERATION_HOURS_COOLING)
+        try:
+            seconds = int(value)
+        except (TypeError, ValueError):
+            seconds = 0
+        now = dt_util.utcnow()
+
+        if seconds > 0 and (
+            self._cooling_counter_read_at is None
+            or now - self._cooling_counter_read_at >= COOLING_COUNTER_MIN_SPACING
+        ):
+            previous = self._cooling_counter
+            self._cooling_counter_running = previous is not None and seconds > previous
+            self._cooling_counter = seconds
+            self._cooling_counter_read_at = now
+
+        data.cooling_counter_running = self._cooling_counter_running
+
+    def _apply_evu2_manual(self, data: LuxtronikCoordinatorData) -> None:
+        """Carry the user-supplied SG2 state into this poll's data (#500).
+
+        Only on the models listed in EVU2_MANUAL_INPUT_MODELS, whose SG2
+        contact no register reports. Everywhere else the field stays None and
+        the SmartGrid inputs are read from the controller as before.
+
+        The value lives on the coordinator because every poll builds fresh
+        data; the switch that sets it restores it across restarts.
+        """
+        if evu2_manual_input_required(data):
+            data.evu2_manual = self._evu2_manual
+
+    @property
+    def evu2_manual(self) -> bool:
+        """The SG2 state set through the manual switch, applied or not.
+
+        `data.evu2_manual` says whether it is applied - None while SmartGrid
+        is off. The switch shows this instead, so it keeps showing the
+        setting then and does not get stored as off on the next reload.
+        """
+        return self._evu2_manual
+
+    @callback
+    def async_restore_evu2_manual(self) -> None:
+        """Load the manual SG2 value from its switch's last state (#500).
+
+        Called before the platforms are set up. The switch cannot restore the
+        value itself: platforms set up concurrently, so the SmartGrid status
+        sensor could publish a state computed from the default first and flip
+        once the switch arrived - a spurious state change on every restart.
+
+        Looked up through the entity registry by unique id, which stays put
+        when the user renames the entity id.
+        """
+        prefix = self._config.get(CONF_HA_SENSOR_PREFIX)
+        # The model alone, not SmartGrid being on: turning SG on with the
+        # select does not reload, so the setting has to be loaded already.
+        # Whether it is applied stays the per-poll decision.
+        if prefix is None or not evu2_manual_model(self.data):
+            return
+        unique_id = SWITCH_ENTITY_ID_FORMAT.format(f"{prefix}_{SensorKey.EVU2_MANUAL}")
+        registry = er.async_get(self.hass)
+        entity_id = registry.async_get_entity_id(Platform.SWITCH, DOMAIN, unique_id)
+        if entity_id is None:
+            return
+        entry = registry.async_get(entity_id)
+        if entry is not None and entry.disabled_by is not None:
+            # A disabled switch means open. Restoring its last value would let
+            # it steer the status with no visible entity to change it, until
+            # the restore cache expired and the status changed on its own.
+            return
+        storage = restore_state.async_get(self.hass)
+        # Home Assistant 2026.11 removed `last_states` and indexes stored
+        # states by entity registry id; the getter replaces it (#846).
+        get_stored_state = getattr(storage, "async_get_stored_state", None)
+        if get_stored_state is not None:
+            stored = get_stored_state(entity_id)
+        else:  # Home Assistant 2026.10 and older
+            stored = storage.last_states.get(entity_id)
+        if stored is None or stored.state.state not in (STATE_ON, STATE_OFF):
+            return
+        self._evu2_manual = stored.state.state == STATE_ON
+        # The first refresh has already run by now and applied the default;
+        # without this the restored value would only land at the next poll.
+        if self.data is not None:
+            self._apply_evu2_manual(self.data)
+
+    @callback
+    def set_evu2_manual(self, value: bool) -> None:
+        """Set the SG2 state from the manual switch and push it out now.
+
+        Applied to the current data as well, so the SmartGrid status follows a
+        toggle straight away rather than at the next poll.
+        """
+        self._evu2_manual = value
+        if self.data is not None:
+            self._apply_evu2_manual(self.data)
+        self.async_update_listeners()
+
+    def _detect_time_24_00_support(self, data: LuxtronikCoordinatorData) -> None:
+        """Latch whether this controller accepts "24:00" as a schedule end time.
+
+        Most controllers cap schedule times at "23:59" and reject "24:00"; a
+        few accept it and store 86400 (issue #787). Nothing in the protocol
+        advertises which behaviour a unit has, but a register can only hold
+        86400 because the controller itself put it there - so seeing the value
+        once is proof that this firmware accepts it, and is the only evidence
+        available.
+
+        Latched into the config entry rather than kept in memory: the evidence
+        disappears the moment the user edits that row away, and the capability
+        must not disappear with it. Absence of the key reads as False, so no
+        entry migration is needed.
+
+        Matching on the datatype rather than on a parameter index list keeps
+        this correct if `lux_overrides` ever maps another circuit's schedule
+        parameters to `TimeOfDay`.
+        """
+        entry = self.config_entry
+        if entry is None or entry.data.get(CONF_SUPPORTS_TIME_24_00):
+            return
+        evidence = next(
+            (
+                sensor.name
+                for sensor in data.parameters.parameters.values()
+                if isinstance(sensor, TimeOfDay)
+                and sensor.value == LUX_SCHEDULE_TIME_24_00
+            ),
+            None,
+        )
+        if evidence is None:
+            return
+
+        # Info, not debug: this reloads the entry once and permanently changes
+        # what a typed "24:00" writes, so it should be findable in a normal
+        # log. Logging the parameter, not just the value: if this ever
+        # latches wrongly, the name is what makes the report diagnosable.
+        LOGGER.info(
+            "%s holds %s - writing that end time verbatim from now on",
+            evidence,
+            LUX_SCHEDULE_TIME_24_00,
+        )
+        # Updating the entry fires the update listener, which reloads the
+        # entry (see `__init__.update_listener`). That is how the new
+        # capability reaches the schedule entities, and it happens exactly
+        # once: the guard above sees the flag on every later poll.
+        self.hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_SUPPORTS_TIME_24_00: True}
+        )
+
+    @property
+    def write_blocked(self) -> bool:
+        """True on firmware V1.90.x / V2.90.x, where any write crashes the controller (#831)."""
+        return (
+            self.firmware_series in READONLY_FIRMWARE_SERIES
+            and self.firmware_version_minor.major == 90
+        )
+
+    def raise_if_write_blocked(self) -> None:
+        """Raise the translated read-only error on firmware that blocks writes.
+
+        async_write_many always checks; setters that change entity state
+        first or defer the write through a debouncer call this up front, so
+        the user gets the error instead of a value that never reaches the
+        device.
+        """
+        if self.write_blocked:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="readonly_firmware",
+                translation_placeholders={"firmware": self.firmware_version},
+            )
+
+    def _update_readonly_issue(self) -> None:
+        """Keep the read-only repair issue in step with `write_blocked`.
+
+        Raised while blocked - again when the firmware string changes, so
+        the text names the running version - and removed when the block
+        lifts: a firmware downgrade, the remedy for #831, happens while HA
+        runs. The config flow's temporary coordinator has no entry and
+        nothing would ever remove its issue, so it raises none.
+        """
+        blocked = self.write_blocked
+        firmware = self.firmware_version
+        if blocked and self.config_entry and firmware != self._readonly_issue_firmware:
+            self._readonly_issue_id = f"readonly_firmware_{self.config_entry.entry_id}"
+            self._readonly_issue_firmware = firmware
+            LOGGER.warning(
+                "Firmware %s crashes the Luxtronik controller on write commands "
+                "(issue #831): the integration is read-only, all writes are blocked",
+                firmware,
+            )
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                self._readonly_issue_id,
+                is_fixable=False,
+                is_persistent=False,
+                learn_more_url=READONLY_FIRMWARE_LEARN_MORE_URL,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="readonly_firmware",
+                translation_placeholders={
+                    "firmware": firmware,
+                    "forum_url": READONLY_FIRMWARE_FORUM_URL,
+                },
+            )
+        elif not blocked and self._readonly_issue_id is not None:
+            LOGGER.info(
+                "Firmware %s accepts write commands again: writes are re-enabled",
+                firmware,
+            )
+            self._delete_readonly_issue()
+
+    def _delete_readonly_issue(self) -> None:
+        if self._readonly_issue_id is not None:
+            ir.async_delete_issue(self.hass, DOMAIN, self._readonly_issue_id)
+            self._readonly_issue_id = None
+            self._readonly_issue_firmware = None
+
+    async def async_write(self, parameter: str, value: Any) -> LuxtronikCoordinatorData:
+        """Write a single parameter to the heat pump and confirm it stuck.
+
+        Thin wrapper around `async_write_many` for the common single-parameter
+        write case; see that method for the write/refresh/confirm logic.
+        """
+        return await self.async_write_many([(parameter, value)])
+
+    async def async_write_many(
+        self, pairs: list[tuple[str, Any]]
+    ) -> LuxtronikCoordinatorData:
+        """Write multiple parameters in one queued batch, then refresh once.
+
+        All pairs are queued via `parameters.set` before a single
+        `client.write()` flushes them to the device, and the coordinator
+        refreshes exactly once afterwards - avoiding an up-to-N-serial-refresh
+        pattern a naive per-parameter write loop would cause (e.g. editing a
+        multi-row timer schedule).
+
+        After the refresh, each written value is compared against what the
+        device reports back; on any mismatch (rejected or clamped write) a
+        `HomeAssistantError` is raised so the UI surfaces the failure and the
+        entity re-syncs to the device's actual value instead of silently
+        keeping the optimistic one.
+        """
+        self.raise_if_write_blocked()
+        try:
+            # A follow-up armed by the previous write must not fire in the
+            # middle of this one; it is re-armed once this write confirms.
+            self._cancel_write_followup()
+            async with self._lock:
+                # This batch owns the queue. `_write` empties it on every exit
+                # path, but a failure before `_write` is entered - a
+                # `connect()` timeout while the controller reboots, or a
+                # `parameters.set` that raises partway through the loop below -
+                # leaves the previous batch's entries behind. Starting clean
+                # means a stale entry can never ride along on an unrelated
+                # write, whatever went wrong last time. Cleared in place: the
+                # library's `set` mutates whichever dict `queue` refers to.
+                self.client.parameters.queue.clear()
+                for parameter, value in pairs:
+                    await self.hass.async_add_executor_job(
+                        self.client.parameters.set, parameter, value
+                    )
+                LOGGER.debug(
+                    "Done: self.client.parameters.set (%d parameter(s))", len(pairs)
+                )
+                await self.hass.async_add_executor_job(self.client.write)
+                LOGGER.debug("Done: self.client.write")
+
+            # Refresh after write, retrying the confirming read while the
+            # device still reports pre-write values (see the
+            # WRITE_CONFIRM_* constants). The wait is awaited rather than
+            # slept through: this runs on Home Assistant's event loop, and
+            # the socket lock above is already released here.
+            mismatches: list[str] = []
+            delay = WRITE_CONFIRM_INITIAL_DELAY
+            for attempt in range(WRITE_CONFIRM_MAX_ATTEMPTS):
+                if attempt:
+                    await asyncio.sleep(delay)
+                    delay = min(delay * 2, WRITE_CONFIRM_MAX_DELAY)
+
+                await self.async_refresh()
+                LOGGER.debug("Coordinator data refreshed!")
+
+                # async_refresh() swallows failures internally (logs, does not
+                # raise) rather than propagating them, so self.data may still
+                # be the stale pre-write snapshot here. Comparing
+                # newly-written values against stale data would almost always
+                # look like a mismatch, misleadingly implying the device
+                # rejected the write when only the confirming read failed.
+                # Surface that distinctly instead of running the confirm
+                # comparison against stale data - and do not retry, since a
+                # failed read tells us nothing about the write.
+                if not self.last_update_success:
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN,
+                        translation_key="write_confirmation_unavailable",
+                        translation_placeholders={
+                            "parameters": ", ".join(parameter for parameter, _ in pairs)
+                        },
+                    )
+
+                # Confirm each value after the read
+                mismatches = []
+                for parameter, value in pairs:
+                    confirmed_value = self.get_value(f"{CONF_PARAMETERS}.{parameter}")
+                    LOGGER.debug(
+                        'LuxtronikDevice.write finished %s value: "%s" (confirmed: "%s")',
+                        parameter,
+                        value,
+                        confirmed_value,
+                    )
+                    if not _write_confirmed(value, confirmed_value):
+                        mismatches.append(
+                            f"{parameter} (wrote {value!r}, device reports {confirmed_value!r})"
+                        )
+
+                if not mismatches:
+                    break
+
+                LOGGER.debug(
+                    "Write not confirmed yet (attempt %d/%d): %s",
+                    attempt + 1,
+                    WRITE_CONFIRM_MAX_ATTEMPTS,
+                    "; ".join(mismatches),
+                )
+
+            if mismatches:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="write_confirmation_mismatch",
+                    translation_placeholders={"details": "; ".join(mismatches)},
+                )
+
+            self._schedule_write_followup()
+            return self.data
+        except HomeAssistantError:
+            raise
+        except Exception as err:
+            raise LuxtronikWriteError(f"Write error: {err}") from err
+
+    @callback
+    def _schedule_write_followup(self) -> None:
+        """Arm one follow-up read WRITE_FOLLOWUP_DELAY after the latest write.
+
+        A burst of writes (a multi-row schedule edit, several numbers in a
+        row) re-arms the same timer rather than stacking reads, so it costs a
+        single extra read after the last write of the burst.
+        """
+        self._cancel_write_followup()
+
+        async def _followup(_now: datetime) -> None:
+            self._write_followup_unsub = None
+            LOGGER.debug("Follow-up refresh (%.1f s after write)", WRITE_FOLLOWUP_DELAY)
+            await self.async_request_refresh()
+
+        self._write_followup_unsub = async_call_later(
+            self.hass, WRITE_FOLLOWUP_DELAY, _followup
+        )
+
+    @callback
+    def _cancel_write_followup(self) -> None:
+        if self._write_followup_unsub is not None:
+            self._write_followup_unsub()
+            self._write_followup_unsub = None
+
+    @staticmethod
+    async def connect(  # pragma: no cover
+        hass: HomeAssistant,
+        config_entry: ConfigEntry | dict[str, Any],
+        entry: ConfigEntry | None = None,
+    ) -> LuxtronikCoordinator:
+        """Connect to heatpump.
+
+        `config_entry` supplies the connection settings (host/port/etc.) and
+        may be a plain dict (e.g. during config-flow validation, before an
+        entry exists). `entry` is the actual ConfigEntry to tie the resulting
+        coordinator to, when one exists - callers can't rely on `config_entry`
+        for that since it may already be a merged data dict rather than the
+        entry itself (see `connect_and_get_coordinator`).
+        """
+        config: dict[Any, Any] | MappingProxyType[str, Any] | None = None
+        if isinstance(config_entry, ConfigEntry):
+            config = config_entry.data
+        else:
+            config = config_entry
+
+        host = config[CONF_HOST]
+        port = config[CONF_PORT]
+        timeout = config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+        max_data_length = config.get(CONF_MAX_DATA_LENGTH, DEFAULT_MAX_DATA_LENGTH)
+
+        client = Luxtronik(
+            host=host,
+            port=port,
+            socket_timeout=timeout,
+            max_data_length=max_data_length,
+            safe=False,
+        )
+
+        # Test connection
+        try:
+            await hass.async_add_executor_job(client.connect)
+        except Exception as err:
+            LOGGER.error("Luxtronik connection failed: %s", err)
+            raise ConfigEntryNotReady from err
+
+        return LuxtronikCoordinator(
+            hass=hass,
+            client=client,
+            config=config,
+            config_entry=entry,
+        )
+
+    def get_device(
+        self,
+        key: DeviceKey = DeviceKey.heatpump,
+    ) -> DeviceInfo:
+        if key not in self.device_infos:
+            self._create_device_infos(self.hass, self._config)
+        device_info = self.device_infos.get(key)
+        if device_info is None:
+            return DeviceInfo(
+                identifiers={(DOMAIN, f"{self.unique_id}_{key.value}".lower())}
+            )
+        return device_info
+
+    def _create_device_infos(
+        self,
+        hass: HomeAssistant,
+        config: Mapping[str, Any],
+    ):
+        host = config[CONF_HOST]
+        heatpump = self._build_device_info(DeviceKey.heatpump, host)
+        heatpump_device_id = self._register_heatpump(hass, heatpump)
+        # Built as one map and assigned in a single step: `__init__` prunes the
+        # device registry against `device_infos`, so a half-filled map would
+        # read as "these devices are gone".
+        device_infos = {DeviceKey.heatpump: heatpump}
+        for key in (
+            DeviceKey.heating,
+            DeviceKey.domestic_water,
+            DeviceKey.cooling,
+            DeviceKey.ventilation,
+        ):
+            device_infos[key] = self._build_device_info(key, host, heatpump_device_id)
+        self.device_infos = device_infos
+
+    @callback
+    def async_register_devices(self) -> None:
+        """Register the physical device and build every device info.
+
+        Registering the heat pump is what lets the sub-devices reference it by
+        `via_device_id`, so it has to happen before the platforms are set up.
+        `get_device()` would do it lazily on first use, but that would put a
+        device registry write inside an entity constructor; calling this from
+        `async_setup_entry` keeps the write on an explicit, loop-only path.
+        """
+        self._create_device_infos(self.hass, self._config)
+
+    def _register_heatpump(
+        self,
+        hass: HomeAssistant,
+        heatpump: DeviceInfo,
+    ) -> str | None:
+        """Register the physical unit and return its device registry id.
+
+        The sub-devices are linked to it with `via_device_id`, which is a
+        registry id rather than an identifier tuple, so the heat pump has to be
+        registered before they are built - entity setup is too late.
+
+        Returns `None` when there is no config entry to own the device, which
+        leaves the sub-devices unparented. No production path reaches that:
+        `config_flow` does build entry-less coordinators to probe a connection,
+        but it only ever reads `unique_id` from them. The branch is kept as the
+        safe fallback for that shape rather than as a case that happens.
+        """
+        if self.config_entry is None:
+            return None
+        # Only main-device keys may be splatted here: `async_get_or_create`
+        # rejects unexpected keyword arguments, and `DeviceInfo` has grown
+        # child-device keys that `entity_platform` strips before its own call.
+        return (
+            dr.async_get(hass)
+            .async_get_or_create(config_entry_id=self.config_entry.entry_id, **heatpump)
+            .id
+        )
+
+    def _build_device_info(
+        self,
+        key: DeviceKey,
+        host: str,
+        via_device_id: str | None = None,
+    ) -> DeviceInfo:
+        device_info = DeviceInfo(
+            identifiers={
+                (
+                    DOMAIN,
+                    f"{self.unique_id}_{key.value}".lower(),
+                )
+            },
+            entry_type=None,
+            name=str(key.value),
+            translation_key=key.value,
+            configuration_url=f"http://{host}/",
+            sw_version=self.firmware_version,
+            model=self.model,
+            hw_version=None,
+            manufacturer=self.manufacturer,
+        )
+        if key is DeviceKey.heatpump:  # the root device
+            # Only the physical unit carries the serial: heating, domestic
+            # water and cooling are logical sub-devices of the same heat pump
+            # (they are the ones parented by `via_device_id`), and repeating
+            # the serial on each would read as several units sharing one
+            # serial.
+            #
+            # Rendered as `unique_id` rather than `serial_number` so it matches
+            # the string `config_flow` prints when a second config entry
+            # collides on this serial.
+            device_info["serial_number"] = self.unique_id
+        if via_device_id is not None:
+            device_info["via_device_id"] = via_device_id
+        return device_info
+
+    def _is_version_not_compatible(
+        self, description: LuxtronikEntityDescription
+    ) -> bool:
+        """Check if the current firmware version is NOT compatible with the entity description."""
+
+        # Check minimum version if specified
+        if (
+            description.min_firmware_version is not None
+            and self.firmware_package_version < description.min_firmware_version
+        ):
+            return True
+
+        # Check maximum version if specified
+        if (
+            description.max_firmware_version is not None
+            and self.firmware_package_version > description.max_firmware_version
+        ):
+            return True
+
+        # Check minimum minor version if specified
+        if (
+            description.min_firmware_version_minor is not None
+            and self.firmware_version_minor < description.min_firmware_version_minor
+        ):
+            return True
+
+        # Check maximum minor version if specified
+        return (
+            description.max_firmware_version_minor is not None
+            and self.firmware_version_minor > description.max_firmware_version_minor
+        )
+
+    @property
+    def serial_number(self) -> str:
+        """Return the serial number.
+
+        Raises:
+            LuxtronikSerialNumberError: if the serial number date (P0874) is
+                unavailable. This feeds `unique_id`, so it must be treated as
+                a hard error rather than silently identifying the device
+                with an empty/placeholder value.
+
+        """
+        serial_number_date = self.get_value(LP.P0874_SERIAL_NUMBER)
+        if serial_number_date is None:
+            raise LuxtronikSerialNumberError(
+                "Serial number (P0874) is not available - coordinator data "
+                "may not be populated yet"
+            )
+        serial_number_model = self.get_value(LP.P0875_SERIAL_NUMBER_MODEL)
+        serial_number_hex = (
+            hex(int(serial_number_model)) if serial_number_model is not None else "0"
+        )
+        return f"{serial_number_date}-{serial_number_hex}".replace("x", "")
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique id."""
+        return self.serial_number.lower().replace("-", "_")
+
+    @property
+    def model(self) -> str:
+        """Return the heatpump model."""
+        return str(self.get_value(LC.C0078_MODEL_CODE) or "")
+
+    @property
+    def manufacturer(self) -> str | None:
+        """Return the heatpump manufacturer."""
+        return get_manufacturer_by_model(self.model)
+
+    @property
+    def firmware_version(self) -> str:
+        """Return the heatpump firmware version."""
+        return str(self.get_value(LC.C0081_FIRMWARE_VERSION))
+
+    @property
+    def firmware_package_version(self) -> Version:
+        """Return the heatpump firmware version as a packaging Version."""
+        ver = self.firmware_version
+        cleaned_version = re.sub(r"^[^\d]+", "", ver or "")
+        try:
+            return Version(cleaned_version)
+        except InvalidVersion:
+            # write_blocked reads this on every poll; warn once per value.
+            if ver != self._invalid_firmware_logged:
+                self._invalid_firmware_logged = ver
+                LOGGER.warning(
+                    "Invalid firmware version '%s' (cleaned: '%s')",
+                    ver,
+                    cleaned_version,
+                )
+            return Version("0")
+
+    @property
+    def firmware_series(self) -> int:
+        """Return the controller series, which is the firmware major version.
+
+        The major digit identifies the controller generation - V2.x is a
+        Luxtronik 2.0, V3.x a 2.1 - and never advances on a firmware update,
+        so it is a hardware fact rather than a version threshold. Only use it
+        where a register's *meaning* differs between generations; whether a
+        register exists is decided by reading it, not by this.
+        """
+        rel = self.firmware_package_version.release
+        return rel[0] if rel else 0
+
+    @property
+    def firmware_version_minor(self) -> Version:
+        """Return firmware 'minor' version as <minor>.<patch>.
+        Example:
+            - 3.90.1 -> 90.1
+            - 3.90   -> 90.0
+            - 3      -> 0.0
+        """
+        ver = self.firmware_package_version
+        rel = ver.release  # e.g. (3, 90) or (3, 90, 1)
+        minor = rel[1] if len(rel) > 1 else 0
+        patch = rel[2] if len(rel) > 2 else 0
+        return Version(f"{minor}.{patch}")
+
+    @property
+    def room_thermostat_type(self) -> LuxRoomThermostatType | int | None:
+        """Derived runtime room thermostat type from parameter P0033.
+
+        Returns LuxRoomThermostatType enum when recognized, raw int when
+        unknown numeric, or None when not set or on error.
+        """
+        try:
+            raw = self.get_value(LP.P0033_ROOM_THERMOSTAT_TYPE)
+            if raw is None:
+                return None
+            try:
+                num = int(raw)
+            except Exception:
+                return None
+            if num == LuxRoomThermostatType.rbe.value:
+                rbe_version = Version(self.get_value(LC.C0258_RBE_VERSION) or "0")
+                if rbe_version >= Version("2.0.0"):
+                    return LuxRoomThermostatType.rbe_plus
+                else:
+                    return LuxRoomThermostatType.rbe
+
+            try:
+                return LuxRoomThermostatType(num)
+            except Exception:
+                return num
+        except Exception:
+            return None
+
+    _VISIBILITY_FORMULA_OPERATORS: Final[dict[str, Callable[[Any, Any], bool]]] = {
+        ">": operator.gt,
+        ">=": operator.ge,
+        "<": operator.lt,
+        "<=": operator.le,
+        "==": operator.eq,
+        "!=": operator.ne,
+    }
+
+    def _evaluate_visibility_formula(self, value: Any, formula: str) -> bool | None:
+        parts = formula.strip().split()
+        if len(parts) != 2:
+            LOGGER.warning("Invalid visibility formula: %s", formula)
+            return None
+        op_str, threshold_str = parts
+        if op_str == "in":
+            # `in a,b,c` - equal to any item, each compared exactly as `==`
+            # would, so a raw code and its decoded name can share one list.
+            return any(
+                self._evaluate_visibility_formula(value, f"== {item}")
+                for item in threshold_str.split(",")
+            )
+        op_func = self._VISIBILITY_FORMULA_OPERATORS.get(op_str)
+        if op_func is None:
+            LOGGER.warning("Unsupported operator in visibility formula: %s", formula)
+            return None
+        try:
+            threshold = float(threshold_str)
+            return op_func(float(value), threshold)
+        except (ValueError, TypeError):
+            pass
+        try:
+            if threshold_str.lower() == "true":
+                threshold = True
+            elif threshold_str.lower() == "false":
+                threshold = False
+            else:
+                raise ValueError
+            if isinstance(value, str):
+                bool_value = value.lower() == "true"
+            else:
+                bool_value = bool(value)
+            return op_func(bool_value, threshold)
+        except Exception:
+            try:
+                threshold = str(threshold_str)
+                return op_func(str(value), threshold)
+            except Exception:
+                LOGGER.warning(
+                    "Could not evaluate visibility formula %s with value %s",
+                    formula,
+                    value,
+                )
+                return None
+
+    @staticmethod
+    def _mk_type_can_cool(value: Any) -> bool:
+        """Does a mixing-circuit type register say the circuit can cool?
+
+        It reads a raw code today, but `lux_overrides` gives parameters
+        selection datatypes as their codes become known, and the register
+        would then read "cooling" rather than 3. Unlike the visibility gate
+        that raised in #773, this comparison fails silently: it evaluates
+        False and, through `_detect_cooling_mk`, takes the whole cooling
+        device away from every affected user, with nothing in the log to
+        say so. Accepting both spellings of the same answer costs a tuple.
+        The cooling-target entities gate on the same two answers through
+        their declared `in` formula.
+        """
+        return any(
+            value == mk_type.value or value == mk_type.name
+            for mk_type in (LuxMkTypes.cooling, LuxMkTypes.heating_cooling)
+        )
+
+    def _special_visibility(self, visibility: LV | LP) -> bool | None:
+        """Decide the gates a plain numeric read cannot decide.
+
+        Flags the controller sets unreliably (solar, the DHW pump pair,
+        cooling) are detected from the registers instead. Note that this
+        method only drives `entity_registry_enabled_default`, while
+        `entity_active` is what decides whether an entity exists at all - a
+        register that decides existence is declared on the description
+        through `entity_active_key` rather than handled here.
+
+        Returns None for the gates that are ordinary numeric flags.
+        """
+        if visibility in (
+            LV.V0038_SOLAR_COLLECTOR,
+            LV.V0039_SOLAR_BUFFER,
+            LV.V0250_SOLAR,
+        ):
+            return self._detect_solar_present()
+        if visibility == LV.V0059_DHW_CIRCULATION_PUMP:
+            return self._detect_dhw_circulation_pump_present()
+        if visibility == LV.V0059A_DHW_CHARGING_PUMP:
+            return not self._detect_dhw_circulation_pump_present()
+        if visibility == LV.V0005_COOLING:
+            return self.detect_cooling_present()
+        return None
+
+    def _visibility_flag_set(self, value: Any, visibility: LV | LP) -> bool:
+        """Read a visibility register as the on/off flag it is meant to be.
+
+        A register whose datatype decodes it to a name is not a flag and
+        cannot be compared to 0. Guessing what such a name means would be
+        worse than useless, so this falls open exactly as an unreadable
+        register does: one entity enabled by default is a far smaller failure
+        than the `TypeError` that aborts `async_setup_entry` and leaves the
+        whole platform without entities (#773). The gate belongs in
+        `_special_visibility`; the warning names it.
+        """
+        # bool is an int, and True/False compare against 0 as intended.
+        if isinstance(value, (int, float)):
+            return value > 0
+        if isinstance(value, str):
+            try:
+                return float(value) > 0
+            except ValueError:
+                pass
+        LOGGER.warning(
+            "Visibility %s reads %s, which is not a flag - treating the entity "
+            "as visible. This register needs its own rule in "
+            "_special_visibility.",
+            visibility,
+            value,
+        )
+        return True
+
+    def entity_visible(self, description: LuxtronikEntityDescription) -> bool:
+        """Is description visible."""
+        if description.visibility == LV.UNSET:
+            return True
+        # Detecting some options based on visibilities doesn't work reliably.
+        # Use special functions
+        special_result = self._special_visibility(description.visibility)
+        if special_result is not None:
+            return special_result
+        visibility_result = self.get_value(description.visibility)
+        if visibility_result is None:
+            LOGGER.warning("Could not load visibility %s", description.visibility)
+            return True
+        if description.visibility_formula is not None:
+            formula_result = self._evaluate_visibility_formula(
+                visibility_result, description.visibility_formula
+            )
+            if formula_result is not None:
+                return formula_result
+        return self._visibility_flag_set(visibility_result, description.visibility)
+
+    def entity_active(self, description: LuxtronikEntityDescription) -> bool:
+        """Does the entity exist at all on this heat pump?
+
+        Register-based gates are declared on the description through
+        `entity_active_key` / `entity_active_formula`, not special-cased here.
+        What remains here cannot be declared: firmware compatibility, the
+        device gates, and solar, which is a heuristic over several registers.
+        """
+        if self._is_version_not_compatible(description):
+            return False
+        if description.visibility in [
+            LV.V0038_SOLAR_COLLECTOR,
+            LV.V0039_SOLAR_BUFFER,
+            LV.V0250_SOLAR,
+        ]:
+            return self._detect_solar_present()
+        if not self.device_key_active(description.device_key):
+            return False
+        if description.entity_active_formula is not None:
+            if (
+                description.entity_active_key is not None
+                and self.get_value(description.luxtronik_key) is None
+            ):
+                # The gate says yes, but the controller never sent the
+                # entity's own register, so it would sit on unknown forever
+                # (#738). `key_exists` cannot stand in for this: its
+                # `_register_returned` only infers absence above
+                # UPSTREAM_MAX_DEFINED_INDEX (1125) - one corpus unit returns
+                # P1030 but ends its parameter block before 1120.
+                return False
+            active_value = self.get_value(
+                description.entity_active_key or description.luxtronik_key
+            )
+            if active_value is None:
+                # The controller did not return this register, so the formula
+                # has nothing to decide on. Creating the entity anyway leaves
+                # it permanently unavailable (#738).
+                return False
+            formula_result = self._evaluate_visibility_formula(
+                active_value, description.entity_active_formula
+            )
+            if formula_result is not None:
+                return formula_result
+        return True
+
+    def device_key_active(self, device_key: DeviceKey) -> bool:
+        """Is device key activated."""
+        if device_key in (DeviceKey.heatpump, DeviceKey.heating):
+            return True
+        if device_key == DeviceKey.domestic_water:
+            return self.has_domestic_water
+        if device_key == DeviceKey.cooling:
+            return self.has_cooling
+        if device_key == DeviceKey.ventilation:
+            return self.has_ventilation
+        raise NotImplementedError
+
+    @property
+    def has_domestic_water(self) -> bool:
+        """Is domestic water activated.
+
+        DHW operating hours prove it, but a freshly commissioned pump has
+        none until its first DHW run (#820), so a wired DHW sensor counts
+        too. The three heating-only units in the diagnostics corpus read
+        75.0 on it; 0.0 and 5.0, the other unwired placeholders, are treated
+        the same since no unit with hot water reads them. A wired sensor does
+        not prove DHW is configured, but the corpus holds no counterexample.
+        """
+        val = self.get_value(LC.C0065_OPERATION_HOURS_DHW)
+        if val is not None and val > 0:
+            return True
+        dhw_temp = self.get_value(LC.C0017_DHW_TEMPERATURE)
+        return dhw_temp is not None and float(dhw_temp) not in LUX_TEMPERATURE_SENTINELS
+
+    @property
+    def has_solar(self) -> bool:
+        """Is solar present - see _detect_solar_present."""
+        return self._detect_solar_present()
+
+    @property
+    def has_cooling(self) -> bool:
+        """Is cooling activated."""
+        val = self.get_value(LC.C0066_OPERATION_HOURS_COOLING)
+        if val is not None and val > 0:
+            return True
+        return self.detect_cooling_present()
+
+    @property
+    def has_ventilation(self) -> bool:
+        """Is an integrated ventilation module present.
+
+        Detected from the air temperatures, not from the ventilation
+        visibility flags, which are unreliable: issue #729's reporter runs a
+        working ventilation module while ID_Visi_Lueftung reads 0, so those
+        flags cannot be trusted in either direction and are deliberately not
+        consulted anywhere for ventilation.
+
+        Only one channel has to read plausibly. Requiring both was wrong:
+        #729's reporter has a module with no exhaust sensor, whose channel
+        sits on the controller's unwired-sensor sentinel (5.0, unchanged
+        across 18 h of recorder history while supply drifted realistically
+        through 229 states). A unit without a module reports a flat 0.0 on
+        both channels (measured on an Alpha Innotec MSW4-16), so demanding
+        two live channels would hide the device from exactly the
+        installations that asked for it.
+
+        Sentinels are therefore treated as absent readings rather than as
+        values, the same shape as _detect_solar_present()'s 0.0 / 150.0
+        buffer check.
+
+        Latched on: once a plausible reading has been seen, this stays True
+        for the lifetime of the config entry. The evidence is a live
+        temperature, so it can legitimately land on a sentinel later -- a
+        supply-air channel genuinely passing through 0.0 or 5.0 C while the
+        exhaust channel is an unwired 5.0 makes both look absent for that
+        poll. Without the latch the device would come and go across polls,
+        and `text.py` (the only per-poll caller of `entity_active`) would
+        tear its schedule entities down and rebuild them each time. The
+        other capability gates do not need this. `has_cooling` reads a
+        cumulative operating-hour counter, which cannot decrease.
+        `has_domestic_water` falls back to the live DHW temperature only
+        until the first DHW run, and a tank reading exactly a sentinel in
+        that window is too unlikely to be worth a latch.
+
+        Not persisted, so a restart re-detects from scratch. That also
+        clears the latch if the module is genuinely removed.
+        """
+        if self._ventilation_detected:
+            return True
+        self._ventilation_detected = any(
+            self._is_plausible_reading(self.get_value(key))
+            for key in (
+                LC.C0159_VENTILATION_SUPPLY_AIR_TEMPERATURE,
+                LC.C0160_VENTILATION_EXHAUST_AIR_TEMPERATURE,
+            )
+        )
+        return self._ventilation_detected
+
+    @staticmethod
+    def _is_plausible_reading(value: Any) -> bool:
+        """Is this air temperature a measurement rather than a sentinel.
+
+        0.0 is the missing-module reading, 5.0 and 75.0 are the controller's
+        unwired-sensor placeholders - the same values unconnected TRL_ext,
+        TEE and TFB1-3 channels report on the #729 reporter's LWC407.
+        Whether 5.0 / 75.0 hold across controller generations is unverified,
+        but treating them as readings is the worse failure: it fabricates a
+        room temperature that never moves.
+        """
+        if value is None:
+            return False
+        try:
+            return float(value) not in LUX_TEMPERATURE_SENTINELS
+        except (TypeError, ValueError):
+            return False
+
+    def get_value(self, group_sensor_id: str | LP | LC | LV):
+        """Get a sensor value from Luxtronik."""
+        sensor = self.get_sensor_by_id(str(group_sensor_id))
+        if sensor is None:
+            return None
+        value = sensor[1] if isinstance(sensor, tuple) else sensor.value
+        return normalize_sensor_value(value, self.data, group_sensor_id)
+
+    def get_sensor_by_id(self, group_sensor_id: str):
+        """Get a sensor object by id from Luxtronik."""
+        try:
+            group, sensor_id = group_sensor_id.split(".", 1)
+            return self.get_sensor(group, sensor_id)
+        except (IndexError, ValueError) as error:
+            LOGGER.error(
+                "Invalid group_sensor_id format: %s (%s)", group_sensor_id, error
+            )
+            return None
+
+    def get_sensor(self, group: str, sensor_id: str):
+        """Get sensor by configured sensor ID from coordinator data."""
+        if self.data is None:
+            return None
+        if group == CONF_PARAMETERS:
+            return self.data.parameters.get(sensor_id)
+        if group == CONF_CALCULATIONS:
+            return self.data.calculations.get(sensor_id)
+        if group == CONF_VISIBILITIES:
+            return self.data.visibilities.get(sensor_id)
+        return None
+
+    def _detect_cooling_mk(self):
+        """We iterate over the mk sensors, detect cooling and return a list of parameters that are may show cooling is enabled."""
+        cooling_mk = []
+        for mk_sensor in LUX_PARAMETER_MK_SENSORS:
+            if self._mk_type_can_cool(self.get_value(mk_sensor)):
+                cooling_mk = cooling_mk + [mk_sensor]
+
+        return cooling_mk
+
+    def _detect_solar_present(self) -> bool:
+        """Detect and returns True if solar is present.
+
+        The solar flag or a solar run decides first. Of the temperatures only
+        the buffer reading is consulted, and only as a fallback for a fresh
+        install that has neither yet. The visibility flags V0038/V0039 read 1
+        on units without solar, and the collector reading is no evidence
+        either way: the one unit in the diagnostics corpus with solar reads
+        5.0 on its collector and 150.0 on its buffer. An unwired buffer sensor
+        reads 150.0 on some units and 0.0 on others - the 0.0 ones all
+        detected phantom solar (#820).
+
+        Known false positive: a unit that copies its DHW sensor into the
+        buffer register (an LWC407 on V1.90.0 does). Treating that mirror as
+        "no solar" would also hide a real buffer sensor in the DHW tank that
+        happens to read the same, so it is accepted.
+        """
+        if bool(self.get_value(LV.V0250_SOLAR)):
+            return True
+        if (self.get_value(LP.P0882_SOLAR_OPERATION_HOURS) or 0) > 0.01:
+            return True
+        buffer_temp = self.get_value(LC.C0027_SOLAR_BUFFER_TEMPERATURE)
+        return buffer_temp is not None and float(buffer_temp) not in (0.0, 150.0)
+
+    def _detect_dhw_circulation_pump_present(self) -> bool:
+        """Detect and returns True if DHW circulation pump is present."""
+        try:
+            value = self.get_value(LP.P0085_DHW_CHARGING_PUMP)
+            if value is None:
+                return False
+            return int(value) != 1
+        except Exception:  # pylint: disable=broad-except
+            return False
+
+    def detect_cooling_present(self) -> bool:
+        """Detect and returns True if Cooling is present."""
+        cooling_present = len(self._detect_cooling_mk()) > 0
+        return cooling_present
+
+    async def async_shutdown(self) -> None:
+        """Make sure a coordinator is shut down as well as its connection."""
+        self._cancel_write_followup()
+        self._delete_readonly_issue()
+        await super().async_shutdown()
+        if hasattr(self, "client") and self.client is not None:
+            await self.hass.async_add_executor_job(self.client.disconnect)
+            del self.client
+
+
+class LuxtronikConnectionError(HomeAssistantError):
+    """Raised when connection to Luxtronik fails."""
+
+    def __init__(self, host: str, port: int, original: Exception):
+        super().__init__(
+            f"Failed to connect to {host}:{port} - {type(original).__name__}: {original}"
+        )
+        self.host = host
+        self.port = port
+        self.original = original
+
+
+class LuxtronikWriteError(HomeAssistantError):
+    """Raised when writing a parameter to the Luxtronik device fails."""
+
+
+class LuxtronikSerialNumberError(HomeAssistantError):
+    """Raised when the heatpump's serial number cannot be determined.
+
+    The serial number feeds `unique_id`, so treating it as "not available
+    yet" and falling back to an empty value would risk two different
+    devices ending up with colliding (empty) device/entry identifiers.
+    """
+
+
+_OVERRIDES_APPLIED = False
+
+
+async def connect_and_get_coordinator(
+    hass: HomeAssistant, config: ConfigEntry | dict[str, Any]
+) -> LuxtronikCoordinator:
+    """Try to connect to a Luxtronik device and return coordinator."""
+    global _OVERRIDES_APPLIED
+    # No lock needed: all override calls are synchronous (no await),
+    # so the event loop cannot preempt between the guard check and flag set.
+    if not _OVERRIDES_APPLIED:
+        update_Luxtronik_HeatpumpCodes()
+        update_Luxtronik_SwitchoffCodes()
+        update_Luxtronik_Parameters()
+        isolate_instance_data()
+        record_parsed_block_lengths()
+        name_unknown_visibilities_correctly()
+        warn_on_unknown_selection_codes()
+        _OVERRIDES_APPLIED = True
+        LOGGER.info(
+            "Library overrides applied (HeatpumpCodes, SwitchoffCodes, Parameters, "
+            "instance data isolation, parsed block length recording, unknown "
+            "visibility naming, unknown selection code warning)."
+        )
+
+    config_data: dict[str, Any] = dict(
+        config.data if isinstance(config, ConfigEntry) else config
+    )
+    if isinstance(config, ConfigEntry):
+        config_data.update(dict(config.options))
+
+    host: str = config_data.get(CONF_HOST, "")
+    port = config_data.get(CONF_PORT, DEFAULT_PORT)
+
+    entry = config if isinstance(config, ConfigEntry) else None
+
+    try:  # pragma: no cover
+        coordinator = await LuxtronikCoordinator.connect(hass, config_data, entry)
+        LOGGER.info("Luxtronik connect to device %s:%s successful!", host, port)
+
+        if isinstance(config, ConfigEntry):
+            await coordinator.async_config_entry_first_refresh()
+            LOGGER.debug(
+                "Initial coordinator refresh completed for %s:%s via config entry",
+                host,
+                port,
+            )
+        else:
+            await coordinator.async_refresh()
+            if not coordinator.last_update_success:
+                # async_refresh() (unlike async_config_entry_first_refresh())
+                # swallows update failures instead of raising. Without this
+                # check we'd hand back a coordinator with no data, and the
+                # failure would only surface later as a confusing error when
+                # something (e.g. unique_id) tries to read a sensor value.
+                raise RuntimeError(
+                    f"Initial data refresh did not succeed for {host}:{port}"
+                )
+            LOGGER.debug(
+                "Initial coordinator refresh completed for %s:%s via direct config",
+                host,
+                port,
+            )
+
+        return coordinator
+    except Exception as err:
+        LOGGER.error("Luxtronik connect to device %s:%s failed: %s", host, port, err)
+        raise LuxtronikConnectionError(host, port, err) from err
